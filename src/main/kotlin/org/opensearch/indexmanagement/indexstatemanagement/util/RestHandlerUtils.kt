@@ -4,6 +4,7 @@
  */
 
 @file:Suppress("TopLevelPropertyNaming", "MatchingDeclarationName")
+
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
 import org.apache.logging.log4j.Logger
@@ -11,16 +12,16 @@ import org.opensearch.OpenSearchParseException
 import org.opensearch.action.support.clustermanager.ClusterManagerNodeRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.Client
+import org.opensearch.common.logging.DeprecationLogger
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
-import org.opensearch.common.logging.DeprecationLogger
-import org.opensearch.common.unit.TimeValue
+import org.opensearch.core.index.Index
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentFragment
 import org.opensearch.core.xcontent.XContentBuilder
-import org.opensearch.common.xcontent.XContentFactory
-import org.opensearch.core.index.Index
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
@@ -98,7 +99,7 @@ data class FailedIndex(val name: String, val uuid: String, val reason: String) :
     constructor(sin: StreamInput) : this(
         name = sin.readString(),
         uuid = sin.readString(),
-        reason = sin.readString()
+        reason = sin.readString(),
     )
 
     override fun writeTo(out: StreamOutput) {
@@ -112,7 +113,7 @@ data class FailedIndex(val name: String, val uuid: String, val reason: String) :
  * Gets the XContentBuilder for partially updating a [ManagedIndexConfig]'s ChangePolicy
  */
 fun getPartialChangePolicyBuilder(
-    changePolicy: ChangePolicy?
+    changePolicy: ChangePolicy?,
 ): XContentBuilder {
     val builder = XContentFactory.jsonBuilder()
         .startObject()

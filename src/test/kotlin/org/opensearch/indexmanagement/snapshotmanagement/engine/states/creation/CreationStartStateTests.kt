@@ -17,7 +17,7 @@ class CreationStartStateTests : MocksTestCase() {
 
     fun `test start state execution`() = runBlocking {
         val metadata = randomSMMetadata(
-            creationCurrentState = SMState.CREATION_FINISHED
+            creationCurrentState = SMState.CREATION_FINISHED,
         )
         val job = randomSMPolicy()
         val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)

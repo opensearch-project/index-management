@@ -22,7 +22,7 @@ class GetPolicyRequest : ActionRequest {
     constructor(
         policyID: String,
         version: Long,
-        fetchSrcContext: FetchSourceContext
+        fetchSrcContext: FetchSourceContext,
     ) : super() {
         this.policyID = policyID
         this.version = version
@@ -33,7 +33,7 @@ class GetPolicyRequest : ActionRequest {
     constructor(sin: StreamInput) : this(
         policyID = sin.readString(),
         version = sin.readLong(),
-        fetchSrcContext = FetchSourceContext(sin)
+        fetchSrcContext = FetchSourceContext(sin),
     )
 
     override fun validate(): ActionRequestValidationException? {
@@ -41,7 +41,7 @@ class GetPolicyRequest : ActionRequest {
         if (policyID.isBlank()) {
             validationException = ValidateActions.addValidationError(
                 "Missing policy ID",
-                validationException
+                validationException,
             )
         }
         return validationException

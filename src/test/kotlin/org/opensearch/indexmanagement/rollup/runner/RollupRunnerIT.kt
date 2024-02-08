@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.rollup.runner
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
@@ -30,7 +31,6 @@ import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.R
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.rest.RestRequest
-import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Collections.emptyMap
@@ -50,7 +50,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             jobEnabledTime = Instant.now(),
             sourceIndex = indexName,
             metadataID = null,
-            continuous = false
+            continuous = false,
         )
 
         // Create source index
@@ -102,8 +102,8 @@ class RollupRunnerIT : RollupRestTestCase() {
             continuous = false,
             dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
             metrics = listOf(
-                RollupMetrics(sourceField = propertyName, targetField = propertyName, metrics = listOf(Average()))
-            )
+                RollupMetrics(sourceField = propertyName, targetField = propertyName, metrics = listOf(Average())),
+            ),
         ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
@@ -141,7 +141,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             assertEquals(
                 "Source and rollup index did not return same avg results",
                 rawAggRes.getValue(avgMetricName)["value"],
-                rollupAggRes.getValue(avgMetricName)["value"]
+                rollupAggRes.getValue(avgMetricName)["value"],
             )
         }
     }
@@ -158,7 +158,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             sourceIndex = dataStreamName,
             targetIndex = "$dataStreamName-rollup",
             metadataID = null,
-            continuous = false
+            continuous = false,
         )
 
         // Create the source data stream
@@ -170,8 +170,8 @@ class RollupRunnerIT : RollupRestTestCase() {
                     "\"index_patterns\": [ \"$dataStreamName\" ], " +
                     "\"data_stream\": { }, " +
                     "\"template\": { \"mappings\": { ${createRollupMappingString(rollup)} } } }",
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
         client().makeRequest("PUT", "/_data_stream/$dataStreamName")
 
@@ -209,7 +209,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             sourceIndex = indexName,
             targetIndex = "${indexName}_target",
             metadataID = null,
-            continuous = false
+            continuous = false,
         )
 
         // Create source index
@@ -246,7 +246,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         client().makeRequest(
             "PUT",
             "$ROLLUP_JOBS_BASE_URI/${rollup.id}?if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-            emptyMap(), rollup.copy(enabled = true, jobEnabledTime = Instant.now()).toHttpEntity()
+            emptyMap(), rollup.copy(enabled = true, jobEnabledTime = Instant.now()).toHttpEntity(),
         )
 
         updateRollupStartTime(rollup)
@@ -281,9 +281,9 @@ class RollupRunnerIT : RollupRestTestCase() {
             continuous = true,
             dimensions = listOf(
                 randomCalendarDateHistogram().copy(
-                    calendarInterval = "1y"
-                )
-            )
+                    calendarInterval = "1y",
+                ),
+            ),
         )
 
         // Create source index
@@ -335,7 +335,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             jobEnabledTime = Instant.now(),
             sourceIndex = indexName,
             metadataID = null,
-            continuous = true
+            continuous = true,
         )
 
         // Create rollup job
@@ -384,8 +384,8 @@ class RollupRunnerIT : RollupRestTestCase() {
             continuous = false,
             dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
             metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))
-            )
+                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())),
+            ),
         ).let { createRollup(it, it.id) }
 
         val secondRollup = Rollup(
@@ -405,8 +405,8 @@ class RollupRunnerIT : RollupRestTestCase() {
             continuous = false,
             dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "100d")),
             metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))
-            )
+                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())),
+            ),
         ).let { createRollup(it, it.id) }
 
         val thirdRollup = Rollup(
@@ -426,15 +426,15 @@ class RollupRunnerIT : RollupRestTestCase() {
             continuous = false,
             dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s")),
             metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))
-            )
+                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())),
+            ),
         ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
 
         waitFor { assertTrue("Target rollup index was not created", indexExists(rollup.targetIndex)) }
 
-        val finishedRollup = waitFor() {
+        val finishedRollup = waitFor {
             val rollupJob = getRollup(rollupId = rollup.id)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
             val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
@@ -444,7 +444,7 @@ class RollupRunnerIT : RollupRestTestCase() {
 
         updateRollupStartTime(secondRollup)
 
-        val secondFinishedRollup = waitFor() {
+        val secondFinishedRollup = waitFor {
             val rollupJob = getRollup(rollupId = secondRollup.id)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
             val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
@@ -454,7 +454,7 @@ class RollupRunnerIT : RollupRestTestCase() {
 
         updateRollupStartTime(thirdRollup)
 
-        val thirdFinishedRollup = waitFor() {
+        val thirdFinishedRollup = waitFor {
             val rollupJob = getRollup(rollupId = thirdRollup.id)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
             val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
@@ -527,8 +527,8 @@ class RollupRunnerIT : RollupRestTestCase() {
             continuous = false,
             dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s")),
             metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))
-            )
+                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())),
+            ),
         ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
@@ -546,7 +546,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         client().makeRequest(
             "PUT",
             "$ROLLUP_JOBS_BASE_URI/${startedRollup.id}?if_seq_no=${startedRollup.seqNo}&if_primary_term=${startedRollup.primaryTerm}",
-            emptyMap(), rollup.copy(pageSize = 1000).toHttpEntity()
+            emptyMap(), rollup.copy(pageSize = 1000).toHttpEntity(),
         )
 
         val finishedRollup = waitFor {
@@ -585,7 +585,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             delay = 0,
             continuous = false,
             dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1m")),
-            metrics = listOf(RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())))
+            metrics = listOf(RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))),
         ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
@@ -620,7 +620,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             delay = 0,
             continuous = false,
             dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1m")),
-            metrics = listOf(RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())))
+            metrics = listOf(RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))),
         ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(secondRollup)
@@ -652,9 +652,9 @@ class RollupRunnerIT : RollupRestTestCase() {
             delay = delay,
             dimensions = listOf(
                 randomCalendarDateHistogram().copy(
-                    calendarInterval = "5s"
-                )
-            )
+                    calendarInterval = "5s",
+                ),
+            ),
         )
 
         // Create source index
@@ -666,14 +666,14 @@ class RollupRunnerIT : RollupRestTestCase() {
         val jobStartTime = Instant.now()
         val rollupNow = rollup.copy(
             jobSchedule = IntervalSchedule(jobStartTime, 1, ChronoUnit.MINUTES),
-            jobEnabledTime = jobStartTime
+            jobEnabledTime = jobStartTime,
         )
         rollup = createRollup(rollup = rollupNow, rollupId = rollupNow.id)
 
         val expectedFirstExecutionTime = rollup.jobSchedule.getNextExecutionTime(null).toEpochMilli()
         assertTrue("The first job execution time should be equal [job start time] + [delay].", expectedFirstExecutionTime == jobStartTime.toEpochMilli() + delay)
 
-        waitFor() {
+        waitFor {
             assertTrue("Target rollup index was not created", indexExists(rollup.targetIndex))
             val rollupJob = getRollup(rollupId = rollup.id)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
@@ -711,8 +711,8 @@ class RollupRunnerIT : RollupRestTestCase() {
             continuous = false,
             dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
             metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))
-            )
+                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())),
+            ),
         ).let { createRollup(it, it.id) }
 
         val now = Instant.now()
@@ -774,8 +774,8 @@ class RollupRunnerIT : RollupRestTestCase() {
             continuous = true,
             dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
             metrics = listOf(
-                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()))
-            )
+                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())),
+            ),
         ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup, Instant.now().minusMillis(testDelay).minusMillis(55000).toEpochMilli())
@@ -840,15 +840,15 @@ class RollupRunnerIT : RollupRestTestCase() {
             dimensions = listOf(
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
                 Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
+                Terms("PULocationID", "PULocationID"),
             ),
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count",
                     targetField = "passenger_count",
-                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
-                )
-            )
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+                ),
+            ),
         ).let { createRollup(it, it.id) }
 
         // First run, backing index is empty: no mappings, no rollup_index setting, no rollupjobs in _META
@@ -872,7 +872,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         client().makeRequest(
             "PUT",
             "$ROLLUP_JOBS_BASE_URI/${startedRollup.id}?if_seq_no=${startedRollup.seqNo}&if_primary_term=${startedRollup.primaryTerm}",
-            emptyMap(), rollup.copy(enabled = true).toHttpEntity()
+            emptyMap(), rollup.copy(enabled = true).toHttpEntity(),
         )
         // Second run, backing index is setup just like any other rollup index
         updateRollupStartTime(rollup)
@@ -926,15 +926,15 @@ class RollupRunnerIT : RollupRestTestCase() {
             dimensions = listOf(
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
                 Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
+                Terms("PULocationID", "PULocationID"),
             ),
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count",
                     targetField = "passenger_count",
-                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
-                )
-            )
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+                ),
+            ),
         ).let { createRollup(it, it.id) }
 
         // First run, backing index is empty: no mappings, no rollup_index setting, no rollupjobs in _META
@@ -963,7 +963,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         client().makeRequest(
             "PUT",
             "$ROLLUP_JOBS_BASE_URI/${startedRollup.id}?if_seq_no=${startedRollup.seqNo}&if_primary_term=${startedRollup.primaryTerm}",
-            emptyMap(), rollup.copy(enabled = true).toHttpEntity()
+            emptyMap(), rollup.copy(enabled = true).toHttpEntity(),
         )
         // Second run, backing index is setup just like any other rollup index
         updateRollupStartTime(rollup)
@@ -1021,15 +1021,15 @@ class RollupRunnerIT : RollupRestTestCase() {
             dimensions = listOf(
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
                 Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
+                Terms("PULocationID", "PULocationID"),
             ),
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count",
                     targetField = "passenger_count",
-                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
-                )
-            )
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+                ),
+            ),
         ).let { createRollup(it, it.id) }
 
         // First run, backing index is empty: no mappings, no rollup_index setting, no rollupjobs in _META
@@ -1079,7 +1079,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         client().makeRequest(
             "PUT",
             "$ROLLUP_JOBS_BASE_URI/${startedRollup1.id}?if_seq_no=${startedRollup1.seqNo}&if_primary_term=${startedRollup1.primaryTerm}",
-            emptyMap(), job1.copy(enabled = true).toHttpEntity()
+            emptyMap(), job1.copy(enabled = true).toHttpEntity(),
         )
         // Second run, backing index is setup just like any other rollup index
         updateRollupStartTime(job1)
@@ -1132,15 +1132,15 @@ class RollupRunnerIT : RollupRestTestCase() {
             dimensions = listOf(
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
                 Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
+                Terms("PULocationID", "PULocationID"),
             ),
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count",
                     targetField = "passenger_count",
-                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
-                )
-            )
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+                ),
+            ),
         ).let { createRollup(it, it.id) }
 
         // First run, backing index is empty: no mappings, no rollup_index setting, no rollupjobs in _META
@@ -1217,15 +1217,15 @@ class RollupRunnerIT : RollupRestTestCase() {
             dimensions = listOf(
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
                 Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
+                Terms("PULocationID", "PULocationID"),
             ),
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count",
                     targetField = "passenger_count",
-                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
-                )
-            )
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+                ),
+            ),
         ).let { createRollup(it, it.id) }
 
         // First run, backing index is empty: no mappings, no rollup_index setting, no rollupjobs in _META
@@ -1262,7 +1262,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                   "itemPrice": {
                     "type": "float"
                   }
-                }"""
+                }""",
         )
 
         indexDoc(index, "1", """{"purchaseDate": 1683149130000.6497, "itemName": "shoes", "itemPrice": 100.5}""".trimIndent())
@@ -1294,9 +1294,9 @@ class RollupRunnerIT : RollupRestTestCase() {
                 RollupMetrics(
                     sourceField = "itemPrice",
                     targetField = "itemPrice",
-                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
-                )
-            )
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+                ),
+            ),
         ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(job)
@@ -1336,11 +1336,11 @@ class RollupRunnerIT : RollupRestTestCase() {
             continuous = false,
             dimensions = listOf(
                 DateHistogram(sourceField = "message.timestamp_received", targetField = "message.timestamp_received", fixedInterval = "10m"),
-                Terms("message.plugin", "message.plugin")
+                Terms("message.plugin", "message.plugin"),
             ),
             metrics = listOf(
-                RollupMetrics(sourceField = propertyName, targetField = propertyName, metrics = listOf(Max()))
-            )
+                RollupMetrics(sourceField = propertyName, targetField = propertyName, metrics = listOf(Max())),
+            ),
         ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
@@ -1378,7 +1378,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             assertEquals(
                 "Source and rollup index did not return same max results",
                 rawAggRes.getValue(maxMetricName)["value"],
-                rollupAggRes.getValue(maxMetricName)["value"]
+                rollupAggRes.getValue(maxMetricName)["value"],
             )
         }
     }

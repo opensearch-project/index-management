@@ -6,10 +6,10 @@
 package org.opensearch.indexmanagement.rollup.util
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
-import com.nhaarman.mockitokotlin2.doReturn
 import org.junit.Before
 import org.mockito.ArgumentMatchers.anyString
 import org.opensearch.cluster.service.ClusterService

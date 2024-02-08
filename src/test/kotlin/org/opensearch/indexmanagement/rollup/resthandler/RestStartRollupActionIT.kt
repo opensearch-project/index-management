@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.rollup.resthandler
 
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
@@ -19,7 +20,6 @@ import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -97,7 +97,7 @@ class RestStartRollupActionIT : RollupRestAPITestCase() {
             delay = 0,
             continuous = false,
             dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
-            metrics = emptyList()
+            metrics = emptyList(),
         ).let { createRollup(it, it.id) }
 
         // This should fail because we did not create a source index
@@ -159,7 +159,7 @@ class RestStartRollupActionIT : RollupRestAPITestCase() {
             delay = 0,
             continuous = false,
             dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
-            metrics = emptyList()
+            metrics = emptyList(),
         ).let { createRollup(it, it.id) }
 
         updateRollupStartTime(rollup)
@@ -224,7 +224,7 @@ class RestStartRollupActionIT : RollupRestAPITestCase() {
             delay = 0,
             continuous = false,
             dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
-            metrics = emptyList()
+            metrics = emptyList(),
         ).let { createRollup(it, it.id) }
 
         // The updateRollupStartTime call can be missed if the job scheduler hasn't started listening to the new index yet,

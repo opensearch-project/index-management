@@ -13,13 +13,13 @@ import org.junit.AfterClass
 import org.junit.Before
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.controlcenter.notification.initNodeIdsInRestIT
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.controlcenter.notification.toJsonString
 import org.opensearch.indexmanagement.makeRequest
-import org.opensearch.core.rest.RestStatus
 
 abstract class LRONConfigRestTestCase : IndexManagementRestTestCase() {
     @Before
@@ -35,7 +35,7 @@ abstract class LRONConfigRestTestCase : IndexManagementRestTestCase() {
                 "POST",
                 "${IndexManagementPlugin.CONTROL_CENTER_INDEX}/_delete_by_query",
                 mapOf("refresh" to "true"),
-                StringEntity("""{"query": {"match_all": {}}}""", ContentType.APPLICATION_JSON)
+                StringEntity("""{"query": {"match_all": {}}}""", ContentType.APPLICATION_JSON),
             )
         } catch (e: ResponseException) {
             logger.info(e.response.asMap())

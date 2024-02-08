@@ -11,6 +11,7 @@ import org.opensearch.action.search.SearchResponse
 import org.opensearch.client.ResponseException
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.common.xcontent.json.JsonXContent.jsonXContent
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
@@ -27,7 +28,6 @@ import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.rest.RestRequest
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.junit.annotations.TestLogging
 
@@ -120,12 +120,12 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
             // update the policy to have read_only action which is not allowed
             val updatedPolicy = policy.copy(
                 defaultState = "some_state",
-                states = listOf(randomState(name = "some_state", actions = listOf(randomReadOnlyActionConfig())))
+                states = listOf(randomState(name = "some_state", actions = listOf(randomReadOnlyActionConfig()))),
             )
             client().makeRequest(
                 "PUT",
                 "$POLICY_BASE_URI/${updatedPolicy.id}?refresh=true&if_seq_no=${updatedPolicy.seqNo}&if_primary_term=${updatedPolicy.primaryTerm}",
-                emptyMap(), updatedPolicy.toHttpEntity()
+                emptyMap(), updatedPolicy.toHttpEntity(),
             )
             fail("Expected 403 Method FORBIDDEN response")
         } catch (e: ResponseException) {
@@ -154,7 +154,7 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
         val mappingsMap = parserMap[INDEX_MANAGEMENT_INDEX]!!["mappings"] as Map<String, Any>
         val expected = createParser(
             XContentType.JSON.xContent(),
-            javaClass.classLoader.getResource("mappings/opendistro-ism-config.json").readText()
+            javaClass.classLoader.getResource("mappings/opendistro-ism-config.json").readText(),
         )
         val expectedMap = expected.map()
 
@@ -169,7 +169,7 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
             client().makeRequest(
                 "PUT",
                 "$POLICY_BASE_URI/${policy.id}?refresh=true&if_seq_no=10251989&if_primary_term=2342",
-                emptyMap(), policy.toHttpEntity()
+                emptyMap(), policy.toHttpEntity(),
             )
             fail("expected 409 ResponseException")
         } catch (e: ResponseException) {
@@ -183,7 +183,7 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
         val updateResponse = client().makeRequest(
             "PUT",
             "$POLICY_BASE_URI/${policy.id}?refresh=true&if_seq_no=${policy.seqNo}&if_primary_term=${policy.primaryTerm}",
-            emptyMap(), policy.toHttpEntity()
+            emptyMap(), policy.toHttpEntity(),
         )
 
         assertEquals("Update policy failed", RestStatus.OK, updateResponse.restStatus())
@@ -267,7 +267,7 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
         """.trimIndent()
         val response = client().makeRequest(
             "POST", "$INDEX_MANAGEMENT_INDEX/_search", emptyMap(),
-            StringEntity(request, APPLICATION_JSON)
+            StringEntity(request, APPLICATION_JSON),
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
         val searchResponse = SearchResponse.fromXContent(createParser(jsonXContent, response.entity.content))
@@ -278,7 +278,7 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
         val actualResponse = client().makeRequest(RestRequest.Method.GET.toString(), POLICY_BASE_URI).asMap()
         val expectedResponse = mapOf(
             "policies" to emptyList<Policy>(),
-            "total_policies" to 0
+            "total_policies" to 0,
         )
         assertEquals(expectedResponse, actualResponse)
     }
@@ -308,12 +308,12 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
                             mapOf(
                                 "name" to it.name,
                                 "transitions" to it.transitions,
-                                "actions" to it.actions
+                                "actions" to it.actions,
                             )
-                        }
-                    )
-                )
-            )
+                        },
+                    ),
+                ),
+            ),
         )
 
         assertEquals(expectedMessage.toString(), actualMessage.toString())
@@ -346,12 +346,12 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
                             mapOf(
                                 "name" to it.name,
                                 "transitions" to it.transitions,
-                                "actions" to it.actions
+                                "actions" to it.actions,
                             )
-                        }
-                    )
-                )
-            )
+                        },
+                    ),
+                ),
+            ),
         )
 
         assertEquals(expectedMessage.toString(), actualMessage.toString())

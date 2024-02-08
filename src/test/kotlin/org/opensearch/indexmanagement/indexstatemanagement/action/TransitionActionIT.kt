@@ -28,7 +28,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         val secondStateName = "second"
         val states = listOf(
             State("first", listOf(), listOf(Transition(secondStateName, Conditions(docCount = 5L)))),
-            State(secondStateName, listOf(), listOf())
+            State(secondStateName, listOf(), listOf()),
         )
 
         val policy = Policy(
@@ -38,7 +38,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
 
         createPolicy(policy, policyID)
@@ -73,7 +73,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         val secondStateName = "second"
         val states = listOf(
             State("first", listOf(), listOf(Transition(secondStateName, Conditions(rolloverAge = TimeValue.timeValueSeconds(30))))),
-            State(secondStateName, listOf(), listOf())
+            State(secondStateName, listOf(), listOf()),
         )
 
         val policy = Policy(
@@ -83,7 +83,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
 
         createPolicy(policy, policyID)
@@ -110,7 +110,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         val secondStateName = "second"
         val states = listOf(
             State("first", listOf(), listOf(Transition(secondStateName, Conditions(rolloverAge = TimeValue.timeValueMillis(1))))),
-            State(secondStateName, listOf(), listOf())
+            State(secondStateName, listOf(), listOf()),
         )
 
         val policy = Policy(
@@ -120,7 +120,7 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
 
         createPolicy(policy, policyID)

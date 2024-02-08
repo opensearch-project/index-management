@@ -25,7 +25,7 @@ class GetRollupsRequest : ActionRequest {
         from: Int = DEFAULT_FROM,
         size: Int = DEFAULT_SIZE,
         sortField: String = DEFAULT_SORT_FIELD,
-        sortDirection: String = DEFAULT_SORT_DIRECTION
+        sortDirection: String = DEFAULT_SORT_DIRECTION,
     ) : super() {
         this.searchString = searchString
         this.from = from
@@ -40,7 +40,7 @@ class GetRollupsRequest : ActionRequest {
         from = sin.readInt(),
         size = sin.readInt(),
         sortField = sin.readString(),
-        sortDirection = sin.readString()
+        sortDirection = sin.readString(),
     )
 
     override fun validate(): ActionRequestValidationException? = null

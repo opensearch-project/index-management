@@ -30,7 +30,7 @@ object DeletionConditionMetState : State {
         if (job.deletion == null) {
             log.warn("Policy deletion config becomes null before checking if delete schedule met. Reset.")
             return SMResult.Fail(
-                metadataBuilder.resetDeletion(), WorkflowType.DELETION, forceReset = true
+                metadataBuilder.resetDeletion(), WorkflowType.DELETION, forceReset = true,
             )
         }
 
@@ -44,7 +44,7 @@ object DeletionConditionMetState : State {
             metadata.deletion.trigger.time
         }
         val updateNextTimeResult = tryUpdatingNextExecutionTime(
-            metadataBuilder, nextDeletionTime, job.deletion.schedule, WorkflowType.DELETION, log
+            metadataBuilder, nextDeletionTime, job.deletion.schedule, WorkflowType.DELETION, log,
         )
         if (!updateNextTimeResult.updated) {
             return SMResult.Stay(metadataBuilder)

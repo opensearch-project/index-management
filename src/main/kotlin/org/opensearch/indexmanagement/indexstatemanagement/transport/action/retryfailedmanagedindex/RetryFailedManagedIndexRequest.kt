@@ -8,9 +8,9 @@ package org.opensearch.indexmanagement.indexstatemanagement.transport.action.ret
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.action.ValidateActions
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
-import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import java.io.IOException
 
@@ -18,7 +18,7 @@ class RetryFailedManagedIndexRequest(
     val indices: List<String>,
     val startState: String?,
     val clusterManagerTimeout: TimeValue,
-    val indexType: String
+    val indexType: String,
 ) : ActionRequest() {
 
     @Throws(IOException::class)
@@ -26,7 +26,7 @@ class RetryFailedManagedIndexRequest(
         indices = sin.readStringList(),
         startState = sin.readOptionalString(),
         clusterManagerTimeout = sin.readTimeValue(),
-        indexType = sin.readString()
+        indexType = sin.readString(),
     )
 
     override fun validate(): ActionRequestValidationException? {
@@ -36,7 +36,7 @@ class RetryFailedManagedIndexRequest(
         } else if (indexType != DEFAULT_INDEX_TYPE && indices.size > 1) {
             validationException = ValidateActions.addValidationError(
                 MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR,
-                validationException
+                validationException,
             )
         }
         return validationException

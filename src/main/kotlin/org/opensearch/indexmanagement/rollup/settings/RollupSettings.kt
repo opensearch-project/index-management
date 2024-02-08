@@ -26,63 +26,63 @@ class RollupSettings {
             "plugins.rollup.enabled",
             LegacyOpenDistroRollupSettings.ROLLUP_ENABLED,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
 
         val ROLLUP_SEARCH_ENABLED: Setting<Boolean> = Setting.boolSetting(
             "plugins.rollup.search.enabled",
             LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_ENABLED,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
 
         val ROLLUP_INDEX: Setting<Boolean> = Setting.boolSetting(
             "index.plugins.rollup_index",
             LegacyOpenDistroRollupSettings.ROLLUP_INDEX,
             Setting.Property.IndexScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
 
         val ROLLUP_INGEST_BACKOFF_MILLIS: Setting<TimeValue> = Setting.positiveTimeSetting(
             "plugins.rollup.ingest.backoff_millis",
             LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
 
         val ROLLUP_INGEST_BACKOFF_COUNT: Setting<Int> = Setting.intSetting(
             "plugins.rollup.ingest.backoff_count",
             LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
 
         val ROLLUP_SEARCH_BACKOFF_MILLIS: Setting<TimeValue> = Setting.positiveTimeSetting(
             "plugins.rollup.search.backoff_millis",
             LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_MILLIS,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
 
         val ROLLUP_SEARCH_BACKOFF_COUNT: Setting<Int> = Setting.intSetting(
             "plugins.rollup.search.backoff_count",
             LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
 
         val ROLLUP_SEARCH_ALL_JOBS: Setting<Boolean> = Setting.boolSetting(
             "plugins.rollup.search.search_all_jobs",
             DEFAULT_SEARCH_ALL_JOBS,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
 
         val ROLLUP_DASHBOARDS: Setting<Boolean> = Setting.boolSetting(
             "plugins.rollup.dashboards.enabled",
             LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
     }
 }

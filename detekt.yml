@@ -11,7 +11,7 @@ style:
   ForbiddenComment:
     active: false
   MaxLineLength:
-    maxLineLength: 150
+    maxLineLength: 160
     excludes: ['**/test/**']
   FunctionOnlyReturningConstant:
     active: false
@@ -20,6 +20,7 @@ complexity:
   LargeClass:
     excludes: ['**/test/**']
   LongMethod:
+    threshold: 80
     excludes: ['**/test/**']
   LongParameterList:
     excludes: ['**/test/**']

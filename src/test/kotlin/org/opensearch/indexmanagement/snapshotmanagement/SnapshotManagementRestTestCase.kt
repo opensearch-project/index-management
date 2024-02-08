@@ -14,9 +14,10 @@ import org.junit.After
 import org.junit.Before
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
@@ -29,7 +30,6 @@ import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import java.io.InputStream
 import java.time.Duration
 import java.time.Instant
@@ -73,7 +73,7 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
                 "POST",
                 "${IndexManagementPlugin.SM_POLICIES_URI}/$smPolicyName?refresh=$refresh",
                 emptyMap(),
-                StringEntity(smPolicyString, APPLICATION_JSON)
+                StringEntity(smPolicyString, APPLICATION_JSON),
             )
         assertEquals("Unable to create a new snapshot management policy", RestStatus.CREATED, response.restStatus())
         return response
@@ -142,8 +142,8 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
             "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
             StringEntity(
                 "{\"doc\":{\"sm_policy\":{\"schedule\":{\"interval\":{\"start_time\":\"$startTimeMillis\"}}}}}",
-                APPLICATION_JSON
-            )
+                APPLICATION_JSON,
+            ),
         )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
@@ -187,8 +187,8 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
                       }
                     }
                 """.trimIndent(),
-                APPLICATION_JSON
-            )
+                APPLICATION_JSON,
+            ),
         )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
@@ -259,14 +259,14 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
     }
 
     protected fun createRepository(
-        repository: String
+        repository: String,
     ) {
         val response = client()
             .makeRequest(
                 "PUT",
                 "_snapshot/$repository",
                 emptyMap(),
-                StringEntity("{\"type\":\"fs\", \"settings\": {\"location\": \"$repository\"}}", APPLICATION_JSON)
+                StringEntity("{\"type\":\"fs\", \"settings\": {\"location\": \"$repository\"}}", APPLICATION_JSON),
             )
         assertEquals("Unable to create a new repository", RestStatus.OK, response.restStatus())
     }

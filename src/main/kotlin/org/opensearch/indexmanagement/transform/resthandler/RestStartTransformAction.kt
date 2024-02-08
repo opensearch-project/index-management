@@ -22,7 +22,7 @@ class RestStartTransformAction : BaseRestHandler() {
 
     override fun routes(): List<Route> {
         return listOf(
-            Route(POST, "$TRANSFORM_BASE_URI/{transformID}/_start")
+            Route(POST, "$TRANSFORM_BASE_URI/{transformID}/_start"),
         )
     }
 

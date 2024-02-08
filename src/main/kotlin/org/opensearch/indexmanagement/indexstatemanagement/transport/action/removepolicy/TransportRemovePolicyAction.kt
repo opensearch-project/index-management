@@ -12,7 +12,6 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
 import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
@@ -34,7 +33,9 @@ import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.action.ActionListener
 import org.opensearch.core.index.Index
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
@@ -52,7 +53,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.removeClusterSta
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
@@ -61,9 +61,9 @@ class TransportRemovePolicyAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
-    val indexMetadataProvider: IndexMetadataProvider
+    val indexMetadataProvider: IndexMetadataProvider,
 ) : HandledTransportAction<RemovePolicyRequest, ISMStatusResponse>(
-    RemovePolicyAction.NAME, transportService, actionFilters, ::RemovePolicyRequest
+    RemovePolicyAction.NAME, transportService, actionFilters, ::RemovePolicyRequest,
 ) {
 
     private val log = LogManager.getLogger(javaClass)
@@ -76,7 +76,7 @@ class TransportRemovePolicyAction @Inject constructor(
         private val client: NodeClient,
         private val actionListener: ActionListener<ISMStatusResponse>,
         private val request: RemovePolicyRequest,
-        private val user: User? = buildUser(client.threadPool().threadContext)
+        private val user: User? = buildUser(client.threadPool().threadContext),
     ) {
 
         private val failedIndices: MutableList<FailedIndex> = mutableListOf()
@@ -88,8 +88,8 @@ class TransportRemovePolicyAction @Inject constructor(
         fun start() {
             log.debug(
                 "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                )}"
+                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+                )}",
             )
             if (user == null) {
                 getIndicesToRemove()
@@ -114,14 +114,14 @@ class TransportRemovePolicyAction @Inject constructor(
                                 when (e is OpenSearchSecurityException) {
                                     true -> OpenSearchStatusException(
                                         "User doesn't have required index permissions on one or more requested indices: ${e.localizedMessage}",
-                                        RestStatus.FORBIDDEN
+                                        RestStatus.FORBIDDEN,
                                     )
                                     false -> e
-                                }
-                            )
+                                },
+                            ),
                         )
                     }
-                }
+                },
             )
         }
 
@@ -187,7 +187,7 @@ class TransportRemovePolicyAction @Inject constructor(
                             override fun onFailure(t: Exception) {
                                 actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                             }
-                        }
+                        },
                     )
             }
         }
@@ -213,8 +213,8 @@ class TransportRemovePolicyAction @Inject constructor(
                                     FailedIndex(
                                         name,
                                         uuid,
-                                        "This index does not have a policy to remove"
-                                    )
+                                        "This index does not have a policy to remove",
+                                    ),
                                 )
                             }
                             actionListener.onResponse(ISMStatusResponse(0, failedIndices))
@@ -227,8 +227,8 @@ class TransportRemovePolicyAction @Inject constructor(
                                 failedIndices.add(
                                     FailedIndex(
                                         indicesToRemove[docId] as String, docId,
-                                        "This index does not have a policy to remove"
-                                    )
+                                        "This index does not have a policy to remove",
+                                    ),
                                 )
                                 indicesToRemove.remove(docId)
                             }
@@ -244,7 +244,7 @@ class TransportRemovePolicyAction @Inject constructor(
                     override fun onFailure(t: Exception) {
                         actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                     }
-                }
+                },
             )
         }
 
@@ -268,8 +268,8 @@ class TransportRemovePolicyAction @Inject constructor(
                     UpdateSettingsRequest().indices(*readOnlyIndices.map { indices[it] }.toTypedArray())
                         .settings(
                             Settings.builder().put(ManagedIndexSettings.AUTO_MANAGE.key, false)
-                                .put(INDEX_READ_ONLY_SETTING.key, true)
-                        )
+                                .put(INDEX_READ_ONLY_SETTING.key, true),
+                        ),
                 )
             }
             if (readOnlyAllowDeleteIndices.isNotEmpty()) {
@@ -277,14 +277,14 @@ class TransportRemovePolicyAction @Inject constructor(
                     UpdateSettingsRequest().indices(*readOnlyAllowDeleteIndices.map { indices[it] }.toTypedArray())
                         .settings(
                             Settings.builder().put(ManagedIndexSettings.AUTO_MANAGE.key, false)
-                                .put(INDEX_BLOCKS_READ_ONLY_ALLOW_DELETE_SETTING.key, true)
-                        )
+                                .put(INDEX_BLOCKS_READ_ONLY_ALLOW_DELETE_SETTING.key, true),
+                        ),
                 )
             }
             if (normalIndices.isNotEmpty()) {
                 updateSettingReqsList.add(
                     UpdateSettingsRequest().indices(*normalIndices.map { indices[it] }.toTypedArray())
-                        .settings(Settings.builder().put(ManagedIndexSettings.AUTO_MANAGE.key, false))
+                        .settings(Settings.builder().put(ManagedIndexSettings.AUTO_MANAGE.key, false)),
                 )
             }
 
@@ -303,8 +303,8 @@ class TransportRemovePolicyAction @Inject constructor(
                         if (!response.isAcknowledged) {
                             actionListener.onFailure(
                                 IndexManagementException.wrap(
-                                    Exception("Failed to remove policy because ISM auto_manage setting update requests are not fully acknowledged.")
-                                )
+                                    Exception("Failed to remove policy because ISM auto_manage setting update requests are not fully acknowledged."),
+                                ),
                             )
                             return
                         }
@@ -319,11 +319,11 @@ class TransportRemovePolicyAction @Inject constructor(
                         val ex = ExceptionsHelper.unwrapCause(t) as Exception
                         actionListener.onFailure(
                             IndexManagementException.wrap(
-                                Exception("Failed to remove policy because ISM auto_manage setting update requests failed with exception:", ex)
-                            )
+                                Exception("Failed to remove policy because ISM auto_manage setting update requests failed with exception:", ex),
+                            ),
                         )
                     }
-                }
+                },
             )
         }
 
@@ -343,8 +343,8 @@ class TransportRemovePolicyAction @Inject constructor(
                                         FailedIndex(
                                             indicesToRemove[docId] as String,
                                             docId,
-                                            "Failed to remove policy"
-                                        )
+                                            "Failed to remove policy",
+                                        ),
                                     )
                                     indicesToRemove.remove(docId)
                                 }
@@ -363,8 +363,8 @@ class TransportRemovePolicyAction @Inject constructor(
                                     failedIndices.add(
                                         FailedIndex(
                                             name, uuid,
-                                            "Failed to remove policy due to ClusterBlockingException: ${t.message}"
-                                        )
+                                            "Failed to remove policy due to ClusterBlockingException: ${t.message}",
+                                        ),
                                     )
                                 }
                                 actionListener.onResponse(ISMStatusResponse(0, failedIndices))
@@ -372,7 +372,7 @@ class TransportRemovePolicyAction @Inject constructor(
                                 actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                             }
                         }
-                    }
+                    },
                 )
             } else {
                 actionListener.onResponse(ISMStatusResponse(0, failedIndices))
@@ -392,8 +392,8 @@ class TransportRemovePolicyAction @Inject constructor(
                                 failedIndices.add(
                                     FailedIndex(
                                         indicesToRemove[docId] as String, docId,
-                                        "Failed to clean metadata due to: ${it.failureMessage}"
-                                    )
+                                        "Failed to clean metadata due to: ${it.failureMessage}",
+                                    ),
                                 )
                                 indicesToRemove.remove(docId)
                             }
@@ -404,11 +404,11 @@ class TransportRemovePolicyAction @Inject constructor(
                     override fun onFailure(e: Exception) {
                         actionListener.onFailure(
                             IndexManagementException.wrap(
-                                Exception("Failed to clean metadata for remove policy indices.", e)
-                            )
+                                Exception("Failed to clean metadata for remove policy indices.", e),
+                            ),
                         )
                     }
-                }
+                },
             )
         }
     }

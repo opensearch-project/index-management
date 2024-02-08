@@ -15,7 +15,7 @@ class IndexManagementSettings {
             "plugins.index_management.filter_by_backend_roles",
             false,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
     }
 }

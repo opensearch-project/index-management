@@ -16,17 +16,17 @@ import org.opensearch.client.Request
 import org.opensearch.client.RequestOptions
 import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
-import org.opensearch.core.common.Strings
 import org.opensearch.client.RestClient
 import org.opensearch.client.WarningsHandler
 import org.opensearch.common.io.PathUtils
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.common.Strings
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.DeprecationHandler
+import org.opensearch.core.xcontent.MediaType
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
-import org.opensearch.core.rest.RestStatus
-import org.opensearch.core.xcontent.MediaType
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
@@ -34,8 +34,8 @@ import java.io.IOException
 import java.nio.file.Files
 import java.time.Duration
 import java.time.Instant
-import java.util.Date
 import java.util.*
+import java.util.Date
 import javax.management.MBeanServerInvocationHandler
 import javax.management.ObjectName
 import javax.management.remote.JMXConnectorFactory
@@ -53,7 +53,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
     fun setAutoCreateIndex() {
         client().makeRequest(
             "PUT", "_cluster/settings",
-            StringEntity("""{"persistent":{"action.auto_create_index":"-.opendistro-*,*"}}""", ContentType.APPLICATION_JSON)
+            StringEntity("""{"persistent":{"action.auto_create_index":"-.opendistro-*,*"}}""", ContentType.APPLICATION_JSON),
         )
     }
 
@@ -84,8 +84,8 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
                     }
                 }
                 """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
     }
 
@@ -224,8 +224,8 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             StringEntity(
                 "{\"doc\":{\"rollup\":{\"schedule\":{\"interval\":{\"start_time\":" +
                     "\"$startTimeMillis\"}}}}}",
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
@@ -253,8 +253,8 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             StringEntity(
                 "{\"doc\":{\"transform\":{\"schedule\":{\"interval\":{\"start_time\":" +
                     "\"$startTimeMillis\"}}}}}",
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
@@ -265,6 +265,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         val isMultiNode = System.getProperty("cluster.number_of_nodes", "1").toInt() > 1
         val isBWCTest = System.getProperty("tests.plugin_bwc_version", "0") != "0"
         protected val defaultKeepIndexSet = setOf(".opendistro_security")
+
         /**
          * We override preserveIndicesUponCompletion to true and use this function to clean up indices
          * Meant to be used in @After or @AfterClass of your feature test suite
@@ -290,7 +291,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             val xContentType = MediaType.fromMediaType(response.entity.contentType.value)
             xContentType.xContent().createParser(
                 NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
-                response.entity.content
+                response.entity.content,
             ).use { parser ->
                 for (index in parser.list()) {
                     val jsonObject: Map<*, *> = index as java.util.HashMap<*, *>
@@ -359,7 +360,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             val xContentType = MediaType.fromMediaType(response.entity.contentType.value)
             xContentType.xContent().createParser(
                 NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
-                response.entity.content
+                response.entity.content,
             ).use { parser ->
                 for (index in parser.list()) {
                     val jsonObject: Map<*, *> = index as java.util.HashMap<*, *>
@@ -384,13 +385,13 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         }
 
         /*
-        * We need to be able to dump the jacoco coverage before the cluster shuts down.
-        * The new internal testing framework removed some gradle tasks we were listening to,
-        * to choose a good time to do it. This will dump the executionData to file after each test.
-        * TODO: This is also currently just overwriting integTest.exec with the updated execData without
-        *   resetting after writing each time. This can be improved to either write an exec file per test
-        *   or by letting jacoco append to the file.
-        * */
+         * We need to be able to dump the jacoco coverage before the cluster shuts down.
+         * The new internal testing framework removed some gradle tasks we were listening to,
+         * to choose a good time to do it. This will dump the executionData to file after each test.
+         * TODO: This is also currently just overwriting integTest.exec with the updated execData without
+         *   resetting after writing each time. This can be improved to either write an exec file per test
+         *   or by letting jacoco append to the file.
+         * */
         @JvmStatic
         @AfterClass
         fun dumpCoverage() {
@@ -403,7 +404,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
                     connector.mBeanServerConnection,
                     ObjectName("org.jacoco:type=Runtime"),
                     IProxy::class.java,
-                    false
+                    false,
                 )
                 proxy.getExecutionData(false)?.let {
                     val path = PathUtils.get("$jacocoBuildPath/integTest.exec")

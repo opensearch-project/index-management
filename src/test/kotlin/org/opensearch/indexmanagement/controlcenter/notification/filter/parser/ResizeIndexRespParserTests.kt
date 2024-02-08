@@ -75,7 +75,7 @@ class ResizeIndexRespParserTests : BaseRespParserTests() {
                 Mockito.eq(ActiveShardCount.DEFAULT),
                 eq(TimeValue.timeValueMinutes(50)),
                 any(),
-                any()
+                any(),
             )
     }
     fun `test source index not exist exception`() {
@@ -117,7 +117,7 @@ class ResizeIndexRespParserTests : BaseRespParserTests() {
                 "You must allocate a copy of every shard of the source index to the same node before split. To allocate it to same node, try use PUT /source_index/_settings\n" +
                     "{\n" +
                     "\"index.routing.allocation.require._name\":\"your_node_name\"\n" +
-                    "}"
+                    "}",
             )
             Assert.assertEquals(ret.title, "Split operation on [test-cluster/source_index] has failed")
         }
@@ -132,7 +132,7 @@ class ResizeIndexRespParserTests : BaseRespParserTests() {
         parser.parseAndSendNotification(response) { ret ->
             Assert.assertEquals(
                 ret.message,
-                "The shrink operation from [test-cluster/source] to [test-cluster/target] has taken more than 4h to complete. To see the latest status, use `GET /target/_recovery`"
+                "The shrink operation from [test-cluster/source] to [test-cluster/target] has taken more than 4h to complete. To see the latest status, use `GET /target/_recovery`",
             )
             Assert.assertEquals(ret.title, "Shrink operation on [test-cluster/source] has timed out")
         }
@@ -163,7 +163,7 @@ class ResizeIndexRespParserTests : BaseRespParserTests() {
         val msg = parser.buildNotificationMessage(response, ResourceAlreadyExistsException(Index("target-index", "uuid")))
         Assert.assertEquals(
             msg,
-            "The target index [test-cluster/target-index] already exists."
+            "The target index [test-cluster/target-index] already exists.",
         )
 
         val title = parser.buildNotificationTitle(OperationResult.FAILED)
@@ -179,7 +179,7 @@ class ResizeIndexRespParserTests : BaseRespParserTests() {
         val msg = parser.buildNotificationMessage(response, isTimeout = true)
         Assert.assertEquals(
             msg,
-            "The split operation from [test-cluster/source] to [test-cluster/target] has taken more than 1h to complete. To see the latest status, use `GET /target/_recovery`"
+            "The split operation from [test-cluster/source] to [test-cluster/target] has taken more than 1h to complete. To see the latest status, use `GET /target/_recovery`",
         )
 
         val title = parser.buildNotificationTitle(OperationResult.TIMEOUT)

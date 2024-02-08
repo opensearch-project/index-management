@@ -24,7 +24,7 @@ data class ExplainFilter(
     val policyID: String? = null,
     val state: String? = null,
     val actionType: String? = null,
-    val failed: Boolean? = null
+    val failed: Boolean? = null,
 ) : ToXContentObject, Writeable {
 
     @Throws(IOException::class)
@@ -32,7 +32,7 @@ data class ExplainFilter(
         policyID = sin.readOptionalString(),
         state = sin.readOptionalString(),
         actionType = sin.readOptionalString(),
-        failed = sin.readOptionalBoolean()
+        failed = sin.readOptionalBoolean(),
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {

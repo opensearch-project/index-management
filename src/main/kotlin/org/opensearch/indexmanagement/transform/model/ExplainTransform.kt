@@ -16,13 +16,13 @@ import java.io.IOException
 
 data class ExplainTransform(
     val metadataID: String? = null,
-    val metadata: TransformMetadata? = null
+    val metadata: TransformMetadata? = null,
 ) : ToXContentObject, Writeable {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         metadataID = sin.readOptionalString(),
-        metadata = if (sin.readBoolean()) TransformMetadata(sin) else null
+        metadata = if (sin.readBoolean()) TransformMetadata(sin) else null,
     )
 
     @Throws(IOException::class)

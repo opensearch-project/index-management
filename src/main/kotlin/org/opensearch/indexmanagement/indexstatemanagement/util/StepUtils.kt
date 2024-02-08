@@ -43,7 +43,7 @@ suspend fun issueUpdateSettingsRequest(client: Client, indexName: String, settin
 
 suspend fun releaseShrinkLock(
     shrinkActionProperties: ShrinkActionProperties,
-    lockService: LockService
+    lockService: LockService,
 ): Boolean {
     val lock: LockModel = getShrinkLockModel(shrinkActionProperties)
     return lockService.suspendUntil { release(lock, it) }
@@ -52,7 +52,7 @@ suspend fun releaseShrinkLock(
 suspend fun deleteShrinkLock(
     shrinkActionProperties: ShrinkActionProperties,
     lockService: LockService,
-    logger: Logger
+    logger: Logger,
 ): Boolean {
     val lockID = getShrinkLockID(shrinkActionProperties.nodeName)
     logger.info("Deleting lock: $lockID")
@@ -62,7 +62,7 @@ suspend fun deleteShrinkLock(
 suspend fun renewShrinkLock(
     shrinkActionProperties: ShrinkActionProperties,
     lockService: LockService,
-    logger: Logger
+    logger: Logger,
 ): LockModel? {
     val lock: LockModel = getShrinkLockModel(shrinkActionProperties)
     return try {
@@ -74,7 +74,7 @@ suspend fun renewShrinkLock(
 }
 
 fun getShrinkLockModel(
-    shrinkActionProperties: ShrinkActionProperties
+    shrinkActionProperties: ShrinkActionProperties,
 ): LockModel {
     return getShrinkLockModel(
         shrinkActionProperties.nodeName,
@@ -82,7 +82,7 @@ fun getShrinkLockModel(
         shrinkActionProperties.lockEpochSecond,
         shrinkActionProperties.lockPrimaryTerm,
         shrinkActionProperties.lockSeqNo,
-        shrinkActionProperties.lockDurationSecond
+        shrinkActionProperties.lockDurationSecond,
     )
 }
 
@@ -93,7 +93,7 @@ fun getShrinkLockModel(
     lockEpochSecond: Long,
     lockPrimaryTerm: Long,
     lockSeqNo: Long,
-    lockDurationSecond: Long
+    lockDurationSecond: Long,
 ): LockModel {
     val jobID = getShrinkJobID(nodeName)
     val lockCreationInstant: Instant = Instant.ofEpochSecond(lockEpochSecond)
@@ -104,7 +104,7 @@ fun getShrinkLockModel(
         lockDurationSecond,
         false,
         lockSeqNo,
-        lockPrimaryTerm
+        lockPrimaryTerm,
     )
 }
 
@@ -118,7 +118,7 @@ fun getUpdatedShrinkActionProperties(shrinkActionProperties: ShrinkActionPropert
         lock.seqNo,
         lock.lockTime.epochSecond,
         lock.lockDurationSeconds,
-        shrinkActionProperties.originalIndexSettings
+        shrinkActionProperties.originalIndexSettings,
     )
 }
 
@@ -144,19 +144,21 @@ fun getFreeBytesThresholdHigh(clusterSettings: ClusterSettings, totalNodeBytes: 
     return if (diskThresholdPercent > 0.001) {
         // If the user set value is 95%, diskThresholdPercent will be returned as 5% from the DiskThresholdSettings object
         ((diskThresholdPercent / 100) * totalNodeBytes).toLong()
-    } else diskThresholdBytes.bytes
+    } else {
+        diskThresholdBytes.bytes
+    }
 }
 
 fun getDiskSettings(clusterSettings: ClusterSettings): Settings {
     return Settings.builder().put(
         CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING.key,
-        clusterSettings.get(CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING)
+        clusterSettings.get(CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING),
     ).put(
         CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING.key,
-        clusterSettings.get(CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING)
+        clusterSettings.get(CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING),
     ).put(
         CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING.key,
-        clusterSettings.get(CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING)
+        clusterSettings.get(CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING),
     ).build()
 }
 
@@ -182,7 +184,7 @@ fun getNodeFreeDiskSpaceAfterShrink(node: NodeStats, indexSizeInBytes: Long, clu
 suspend fun isIndexGreen(
     client: Client,
     indexName: String,
-    timeout: TimeValue = TimeValue(AttemptMoveShardsStep.THIRTY_SECONDS_IN_MILLIS)
+    timeout: TimeValue = TimeValue(AttemptMoveShardsStep.THIRTY_SECONDS_IN_MILLIS),
 ): Boolean {
     // get index health, waiting for a green status
     val healthReq = ClusterHealthRequest().indices(indexName).waitForGreenStatus().timeout(timeout)
@@ -205,7 +207,7 @@ suspend fun resetReadOnlyAndRouting(index: String, client: Client, originalSetti
 fun getShrinkLockID(nodeName: String): String {
     return LockModel.generateLockId(
         INDEX_MANAGEMENT_INDEX,
-        getShrinkJobID(nodeName)
+        getShrinkJobID(nodeName),
     )
 }
 

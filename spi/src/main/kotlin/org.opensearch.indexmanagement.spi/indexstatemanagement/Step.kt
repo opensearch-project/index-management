@@ -56,7 +56,8 @@ abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
         STARTING("starting"),
         CONDITION_NOT_MET("condition_not_met"),
         FAILED("failed"),
-        COMPLETED("completed");
+        COMPLETED("completed"),
+        ;
 
         override fun toString(): String {
             return status

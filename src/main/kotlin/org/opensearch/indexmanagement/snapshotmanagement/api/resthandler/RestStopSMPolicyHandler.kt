@@ -27,7 +27,7 @@ class RestStopSMPolicyHandler : BaseRestHandler() {
 
     override fun routes(): List<Route> {
         return listOf(
-            Route(RestRequest.Method.POST, "$SM_POLICIES_URI/{policyName}/_stop")
+            Route(RestRequest.Method.POST, "$SM_POLICIES_URI/{policyName}/_stop"),
         )
     }
 
@@ -39,7 +39,7 @@ class RestStopSMPolicyHandler : BaseRestHandler() {
         return RestChannelConsumer {
             client.execute(
                 SMActions.STOP_SM_POLICY_ACTION_TYPE,
-                indexReq, RestToXContentListener(it)
+                indexReq, RestToXContentListener(it),
             )
         }
     }

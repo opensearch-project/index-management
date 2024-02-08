@@ -23,7 +23,7 @@ class RestPreviewTransformAction : BaseRestHandler() {
     override fun routes(): List<RestHandler.Route> {
         return listOf(
             RestHandler.Route(POST, TRANSFORM_BASE_URI),
-            RestHandler.Route(POST, "$TRANSFORM_BASE_URI/_preview")
+            RestHandler.Route(POST, "$TRANSFORM_BASE_URI/_preview"),
         )
     }
 

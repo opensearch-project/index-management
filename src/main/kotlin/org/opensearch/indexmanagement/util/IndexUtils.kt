@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.util
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.mapping.put.PutMappingRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.IndicesAdminClient
@@ -16,6 +15,7 @@ import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.hash.MurmurHash3
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.action.ActionListener
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.indexmanagement.IndexManagementIndices
@@ -53,7 +53,7 @@ class IndexUtils {
         fun getSchemaVersion(mapping: String): Long {
             val xcp = XContentType.JSON.xContent().createParser(
                 NamedXContentRegistry.EMPTY,
-                LoggingDeprecationHandler.INSTANCE, mapping
+                LoggingDeprecationHandler.INSTANCE, mapping,
             )
 
             while (!xcp.isClosed) {
@@ -96,7 +96,7 @@ class IndexUtils {
         fun checkAndUpdateConfigIndexMapping(
             clusterState: ClusterState,
             client: IndicesAdminClient,
-            actionListener: ActionListener<AcknowledgedResponse>
+            actionListener: ActionListener<AcknowledgedResponse>,
         ) {
             checkAndUpdateIndexMapping(
                 IndexManagementPlugin.INDEX_MANAGEMENT_INDEX,
@@ -104,14 +104,14 @@ class IndexUtils {
                 IndexManagementIndices.indexManagementMappings,
                 clusterState,
                 client,
-                actionListener
+                actionListener,
             )
         }
 
         fun checkAndUpdateHistoryIndexMapping(
             clusterState: ClusterState,
             client: IndicesAdminClient,
-            actionListener: ActionListener<AcknowledgedResponse>
+            actionListener: ActionListener<AcknowledgedResponse>,
         ) {
             checkAndUpdateAliasMapping(
                 IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS,
@@ -119,7 +119,7 @@ class IndexUtils {
                 IndexManagementIndices.indexStateManagementHistoryMappings,
                 clusterState,
                 client,
-                actionListener
+                actionListener,
             )
         }
 
@@ -131,7 +131,7 @@ class IndexUtils {
             mapping: String,
             clusterState: ClusterState,
             client: IndicesAdminClient,
-            actionListener: ActionListener<AcknowledgedResponse>
+            actionListener: ActionListener<AcknowledgedResponse>,
         ) {
             if (clusterState.metadata.indices.containsKey(index)) {
                 if (shouldUpdateIndex(clusterState.metadata.indices[index], schemaVersion)) {
@@ -154,7 +154,7 @@ class IndexUtils {
             mapping: String,
             clusterState: ClusterState,
             client: IndicesAdminClient,
-            actionListener: ActionListener<AcknowledgedResponse>
+            actionListener: ActionListener<AcknowledgedResponse>,
         ) {
             val result = clusterState.metadata.indicesLookup[alias]
             if (result == null || result.type != IndexAbstraction.Type.ALIAS) {

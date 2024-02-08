@@ -24,7 +24,7 @@ class GetSMPolicyResponse(
     val version: Long,
     val seqNo: Long,
     val primaryTerm: Long,
-    val policy: SMPolicy
+    val policy: SMPolicy,
 ) : ActionResponse(), ToXContentObject {
 
     constructor(sin: StreamInput) : this(
@@ -32,7 +32,7 @@ class GetSMPolicyResponse(
         version = sin.readLong(),
         seqNo = sin.readLong(),
         primaryTerm = sin.readLong(),
-        policy = SMPolicy(sin)
+        policy = SMPolicy(sin),
     )
 
     override fun writeTo(out: StreamOutput) {

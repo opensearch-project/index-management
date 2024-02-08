@@ -7,13 +7,13 @@ package org.opensearch.indexmanagement.controlcenter.notification
 
 import org.opensearch.ExceptionsHelper
 import org.opensearch.ResourceAlreadyExistsException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.create.CreateIndexRequest
 import org.opensearch.action.admin.indices.create.CreateIndexResponse
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.action.ActionListener
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.indexmanagement.util.IndexUtils
@@ -39,16 +39,18 @@ class ControlCenterIndices(
                                 CreateIndexResponse(
                                     true,
                                     true,
-                                    IndexManagementPlugin.CONTROL_CENTER_INDEX
-                                )
+                                    IndexManagementPlugin.CONTROL_CENTER_INDEX,
+                                ),
                             )
-                        } else actionListener.onFailure(e)
+                        } else {
+                            actionListener.onFailure(e)
+                        }
                     }
 
                     override fun onResponse(response: CreateIndexResponse) {
                         actionListener.onResponse(response)
                     }
-                }
+                },
             )
         } else {
             IndexUtils.checkAndUpdateIndexMapping(
@@ -57,7 +59,7 @@ class ControlCenterIndices(
                 controlCenterMappings,
                 clusterService.state(),
                 client,
-                actionListener
+                actionListener,
             )
         }
     }

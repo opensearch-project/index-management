@@ -18,7 +18,7 @@ class RestUpdateSMPolicyHandler : RestBaseIndexSMPolicyHandler() {
 
     override fun routes(): List<Route> {
         return listOf(
-            Route(RestRequest.Method.PUT, "$SM_POLICIES_URI/{policyName}")
+            Route(RestRequest.Method.PUT, "$SM_POLICIES_URI/{policyName}"),
         )
     }
 

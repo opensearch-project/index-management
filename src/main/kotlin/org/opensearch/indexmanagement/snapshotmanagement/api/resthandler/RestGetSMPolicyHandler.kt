@@ -7,8 +7,8 @@ package org.opensearch.indexmanagement.snapshotmanagement.api.resthandler
 
 import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.SM_POLICIES_URI
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICY_ACTION_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICIES_ACTION_TYPE
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICY_ACTION_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMPoliciesRequest
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMPolicyRequest
 import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToDocId
@@ -29,7 +29,7 @@ class RestGetSMPolicyHandler : BaseRestHandler() {
     override fun routes(): List<Route> {
         return listOf(
             Route(GET, "$SM_POLICIES_URI/{policyName}"),
-            Route(GET, "$SM_POLICIES_URI/")
+            Route(GET, "$SM_POLICIES_URI/"),
         )
     }
 

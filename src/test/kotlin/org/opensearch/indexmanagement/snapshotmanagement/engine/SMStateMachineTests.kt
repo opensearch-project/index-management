@@ -33,7 +33,7 @@ open class SMStateMachineTests : MocksTestCase() {
         mockCreateSnapshotCall(response = mockCreateSnapshotResponse())
 
         val metadata = randomSMMetadata(
-            creationCurrentState = currentState
+            creationCurrentState = currentState,
         )
         val job = randomSMPolicy()
         val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool, indicesManager))
@@ -73,7 +73,7 @@ open class SMStateMachineTests : MocksTestCase() {
             creationCurrentState = currentState,
             creationLatestExecution = randomLatestExecution(
                 status = SMMetadata.LatestExecution.Status.RETRYING,
-            )
+            ),
         )
         val job = randomSMPolicy()
         val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool, indicesManager))
@@ -122,7 +122,7 @@ open class SMStateMachineTests : MocksTestCase() {
             deletionRetryCount = 2,
             deletionLatestExecution = randomLatestExecution(
                 status = SMMetadata.LatestExecution.Status.RETRYING,
-            )
+            ),
         )
         val job = randomSMPolicy()
 
@@ -146,7 +146,7 @@ open class SMStateMachineTests : MocksTestCase() {
             deletionRetryCount = 1,
             deletionLatestExecution = randomLatestExecution(
                 status = SMMetadata.LatestExecution.Status.RETRYING,
-            )
+            ),
         )
         val job = randomSMPolicy()
 
@@ -172,11 +172,11 @@ open class SMStateMachineTests : MocksTestCase() {
             startedDeletion = listOf(snapshotName),
             deletionLatestExecution = randomLatestExecution(
                 startTime = now().minusSeconds(50),
-            )
+            ),
         )
         val job = randomSMPolicy(
             policyName = "daily-snapshot",
-            deletionTimeLimit = TimeValue.timeValueSeconds(5)
+            deletionTimeLimit = TimeValue.timeValueSeconds(5),
         )
 
         val stateMachineSpy = spy(SMStateMachine(client, job, metadata, settings, threadPool, indicesManager))

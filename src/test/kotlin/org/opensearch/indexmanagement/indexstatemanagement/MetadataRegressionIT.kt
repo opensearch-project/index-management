@@ -60,7 +60,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
 
         createPolicy(policy, policyID)
@@ -74,15 +74,15 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         metadataToClusterState = metadataToClusterState.copy(
             index = indexName,
             indexUuid = indexMetadata.indexUUID,
-            policyID = policyID
+            policyID = policyID,
         )
         val request = UpdateManagedIndexMetaDataRequest(
             indicesToAddManagedIndexMetaDataTo = listOf(
-                Pair(Index(metadataToClusterState.index, metadataToClusterState.indexUuid), metadataToClusterState)
-            )
+                Pair(Index(metadataToClusterState.index, metadataToClusterState.indexUuid), metadataToClusterState),
+            ),
         )
         val response: AcknowledgedResponse = client().execute(
-            UpdateManagedIndexMetaDataAction.INSTANCE, request
+            UpdateManagedIndexMetaDataAction.INSTANCE, request,
         ).get()
         logger.info(response.isAcknowledged)
         indexMetadata = getIndexMetadata(indexName)!!
@@ -93,14 +93,14 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         waitFor(Instant.ofEpochSecond(60)) {
             assertEquals(
                 METADATA_MOVING_WARNING,
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
         waitFor(Instant.ofEpochSecond(120)) {
             assertEquals(
                 "Happy moving",
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
             assertEquals(null, getIndexMetadata(indexName)!!.getCustomData("managed_index_metadata"))
         }
@@ -116,7 +116,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
             assertEquals(
                 "Index did not set number_of_replicas to ${actionConfig.numOfReplicas}",
                 actionConfig.numOfReplicas,
-                getNumberOfReplicasSetting(indexName)
+                getNumberOfReplicasSetting(indexName),
             )
         }
     }
@@ -143,7 +143,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
 
         createPolicy(policy, policyID)
@@ -160,15 +160,15 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         metadataToClusterState = metadataToClusterState.copy(
             index = indexName,
             indexUuid = indexMetadata.indexUUID,
-            policyID = policyID
+            policyID = policyID,
         )
         val request = UpdateManagedIndexMetaDataRequest(
             indicesToAddManagedIndexMetaDataTo = listOf(
-                Pair(Index(metadataToClusterState.index, metadataToClusterState.indexUuid), metadataToClusterState)
-            )
+                Pair(Index(metadataToClusterState.index, metadataToClusterState.indexUuid), metadataToClusterState),
+            ),
         )
         val response: AcknowledgedResponse = client().execute(
-            UpdateManagedIndexMetaDataAction.INSTANCE, request
+            UpdateManagedIndexMetaDataAction.INSTANCE, request,
         ).get()
 
         logger.info(response.isAcknowledged)
@@ -178,14 +178,14 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         waitFor {
             assertEquals(
                 METADATA_MOVING_WARNING,
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
         waitFor(Instant.ofEpochSecond(120)) {
             assertEquals(
                 "Happy moving",
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
             assertEquals(null, getIndexMetadata(indexName)!!.getCustomData("managed_index_metadata"))
         }
@@ -198,7 +198,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
             assertEquals(
                 "Index did not set number_of_replicas to ${actionConfig.numOfReplicas}",
                 actionConfig.numOfReplicas,
-                getNumberOfReplicasSetting(indexName)
+                getNumberOfReplicasSetting(indexName),
             )
         }
     }
@@ -215,7 +215,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
 
         createPolicy(policy, policyID)
@@ -229,12 +229,12 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         metadataToClusterState = metadataToClusterState.copy(
             index = indexName,
             indexUuid = "randomindexuuid",
-            policyID = policyID
+            policyID = policyID,
         )
         val request = UpdateManagedIndexMetaDataRequest(
             indicesToAddManagedIndexMetaDataTo = listOf(
-                Pair(Index(indexName, indexMetadata.indexUUID), metadataToClusterState)
-            )
+                Pair(Index(indexName, indexMetadata.indexUUID), metadataToClusterState),
+            ),
         )
         client().execute(UpdateManagedIndexMetaDataAction.INSTANCE, request).get()
         logger.info("check if metadata is saved in cluster state: ${getIndexMetadata(indexName)!!.getCustomData("managed_index_metadata")}")
@@ -242,7 +242,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
         waitFor {
             assertEquals(
                 METADATA_CORRUPT_WARNING,
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
@@ -279,7 +279,7 @@ class MetadataRegressionIT : IndexStateManagementIntegTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
 
         createPolicy(policy, policyID)

@@ -36,16 +36,16 @@ class RestGetRollupAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 GET, ROLLUP_JOBS_BASE_URI,
-                GET, LEGACY_ROLLUP_JOBS_BASE_URI
+                GET, LEGACY_ROLLUP_JOBS_BASE_URI,
             ),
             ReplacedRoute(
                 GET, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
-                GET, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}"
+                GET, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
             ),
             ReplacedRoute(
                 HEAD, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
-                HEAD, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}"
-            )
+                HEAD, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
+            ),
         )
     }
 
@@ -67,7 +67,7 @@ class RestGetRollupAction : BaseRestHandler() {
                     from,
                     size,
                     sortField,
-                    sortDirection
+                    sortDirection,
                 )
                 client.execute(GetRollupsAction.INSTANCE, req, RestToXContentListener(channel))
             } else {

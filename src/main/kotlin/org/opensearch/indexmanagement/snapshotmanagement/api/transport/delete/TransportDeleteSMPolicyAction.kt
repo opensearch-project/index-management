@@ -15,6 +15,7 @@ import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -23,7 +24,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.getSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.verifyUserHasPermissionForResource
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.transport.TransportService
 
 class TransportDeleteSMPolicyAction @Inject constructor(
@@ -33,7 +33,7 @@ class TransportDeleteSMPolicyAction @Inject constructor(
     val clusterService: ClusterService,
     val settings: Settings,
 ) : BaseTransportAction<DeleteSMPolicyRequest, DeleteResponse>(
-    DELETE_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::DeleteSMPolicyRequest
+    DELETE_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::DeleteSMPolicyRequest,
 ) {
 
     private val log = LogManager.getLogger(javaClass)
@@ -49,7 +49,7 @@ class TransportDeleteSMPolicyAction @Inject constructor(
     override suspend fun executeRequest(
         request: DeleteSMPolicyRequest,
         user: User?,
-        threadContext: ThreadContext.StoredContext
+        threadContext: ThreadContext.StoredContext,
     ): DeleteResponse {
         val smPolicy = client.getSMPolicy(request.id())
 

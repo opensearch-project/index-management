@@ -9,16 +9,16 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.ResourceAlreadyExistsException
 import org.opensearch.action.admin.indices.shrink.ResizeRequest
+import org.opensearch.action.admin.indices.shrink.ResizeResponse
 import org.opensearch.action.support.ActiveShardCount
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.controlcenter.notification.filter.NotificationActionListener
 import org.opensearch.indexmanagement.controlcenter.notification.filter.OperationResult
-import java.util.function.Consumer
-import org.opensearch.action.admin.indices.shrink.ResizeResponse
-import org.opensearch.index.IndexNotFoundException
 import java.lang.IllegalStateException
+import java.util.function.Consumer
 
 class ResizeIndexRespParser(
     val activeShardsObserver: ActiveShardsObserver,
@@ -42,8 +42,8 @@ class ResizeIndexRespParser(
                 ActionRespParseResult(
                     OperationResult.FAILED,
                     buildNotificationMessage(null, ex),
-                    buildNotificationTitle(OperationResult.FAILED)
-                )
+                    buildNotificationTitle(OperationResult.FAILED),
+                ),
             )
             return
         }
@@ -69,8 +69,8 @@ class ResizeIndexRespParser(
                             ActionRespParseResult(
                                 result,
                                 buildNotificationMessage(response, isTimeout = !shardsAcknowledged),
-                                buildNotificationTitle(result)
-                            )
+                                buildNotificationTitle(result),
+                            ),
                         )
                     },
                     { e: Exception ->
@@ -79,18 +79,18 @@ class ResizeIndexRespParser(
                             ActionRespParseResult(
                                 OperationResult.FAILED,
                                 buildNotificationMessage(response, e),
-                                buildNotificationTitle(OperationResult.FAILED)
-                            )
+                                buildNotificationTitle(OperationResult.FAILED),
+                            ),
                         )
-                    }
+                    },
                 )
             } else {
                 callback.accept(
                     ActionRespParseResult(
                         OperationResult.TIMEOUT,
                         buildNotificationMessage(response, isTimeout = true),
-                        buildNotificationTitle(OperationResult.TIMEOUT)
-                    )
+                        buildNotificationTitle(OperationResult.TIMEOUT),
+                    ),
                 )
             }
         } else {
@@ -98,8 +98,8 @@ class ResizeIndexRespParser(
                 ActionRespParseResult(
                     OperationResult.COMPLETE,
                     buildNotificationMessage(response),
-                    buildNotificationTitle(OperationResult.COMPLETE)
-                )
+                    buildNotificationTitle(OperationResult.COMPLETE),
+                ),
             )
         }
     }
@@ -113,8 +113,8 @@ class ResizeIndexRespParser(
         val action = request.resizeType.name.lowercase()
         result.append(
             "The $action operation from $indexWithCluster to ${
-            getIndexName(request.targetIndexRequest, clusterService)
-            } "
+                getIndexName(request.targetIndexRequest, clusterService)
+            } ",
         ).append(
             if (isTimeout) {
                 "has taken more than ${totalWaitTime.toHumanReadableString(1)} to complete. " +
@@ -148,7 +148,7 @@ class ResizeIndexRespParser(
                 }
             } else {
                 NotificationActionListener.COMPLETED
-            }
+            },
         )
         return result.toString()
     }

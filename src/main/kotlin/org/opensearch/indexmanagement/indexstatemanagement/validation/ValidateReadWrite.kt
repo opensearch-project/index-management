@@ -21,7 +21,7 @@ import org.opensearch.monitor.jvm.JvmService
 class ValidateReadWrite(
     settings: Settings,
     clusterService: ClusterService,
-    jvmService: JvmService
+    jvmService: JvmService,
 ) : Validate(settings, clusterService, jvmService) {
 
     private val logger = LogManager.getLogger(javaClass)

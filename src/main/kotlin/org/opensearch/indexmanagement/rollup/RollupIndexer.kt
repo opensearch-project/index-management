@@ -40,7 +40,7 @@ import org.opensearch.transport.RemoteTransportException
 class RollupIndexer(
     settings: Settings,
     clusterService: ClusterService,
-    private val client: Client
+    private val client: Client,
 ) {
     private val logger = LogManager.getLogger(javaClass)
 
@@ -63,7 +63,7 @@ class RollupIndexer(
                 retryIngestPolicy.retry(logger, listOf(RestStatus.TOO_MANY_REQUESTS)) {
                     if (it.seconds >= (Rollup.ROLLUP_LOCK_DURATION_SECONDS / 2)) {
                         throw ExceptionsHelper.convertToOpenSearchException(
-                            IllegalStateException("Cannot retry ingestion with a delay more than half of the rollup lock TTL")
+                            IllegalStateException("Cannot retry ingestion with a delay more than half of the rollup lock TTL"),
                         )
                     }
                     val bulkRequest = BulkRequest().add(requestsToRetry)
@@ -139,6 +139,6 @@ sealed class RollupIndexResult {
     data class Success(val stats: RollupStats) : RollupIndexResult()
     data class Failure(
         val message: String = "An error occurred while indexing to the rollup target index",
-        val cause: Exception
+        val cause: Exception,
     ) : RollupIndexResult()
 }

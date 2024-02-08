@@ -17,7 +17,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class ForceMergeAction(
     val maxNumSegments: Int,
-    index: Int
+    index: Int,
 ) : Action(name, index) {
 
     init {
@@ -33,7 +33,7 @@ class ForceMergeAction(
     private val stepNameToStep: LinkedHashMap<String, Step> = linkedMapOf(
         AttemptSetReadOnlyStep.name to attemptSetReadOnlyStep,
         AttemptCallForceMergeStep.name to attemptCallForceMergeStep,
-        WaitForForceMergeStep.name to waitForForceMergeStep
+        WaitForForceMergeStep.name to waitForForceMergeStep,
     )
 
     @Suppress("ReturnCount")

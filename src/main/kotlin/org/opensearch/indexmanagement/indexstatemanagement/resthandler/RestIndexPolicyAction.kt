@@ -9,6 +9,7 @@ import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_POLICY_BASE_URI
@@ -31,14 +32,13 @@ import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.PUT
 import org.opensearch.rest.RestResponse
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.rest.action.RestResponseListener
 import java.io.IOException
 import java.time.Instant
 
 class RestIndexPolicyAction(
     settings: Settings,
-    val clusterService: ClusterService
+    val clusterService: ClusterService,
 ) : BaseRestHandler() {
 
     @Volatile private var allowList = ALLOW_LIST.get(settings)
@@ -55,12 +55,12 @@ class RestIndexPolicyAction(
         return listOf(
             ReplacedRoute(
                 PUT, POLICY_BASE_URI,
-                PUT, LEGACY_POLICY_BASE_URI
+                PUT, LEGACY_POLICY_BASE_URI,
             ),
             ReplacedRoute(
                 PUT, "$POLICY_BASE_URI/{policyID}",
-                PUT, "$LEGACY_POLICY_BASE_URI/{policyID}"
-            )
+                PUT, "$LEGACY_POLICY_BASE_URI/{policyID}",
+            ),
         )
     }
 
@@ -92,8 +92,8 @@ class RestIndexPolicyAction(
                 channel.sendResponse(
                     BytesRestResponse(
                         RestStatus.FORBIDDEN,
-                        "You have actions that are not allowed in your policy $disallowedActions"
-                    )
+                        "You have actions that are not allowed in your policy $disallowedActions",
+                    ),
                 )
             }
         }
@@ -112,7 +112,7 @@ class RestIndexPolicyAction(
                         }
                         return restResponse
                     }
-                }
+                },
             )
         }
     }

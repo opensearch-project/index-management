@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.transform.resthandler
 
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
@@ -27,7 +28,6 @@ import org.opensearch.rest.RestHandler
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.PUT
 import org.opensearch.rest.RestResponse
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.rest.action.RestResponseListener
 import java.io.IOException
 import java.time.Instant
@@ -37,7 +37,7 @@ class RestIndexTransformAction : BaseRestHandler() {
     override fun routes(): List<RestHandler.Route> {
         return listOf(
             RestHandler.Route(PUT, TRANSFORM_BASE_URI),
-            RestHandler.Route(PUT, "$TRANSFORM_BASE_URI/{transformID}")
+            RestHandler.Route(PUT, "$TRANSFORM_BASE_URI/{transformID}"),
         )
     }
 
@@ -68,8 +68,7 @@ class RestIndexTransformAction : BaseRestHandler() {
         }
     }
 
-    private fun indexTransformResponse(channel: RestChannel):
-        RestResponseListener<IndexTransformResponse> {
+    private fun indexTransformResponse(channel: RestChannel): RestResponseListener<IndexTransformResponse> {
         return object : RestResponseListener<IndexTransformResponse>(channel) {
             @Throws(Exception::class)
             override fun buildResponse(response: IndexTransformResponse): RestResponse {

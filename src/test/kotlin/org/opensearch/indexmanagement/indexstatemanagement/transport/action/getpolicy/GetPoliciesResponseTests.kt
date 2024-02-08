@@ -6,11 +6,11 @@
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy
 
 import org.opensearch.common.io.stream.BytesStreamOutput
-import org.opensearch.core.common.io.stream.StreamInput
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.json.JsonXContent
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.extension.SampleCustomActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -54,7 +54,7 @@ class GetPoliciesResponseTests : OpenSearchTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         val res = GetPoliciesResponse(listOf(policy), 1)
 

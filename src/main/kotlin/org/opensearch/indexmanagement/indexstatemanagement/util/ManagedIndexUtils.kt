@@ -5,12 +5,11 @@
 
 @file:Suppress("TooManyFunctions", "MatchingDeclarationName")
 @file:JvmName("ManagedIndexUtils")
+
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-// import inet.ipaddr.IPAddressString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-// import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.action.delete.DeleteRequest
 import org.opensearch.action.get.GetRequest
@@ -19,17 +18,16 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.update.UpdateRequest
-// import org.opensearch.alerting.destination.message.BaseMessage
 import org.opensearch.client.Client
 import org.opensearch.cluster.routing.Preference
-import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.core.xcontent.NamedXContentRegistry
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.common.unit.ByteSizeValue
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
@@ -68,7 +66,7 @@ fun managedIndexConfigIndexRequest(
     policyID: String,
     jobInterval: Int,
     policy: Policy? = null,
-    jobJitter: Double?
+    jobJitter: Double?,
 ): IndexRequest {
     val managedIndexConfig = ManagedIndexConfig(
         jobName = index,
@@ -83,7 +81,7 @@ fun managedIndexConfigIndexRequest(
         policySeqNo = policy?.seqNo,
         policyPrimaryTerm = policy?.primaryTerm,
         changePolicy = null,
-        jobJitter = jobJitter
+        jobJitter = jobJitter,
     )
 
     return IndexRequest(INDEX_MANAGEMENT_INDEX)
@@ -121,8 +119,9 @@ fun managedIndexMetadataIndexRequest(managedIndexMetadata: ManagedIndexMetaData,
         .create(create)
         .source(managedIndexMetadata.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS, true))
 
-    if (waitRefresh)
+    if (waitRefresh) {
         return req.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL)
+    }
     return req
 }
 
@@ -182,7 +181,7 @@ fun updateManagedIndexRequest(sweptManagedIndexConfig: SweptManagedIndexConfig):
  */
 fun getManagedIndicesToDelete(
     currentIndexUuids: List<String>,
-    currentManagedIndexUuids: List<String>
+    currentManagedIndexUuids: List<String>,
 ): List<String> {
     return currentManagedIndexUuids.filter { currentManagedIndex ->
         !currentIndexUuids.contains(currentManagedIndex)
@@ -198,7 +197,7 @@ fun getSweptManagedIndexSearchRequest(scroll: Boolean = false, size: Int = Manag
                 .size(size)
                 .seqNoAndPrimaryTerm(true)
                 .fetchSource(emptyArray(), emptyArray())
-                .query(boolQueryBuilder)
+                .query(boolQueryBuilder),
         )
         .preference(Preference.PRIMARY_FIRST.type())
     if (scroll) req.scroll(TimeValue.timeValueMinutes(1))
@@ -253,7 +252,7 @@ fun RolloverAction.evaluateConditions(
     indexAgeTimeValue: TimeValue,
     numDocs: Long,
     indexSize: ByteSizeValue,
-    primaryShardSize: ByteSizeValue
+    primaryShardSize: ByteSizeValue,
 ): Boolean {
     if (this.minDocs == null &&
         this.minAge == null &&
@@ -310,13 +309,13 @@ fun Action.hasTimedOut(actionMetaData: ActionMetaData?): Boolean {
 fun ManagedIndexMetaData.getStartingManagedIndexMetaData(
     state: State?,
     action: Action?,
-    step: Step?
+    step: Step?,
 ): ManagedIndexMetaData {
     // State can be null if the transition_to state or the current metadata state is not found in the policy
     if (state == null) {
         return this.copy(
             policyRetryInfo = PolicyRetryInfoMetaData(true, 0),
-            info = mapOf("message" to "Failed to find state=${this.transitionTo ?: this.stateMetaData} in policy=${this.policyID}")
+            info = mapOf("message" to "Failed to find state=${this.transitionTo ?: this.stateMetaData} in policy=${this.policyID}"),
         )
     }
 
@@ -325,7 +324,7 @@ fun ManagedIndexMetaData.getStartingManagedIndexMetaData(
     if (action == null || step == null) {
         return this.copy(
             policyRetryInfo = PolicyRetryInfoMetaData(true, 0),
-            info = mapOf("message" to "Failed to find action=${this.actionMetaData} in state=${this.stateMetaData}")
+            info = mapOf("message" to "Failed to find action=${this.actionMetaData} in state=${this.stateMetaData}"),
         )
     }
 
@@ -337,19 +336,19 @@ fun ManagedIndexMetaData.getStartingManagedIndexMetaData(
         stateMetaData = updatedStateMetaData,
         actionMetaData = updatedActionMetaData,
         stepMetaData = updatedStepMetaData,
-        info = mapOf("message" to "Starting action ${action.type} and working on ${step.name}")
+        info = mapOf("message" to "Starting action ${action.type} and working on ${step.name}"),
     )
 }
 
 @Suppress("ReturnCount")
 fun ManagedIndexMetaData.getCompletedManagedIndexMetaData(
     action: Action,
-    step: Step
+    step: Step,
 ): ManagedIndexMetaData {
     val updatedStepMetaData = step.getUpdatedManagedIndexMetadata(this)
     val actionMetaData = updatedStepMetaData.actionMetaData ?: return this.copy(
         policyRetryInfo = PolicyRetryInfoMetaData(true, 0),
-        info = mapOf("message" to "Failed due to ActionMetaData being null")
+        info = mapOf("message" to "Failed due to ActionMetaData being null"),
     )
 
     val updatedActionMetaData = if (updatedStepMetaData.stepMetaData?.stepStatus == Step.StepStatus.FAILED) {
@@ -359,7 +358,7 @@ fun ManagedIndexMetaData.getCompletedManagedIndexMetaData(
             else -> actionMetaData.copy(
                 failed = false,
                 consumedRetries = actionMetaData.consumedRetries + 1,
-                lastRetryTime = Instant.now().toEpochMilli()
+                lastRetryTime = Instant.now().toEpochMilli(),
             )
         }
     } else {
@@ -374,7 +373,7 @@ fun ManagedIndexMetaData.getCompletedManagedIndexMetaData(
         stepMetaData = updatedStepMetaData.stepMetaData,
         transitionTo = updatedStepMetaData.transitionTo,
         policyRetryInfo = updatedStepMetaData.policyRetryInfo,
-        info = updatedStepMetaData.info
+        info = updatedStepMetaData.info,
     )
 }
 
@@ -496,7 +495,7 @@ fun checkMetadata(
     clusterStateMetadata: ManagedIndexMetaData?,
     configIndexMetadata: Any?,
     currentIndexUuid: String?,
-    logger: Logger
+    logger: Logger,
 ): MetadataCheck {
     // indexUuid saved in ISM metadata may be outdated
     // if an index restored from snapshot
@@ -534,7 +533,9 @@ fun checkMetadata(
 }
 
 enum class MetadataCheck {
-    PENDING, CORRUPT, SUCCESS
+    PENDING,
+    CORRUPT,
+    SUCCESS,
 }
 
 // private val baseMessageLogger = LogManager.getLogger(BaseMessage::class.java)

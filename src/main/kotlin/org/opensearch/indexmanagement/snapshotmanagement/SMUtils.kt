@@ -4,6 +4,7 @@
  */
 
 @file:Suppress("TooManyFunctions")
+
 package org.opensearch.indexmanagement.snapshotmanagement
 
 import org.apache.logging.log4j.LogManager
@@ -17,15 +18,17 @@ import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.client.Client
-import org.opensearch.core.common.Strings
 import org.opensearch.common.time.DateFormatter
+import org.opensearch.common.time.DateFormatters
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.core.xcontent.NamedXContentRegistry
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.common.Strings
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
@@ -39,11 +42,10 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companio
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_DOC_ID_SUFFIX
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_METADATA_ID_SUFFIX
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_TYPE
-import org.opensearch.snapshots.SnapshotsService
 import org.opensearch.jobscheduler.spi.schedule.Schedule
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.snapshots.SnapshotMissingException
+import org.opensearch.snapshots.SnapshotsService
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 import java.time.Instant.now
@@ -51,7 +53,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
-import org.opensearch.common.time.DateFormatters
 
 private val log = LogManager.getLogger("o.i.s.SnapshotManagementHelper")
 
@@ -240,7 +241,7 @@ suspend fun Client.getSnapshots(
     val snapshots = try {
         getSnapshots(
             name,
-            job.snapshotConfig["repository"] as String
+            job.snapshotConfig["repository"] as String,
         )
     } catch (ex: SnapshotMissingException) {
         snapshotMissingMsg?.let { log.warn(snapshotMissingMsg) }
@@ -269,7 +270,7 @@ fun tryUpdatingNextExecutionTime(
     nextTime: Instant,
     schedule: Schedule,
     workflowType: WorkflowType,
-    log: Logger
+    log: Logger,
 ): UpdateNextExecutionTimeResult {
     val now = now()
     return if (!now.isBefore(nextTime)) {
@@ -322,7 +323,7 @@ fun validateSMPolicyName(policyName: String) {
     }
     if (!Strings.validFileName(policyName)) {
         errorMessages.add(
-            "Policy name must not contain the following characters " + Strings.INVALID_FILENAME_CHARS + "."
+            "Policy name must not contain the following characters " + Strings.INVALID_FILENAME_CHARS + ".",
         )
     }
     if (errorMessages.isNotEmpty()) {

@@ -15,7 +15,7 @@ import java.io.IOException
 class GetSMPoliciesRequest(val searchParams: SearchParams) : ActionRequest() {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        searchParams = SearchParams(sin)
+        searchParams = SearchParams(sin),
     )
 
     @Throws(IOException::class)

@@ -23,7 +23,7 @@ open class ISMStatusResponse : ActionResponse, ToXContentObject {
 
     constructor(
         updated: Int,
-        failedIndices: List<FailedIndex>
+        failedIndices: List<FailedIndex>,
     ) : super() {
         this.updated = updated
         this.failedIndices = failedIndices
@@ -32,7 +32,7 @@ open class ISMStatusResponse : ActionResponse, ToXContentObject {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         updated = sin.readInt(),
-        failedIndices = sin.readList(::FailedIndex)
+        failedIndices = sin.readList(::FailedIndex),
     )
 
     override fun writeTo(out: StreamOutput) {

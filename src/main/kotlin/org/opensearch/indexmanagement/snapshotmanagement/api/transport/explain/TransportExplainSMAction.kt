@@ -15,9 +15,10 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.util.concurrent.ThreadContext
+import org.opensearch.commons.authuser.User
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.commons.authuser.User
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.ExistsQueryBuilder
@@ -39,7 +40,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companio
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
 import org.opensearch.indexmanagement.snapshotmanagement.smMetadataDocIdToPolicyName
 import org.opensearch.indexmanagement.util.SecurityUtils
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.transport.TransportService
@@ -51,7 +51,7 @@ class TransportExplainSMAction @Inject constructor(
     val clusterService: ClusterService,
     val settings: Settings,
 ) : BaseTransportAction<ExplainSMPolicyRequest, ExplainSMPolicyResponse>(
-    SMActions.EXPLAIN_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::ExplainSMPolicyRequest
+    SMActions.EXPLAIN_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::ExplainSMPolicyRequest,
 ) {
 
     private val log = LogManager.getLogger(javaClass)
@@ -67,7 +67,7 @@ class TransportExplainSMAction @Inject constructor(
     override suspend fun executeRequest(
         request: ExplainSMPolicyRequest,
         user: User?,
-        threadContext: ThreadContext.StoredContext
+        threadContext: ThreadContext.StoredContext,
     ): ExplainSMPolicyResponse {
         val policyNames = request.policyNames.toSet()
 
@@ -109,7 +109,7 @@ class TransportExplainSMAction @Inject constructor(
         // Only return the name and enabled field
         val includes = arrayOf(
             "${SMPolicy.SM_TYPE}.$NAME_FIELD",
-            "${SMPolicy.SM_TYPE}.$ENABLED_FIELD"
+            "${SMPolicy.SM_TYPE}.$ENABLED_FIELD",
         )
         val fetchSourceContext = FetchSourceContext(true, includes, arrayOf())
         val searchSourceBuilder = SearchSourceBuilder().size(MAX_HITS).query(queryBuilder).fetchSource(fetchSourceContext)

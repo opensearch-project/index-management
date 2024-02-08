@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement.transform.resthandler
 
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
@@ -15,7 +16,6 @@ import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.transform.randomTransform
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.aggregations.AggregatorFactories
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
@@ -92,9 +92,9 @@ class RestStartTransformActionIT : TransformRestTestCase() {
             pageSize = 10,
             groups = listOf(
                 Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
             ),
-            aggregations = AggregatorFactories.builder()
+            aggregations = AggregatorFactories.builder(),
         ).let { createTransform(it, it.id) }
 
         // This should fail because source index is deleted
@@ -162,10 +162,10 @@ class RestStartTransformActionIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 10,
             groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
             ),
             aggregations = AggregatorFactories.builder(),
-            continuous = false
+            continuous = false,
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)

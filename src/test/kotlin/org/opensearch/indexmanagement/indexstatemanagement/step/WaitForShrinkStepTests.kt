@@ -182,8 +182,11 @@ class WaitForShrinkStepTests : OpenSearchTestCase() {
         return mock {
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
-                if (response != null) listener.onResponse(response)
-                else listener.onFailure(exception)
+                if (response != null) {
+                    listener.onResponse(response)
+                } else {
+                    listener.onFailure(exception)
+                }
             }.whenever(this.mock).aliases(any(), any())
         }
     }

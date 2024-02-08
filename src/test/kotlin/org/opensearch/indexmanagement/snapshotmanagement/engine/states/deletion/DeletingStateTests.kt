@@ -145,7 +145,7 @@ class DeletingStateTests : MocksTestCase() {
             deletionCurrentState = SMState.DELETION_CONDITION_MET,
             deletionLatestExecution = randomLatestExecution(
                 startTime = now().minusSeconds(10),
-            )
+            ),
         )
         val job = randomSMPolicy(policyName = "daily-snapshot")
         val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
@@ -165,7 +165,7 @@ class DeletingStateTests : MocksTestCase() {
             startedDeletion = listOf(randomSnapshotName()),
         )
         val job = randomSMPolicy(
-            deletionNull = true
+            deletionNull = true,
         )
         val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
 

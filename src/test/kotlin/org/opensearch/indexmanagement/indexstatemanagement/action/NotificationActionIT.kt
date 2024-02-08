@@ -45,8 +45,8 @@ class NotificationActionIT : IndexStateManagementRestTestCase() {
                 queryParams = emptyMap(),
                 headerParams = mapOf("Content-Type" to "application/json"),
                 username = if (securityEnabled()) "admin" else null,
-                password = if (securityEnabled()) "admin" else null
-            )
+                password = if (securityEnabled()) "admin" else null,
+            ),
         )
         val messageTemplate = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, "{ \"testing\": 5 }", emptyMap())
         val actionConfig = NotificationAction(destination = destination, channel = null, messageTemplate = messageTemplate, index = 0)
@@ -58,7 +58,7 @@ class NotificationActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
 
         createPolicy(policy, policyID)
@@ -78,7 +78,7 @@ class NotificationActionIT : IndexStateManagementRestTestCase() {
             (
                 client().makeRequest("GET", "$notificationIndex/_search")
                     .asMap() as Map<String, Map<String, Map<String, Any>>>
-                )["hits"]!!["total"]!!["value"]
+                )["hits"]!!["total"]!!["value"],
         )
 
         // Speed up to second execution where it will trigger the first execution of the action which
@@ -92,7 +92,7 @@ class NotificationActionIT : IndexStateManagementRestTestCase() {
                 (
                     client().makeRequest("GET", "$notificationIndex/_search")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }

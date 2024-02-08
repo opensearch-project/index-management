@@ -100,12 +100,12 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         return currentMetadata.copy(
             actionMetaData = currentMetadata.actionMetaData?.copy(
                 actionProperties = ActionProperties(
-                    shrinkActionProperties = shrinkActionProperties
-                )
+                    shrinkActionProperties = shrinkActionProperties,
+                ),
             ),
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -113,7 +113,7 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         stepContext: StepContext,
         numShardsNotOnNode: Int,
         numShardsNotInSync: Int,
-        nodeToMoveOnto: String
+        nodeToMoveOnto: String,
     ) {
         val managedIndexMetadata = stepContext.metadata
         val indexName = managedIndexMetadata.index
@@ -125,7 +125,7 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
         } else {
             logger.debug(
                 "Shrink action move shards step running on [$indexName], [$numShardsNotOnNode] shards need to be moved, " +
-                    "[$numShardsNotInSync] shards need an in sync replica."
+                    "[$numShardsNotInSync] shards need an in sync replica.",
             )
             info = mapOf("message" to getTimeoutDelay(nodeToMoveOnto))
             stepStatus = StepStatus.CONDITION_NOT_MET

@@ -7,9 +7,9 @@ package org.opensearch.indexmanagement.transform.opensearchapi
 
 import org.junit.Assert
 import org.opensearch.OpenSearchException
-import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.tasks.TaskCancelledException
+import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.test.OpenSearchTestCase
 
 class ExtensionsTests : OpenSearchTestCase() {
@@ -17,7 +17,7 @@ class ExtensionsTests : OpenSearchTestCase() {
     fun `test is transform operation timeout`() {
         val ex = OpenSearchException(
             "opensearch test exception",
-            TaskCancelledException("cancelled task with reason: Cancellation timeout of 100s is expired")
+            TaskCancelledException("cancelled task with reason: Cancellation timeout of 100s is expired"),
         )
         val result = isTransformOperationTimedOut(ex)
         Assert.assertTrue(result)
@@ -27,8 +27,8 @@ class ExtensionsTests : OpenSearchTestCase() {
         val result = isTransformOperationTimedOut(
             OpenSearchException(
                 "opensearch test exception",
-                TaskCancelledException("some test msg")
-            )
+                TaskCancelledException("some test msg"),
+            ),
         )
         Assert.assertFalse(result)
     }
@@ -37,7 +37,7 @@ class ExtensionsTests : OpenSearchTestCase() {
         Assert.assertTrue(isRetryable(IndexManagementException("502", RestStatus.BAD_GATEWAY, RuntimeException()), emptyList()))
         val ex = OpenSearchException(
             "opensearch test exception",
-            TaskCancelledException("cancelled task with reason: Cancellation timeout of 100s is expired")
+            TaskCancelledException("cancelled task with reason: Cancellation timeout of 100s is expired"),
         )
         Assert.assertTrue(isRetryable(ex, emptyList()))
     }

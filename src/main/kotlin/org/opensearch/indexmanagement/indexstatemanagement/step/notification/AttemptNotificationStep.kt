@@ -55,7 +55,7 @@ class AttemptNotificationStep(private val action: NotificationAction) : Step(nam
         return currentMetadata.copy(
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 

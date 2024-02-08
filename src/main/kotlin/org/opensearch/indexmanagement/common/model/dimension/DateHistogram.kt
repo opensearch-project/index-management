@@ -29,7 +29,7 @@ data class DateHistogram(
     val fixedInterval: String? = null,
     val calendarInterval: String? = null,
     val timezone: ZoneId = ZoneId.of(UTC),
-    val format: String? = null
+    val format: String? = null,
 ) : Dimension(Type.DATE_HISTOGRAM, sourceField, targetField) {
 
     init {
@@ -44,7 +44,7 @@ data class DateHistogram(
         targetField = sin.readString(),
         fixedInterval = sin.readOptionalString(),
         calendarInterval = sin.readOptionalString(),
-        timezone = sin.readZoneId()
+        timezone = sin.readZoneId(),
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -109,7 +109,7 @@ data class DateHistogram(
 
     fun getRewrittenAggregation(
         aggregationBuilder: DateHistogramAggregationBuilder,
-        subAggregations: AggregatorFactories.Builder
+        subAggregations: AggregatorFactories.Builder,
     ): DateHistogramAggregationBuilder =
         DateHistogramAggregationBuilder(aggregationBuilder.name)
             .also { aggregationBuilder.calendarInterval?.apply { it.calendarInterval(this) } }
@@ -168,7 +168,7 @@ data class DateHistogram(
                 fixedInterval = fixedInterval,
                 calendarInterval = calendarInterval,
                 timezone = timezone,
-                format = format
+                format = format,
             )
         }
 

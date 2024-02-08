@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
 import org.opensearch.client.ResponseException
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementRestTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.ExplainSMPolicyResponse
@@ -16,7 +17,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import java.time.Instant.now
 import java.time.temporal.ChronoUnit
 
@@ -29,7 +29,7 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
                 jobEnabled = true,
                 jobEnabledTime = now(),
                 jobSchedule = IntervalSchedule(now(), 1, ChronoUnit.MINUTES),
-            )
+            ),
         )
         updateSMPolicyStartTime(smPolicy)
         waitFor(timeout = timeout) {
@@ -71,7 +71,7 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
             createSMPolicy(
                 randomSMPolicy(
                     jobEnabled = true,
-                )
+                ),
             )
         }
         // if this proves to be flaky, just index the metadata directly instead of executing to generate metadata
@@ -99,7 +99,7 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
             createSMPolicy(
                 randomSMPolicy(
                     jobEnabled = true,
-                )
+                ),
             )
         }
         // if this proves to be flaky, just index the metadata directly instead of executing to generate metadata

@@ -42,8 +42,8 @@ class IndexMetadataProviderTests : OpenSearchTestCase() {
             "Should not manage index management config index",
             indexEvaluator.isUnManageableIndex(
                 IndexManagementPlugin
-                    .INDEX_MANAGEMENT_INDEX
-            )
+                    .INDEX_MANAGEMENT_INDEX,
+            ),
         )
         assertTrue("Should not manage kibana index", indexEvaluator.isUnManageableIndex(".kibana_1242142_user"))
 

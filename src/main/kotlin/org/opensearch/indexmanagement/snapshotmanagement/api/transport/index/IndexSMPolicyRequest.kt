@@ -23,7 +23,7 @@ class IndexSMPolicyRequest : IndexRequest {
     constructor(
         policy: SMPolicy,
         create: Boolean,
-        refreshPolicy: WriteRequest.RefreshPolicy
+        refreshPolicy: WriteRequest.RefreshPolicy,
     ) : super() {
         this.policy = policy
         this.create(create)

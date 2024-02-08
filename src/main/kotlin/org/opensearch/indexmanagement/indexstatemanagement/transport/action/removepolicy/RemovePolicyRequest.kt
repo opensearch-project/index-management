@@ -15,13 +15,13 @@ import java.io.IOException
 
 class RemovePolicyRequest(
     val indices: List<String>,
-    val indexType: String
+    val indexType: String,
 ) : ActionRequest() {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         indices = sin.readStringList(),
-        indexType = sin.readString()
+        indexType = sin.readString(),
     )
 
     override fun validate(): ActionRequestValidationException? {
@@ -31,7 +31,7 @@ class RemovePolicyRequest(
         } else if (indexType != DEFAULT_INDEX_TYPE && indices.size > 1) {
             validationException = ValidateActions.addValidationError(
                 MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR,
-                validationException
+                validationException,
             )
         }
         return validationException

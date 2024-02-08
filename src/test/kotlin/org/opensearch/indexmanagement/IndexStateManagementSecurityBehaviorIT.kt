@@ -15,6 +15,7 @@ import org.junit.After
 import org.junit.Before
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
@@ -33,7 +34,6 @@ import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Min
 import org.opensearch.indexmanagement.rollup.model.metric.Sum
 import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -76,7 +76,7 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
             BULK_WRITE_INDEX,
             GET_INDEX_MAPPING,
             SEARCH_INDEX,
-            PUT_INDEX_MAPPING
+            PUT_INDEX_MAPPING,
         )
         // In this test suite case john is a "super-user" which has all relevant privileges
         createUser(superIsmUser, password, listOf(HELPDESK))
@@ -117,7 +117,7 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
 
             val actionConfig = RollupAction(rollup, 0)
             val states = listOf(
-                State("rollup", listOf(actionConfig), listOf())
+                State("rollup", listOf(actionConfig), listOf()),
             )
 
             val policy = createPolicyWithRollupStep(policyID, states, indexName)
@@ -240,8 +240,8 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
             defaultState = states[0].name,
             states = states,
             ismTemplate = listOf(
-                ISMTemplate(listOf("$indexName*"), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS))
-            )
+                ISMTemplate(listOf("$indexName*"), 100, Instant.now().truncatedTo(ChronoUnit.MILLIS)),
+            ),
         )
         return policy
     }
@@ -254,22 +254,22 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
             dimensions = listOf(
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
                 Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID")
+                Terms("PULocationID", "PULocationID"),
             ),
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count", targetField = "passenger_count",
                     metrics = listOf(
                         Sum(), Min(), Max(),
-                        ValueCount(), Average()
-                    )
+                        ValueCount(), Average(),
+                    ),
                 ),
                 RollupMetrics(
                     sourceField = "total_amount",
                     targetField = "total_amount",
-                    metrics = listOf(Max(), Min())
-                )
-            )
+                    metrics = listOf(Max(), Min()),
+                ),
+            ),
         )
     }
 
@@ -287,7 +287,7 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
         waitFor {
             assertEquals(
                 AttemptCreateRollupJobStep.getSuccessMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
@@ -303,7 +303,7 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForRollupCompletionStep.getJobCompletionMessage(rollupId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
     }

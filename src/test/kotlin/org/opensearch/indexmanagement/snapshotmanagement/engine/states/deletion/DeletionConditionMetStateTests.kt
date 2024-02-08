@@ -51,7 +51,7 @@ class DeletionConditionMetStateTests : MocksTestCase() {
             startedDeletion = listOf(randomSnapshotName()),
         )
         val job = randomSMPolicy(
-            deletionNull = true
+            deletionNull = true,
         )
         val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
 

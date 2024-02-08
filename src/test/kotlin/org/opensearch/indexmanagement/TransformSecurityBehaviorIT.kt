@@ -15,13 +15,13 @@ import org.junit.After
 import org.junit.Before
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.transform.randomTransform
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -51,7 +51,7 @@ class TransformSecurityBehaviorIT : SecurityRestTestCase() {
             START_TRANSFORM,
             DELETE_TRANSFORM,
             HEALTH,
-            GET_TRANSFORMS
+            GET_TRANSFORMS,
         )
 
         val indexPermissions = listOf(
@@ -61,7 +61,7 @@ class TransformSecurityBehaviorIT : SecurityRestTestCase() {
             BULK_WRITE_INDEX,
             GET_INDEX_MAPPING,
             SEARCH_INDEX,
-            PUT_INDEX_MAPPING
+            PUT_INDEX_MAPPING,
         )
         // In this test suite case john is a "super-user" which has all relevant privileges
         createUser(superTransformUser, password, listOf(HELPDESK))
@@ -272,8 +272,8 @@ class TransformSecurityBehaviorIT : SecurityRestTestCase() {
             roles = emptyList(),
             pageSize = 100,
             groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
-            )
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+            ),
         )
     }
 

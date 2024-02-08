@@ -57,7 +57,7 @@ class IndexMetadataProvider(
      */
     suspend fun getMultiTypeISMIndexMetadata(
         types: List<String> = services.keys.toList(),
-        indexNames: List<String>
+        indexNames: List<String>,
     ): Map<String, Map<String, ISMIndexMetadata>> = coroutineScope {
         if (types.any { it != DEFAULT_INDEX_TYPE } && indexNames.size > 1) throw IllegalArgumentException(MULTIPLE_INDICES_CUSTOM_INDEX_TYPE_ERROR)
         val requests = ArrayList<Deferred<Pair<String, Map<String, ISMIndexMetadata>>>>()

@@ -6,15 +6,15 @@
 package org.opensearch.indexmanagement.controlcenter.notification.filter
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.ActionRequest
-import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.support.ActionFilter
 import org.opensearch.action.support.ActionFilterChain
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.action.ActionResponse
 import org.opensearch.core.tasks.TaskId
 import org.opensearch.indexmanagement.controlcenter.notification.util.supportedActions
 import org.opensearch.tasks.Task
@@ -23,7 +23,7 @@ class IndexOperationActionFilter(
     val client: Client,
     val clusterService: ClusterService,
     val activeShardsObserver: ActiveShardsObserver,
-    val indexNameExpressionResolver: IndexNameExpressionResolver
+    val indexNameExpressionResolver: IndexNameExpressionResolver,
 ) : ActionFilter {
 
     private val logger = LogManager.getLogger(IndexOperationActionFilter::class.java)
@@ -34,7 +34,7 @@ class IndexOperationActionFilter(
         action: String,
         request: Request,
         listener: ActionListener<Response>,
-        chain: ActionFilterChain<Request, Response>
+        chain: ActionFilterChain<Request, Response>,
     ) {
         chain.proceed(task, action, request, wrapActionListener(task, action, request, listener))
     }
@@ -58,7 +58,7 @@ class IndexOperationActionFilter(
                     task = task,
                     request = request,
                     activeShardsObserver = activeShardsObserver,
-                    indexNameExpressionResolver = indexNameExpressionResolver
+                    indexNameExpressionResolver = indexNameExpressionResolver,
                 )
             }
         }

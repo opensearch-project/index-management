@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.transform.resthandler
 
 import org.junit.Assert
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.makeRequest
@@ -15,7 +16,6 @@ import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.transform.randomTransform
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -33,7 +33,7 @@ class RestExplainTransformActionIT : TransformRestTestCase() {
             enabledAt = Instant.now(),
             metadataId = null,
             sourceIndex = "test_source",
-            targetIndex = "test_target"
+            targetIndex = "test_target",
         ).let { createTransform(it, it.id) }
         updateTransformStartTime(transform)
 
@@ -107,7 +107,7 @@ class RestExplainTransformActionIT : TransformRestTestCase() {
             enabledAt = Instant.now(),
             metadataId = null,
             continuous = true,
-            pageSize = 50
+            pageSize = 50,
         ).let { createTransform(it, it.id) }
         val transform2 = randomTransform().copy(
             id = "continuous_wildcard_2",
@@ -116,7 +116,7 @@ class RestExplainTransformActionIT : TransformRestTestCase() {
             enabledAt = Instant.now(),
             metadataId = null,
             continuous = true,
-            pageSize = 50
+            pageSize = 50,
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform1)

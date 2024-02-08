@@ -7,12 +7,13 @@ package org.opensearch.indexmanagement.indexstatemanagement
 
 import org.opensearch.action.admin.indices.alias.Alias
 import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest
-import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.core.common.unit.ByteSizeValue
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.RandomCreateIndexGenerator.randomAlias
 import org.opensearch.index.seqno.SequenceNumbers
+import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.action.AliasAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.CloseAction
@@ -28,6 +29,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.SnapshotAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.TransformAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
 import org.opensearch.indexmanagement.indexstatemanagement.model.ErrorNotification
@@ -40,8 +42,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.StateFilter
 import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.ClusterStateManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.SweptManagedIndexConfig
-import org.opensearch.indexmanagement.common.model.notification.Channel
-import org.opensearch.indexmanagement.indexstatemanagement.action.TransformAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Chime
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.CustomWebhook
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.Destination
@@ -75,25 +75,25 @@ fun randomPolicy(
     lastUpdatedTime: Instant = Instant.now().truncatedTo(ChronoUnit.MILLIS),
     errorNotification: ErrorNotification? = randomErrorNotification(),
     states: List<State> = List(OpenSearchRestTestCase.randomIntBetween(1, 10)) { randomState() },
-    ismTemplate: List<ISMTemplate>? = null
+    ismTemplate: List<ISMTemplate>? = null,
 ): Policy {
     return Policy(
         id = id, schemaVersion = schemaVersion, lastUpdatedTime = lastUpdatedTime,
-        errorNotification = errorNotification, defaultState = states[0].name, states = states, description = description, ismTemplate = ismTemplate
+        errorNotification = errorNotification, defaultState = states[0].name, states = states, description = description, ismTemplate = ismTemplate,
     )
 }
 
 fun randomState(
     name: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     actions: List<Action> = listOf(),
-    transitions: List<Transition> = listOf()
+    transitions: List<Transition> = listOf(),
 ): State {
     return State(name = name, actions = actions, transitions = transitions)
 }
 
 fun randomTransition(
     stateName: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
-    conditions: Conditions? = randomConditions()
+    conditions: Conditions? = randomConditions(),
 ): Transition {
     return Transition(stateName = stateName, conditions = conditions)
 }
@@ -106,9 +106,8 @@ fun randomTransition(
  */
 fun randomConditions(
     condition: Pair<String, Any>? =
-        OpenSearchRestTestCase.randomFrom(listOf(randomIndexAge(), randomDocCount(), randomSize(), randomRolloverAge(), null))
+        OpenSearchRestTestCase.randomFrom(listOf(randomIndexAge(), randomDocCount(), randomSize(), randomRolloverAge(), null)),
 ): Conditions? {
-
     if (condition == null) return null
 
     val type = condition.first
@@ -135,14 +134,14 @@ fun randomRolloverActionConfig(
     minSize: ByteSizeValue = randomByteSizeValue(),
     minDocs: Long = OpenSearchRestTestCase.randomLongBetween(1, 1000),
     minAge: TimeValue = randomTimeValueObject(),
-    minPrimaryShardSize: ByteSizeValue = randomByteSizeValue()
+    minPrimaryShardSize: ByteSizeValue = randomByteSizeValue(),
 ): RolloverAction {
     return RolloverAction(
         minSize = minSize,
         minDocs = minDocs,
         minAge = minAge,
         minPrimaryShardSize = minPrimaryShardSize,
-        index = 0
+        index = 0,
     )
 }
 
@@ -154,7 +153,7 @@ fun randomShrinkAction(
     targetIndexTemplate: Script? = if (randomBoolean()) randomTemplateScript(randomAlphaOfLength(10)) else null,
     aliases: List<Alias>? = if (randomBoolean()) randomList(10) { randomAlias() } else null,
     switchAliases: Boolean = randomBoolean(),
-    forceUnsafe: Boolean? = if (randomBoolean()) randomBoolean() else null
+    forceUnsafe: Boolean? = if (randomBoolean()) randomBoolean() else null,
 ): ShrinkAction {
     if (numNewShards == null && maxShardSize == null && percentageOfSourceShards == null) {
         when (randomInt(2)) {
@@ -183,7 +182,7 @@ fun randomIndexPriorityActionConfig(indexPriority: Int = OpenSearchRestTestCase.
 }
 
 fun randomForceMergeActionConfig(
-    maxNumSegments: Int = OpenSearchRestTestCase.randomIntBetween(1, 50)
+    maxNumSegments: Int = OpenSearchRestTestCase.randomIntBetween(1, 50),
 ): ForceMergeAction {
     return ForceMergeAction(maxNumSegments = maxNumSegments, index = 0)
 }
@@ -191,7 +190,7 @@ fun randomForceMergeActionConfig(
 fun randomNotificationActionConfig(
     destination: Destination = randomDestination(),
     messageTemplate: Script = randomTemplateScript("random message"),
-    index: Int = 0
+    index: Int = 0,
 ): NotificationAction {
     return NotificationAction(destination, null, messageTemplate, index)
 }
@@ -239,7 +238,7 @@ fun randomDestination(type: DestinationType = randomDestinationType()): Destinat
         type = type,
         chime = if (type == DestinationType.CHIME) randomChime() else null,
         slack = if (type == DestinationType.SLACK) randomSlack() else null,
-        customWebhook = if (type == DestinationType.CUSTOM_WEBHOOK) randomCustomWebhook() else null
+        customWebhook = if (type == DestinationType.CUSTOM_WEBHOOK) randomCustomWebhook() else null,
     )
 }
 
@@ -266,7 +265,7 @@ fun randomCustomWebhook(): CustomWebhook {
         queryParams = emptyMap(),
         headerParams = emptyMap(),
         username = null,
-        password = null
+        password = null,
     )
 }
 
@@ -274,7 +273,7 @@ fun randomTemplateScript(
     source: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     params: Map<String, String> = emptyMap(),
     scriptType: ScriptType = ScriptType.INLINE,
-    lang: String = Script.DEFAULT_TEMPLATE_LANG
+    lang: String = Script.DEFAULT_TEMPLATE_LANG,
 ): Script = Script(scriptType, lang, source, params)
 
 fun randomSnapshotActionConfig(repository: String = "repo", snapshot: String = "sp"): SnapshotAction {
@@ -300,8 +299,9 @@ fun randomTimeValueObject(): TimeValue = TimeValue.parseTimeValue(OpenSearchRest
 fun randomByteSizeValue(): ByteSizeValue =
     ByteSizeValue.parseBytesSizeValue(
         OpenSearchRestTestCase.randomIntBetween(1, 1000).toString() + OpenSearchRestTestCase.randomFrom(listOf("b", "kb", "mb", "gb")),
-        ""
+        "",
     )
+
 /**
  * End - Conditions helper functions
  */
@@ -310,7 +310,7 @@ fun randomExplainFilter(
     policyID: String? = if (OpenSearchRestTestCase.randomBoolean()) OpenSearchRestTestCase.randomAlphaOfLength(10) else null,
     state: String? = if (OpenSearchRestTestCase.randomBoolean()) OpenSearchRestTestCase.randomAlphaOfLength(10) else null,
     actionType: String? = if (OpenSearchRestTestCase.randomBoolean()) OpenSearchRestTestCase.randomAlphaOfLength(10) else null,
-    failed: Boolean? = if (OpenSearchRestTestCase.randomBoolean()) OpenSearchRestTestCase.randomBoolean() else null
+    failed: Boolean? = if (OpenSearchRestTestCase.randomBoolean()) OpenSearchRestTestCase.randomBoolean() else null,
 ): ExplainFilter {
     return ExplainFilter(policyID, state, actionType, failed)
 }
@@ -319,7 +319,7 @@ fun randomChangePolicy(
     policyID: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     state: String? = if (OpenSearchRestTestCase.randomBoolean()) OpenSearchRestTestCase.randomAlphaOfLength(10) else null,
     include: List<StateFilter> = emptyList(),
-    isSafe: Boolean = false
+    isSafe: Boolean = false,
 ): ChangePolicy {
     return ChangePolicy(policyID, state, include, isSafe)
 }
@@ -339,7 +339,7 @@ fun randomManagedIndexConfig(
     policyID: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     policy: Policy? = randomPolicy(),
     changePolicy: ChangePolicy? = randomChangePolicy(),
-    jitter: Double? = 0.0
+    jitter: Double? = 0.0,
 ): ManagedIndexConfig {
     return ManagedIndexConfig(
         jobName = name,
@@ -354,7 +354,7 @@ fun randomManagedIndexConfig(
         policyPrimaryTerm = policy?.primaryTerm,
         policy = policy?.copy(seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM),
         changePolicy = changePolicy,
-        jobJitter = jitter
+        jobJitter = jitter,
     )
 }
 
@@ -363,14 +363,14 @@ fun randomClusterStateManagedIndexConfig(
     uuid: String = OpenSearchRestTestCase.randomAlphaOfLength(20),
     policyID: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
-    primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+    primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
 ): ClusterStateManagedIndexConfig {
     return ClusterStateManagedIndexConfig(
         index = index,
         uuid = uuid,
         policyID = policyID,
         seqNo = seqNo,
-        primaryTerm = primaryTerm
+        primaryTerm = primaryTerm,
     )
 }
 
@@ -381,7 +381,7 @@ fun randomSweptManagedIndexConfig(
     seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
     changePolicy: ChangePolicy? = null,
-    policy: Policy? = null
+    policy: Policy? = null,
 ): SweptManagedIndexConfig {
     return SweptManagedIndexConfig(
         index = index,
@@ -390,19 +390,19 @@ fun randomSweptManagedIndexConfig(
         seqNo = seqNo,
         primaryTerm = primaryTerm,
         policy = policy,
-        changePolicy = changePolicy
+        changePolicy = changePolicy,
     )
 }
 
 fun randomISMTemplate(
     indexPatterns: List<String> = listOf(OpenSearchRestTestCase.randomAlphaOfLength(10) + "*"),
     priority: Int = OpenSearchRestTestCase.randomIntBetween(0, 100),
-    lastUpdatedTime: Instant = Instant.now().truncatedTo(ChronoUnit.MILLIS)
+    lastUpdatedTime: Instant = Instant.now().truncatedTo(ChronoUnit.MILLIS),
 ): ISMTemplate {
     return ISMTemplate(
         indexPatterns = indexPatterns,
         priority = priority,
-        lastUpdatedTime = lastUpdatedTime
+        lastUpdatedTime = lastUpdatedTime,
     )
 }
 
@@ -538,7 +538,7 @@ fun Channel.toJsonString(): String {
 @Suppress("RethrowCaughtException")
 fun <T> wait(
     timeout: Instant = Instant.ofEpochSecond(10),
-    block: () -> T
+    block: () -> T,
 ) {
     val startTime = Instant.now().toEpochMilli()
     do {

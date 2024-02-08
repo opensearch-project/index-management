@@ -5,12 +5,12 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.managedIndex
 
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
+import org.opensearch.core.action.ActionListener
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
@@ -22,7 +22,7 @@ class TransportManagedIndexAction @Inject constructor(
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
 ) : HandledTransportAction<ManagedIndexRequest, AcknowledgedResponse>(
-    ManagedIndexAction.NAME, transportService, actionFilters, ::ManagedIndexRequest
+    ManagedIndexAction.NAME, transportService, actionFilters, ::ManagedIndexRequest,
 ) {
 
     override fun doExecute(task: Task, request: ManagedIndexRequest, listener: ActionListener<AcknowledgedResponse>) {

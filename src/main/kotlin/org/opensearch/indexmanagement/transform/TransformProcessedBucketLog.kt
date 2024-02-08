@@ -38,8 +38,11 @@ class TransformProcessedBucketLog {
         val md5Crypt = MessageDigest.getInstance("MD5")
         bucket.entries.sortedBy { it.key }.onEach { entry ->
             md5Crypt.update(
-                if (entry.value == null) "null".toByteArray()
-                else entry.value.toString().toByteArray()
+                if (entry.value == null) {
+                    "null".toByteArray()
+                } else {
+                    entry.value.toString().toByteArray()
+                },
             )
         }
         return BigInteger(1, md5Crypt.digest()).toString(HEX_RADIX)

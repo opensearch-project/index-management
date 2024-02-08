@@ -24,7 +24,7 @@ data class ActionProperties(
     val rollupId: String? = null,
     val hasRollupFailed: Boolean? = null,
     val shrinkActionProperties: ShrinkActionProperties? = null,
-    val transformActionProperties: TransformActionProperties? = null
+    val transformActionProperties: TransformActionProperties? = null,
 ) : Writeable, ToXContentFragment {
 
     override fun writeTo(out: StreamOutput) {
@@ -94,6 +94,6 @@ data class ActionProperties(
         MAX_NUM_SEGMENTS("max_num_segments"),
         SNAPSHOT_NAME("snapshot_name"),
         ROLLUP_ID("rollup_id"),
-        HAS_ROLLUP_FAILED("has_rollup_failed")
+        HAS_ROLLUP_FAILED("has_rollup_failed"),
     }
 }

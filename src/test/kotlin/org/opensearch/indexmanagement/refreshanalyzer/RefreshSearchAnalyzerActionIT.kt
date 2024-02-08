@@ -202,7 +202,7 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
         fun refreshAnalyzer(indexName: String) {
             val request = Request(
                 "POST",
-                "$REFRESH_SEARCH_ANALYZER_BASE_URI/$indexName"
+                "$REFRESH_SEARCH_ANALYZER_BASE_URI/$indexName",
             )
             client().performRequest(request)
         }

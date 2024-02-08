@@ -6,11 +6,11 @@
 package org.opensearch.indexmanagement.rollup.resthandler
 
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.action.get.GetRollupsRequest.Companion.DEFAULT_SIZE
 import org.opensearch.indexmanagement.rollup.randomRollup
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 import java.util.Locale
 
@@ -33,7 +33,7 @@ class RestGetRollupActionIT : RollupRestAPITestCase() {
             // roles are deprecated and will not be stored or returned
             roles = listOf(),
             // user information is hidden and not returned
-            user = null
+            user = null,
         )
         assertEquals("Indexed and retrieved rollup differ", rollup, indexedRollup)
     }

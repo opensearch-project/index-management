@@ -11,13 +11,13 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.mockito.Mockito.doAnswer
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
 import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.action.ActionListener
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountAction
 import org.opensearch.indexmanagement.indexstatemanagement.step.replicacount.AttemptReplicaCountStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
@@ -88,8 +88,11 @@ class AttemptSetReplicaCountStepTests : OpenSearchTestCase() {
         return mock {
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
-                if (replicaResponse != null) listener.onResponse(replicaResponse)
-                else listener.onFailure(exception)
+                if (replicaResponse != null) {
+                    listener.onResponse(replicaResponse)
+                } else {
+                    listener.onFailure(exception)
+                }
             }.whenever(this.mock).updateSettings(any(), any())
         }
     }

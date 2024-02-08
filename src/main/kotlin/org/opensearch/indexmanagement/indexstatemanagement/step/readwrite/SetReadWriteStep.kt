@@ -30,7 +30,7 @@ class SetReadWriteStep : Step(name) {
             val updateSettingsRequest = UpdateSettingsRequest()
                 .indices(indexName)
                 .settings(
-                    Settings.builder().put(SETTING_BLOCKS_WRITE, false)
+                    Settings.builder().put(SETTING_BLOCKS_WRITE, false),
                 )
             val response: AcknowledgedResponse = context.client.admin().indices()
                 .suspendUntil { updateSettings(updateSettingsRequest, it) }
@@ -67,7 +67,7 @@ class SetReadWriteStep : Step(name) {
         return currentMetadata.copy(
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 

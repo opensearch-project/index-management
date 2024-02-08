@@ -11,13 +11,13 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.mockito.Mockito.doAnswer
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
 import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.action.ActionListener
 import org.opensearch.indexmanagement.indexstatemanagement.step.delete.AttemptDeleteStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
@@ -98,8 +98,11 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
         return mock {
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
-                if (acknowledgedResponse != null) listener.onResponse(acknowledgedResponse)
-                else listener.onFailure(exception)
+                if (acknowledgedResponse != null) {
+                    listener.onResponse(acknowledgedResponse)
+                } else {
+                    listener.onFailure(exception)
+                }
             }.whenever(this.mock).delete(any(), any())
         }
     }

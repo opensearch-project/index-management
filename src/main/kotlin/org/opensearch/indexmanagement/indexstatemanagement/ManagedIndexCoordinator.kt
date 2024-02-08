@@ -42,12 +42,15 @@ import org.opensearch.common.regex.Regex
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.commons.authuser.User
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.index.Index
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.index.IndexNotFoundException
 import org.opensearch.index.query.QueryBuilders
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.migration.ISMTemplateService
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.coordinator.ClusterStateManagedIndexConfig
@@ -75,7 +78,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.isFailed
 import org.opensearch.indexmanagement.indexstatemanagement.util.isPolicyCompleted
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexConfigIndexRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.updateEnableManagedIndexRequest
-import org.opensearch.indexmanagement.indexstatemanagement.migration.ISMTemplateService
 import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.contentParser
 import org.opensearch.indexmanagement.opensearchapi.parseFromSearchResponse
@@ -86,8 +88,6 @@ import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.util.OpenForTesting
-import org.opensearch.core.rest.RestStatus
-import org.opensearch.index.IndexNotFoundException
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.threadpool.Scheduler
 import org.opensearch.threadpool.ThreadPool
@@ -119,7 +119,7 @@ class ManagedIndexCoordinator(
     private val metadataService: MetadataService,
     private val templateService: ISMTemplateService,
     private val indexMetadataProvider: IndexMetadataProvider,
-    private val xContentRegistry: NamedXContentRegistry
+    private val xContentRegistry: NamedXContentRegistry,
 ) : ClusterStateListener,
     CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ManagedIndexCoordinator")),
     LifecycleListener() {
@@ -132,17 +132,26 @@ class ManagedIndexCoordinator(
     private var scheduledTemplateMigration: Scheduler.Cancellable? = null
 
     @Volatile private var lastFullSweepTimeNano = System.nanoTime()
+
     @Volatile private var indexStateManagementEnabled = INDEX_STATE_MANAGEMENT_ENABLED.get(settings)
+
     @Volatile private var metadataServiceEnabled = METADATA_SERVICE_ENABLED.get(settings)
+
     @Volatile private var sweepPeriod = SWEEP_PERIOD.get(settings)
+
     @Volatile private var retryPolicy =
         BackoffPolicy.constantBackoff(COORDINATOR_BACKOFF_MILLIS.get(settings), COORDINATOR_BACKOFF_COUNT.get(settings))
+
     @Volatile private var templateMigrationEnabled: Boolean = true
+
     @Volatile private var templateMigrationEnabledSetting = TEMPLATE_MIGRATION_CONTROL.get(settings)
+
     @Volatile private var jobInterval = JOB_INTERVAL.get(settings)
+
     @Volatile private var jobJitter = JITTER.get(settings)
 
     @Volatile private var isClusterManager = false
+
     @Volatile private var onClusterManagerTimeStamp: Long = 0L
 
     init {
@@ -167,12 +176,17 @@ class ManagedIndexCoordinator(
             if (!metadataServiceEnabled) {
                 logger.info("Canceling metadata moving job because of cluster setting update.")
                 scheduledMoveMetadata?.cancel()
-            } else initMoveMetadata()
+            } else {
+                initMoveMetadata()
+            }
         }
         clusterService.clusterSettings.addSettingsUpdateConsumer(TEMPLATE_MIGRATION_CONTROL) {
             templateMigrationEnabled = it >= 0L
-            if (!templateMigrationEnabled) scheduledTemplateMigration?.cancel()
-            else initTemplateMigration(it)
+            if (!templateMigrationEnabled) {
+                scheduledTemplateMigration?.cancel()
+            } else {
+                initTemplateMigration(it)
+            }
         }
         clusterService.clusterSettings.addSettingsUpdateConsumer(COORDINATOR_BACKOFF_MILLIS, COORDINATOR_BACKOFF_COUNT) { millis, count ->
             retryPolicy = BackoffPolicy.constantBackoff(millis, count)
@@ -327,7 +341,7 @@ class ManagedIndexCoordinator(
     @Suppress("NestedBlockDepth", "ComplexCondition")
     private suspend fun createManagedIndexRequests(
         clusterState: ClusterState,
-        indexNames: List<String>
+        indexNames: List<String>,
     ): List<DocWriteRequest<*>> {
         val updateManagedIndexReqs = mutableListOf<DocWriteRequest<IndexRequest>>()
         if (indexNames.isEmpty()) return updateManagedIndexReqs
@@ -358,8 +372,8 @@ class ManagedIndexCoordinator(
                                 policy.id,
                                 jobInterval,
                                 policy,
-                                jobJitter
-                            )
+                                jobJitter,
+                            ),
                         )
                     }
             }
@@ -456,8 +470,8 @@ class ManagedIndexCoordinator(
         val searchRequest = SearchRequest()
             .source(
                 SearchSourceBuilder().query(
-                    QueryBuilders.existsQuery(ISM_TEMPLATE_FIELD)
-                ).size(MAX_HITS).seqNoAndPrimaryTerm(true)
+                    QueryBuilders.existsQuery(ISM_TEMPLATE_FIELD),
+                ).size(MAX_HITS).seqNoAndPrimaryTerm(true),
             )
             .indices(INDEX_MANAGEMENT_INDEX)
             .preference(Preference.PRIMARY_FIRST.type())
@@ -572,14 +586,15 @@ class ManagedIndexCoordinator(
 
                     logger.info("Performing ISM template migration.")
                     if (enableSetting == 0L) {
-                        if (onClusterManagerTimeStamp != 0L)
+                        if (onClusterManagerTimeStamp != 0L) {
                             templateService.doMigration(Instant.ofEpochMilli(onClusterManagerTimeStamp))
-                        else {
+                        } else {
                             logger.error("No valid onClusterManager time cached, cancel ISM template migration job.")
                             scheduledTemplateMigration?.cancel()
                         }
-                    } else
+                    } else {
                         templateService.doMigration(Instant.ofEpochMilli(enableSetting))
+                    }
                 } catch (e: Exception) {
                     logger.error("Failed to migrate ISM template", e)
                 }
@@ -612,7 +627,7 @@ class ManagedIndexCoordinator(
 
         // Get the matching policyIds for applicable indices
         val updateMatchingIndicesReqs = createManagedIndexRequests(
-            clusterService.state(), unManagedIndices.map { (indexName, _) -> indexName }
+            clusterService.state(), unManagedIndices.map { (indexName, _) -> indexName },
         )
 
         // check all managed indices, if the index has already been deleted
@@ -716,7 +731,7 @@ class ManagedIndexCoordinator(
         mRes.forEach {
             if (it.response.isExists) {
                 result[it.id] = contentParser(it.response.sourceAsBytesRef, xContentRegistry).parseWithType(
-                    it.response.id, it.response.seqNo, it.response.primaryTerm, ManagedIndexConfig.Companion::parse
+                    it.response.id, it.response.seqNo, it.response.primaryTerm, ManagedIndexConfig.Companion::parse,
                 )
             }
         }
@@ -757,10 +772,12 @@ class ManagedIndexCoordinator(
                 val bulkRequest = BulkRequest().add(deleteRequests)
                 val bulkResponse: BulkResponse = client.suspendUntil { bulk(bulkRequest, it) }
                 bulkResponse.forEach {
-                    if (it.isFailed) logger.error(
-                        "Failed to clear ManagedIndexMetadata for " +
-                            "index uuid: [${it.id}], failureMessage: ${it.failureMessage}"
-                    )
+                    if (it.isFailed) {
+                        logger.error(
+                            "Failed to clear ManagedIndexMetadata for " +
+                                "index uuid: [${it.id}], failureMessage: ${it.failureMessage}",
+                        )
+                    }
                 }
             }
         } catch (e: Exception) {
