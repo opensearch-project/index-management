@@ -12,15 +12,15 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.DocWriteResponse
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.client.Client
-import org.opensearch.core.common.bytes.BytesReference
 import org.opensearch.common.document.DocumentField
+import org.opensearch.core.action.ActionListener
 import org.opensearch.core.common.bytes.BytesArray
+import org.opensearch.core.common.bytes.BytesReference
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
@@ -53,15 +53,15 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val dimensions = listOf(
             randomCalendarDateHistogram().copy(
                 calendarInterval = "1m",
-                timezone = ZoneId.of(DateHistogram.UTC)
-            )
+                timezone = ZoneId.of(DateHistogram.UTC),
+            ),
         )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
             metadataID = null,
             continuous = true,
-            dimensions = dimensions
+            dimensions = dimensions,
         )
 
         val firstDocTimestamp = "2020-10-02T05:01:15Z"
@@ -69,7 +69,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
             searchResponse = getSearchResponseForTimestamp(rollup, firstDocTimestamp),
             searchException = null,
             indexResponse = getIndexResponse(),
-            indexException = null
+            indexException = null,
         )
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
@@ -91,15 +91,15 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val dimensions = listOf(
             randomCalendarDateHistogram().copy(
                 calendarInterval = "1h",
-                timezone = ZoneId.of(DateHistogram.UTC)
-            )
+                timezone = ZoneId.of(DateHistogram.UTC),
+            ),
         )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
             metadataID = null,
             continuous = true,
-            dimensions = dimensions
+            dimensions = dimensions,
         )
 
         val firstDocTimestamp = "2020-10-02T05:35:15Z"
@@ -107,7 +107,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
             searchResponse = getSearchResponseForTimestamp(rollup, firstDocTimestamp),
             searchException = null,
             indexResponse = getIndexResponse(),
-            indexException = null
+            indexException = null,
         )
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
@@ -129,15 +129,15 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val dimensions = listOf(
             randomCalendarDateHistogram().copy(
                 calendarInterval = "1h",
-                timezone = ZoneId.of("America/Los_Angeles")
-            )
+                timezone = ZoneId.of("America/Los_Angeles"),
+            ),
         )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
             metadataID = null,
             continuous = true,
-            dimensions = dimensions
+            dimensions = dimensions,
         )
 
         val firstDocTimestamp = "2020-03-08T01:35:15-08:00"
@@ -145,7 +145,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
             searchResponse = getSearchResponseForTimestamp(rollup, firstDocTimestamp),
             searchException = null,
             indexResponse = getIndexResponse(),
-            indexException = null
+            indexException = null,
         )
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
@@ -168,15 +168,15 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val dimensions = listOf(
             randomCalendarDateHistogram().copy(
                 calendarInterval = "day",
-                timezone = ZoneId.of(DateHistogram.UTC)
-            )
+                timezone = ZoneId.of(DateHistogram.UTC),
+            ),
         )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
             metadataID = null,
             continuous = true,
-            dimensions = dimensions
+            dimensions = dimensions,
         )
 
         val firstDocTimestamp = "2020-10-02T05:35:15Z"
@@ -184,7 +184,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
             searchResponse = getSearchResponseForTimestamp(rollup, firstDocTimestamp),
             searchException = null,
             indexResponse = getIndexResponse(),
-            indexException = null
+            indexException = null,
         )
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
@@ -206,15 +206,15 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val dimensions = listOf(
             randomCalendarDateHistogram().copy(
                 calendarInterval = "1d",
-                timezone = ZoneId.of(DateHistogram.UTC)
-            )
+                timezone = ZoneId.of(DateHistogram.UTC),
+            ),
         )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
             metadataID = null,
             continuous = true,
-            dimensions = dimensions
+            dimensions = dimensions,
         )
 
         val firstDocTimestamp = "2020-02-28T08:40:15Z"
@@ -222,7 +222,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
             searchResponse = getSearchResponseForTimestamp(rollup, firstDocTimestamp),
             searchException = null,
             indexResponse = getIndexResponse(),
-            indexException = null
+            indexException = null,
         )
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
@@ -244,15 +244,15 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val dimensions = listOf(
             randomCalendarDateHistogram().copy(
                 calendarInterval = "1w",
-                timezone = ZoneId.of(DateHistogram.UTC)
-            )
+                timezone = ZoneId.of(DateHistogram.UTC),
+            ),
         )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
             metadataID = null,
             continuous = true,
-            dimensions = dimensions
+            dimensions = dimensions,
         )
 
         val firstDocTimestamp = "2020-03-22T08:40:15Z" // March 22, 2020, Sunday
@@ -260,7 +260,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
             searchResponse = getSearchResponseForTimestamp(rollup, firstDocTimestamp),
             searchException = null,
             indexResponse = getIndexResponse(),
-            indexException = null
+            indexException = null,
         )
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
@@ -284,15 +284,15 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val dimensions = listOf(
             randomCalendarDateHistogram().copy(
                 calendarInterval = "1M",
-                timezone = ZoneId.of(DateHistogram.UTC)
-            )
+                timezone = ZoneId.of(DateHistogram.UTC),
+            ),
         )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
             metadataID = null,
             continuous = true,
-            dimensions = dimensions
+            dimensions = dimensions,
         )
 
         val firstDocTimestamp = "2019-12-24T08:40:15Z"
@@ -300,7 +300,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
             searchResponse = getSearchResponseForTimestamp(rollup, firstDocTimestamp),
             searchException = null,
             indexResponse = getIndexResponse(),
-            indexException = null
+            indexException = null,
         )
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
@@ -322,15 +322,15 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val dimensions = listOf(
             randomCalendarDateHistogram().copy(
                 calendarInterval = "1q",
-                timezone = ZoneId.of(DateHistogram.UTC)
-            )
+                timezone = ZoneId.of(DateHistogram.UTC),
+            ),
         )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
             metadataID = null,
             continuous = true,
-            dimensions = dimensions
+            dimensions = dimensions,
         )
 
         val firstDocTimestamp = "2020-04-24T08:40:15Z"
@@ -338,7 +338,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
             searchResponse = getSearchResponseForTimestamp(rollup, firstDocTimestamp),
             searchException = null,
             indexResponse = getIndexResponse(),
-            indexException = null
+            indexException = null,
         )
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
@@ -360,15 +360,15 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val dimensions = listOf(
             randomCalendarDateHistogram().copy(
                 calendarInterval = "1y",
-                timezone = ZoneId.of(DateHistogram.UTC)
-            )
+                timezone = ZoneId.of(DateHistogram.UTC),
+            ),
         )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
             metadataID = null,
             continuous = true,
-            dimensions = dimensions
+            dimensions = dimensions,
         )
 
         val firstDocTimestamp = "2020-04-24T08:40:15Z"
@@ -376,7 +376,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
             searchResponse = getSearchResponseForTimestamp(rollup, firstDocTimestamp),
             searchException = null,
             indexResponse = getIndexResponse(),
-            indexException = null
+            indexException = null,
         )
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
@@ -398,15 +398,15 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val dimensions = listOf(
             randomCalendarDateHistogram().copy(
                 calendarInterval = "1h",
-                timezone = ZoneId.of(DateHistogram.UTC)
-            )
+                timezone = ZoneId.of(DateHistogram.UTC),
+            ),
         )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
             metadataID = null,
             continuous = true,
-            dimensions = dimensions
+            dimensions = dimensions,
         )
 
         val firstDocTimestamp = "2020-04-24T08:40:15-07:00" // UTC-07:00 for America/Los_Angeles
@@ -414,7 +414,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
             searchResponse = getSearchResponseForTimestamp(rollup, firstDocTimestamp),
             searchException = null,
             indexResponse = getIndexResponse(),
-            indexException = null
+            indexException = null,
         )
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
@@ -436,15 +436,15 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val dimensions = listOf(
             randomCalendarDateHistogram().copy(
                 calendarInterval = "1h",
-                timezone = ZoneId.of("America/Los_Angeles")
-            )
+                timezone = ZoneId.of("America/Los_Angeles"),
+            ),
         )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
             metadataID = null,
             continuous = true,
-            dimensions = dimensions
+            dimensions = dimensions,
         )
 
         val firstDocTimestamp = "2020-04-24T08:40:15Z"
@@ -452,7 +452,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
             searchResponse = getSearchResponseForTimestamp(rollup, firstDocTimestamp),
             searchException = null,
             indexResponse = getIndexResponse(),
-            indexException = null
+            indexException = null,
         )
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
@@ -474,15 +474,15 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val dimensions = listOf(
             randomFixedDateHistogram().copy(
                 fixedInterval = "3h",
-                timezone = ZoneId.of(DateHistogram.UTC)
-            )
+                timezone = ZoneId.of(DateHistogram.UTC),
+            ),
         )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
             metadataID = null,
             continuous = true,
-            dimensions = dimensions
+            dimensions = dimensions,
         )
 
         val firstDocTimestamp = "2020-04-24T22:40:15Z"
@@ -490,7 +490,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
             searchResponse = getSearchResponseForTimestamp(rollup, firstDocTimestamp),
             searchException = null,
             indexResponse = getIndexResponse(),
-            indexException = null
+            indexException = null,
         )
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
@@ -512,15 +512,15 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val dimensions = listOf(
             randomFixedDateHistogram().copy(
                 fixedInterval = "3h",
-                timezone = ZoneId.of("America/Los_Angeles")
-            )
+                timezone = ZoneId.of("America/Los_Angeles"),
+            ),
         )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
             metadataID = null,
             continuous = true,
-            dimensions = dimensions
+            dimensions = dimensions,
         )
 
         val firstDocTimestamp = "2020-03-08T00:40:15-08:00"
@@ -528,7 +528,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
             searchResponse = getSearchResponseForTimestamp(rollup, firstDocTimestamp),
             searchException = null,
             indexResponse = getIndexResponse(),
-            indexException = null
+            indexException = null,
         )
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
@@ -552,15 +552,15 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val dimensions = listOf(
             randomFixedDateHistogram().copy(
                 fixedInterval = "30d",
-                timezone = ZoneId.of(DateHistogram.UTC)
-            )
+                timezone = ZoneId.of(DateHistogram.UTC),
+            ),
         )
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
             metadataID = null,
             continuous = true,
-            dimensions = dimensions
+            dimensions = dimensions,
         )
 
         val firstDocTimestamp = "2020-02-01T22:40:15Z"
@@ -568,7 +568,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
             searchResponse = getSearchResponseForTimestamp(rollup, firstDocTimestamp),
             searchException = null,
             indexResponse = getIndexResponse(),
-            indexException = null
+            indexException = null,
         )
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
@@ -591,7 +591,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
-            metadataID = randomAlphaOfLength(10)
+            metadataID = randomAlphaOfLength(10),
         )
 
         val getException = Exception("Test failure")
@@ -615,7 +615,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         val rollup = randomRollup().copy(
             enabled = true,
             jobEnabledTime = Instant.now(),
-            metadataID = null
+            metadataID = null,
         )
 
         val indexException = Exception("Test failure")
@@ -624,7 +624,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
             searchResponse = getSearchResponseForTimestamp(rollup, firstDocTimestamp),
             searchException = null,
             indexResponse = null,
-            indexException = indexException
+            indexException = indexException,
         )
         val metadataService = RollupMetadataService(client, xContentRegistry)
 
@@ -647,7 +647,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
             // Truncating to seconds since not doing so causes milliseconds mismatch when comparing results
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.SECONDS),
             status = RollupMetadata.Status.INIT,
-            stats = RollupStats(0, 0, 0, 0, 0)
+            stats = RollupStats(0, 0, 0, 0, 0),
         )
 
         val getResponse: GetResponse = mock()
@@ -691,7 +691,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         runBlocking {
             val getExistingMetadataResult = metadataService.getExistingMetadata(
                 randomRollup()
-                    .copy(id = randomAlphaOfLength(10), metadataID = randomAlphaOfLength(10))
+                    .copy(id = randomAlphaOfLength(10), metadataID = randomAlphaOfLength(10)),
             )
             require(getExistingMetadataResult is MetadataResult.NoMetadata) {
                 "Getting existing metadata returned unexpected results"
@@ -715,7 +715,7 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         runBlocking {
             val getExistingMetadataResult = metadataService.getExistingMetadata(
                 randomRollup()
-                    .copy(id = randomAlphaOfLength(10), metadataID = randomAlphaOfLength(10))
+                    .copy(id = randomAlphaOfLength(10), metadataID = randomAlphaOfLength(10)),
             )
             require(getExistingMetadataResult is MetadataResult.Failure) {
                 "Getting existing metadata returned unexpected results"
@@ -761,21 +761,27 @@ class RollupMetadataServiceTests : OpenSearchTestCase() {
         searchResponse: SearchResponse?,
         searchException: Exception?,
         indexResponse: IndexResponse?,
-        indexException: Exception?
+        indexException: Exception?,
     ): Client {
         assertTrue("Must provide either a searchResponse or searchException", (searchResponse != null).xor(searchException != null))
         assertTrue("Must provide either an indexResponse or indexException", (indexResponse != null).xor(indexException != null))
         return mock {
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<SearchResponse>>(1)
-                if (searchResponse != null) listener.onResponse(searchResponse)
-                else listener.onFailure(searchException)
+                if (searchResponse != null) {
+                    listener.onResponse(searchResponse)
+                } else {
+                    listener.onFailure(searchException)
+                }
             }.whenever(this.mock).search(any(), any())
 
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<IndexResponse>>(1)
-                if (indexResponse != null) listener.onResponse(indexResponse)
-                else listener.onFailure(indexException)
+                if (indexResponse != null) {
+                    listener.onResponse(indexResponse)
+                } else {
+                    listener.onFailure(indexException)
+                }
             }.whenever(this.mock).index(any(), any())
         }
     }

@@ -5,16 +5,16 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.model
 
+import org.opensearch.common.unit.TimeValue
+import org.opensearch.commons.authuser.User
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
-import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
@@ -23,10 +23,10 @@ import org.opensearch.indexmanagement.opensearchapi.nullValueHandler
 import org.opensearch.indexmanagement.opensearchapi.optionalField
 import org.opensearch.indexmanagement.opensearchapi.optionalTimeField
 import org.opensearch.indexmanagement.opensearchapi.optionalUserField
-import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToMetadataDocId
 import org.opensearch.indexmanagement.snapshotmanagement.smDocIdToPolicyName
-import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.snapshotmanagement.smPolicyNameToMetadataDocId
 import org.opensearch.indexmanagement.snapshotmanagement.validateDateFormat
+import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
@@ -184,7 +184,7 @@ data class SMPolicy(
             // If user doesn't provide delete schedule, use the creation schedule
             if (deletion != null && !deletion.scheduleProvided) {
                 deletion = deletion.copy(
-                    schedule = creation.schedule
+                    schedule = creation.schedule,
                 )
             }
 
@@ -210,7 +210,7 @@ data class SMPolicy(
                 seqNo = seqNo,
                 primaryTerm = primaryTerm,
                 notificationConfig = notificationConfig,
-                user = user
+                user = user,
             )
         }
     }
@@ -229,7 +229,7 @@ data class SMPolicy(
         seqNo = sin.readLong(),
         primaryTerm = sin.readLong(),
         notificationConfig = sin.readOptionalWriteable { NotificationConfig(it) },
-        user = sin.readOptionalWriteable(::User)
+        user = sin.readOptionalWriteable(::User),
     )
 
     override fun writeTo(out: StreamOutput) {
@@ -281,7 +281,7 @@ data class SMPolicy(
 
                 return Creation(
                     schedule = requireNotNull(schedule) { "schedule field must not be null" },
-                    timeLimit = timeLimit
+                    timeLimit = timeLimit,
                 )
             }
         }
@@ -416,7 +416,7 @@ data class SMPolicy(
         constructor(sin: StreamInput) : this(
             maxCount = sin.readOptionalInt(),
             maxAge = sin.readOptionalTimeValue(),
-            minCount = sin.readInt()
+            minCount = sin.readInt(),
         )
 
         override fun writeTo(out: StreamOutput) {

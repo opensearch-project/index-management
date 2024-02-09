@@ -33,7 +33,7 @@ data class TransformMetadata(
     val failureReason: String? = null,
     val stats: TransformStats,
     val shardIDToGlobalCheckpoint: Map<ShardId, Long>? = null,
-    val continuousStats: ContinuousTransformStats? = null
+    val continuousStats: ContinuousTransformStats? = null,
 ) : ToXContentObject, Writeable {
 
     enum class Status(val type: String) {
@@ -41,7 +41,8 @@ data class TransformMetadata(
         STARTED("started"),
         STOPPED("stopped"),
         FINISHED("finished"),
-        FAILED("failed");
+        FAILED("failed"),
+        ;
 
         override fun toString(): String {
             return type
@@ -60,7 +61,7 @@ data class TransformMetadata(
         failureReason = sin.readOptionalString(),
         stats = TransformStats(sin),
         shardIDToGlobalCheckpoint = if (sin.readBoolean()) sin.readMap({ ShardId(it) }, { it.readLong() }) else null,
-        continuousStats = if (sin.readBoolean()) ContinuousTransformStats(sin) else null
+        continuousStats = if (sin.readBoolean()) ContinuousTransformStats(sin) else null,
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -105,8 +106,8 @@ data class TransformMetadata(
                 documentsIndexed = this.stats.documentsIndexed + stats.documentsIndexed,
                 documentsProcessed = this.stats.documentsProcessed + stats.documentsProcessed,
                 indexTimeInMillis = this.stats.indexTimeInMillis + stats.indexTimeInMillis,
-                searchTimeInMillis = this.stats.searchTimeInMillis + stats.searchTimeInMillis
-            )
+                searchTimeInMillis = this.stats.searchTimeInMillis + stats.searchTimeInMillis,
+            ),
         )
     }
 
@@ -128,7 +129,7 @@ data class TransformMetadata(
             xcp: XContentParser,
             id: String,
             seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
-            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
         ): TransformMetadata {
             var transformId: String? = null
             var afterkey: Map<String, Any>? = null
@@ -169,7 +170,7 @@ data class TransformMetadata(
                 failureReason = failureReason,
                 stats = requireNotNull(stats) { "Stats must not be null" },
                 shardIDToGlobalCheckpoint = shardIDToGlobalCheckpoint,
-                continuousStats = continuousStats
+                continuousStats = continuousStats,
             )
         }
     }

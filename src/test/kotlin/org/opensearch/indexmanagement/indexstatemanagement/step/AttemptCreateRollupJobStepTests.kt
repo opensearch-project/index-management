@@ -20,7 +20,7 @@ class AttemptCreateRollupJobStepTests : OpenSearchTestCase() {
     private val rollupId: String = rollupAction.ismRollup.toRollup(indexName).id
     private val metadata = ManagedIndexMetaData(
         indexName, "indexUuid", "policy_id", null, null, null, null, null, null, null,
-        ActionMetaData(AttemptCreateRollupJobStep.name, 1, 0, false, 0, null, ActionProperties(rollupId = rollupId)), null, null, null
+        ActionMetaData(AttemptCreateRollupJobStep.name, 1, 0, false, 0, null, ActionProperties(rollupId = rollupId)), null, null, null,
     )
     private val step = AttemptCreateRollupJobStep(rollupAction)
 
@@ -31,7 +31,7 @@ class AttemptCreateRollupJobStepTests : OpenSearchTestCase() {
         assertEquals(
             "Error message is not expected",
             AttemptCreateRollupJobStep.getFailedMessage(rollupId, indexName),
-            updatedManagedIndexMetaData.info?.get("message")
+            updatedManagedIndexMetaData.info?.get("message"),
         )
     }
 

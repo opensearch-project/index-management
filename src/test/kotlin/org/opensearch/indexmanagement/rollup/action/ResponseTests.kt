@@ -7,13 +7,13 @@ package org.opensearch.indexmanagement.rollup.action
 
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.rollup.action.explain.ExplainRollupResponse
 import org.opensearch.indexmanagement.rollup.action.get.GetRollupResponse
 import org.opensearch.indexmanagement.rollup.action.get.GetRollupsResponse
 import org.opensearch.indexmanagement.rollup.action.index.IndexRollupResponse
 import org.opensearch.indexmanagement.rollup.randomExplainRollup
 import org.opensearch.indexmanagement.rollup.randomRollup
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 
 class ResponseTests : OpenSearchTestCase() {

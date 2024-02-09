@@ -5,24 +5,24 @@
 
 package org.opensearch.indexmanagement.controlcenter.notification.model
 
+import org.opensearch.commons.authuser.User
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
+import org.opensearch.core.tasks.TaskId
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentObject
 import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
-import org.opensearch.indexmanagement.controlcenter.notification.util.WITH_PRIORITY
 import org.opensearch.indexmanagement.common.model.notification.Channel
+import org.opensearch.indexmanagement.controlcenter.notification.util.WITH_PRIORITY
 import org.opensearch.indexmanagement.controlcenter.notification.util.validateTaskIdAndActionName
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.WITH_USER
 import org.opensearch.indexmanagement.opensearchapi.optionalUserField
 import org.opensearch.indexmanagement.util.NO_ID
-import org.opensearch.core.tasks.TaskId
 import java.io.IOException
 
 data class LRONConfig(
@@ -31,7 +31,7 @@ data class LRONConfig(
     val actionName: String?,
     val channels: List<Channel>?,
     val user: User?,
-    val priority: Int?
+    val priority: Int?,
 ) : ToXContentObject, Writeable {
     init {
         validateTaskIdAndActionName(taskId, actionName)
@@ -66,13 +66,17 @@ data class LRONConfig(
         lronCondition = LRONCondition(sin),
         taskId = if (sin.readBoolean()) {
             TaskId(sin.readString())
-        } else null,
+        } else {
+            null
+        },
         actionName = sin.readOptionalString(),
         channels = if (sin.readBoolean()) {
             sin.readList(::Channel)
-        } else null,
+        } else {
+            null
+        },
         user = sin.readOptionalWriteable(::User),
-        priority = sin.readOptionalInt()
+        priority = sin.readOptionalInt(),
     )
 
     @Throws(IOException::class)
@@ -81,12 +85,16 @@ data class LRONConfig(
         if (null != taskId) {
             out.writeBoolean(true)
             out.writeString(taskId.toString())
-        } else out.writeBoolean(false)
+        } else {
+            out.writeBoolean(false)
+        }
         out.writeOptionalString(actionName)
         if (null != channels) {
             out.writeBoolean(true)
             out.writeList(channels)
-        } else out.writeBoolean(false)
+        } else {
+            out.writeBoolean(false)
+        }
         out.writeOptionalWriteable(user)
         out.writeOptionalInt(priority)
     }
@@ -109,7 +117,7 @@ data class LRONConfig(
             xcp: XContentParser,
             id: String = NO_ID,
             seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
-            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+            primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
         ): LRONConfig {
             return parse(xcp)
         }
@@ -159,7 +167,7 @@ data class LRONConfig(
                 actionName = actionName,
                 channels = channels,
                 user = user,
-                priority = priority
+                priority = priority,
             )
         }
     }

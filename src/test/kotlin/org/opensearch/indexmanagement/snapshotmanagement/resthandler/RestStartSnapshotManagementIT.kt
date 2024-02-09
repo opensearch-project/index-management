@@ -6,11 +6,11 @@
 package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementRestTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
-import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 
 class RestStartSnapshotManagementIT : SnapshotManagementRestTestCase() {

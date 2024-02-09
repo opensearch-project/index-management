@@ -20,12 +20,12 @@ import org.opensearch.indexmanagement.util._SEQ_NO
 // totalPolicies may differ from the length of the policies field if the size parameter is introduced
 class GetSMPoliciesResponse(
     val policies: List<SMPolicy>,
-    val totalPolicies: Long
+    val totalPolicies: Long,
 ) : ActionResponse(), ToXContentObject {
 
     constructor(sin: StreamInput) : this(
         policies = sin.readList(::SMPolicy),
-        totalPolicies = sin.readLong()
+        totalPolicies = sin.readLong(),
     )
 
     override fun writeTo(out: StreamOutput) {

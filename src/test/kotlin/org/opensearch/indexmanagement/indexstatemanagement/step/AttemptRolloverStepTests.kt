@@ -12,7 +12,6 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.rollover.RolloverResponse
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.AdminClient
@@ -20,9 +19,13 @@ import org.opensearch.client.Client
 import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.action.ActionListener
+import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
@@ -30,9 +33,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
-import org.opensearch.cluster.metadata.Metadata
-import org.opensearch.index.IndexNotFoundException
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 
 class AttemptRolloverStepTests : OpenSearchTestCase() {
 
@@ -78,7 +78,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
                 null, null, null,
                 null, null, null,
                 null, null, null,
-                null, null, rolledOverIndexName = newIndexName
+                null, null, rolledOverIndexName = newIndexName,
             )
             val attemptRolloverStep = AttemptRolloverStep(rolloverAction)
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
@@ -102,7 +102,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
                 null, null, null,
                 null, null, null,
                 null, null, null,
-                null, null, rolledOverIndexName = newIndexName
+                null, null, rolledOverIndexName = newIndexName,
             )
             val attemptRolloverStep = AttemptRolloverStep(rolloverAction)
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
@@ -126,7 +126,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
                 null, null, null,
                 null, null, null,
                 null, null, null,
-                null, null, rolledOverIndexName = newIndexName
+                null, null, rolledOverIndexName = newIndexName,
             )
             val attemptRolloverStep = AttemptRolloverStep(rolloverAction)
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
@@ -150,7 +150,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
                 null, null, null,
                 null, null, null,
                 null, null, null,
-                null, null, rolledOverIndexName = null
+                null, null, rolledOverIndexName = null,
             )
             val attemptRolloverStep = AttemptRolloverStep(rolloverAction)
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
@@ -171,23 +171,29 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
     ): IndicesAdminClient {
         assertTrue(
             "Must provide one and only one response or exception",
-            (rolloverResponse != null).xor(rolloverException != null)
+            (rolloverResponse != null).xor(rolloverException != null),
         )
         assertTrue(
             "Must provide one and only one response or exception",
-            (aliasResponse != null).xor(aliasException != null)
+            (aliasResponse != null).xor(aliasException != null),
         )
         return mock {
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
-                if (rolloverResponse != null) listener.onResponse(rolloverResponse)
-                else listener.onFailure(rolloverException)
+                if (rolloverResponse != null) {
+                    listener.onResponse(rolloverResponse)
+                } else {
+                    listener.onFailure(rolloverException)
+                }
             }.whenever(this.mock).rolloverIndex(any(), any())
 
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
-                if (aliasResponse != null) listener.onResponse(aliasResponse)
-                else listener.onFailure(aliasException)
+                if (aliasResponse != null) {
+                    listener.onResponse(aliasResponse)
+                } else {
+                    listener.onFailure(aliasException)
+                }
             }.whenever(this.mock).aliases(any(), any())
         }
     }

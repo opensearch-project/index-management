@@ -33,7 +33,7 @@ class StepUtilsTests : OpenSearchTestCase() {
             randomNonNegativeLong(),
             randomInstant().toEpochMilli(),
             randomInstant().toEpochMilli(),
-            mapOf()
+            mapOf(),
         )
         val lockModel = getShrinkLockModel(shrinkActionProperties)
         assertEquals("Incorrect lock model job index name", INDEX_MANAGEMENT_INDEX, lockModel.jobIndexName)
@@ -55,7 +55,7 @@ class StepUtilsTests : OpenSearchTestCase() {
             randomNonNegativeLong(),
             randomInstant().toEpochMilli(),
             randomInstant().toEpochMilli(),
-            mapOf()
+            mapOf(),
         )
         val lockModel = LockModel(
             randomAlphaOfLength(10),
@@ -64,7 +64,7 @@ class StepUtilsTests : OpenSearchTestCase() {
             randomInstant().toEpochMilli(),
             false,
             randomNonNegativeLong(),
-            randomNonNegativeLong()
+            randomNonNegativeLong(),
         )
         val updatedProperties = getUpdatedShrinkActionProperties(shrinkActionProperties, lockModel)
 
@@ -81,7 +81,7 @@ class StepUtilsTests : OpenSearchTestCase() {
     fun `test get action start time`() {
         val metadata = ManagedIndexMetaData(
             "indexName", "indexUuid", "policy_id", null, null, null, null, null, null, null,
-            ActionMetaData("name", randomInstant().toEpochMilli(), 0, false, 0, null, null), null, null, null
+            ActionMetaData("name", randomInstant().toEpochMilli(), 0, false, 0, null, null), null, null, null,
         )
         assertEquals("Action start time was not extracted correctly", metadata.actionMetaData?.startTime, getActionStartTime(metadata).toEpochMilli())
     }

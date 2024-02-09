@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.rollup.resthandler
 
 import org.opensearch.client.ResponseException
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
@@ -27,7 +28,6 @@ import org.opensearch.indexmanagement.rollup.randomRollupMetrics
 import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._SEQ_NO
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.junit.annotations.TestLogging
 import java.util.Locale
@@ -82,7 +82,7 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
         val expected = createParser(
             XContentType.JSON.xContent(),
             javaClass.classLoader.getResource("mappings/opendistro-ism-config.json")
-                .readText()
+                .readText(),
         )
         val expectedMap = expected.map()
 
@@ -97,7 +97,7 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
             client().makeRequest(
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=10251989&if_primary_term=2342",
-                emptyMap(), rollup.toHttpEntity()
+                emptyMap(), rollup.toHttpEntity(),
             )
             fail("expected 409 ResponseException")
         } catch (e: ResponseException) {
@@ -111,7 +111,7 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
         val updateResponse = client().makeRequest(
             "PUT",
             "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-            emptyMap(), rollup.toHttpEntity()
+            emptyMap(), rollup.toHttpEntity(),
         )
 
         assertEquals("Update rollup failed", RestStatus.OK, updateResponse.restStatus())
@@ -130,7 +130,7 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
             client().makeRequest(
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-                emptyMap(), rollup.copy(sourceIndex = "something_different").toHttpEntity()
+                emptyMap(), rollup.copy(sourceIndex = "something_different").toHttpEntity(),
             )
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
@@ -139,12 +139,12 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
             val expectedErrorMessage = mapOf(
                 "error" to mapOf(
                     "root_cause" to listOf<Map<String, Any>>(
-                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [source_index]")
+                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [source_index]"),
                     ),
                     "type" to "status_exception",
-                    "reason" to "Not allowed to modify [source_index]"
+                    "reason" to "Not allowed to modify [source_index]",
                 ),
-                "status" to 400
+                "status" to 400,
             )
             assertEquals(expectedErrorMessage, actualMessage)
         }
@@ -157,7 +157,7 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
             client().makeRequest(
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-                emptyMap(), rollup.copy(targetIndex = "something_different").toHttpEntity()
+                emptyMap(), rollup.copy(targetIndex = "something_different").toHttpEntity(),
             )
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
@@ -166,12 +166,12 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
             val expectedErrorMessage = mapOf(
                 "error" to mapOf(
                     "root_cause" to listOf<Map<String, Any>>(
-                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [target_index]")
+                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [target_index]"),
                     ),
                     "type" to "status_exception",
-                    "reason" to "Not allowed to modify [target_index]"
+                    "reason" to "Not allowed to modify [target_index]",
                 ),
-                "status" to 400
+                "status" to 400,
             )
             assertEquals(expectedErrorMessage, actualMessage)
         }
@@ -184,7 +184,7 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
             client().makeRequest(
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-                emptyMap(), rollup.copy(continuous = !rollup.continuous).toHttpEntity()
+                emptyMap(), rollup.copy(continuous = !rollup.continuous).toHttpEntity(),
             )
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
@@ -193,12 +193,12 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
             val expectedErrorMessage = mapOf(
                 "error" to mapOf(
                     "root_cause" to listOf<Map<String, Any>>(
-                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [continuous]")
+                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [continuous]"),
                     ),
                     "type" to "status_exception",
-                    "reason" to "Not allowed to modify [continuous]"
+                    "reason" to "Not allowed to modify [continuous]",
                 ),
-                "status" to 400
+                "status" to 400,
             )
             assertEquals(expectedErrorMessage, actualMessage)
         }
@@ -219,7 +219,7 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
             client().makeRequest(
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-                emptyMap(), rollup.copy(dimensions = newDimensions).toHttpEntity()
+                emptyMap(), rollup.copy(dimensions = newDimensions).toHttpEntity(),
             )
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
@@ -228,12 +228,12 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
             val expectedErrorMessage = mapOf(
                 "error" to mapOf(
                     "root_cause" to listOf<Map<String, Any>>(
-                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [dimensions]")
+                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [dimensions]"),
                     ),
                     "type" to "status_exception",
-                    "reason" to "Not allowed to modify [dimensions]"
+                    "reason" to "Not allowed to modify [dimensions]",
                 ),
-                "status" to 400
+                "status" to 400,
             )
             assertEquals(expectedErrorMessage, actualMessage)
         }
@@ -253,14 +253,14 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
                             Metric.Type.SUM -> ValueCount()
                             Metric.Type.VALUE_COUNT -> Average()
                         }
-                    }
+                    },
                 )
             }
             val rollup = createRollup(rollup = randomRollup().copy(metrics = metrics), rollupId = "$testName-2")
             client().makeRequest(
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/${rollup.id}?refresh=true&if_seq_no=${rollup.seqNo}&if_primary_term=${rollup.primaryTerm}",
-                emptyMap(), rollup.copy(metrics = newMetrics).toHttpEntity()
+                emptyMap(), rollup.copy(metrics = newMetrics).toHttpEntity(),
             )
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
@@ -269,12 +269,12 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
             val expectedErrorMessage = mapOf(
                 "error" to mapOf(
                     "root_cause" to listOf<Map<String, Any>>(
-                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [metrics]")
+                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [metrics]"),
                     ),
                     "type" to "status_exception",
-                    "reason" to "Not allowed to modify [metrics]"
+                    "reason" to "Not allowed to modify [metrics]",
                 ),
-                "status" to 400
+                "status" to 400,
             )
             assertEquals(expectedErrorMessage, actualMessage)
         }

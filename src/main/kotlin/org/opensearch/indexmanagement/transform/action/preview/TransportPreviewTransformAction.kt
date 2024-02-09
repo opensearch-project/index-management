@@ -11,7 +11,6 @@ import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsAction
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsRequest
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
@@ -26,6 +25,8 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.commons.ConfigConstants
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.opensearchapi.withClosableContext
@@ -34,7 +35,6 @@ import org.opensearch.indexmanagement.transform.TransformSearchService
 import org.opensearch.indexmanagement.transform.TransformValidator
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.util.SecurityUtils
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
@@ -44,9 +44,9 @@ class TransportPreviewTransformAction @Inject constructor(
     val settings: Settings,
     private val client: Client,
     private val clusterService: ClusterService,
-    private val indexNameExpressionResolver: IndexNameExpressionResolver
+    private val indexNameExpressionResolver: IndexNameExpressionResolver,
 ) : HandledTransportAction<PreviewTransformRequest, PreviewTransformResponse>(
-    PreviewTransformAction.NAME, transportService, actionFilters, ::PreviewTransformRequest
+    PreviewTransformAction.NAME, transportService, actionFilters, ::PreviewTransformRequest,
 ) {
 
     private val log = LogManager.getLogger(javaClass)
@@ -55,8 +55,8 @@ class TransportPreviewTransformAction @Inject constructor(
     override fun doExecute(task: Task, request: PreviewTransformRequest, listener: ActionListener<PreviewTransformResponse>) {
         log.debug(
             "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-            )}"
+                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+            )}",
         )
         val transform = request.transform
 
@@ -83,7 +83,7 @@ class TransportPreviewTransformAction @Inject constructor(
 
                     CoroutineScope(Dispatchers.IO).launch {
                         withClosableContext(
-                            IndexManagementSecurityContext("PreviewTransformHandler", settings, client.threadPool().threadContext, user)
+                            IndexManagementSecurityContext("PreviewTransformHandler", settings, client.threadPool().threadContext, user),
                         ) {
                             executeSearch(searchRequest, transform, listener)
                         }
@@ -93,7 +93,7 @@ class TransportPreviewTransformAction @Inject constructor(
                 override fun onFailure(e: Exception) {
                     listener.onFailure(e)
                 }
-            }
+            },
         )
     }
 
@@ -118,7 +118,7 @@ class TransportPreviewTransformAction @Inject constructor(
             val targetIndexDateFieldMappings = TargetIndexMappingService.getTargetMappingsForDates(transform)
             val transformSearchResult = TransformSearchService.convertResponse(
                 transform = transform, searchResponse = response, waterMarkDocuments = false,
-                targetIndexDateFieldMappings = targetIndexDateFieldMappings
+                targetIndexDateFieldMappings = targetIndexDateFieldMappings,
             )
             val formattedResult = transformSearchResult.docsToIndex.map {
                 it.sourceAsMap()
@@ -127,8 +127,8 @@ class TransportPreviewTransformAction @Inject constructor(
         } catch (e: Exception) {
             listener.onFailure(
                 OpenSearchStatusException(
-                    "Failed to parse the transformed results", RestStatus.INTERNAL_SERVER_ERROR, ExceptionsHelper.unwrapCause(e)
-                )
+                    "Failed to parse the transformed results", RestStatus.INTERNAL_SERVER_ERROR, ExceptionsHelper.unwrapCause(e),
+                ),
             )
         }
     }

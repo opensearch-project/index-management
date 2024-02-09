@@ -7,9 +7,9 @@ package org.opensearch.indexmanagement.transform.model
 
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.XContentParser
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.transform.randomTransform
@@ -24,7 +24,7 @@ class XContentTests : OpenSearchTestCase() {
         val transformMetadata = randomTransformMetadata()
         val transformMetadataString = transformMetadata.toJsonString(XCONTENT_WITHOUT_TYPE)
         val parsedTransformMetadata = TransformMetadata.parse(
-            parser(transformMetadataString), transformMetadata.id, transformMetadata.seqNo, transformMetadata.primaryTerm
+            parser(transformMetadataString), transformMetadata.id, transformMetadata.seqNo, transformMetadata.primaryTerm,
         )
         assertEquals("Round tripping Transform metadata without type doesn't work", transformMetadata, parsedTransformMetadata)
     }
@@ -34,7 +34,7 @@ class XContentTests : OpenSearchTestCase() {
         val transformMetadataString = transformMetadata.toJsonString()
         val parser = parserWithType(transformMetadataString)
         val parsedTransformMetadata = parser.parseWithType(
-            transformMetadata.id, transformMetadata.seqNo, transformMetadata.primaryTerm, TransformMetadata.Companion::parse
+            transformMetadata.id, transformMetadata.seqNo, transformMetadata.primaryTerm, TransformMetadata.Companion::parse,
         )
         assertEquals("Round tripping Transform metadata with type doesn't work", transformMetadata, parsedTransformMetadata)
     }

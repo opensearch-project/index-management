@@ -22,7 +22,7 @@ class OpenActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = OpenAction(0)
         val states = listOf(
-            State("OpenState", listOf(actionConfig), listOf())
+            State("OpenState", listOf(actionConfig), listOf()),
         )
 
         val policy = Policy(
@@ -32,7 +32,7 @@ class OpenActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)
@@ -59,7 +59,7 @@ class OpenActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName_2"
         val actionConfig = OpenAction(0)
         val states = listOf(
-            State("OpenState", listOf(actionConfig), listOf())
+            State("OpenState", listOf(actionConfig), listOf()),
         )
 
         val policy = Policy(
@@ -69,7 +69,7 @@ class OpenActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)

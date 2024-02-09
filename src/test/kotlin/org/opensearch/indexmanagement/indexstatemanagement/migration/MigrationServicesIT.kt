@@ -46,10 +46,10 @@ class MigrationServicesIT : IndexStateManagementRestTestCase() {
                 listOf(
                     indexName to listOf(
                         ManagedIndexSettings.POLICY_ID.key to policyID2::equals,
-                        LegacyOpenDistroManagedIndexSettings.POLICY_ID.key to policyID2::equals
-                    )
+                        LegacyOpenDistroManagedIndexSettings.POLICY_ID.key to policyID2::equals,
+                    ),
                 ),
-                getExplainMap(indexName), false
+                getExplainMap(indexName), false,
             )
         }
     }
@@ -106,10 +106,10 @@ class MigrationServicesIT : IndexStateManagementRestTestCase() {
                     listOf(
                         indexName to listOf(
                             ManagedIndexSettings.POLICY_ID.key to policyID1::equals,
-                            LegacyOpenDistroManagedIndexSettings.POLICY_ID.key to policyID1::equals
-                        )
+                            LegacyOpenDistroManagedIndexSettings.POLICY_ID.key to policyID1::equals,
+                        ),
                     ),
-                    getExplainMap(indexName), false
+                    getExplainMap(indexName), false,
                 )
             }
         }
@@ -122,10 +122,10 @@ class MigrationServicesIT : IndexStateManagementRestTestCase() {
                     listOf(
                         indexName to listOf(
                             ManagedIndexSettings.POLICY_ID.key to policyID2::equals,
-                            LegacyOpenDistroManagedIndexSettings.POLICY_ID.key to policyID2::equals
-                        )
+                            LegacyOpenDistroManagedIndexSettings.POLICY_ID.key to policyID2::equals,
+                        ),
                     ),
-                    getExplainMap(indexName), false
+                    getExplainMap(indexName), false,
                 )
             }
         }
@@ -162,10 +162,10 @@ class MigrationServicesIT : IndexStateManagementRestTestCase() {
                 listOf(
                     indexName to listOf(
                         ManagedIndexSettings.POLICY_ID.key to policyID1::equals,
-                        LegacyOpenDistroManagedIndexSettings.POLICY_ID.key to policyID1::equals
-                    )
+                        LegacyOpenDistroManagedIndexSettings.POLICY_ID.key to policyID1::equals,
+                    ),
                 ),
-                getExplainMap(indexName), false
+                getExplainMap(indexName), false,
             )
         }
     }

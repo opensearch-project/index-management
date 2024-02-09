@@ -34,7 +34,7 @@ class GetPolicyResponse : ActionResponse, ToXContentObject {
         version: Long,
         seqNo: Long,
         primaryTerm: Long,
-        policy: Policy?
+        policy: Policy?,
     ) : super() {
         this.id = id
         this.version = version
@@ -49,7 +49,7 @@ class GetPolicyResponse : ActionResponse, ToXContentObject {
         version = sin.readLong(),
         seqNo = sin.readLong(),
         primaryTerm = sin.readLong(),
-        policy = sin.readOptionalWriteable(::Policy)
+        policy = sin.readOptionalWriteable(::Policy),
     )
 
     override fun writeTo(out: StreamOutput) {

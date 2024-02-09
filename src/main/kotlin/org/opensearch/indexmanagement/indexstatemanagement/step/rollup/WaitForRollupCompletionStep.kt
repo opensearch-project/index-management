@@ -104,12 +104,12 @@ class WaitForRollupCompletionStep : Step(name) {
         return currentMetadata.copy(
             actionMetaData = currentActionMetaData?.copy(
                 actionProperties = currentActionProperties?.copy(
-                    hasRollupFailed = hasRollupFailed
-                )
+                    hasRollupFailed = hasRollupFailed,
+                ),
             ),
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 

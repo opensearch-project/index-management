@@ -5,8 +5,8 @@
 
 package org.opensearch.indexmanagement.refreshanalyzer
 
-import org.opensearch.core.action.support.DefaultShardOperationFailedException
 import org.opensearch.action.support.broadcast.BroadcastResponse
+import org.opensearch.core.action.support.DefaultShardOperationFailedException
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.xcontent.ConstructingObjectParser
@@ -32,9 +32,9 @@ class RefreshSearchAnalyzerResponse : BroadcastResponse {
         successfulShards: Int,
         failedShards: Int,
         shardFailures: List<DefaultShardOperationFailedException>,
-        shardResponses: List<RefreshSearchAnalyzerShardResponse>
+        shardResponses: List<RefreshSearchAnalyzerShardResponse>,
     ) : super(
-        totalShards, successfulShards, failedShards, shardFailures
+        totalShards, successfulShards, failedShards, shardFailures,
     ) {
         this.shardResponses = shardResponses.toMutableList()
         this.shardFailures = shardFailures.toMutableList()
@@ -80,9 +80,9 @@ class RefreshSearchAnalyzerResponse : BroadcastResponse {
                 val response = arg[0] as RefreshSearchAnalyzerResponse
                 RefreshSearchAnalyzerResponse(
                     response.totalShards, response.successfulShards, response.failedShards,
-                    response.shardFailures, response.shardResponses
+                    response.shardFailures, response.shardResponses,
                 )
-            }
+            },
         )
         init {
             declareBroadcastFields(PARSER)

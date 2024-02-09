@@ -6,12 +6,12 @@
 package org.opensearch.indexmanagement.transform.resthandler
 
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.transform.TransformRestTestCase
 import org.opensearch.indexmanagement.transform.randomTransform
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
@@ -24,7 +24,7 @@ class RestDeleteTransformActionIT : TransformRestTestCase() {
 
         val deleteResponse = client().makeRequest(
             "DELETE",
-            "$TRANSFORM_BASE_URI/${transform.id}"
+            "$TRANSFORM_BASE_URI/${transform.id}",
         )
         assertEquals("Delete failed", RestStatus.OK, deleteResponse.restStatus())
         val itemList = deleteResponse.asMap()["items"] as ArrayList<Map<String, Map<String, String>>>
@@ -43,7 +43,7 @@ class RestDeleteTransformActionIT : TransformRestTestCase() {
         try {
             client().makeRequest(
                 "DELETE",
-                "$TRANSFORM_BASE_URI/${transform.id}"
+                "$TRANSFORM_BASE_URI/${transform.id}",
             )
             fail("Expected an Exception")
         } catch (e: Exception) {

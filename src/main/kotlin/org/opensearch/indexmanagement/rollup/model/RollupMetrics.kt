@@ -25,7 +25,7 @@ import java.io.IOException
 data class RollupMetrics(
     val sourceField: String,
     val targetField: String,
-    val metrics: List<Metric>
+    val metrics: List<Metric>,
 ) : ToXContentObject, Writeable {
 
     init {
@@ -52,11 +52,11 @@ data class RollupMetrics(
                         Metric.Type.MIN -> Min(it)
                         Metric.Type.SUM -> Sum(it)
                         Metric.Type.VALUE_COUNT -> ValueCount(it)
-                    }
+                    },
                 )
             }
             metricsList.toList()
-        }
+        },
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -128,7 +128,7 @@ data class RollupMetrics(
             return RollupMetrics(
                 sourceField = requireNotNull(sourceField) { "Source field must not be null" },
                 targetField = requireNotNull(targetField) { "Target field must not be null" },
-                metrics = metrics.toList()
+                metrics = metrics.toList(),
             )
         }
     }

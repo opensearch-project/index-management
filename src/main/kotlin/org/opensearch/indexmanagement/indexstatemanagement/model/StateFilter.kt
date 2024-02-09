@@ -17,7 +17,7 @@ data class StateFilter(val state: String) : Writeable {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        state = sin.readString()
+        state = sin.readString(),
     )
 
     @Throws(IOException::class)

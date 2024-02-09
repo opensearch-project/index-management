@@ -54,8 +54,11 @@ class QueryStringQueryParserExt : QueryStringQueryParser {
         if (field == null || Regex.isSimpleMatchPattern(field)) {
             hasLonelyTerms = true
         } else {
-            if (field == EXISTS && queryText?.isNotEmpty() == true) discoveredFields.add(queryText)
-            else discoveredFields.add(field)
+            if (field == EXISTS && queryText?.isNotEmpty() == true) {
+                discoveredFields.add(queryText)
+            } else {
+                discoveredFields.add(field)
+            }
         }
     }
 }

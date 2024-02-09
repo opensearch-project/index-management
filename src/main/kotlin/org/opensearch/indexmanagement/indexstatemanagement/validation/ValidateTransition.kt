@@ -18,7 +18,7 @@ import org.opensearch.monitor.jvm.JvmService
 class ValidateTransition(
     settings: Settings,
     clusterService: ClusterService,
-    jvmService: JvmService
+    jvmService: JvmService,
 ) : Validate(settings, clusterService, jvmService) {
 
     private val logger = LogManager.getLogger(javaClass)

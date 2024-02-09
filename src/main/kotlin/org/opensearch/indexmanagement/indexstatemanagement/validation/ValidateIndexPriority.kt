@@ -14,15 +14,15 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
-import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
+import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.monitor.jvm.JvmService
 
 @OpenForTesting
 class ValidateIndexPriority(
     settings: Settings,
     clusterService: ClusterService,
-    jvmService: JvmService
+    jvmService: JvmService,
 ) : Validate(settings, clusterService, jvmService) {
 
     private val logger = LogManager.getLogger(javaClass)

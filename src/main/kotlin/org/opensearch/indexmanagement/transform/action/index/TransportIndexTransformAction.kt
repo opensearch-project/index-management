@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement.transform.action.index
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsAction
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsRequest
@@ -25,11 +24,13 @@ import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
-import org.opensearch.core.xcontent.NamedXContentRegistry
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory.jsonBuilder
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
@@ -40,7 +41,6 @@ import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
@@ -53,9 +53,9 @@ class TransportIndexTransformAction @Inject constructor(
     val indexNameExpressionResolver: IndexNameExpressionResolver,
     val clusterService: ClusterService,
     val settings: Settings,
-    val xContentRegistry: NamedXContentRegistry
+    val xContentRegistry: NamedXContentRegistry,
 ) : HandledTransportAction<IndexTransformRequest, IndexTransformResponse>(
-    IndexTransformAction.NAME, transportService, actionFilters, ::IndexTransformRequest
+    IndexTransformAction.NAME, transportService, actionFilters, ::IndexTransformRequest,
 ) {
 
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
@@ -76,21 +76,21 @@ class TransportIndexTransformAction @Inject constructor(
         private val client: Client,
         private val actionListener: ActionListener<IndexTransformResponse>,
         private val request: IndexTransformRequest,
-        private val user: User? = buildUser(client.threadPool().threadContext, request.transform.user)
+        private val user: User? = buildUser(client.threadPool().threadContext, request.transform.user),
     ) {
 
         fun start() {
             log.debug(
                 "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                )}"
+                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+                )}",
             )
             client.threadPool().threadContext.stashContext().use {
                 if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
                     return
                 }
                 indexManagementIndices.checkAndUpdateIMConfigIndex(
-                    ActionListener.wrap(::onConfigIndexAcknowledgedResponse, actionListener::onFailure)
+                    ActionListener.wrap(::onConfigIndexAcknowledgedResponse, actionListener::onFailure),
                 )
             }
         }
@@ -168,8 +168,8 @@ class TransportIndexTransformAction @Inject constructor(
                             actionListener.onResponse(
                                 IndexTransformResponse(
                                     response.id, response.version, response.seqNo, response.primaryTerm, status,
-                                    transform.copy(seqNo = response.seqNo, primaryTerm = response.primaryTerm)
-                                )
+                                    transform.copy(seqNo = response.seqNo, primaryTerm = response.primaryTerm),
+                                ),
                             )
                         }
                     }
@@ -177,7 +177,7 @@ class TransportIndexTransformAction @Inject constructor(
                     override fun onFailure(e: Exception) {
                         actionListener.onFailure(e)
                     }
-                }
+                },
             )
         }
 
@@ -186,7 +186,7 @@ class TransportIndexTransformAction @Inject constructor(
                 indexNameExpressionResolver.concreteIndexNames(
                     clusterService.state(), IndicesOptions.lenientExpand(), true,
                     request.transform
-                        .sourceIndex
+                        .sourceIndex,
                 )
             if (concreteIndices.isEmpty()) {
                 actionListener.onFailure(OpenSearchStatusException("No specified source index exist in the cluster", RestStatus.NOT_FOUND))
@@ -211,7 +211,7 @@ class TransportIndexTransformAction @Inject constructor(
                     override fun onFailure(e: Exception) {
                         actionListener.onFailure(e)
                     }
-                }
+                },
             )
         }
 

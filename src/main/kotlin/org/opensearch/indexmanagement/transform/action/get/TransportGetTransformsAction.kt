@@ -6,21 +6,21 @@
 package org.opensearch.indexmanagement.transform.action.get
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.core.action.ActionListener
-import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.core.common.bytes.BytesReference
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.commons.ConfigConstants
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.action.ActionResponse
+import org.opensearch.core.common.bytes.BytesReference
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.ExistsQueryBuilder
 import org.opensearch.index.query.WildcardQueryBuilder
@@ -40,9 +40,9 @@ class TransportGetTransformsAction @Inject constructor(
     val settings: Settings,
     val clusterService: ClusterService,
     actionFilters: ActionFilters,
-    val xContentRegistry: NamedXContentRegistry
+    val xContentRegistry: NamedXContentRegistry,
 ) : HandledTransportAction<GetTransformsRequest, GetTransformsResponse> (
-    GetTransformsAction.NAME, transportService, actionFilters, ::GetTransformsRequest
+    GetTransformsAction.NAME, transportService, actionFilters, ::GetTransformsRequest,
 ) {
 
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
@@ -57,8 +57,8 @@ class TransportGetTransformsAction @Inject constructor(
     override fun doExecute(task: Task, request: GetTransformsRequest, listener: ActionListener<GetTransformsResponse>) {
         log.debug(
             "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-            )}"
+                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+            )}",
         )
         val searchString = request.searchString.trim()
         val from = request.from
@@ -82,7 +82,7 @@ class TransportGetTransformsAction @Inject constructor(
                 searchSourceBuilder,
                 listener as ActionListener<ActionResponse>,
                 Transform.TRANSFORM_TYPE,
-                ::contentParser
+                ::contentParser,
             )
         }
     }
@@ -90,7 +90,7 @@ class TransportGetTransformsAction @Inject constructor(
     private fun contentParser(bytesReference: BytesReference): XContentParser {
         return XContentHelper.createParser(
             xContentRegistry,
-            LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON
+            LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON,
         )
     }
 }

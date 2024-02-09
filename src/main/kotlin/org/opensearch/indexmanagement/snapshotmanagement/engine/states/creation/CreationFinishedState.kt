@@ -77,7 +77,7 @@ object CreationFinishedState : State {
                     job.creation.timeLimit?.let { timeLimit ->
                         if (timeLimit.isExceed(metadata.creation.latestExecution.startTime)) {
                             return timeLimitExceeded(
-                                timeLimit, metadataBuilder, WorkflowType.CREATION, log
+                                timeLimit, metadataBuilder, WorkflowType.CREATION, log,
                             )
                         }
                     }
@@ -99,7 +99,7 @@ object CreationFinishedState : State {
             // TODO may want to notify user that we skipped the execution because snapshot creation time is longer than execution schedule
             val result = tryUpdatingNextExecutionTime(
                 metadataBuilder, metadata.creation.trigger.time, job.creation.schedule,
-                WorkflowType.CREATION, log
+                WorkflowType.CREATION, log,
             )
             if (result.updated) {
                 metadataBuilder = result.metadataBuilder

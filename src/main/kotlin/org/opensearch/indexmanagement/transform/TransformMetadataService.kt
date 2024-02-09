@@ -17,11 +17,11 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.client.Client
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.core.xcontent.NamedXContentRegistry
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -71,7 +71,7 @@ class TransformMetadataService(private val client: Client, val xContentRegistry:
             lastUpdatedAt = Instant.now(),
             status = TransformMetadata.Status.INIT,
             stats = TransformStats(0, 0, 0, 0, 0),
-            continuousStats = if (transform.continuous) ContinuousTransformStats(null, null) else null
+            continuousStats = if (transform.continuous) ContinuousTransformStats(null, null) else null,
         )
         return writeMetadata(metadata)
     }

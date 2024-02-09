@@ -8,11 +8,11 @@ package org.opensearch.indexmanagement.refreshanalyzer
 import org.junit.AfterClass
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction.Companion.REFRESH_SEARCH_ANALYZER_BASE_URI
 import org.opensearch.rest.RestRequest.Method.POST
-import org.opensearch.core.rest.RestStatus
 
 class RestRefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
 
@@ -33,12 +33,12 @@ class RestRefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
             val expectedErrorMessage = mapOf(
                 "error" to mapOf(
                     "root_cause" to listOf<Map<String, Any>>(
-                        mapOf("type" to "illegal_argument_exception", "reason" to "Missing indices")
+                        mapOf("type" to "illegal_argument_exception", "reason" to "Missing indices"),
                     ),
                     "type" to "illegal_argument_exception",
-                    "reason" to "Missing indices"
+                    "reason" to "Missing indices",
                 ),
-                "status" to 400
+                "status" to 400,
             )
             assertEquals(expectedErrorMessage, actualMessage)
         }

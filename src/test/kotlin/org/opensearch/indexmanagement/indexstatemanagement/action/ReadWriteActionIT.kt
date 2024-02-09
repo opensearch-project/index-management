@@ -24,7 +24,7 @@ class ReadWriteActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = ReadWriteAction(0)
         val states = listOf(
-            State("ReadWriteState", listOf(actionConfig), listOf())
+            State("ReadWriteState", listOf(actionConfig), listOf()),
         )
 
         val policy = Policy(
@@ -34,7 +34,7 @@ class ReadWriteActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
 
         createPolicy(policy, policyID)
@@ -42,7 +42,7 @@ class ReadWriteActionIT : IndexStateManagementRestTestCase() {
         // Set index to read-only
         updateIndexSettings(
             indexName,
-            Settings.builder().put("index.blocks.write", true)
+            Settings.builder().put("index.blocks.write", true),
         )
 
         assertEquals("true", getIndexBlocksWriteSetting(indexName))

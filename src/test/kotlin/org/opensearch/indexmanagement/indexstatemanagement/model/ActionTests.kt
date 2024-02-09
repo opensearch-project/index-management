@@ -6,21 +6,21 @@
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
 import org.opensearch.cluster.routing.allocation.DiskThresholdSettings
-import org.opensearch.core.common.io.stream.InputStreamStreamInput
-import org.opensearch.core.common.io.stream.OutputStreamStreamOutput
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
-import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.common.io.stream.InputStreamStreamInput
+import org.opensearch.core.common.io.stream.OutputStreamStreamOutput
+import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActionConfig
-import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
 import org.opensearch.indexmanagement.indexstatemanagement.randomByteSizeValue
+import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
 import org.opensearch.indexmanagement.indexstatemanagement.randomCloseActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomDeleteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomDestination
@@ -141,8 +141,8 @@ class ActionTests : OpenSearchTestCase() {
             (
                 require = mapOf("box_type" to "hot"),
                 include = mapOf(randomAlphaOfLengthBetween(1, 10) to randomAlphaOfLengthBetween(1, 10)),
-                exclude = mapOf(randomAlphaOfLengthBetween(1, 10) to randomAlphaOfLengthBetween(1, 10))
-            )
+                exclude = mapOf(randomAlphaOfLengthBetween(1, 10) to randomAlphaOfLengthBetween(1, 10)),
+            ),
         )
     }
 

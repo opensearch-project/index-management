@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement.indexstatemanagement
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.admin.cluster.settings.ClusterUpdateSettingsRequest
 import org.opensearch.action.admin.cluster.settings.ClusterUpdateSettingsResponse
@@ -20,7 +19,9 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.core.action.ActionListener
 import org.opensearch.core.index.Index
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
@@ -32,7 +33,6 @@ import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.OpenForTesting
-import org.opensearch.core.rest.RestStatus
 import java.lang.Exception
 
 /**
@@ -45,7 +45,7 @@ class MetadataService(
     private val client: Client,
     private val clusterService: ClusterService,
     private val skipExecution: SkipExecution,
-    private val imIndices: IndexManagementIndices
+    private val imIndices: IndexManagementIndices,
 ) {
     private val logger = LogManager.getLogger(javaClass)
 
@@ -63,7 +63,9 @@ class MetadataService(
     // used in coordinator sweep to cancel scheduled process
     @Volatile final var finishFlag = false
         private set
-    fun reenableMetadataService() { finishFlag = false }
+    fun reenableMetadataService() {
+        finishFlag = false
+    }
 
     @Volatile private var retryPolicy =
         BackoffPolicy.constantBackoff(TimeValue.timeValueMillis(50), 3)
@@ -87,13 +89,17 @@ class MetadataService(
 
             if (!imIndices.indexManagementIndexExists()) {
                 logger.info("ISM config index not exist, so we cancel the metadata migration job.")
-                finishFlag = true; runningLock = false; runTimeCounter = 0
+                finishFlag = true
+                runningLock = false
+                runTimeCounter = 0
                 return
             }
 
             if (runTimeCounter > maxRunTime) {
                 updateStatusSetting(-1)
-                finishFlag = true; runningLock = false; runTimeCounter = 0
+                finishFlag = true
+                runningLock = false
+                runTimeCounter = 0
                 return
             }
             logger.info("Doing metadata migration $runTimeCounter time.")
@@ -129,23 +135,27 @@ class MetadataService(
                 if (counter++ > 2 && corruptManagedIndices.isEmpty()) {
                     logger.info("Move Metadata succeed, set finish flag to true. Indices failed to get indexed: $failedToIndexIndices")
                     updateStatusSetting(1)
-                    finishFlag = true; runningLock = false; runTimeCounter = 0
+                    finishFlag = true
+                    runningLock = false
+                    runTimeCounter = 0
                     return
                 }
                 if (failedToCleanIndices.isNotEmpty()) {
                     logger.info("Failed to clean indices: $failedToCleanIndices. Only clean cluster state metadata in this run.")
                     cleanMetadatas(failedToCleanIndices.toList())
-                    finishFlag = false; runningLock = false
+                    finishFlag = false
+                    runningLock = false
                     return
                 }
             } else {
-                counter = 0; finishFlag = false // index metadata for indices which metadata hasn't been indexed
+                counter = 0
+                finishFlag = false // index metadata for indices which metadata hasn't been indexed
                 val bulkIndexReq =
                     clusterStateManagedIndexMetadata.mapNotNull { it.value }.map {
                         managedIndexMetadataIndexRequest(
                             it,
                             waitRefresh = false, // should be set at bulk request level
-                            create = true // restrict this as create operation
+                            create = true, // restrict this as create operation
                         )
                     }
                 // remove the part which gonna be indexed from last time failedToIndex
@@ -156,7 +166,7 @@ class MetadataService(
                 logger.info("success indexed: ${successfullyIndexedIndices.map { indexUuidMap[it] }}")
                 logger.info(
                     "failed indexed: ${failedToIndexIndices.map { indexUuidMap[it.key] }};" +
-                        "failed reason: ${failedToIndexIndices.values.distinct()}"
+                        "failed reason: ${failedToIndexIndices.values.distinct()}",
                 )
             }
 
@@ -195,7 +205,7 @@ class MetadataService(
                 if (!response.isAcknowledged) {
                     logger.error("Update metadata migration setting to $status is not acknowledged")
                     throw IndexManagementException.wrap(
-                        Exception("Update metadata migration setting to $status is not acknowledged")
+                        Exception("Update metadata migration setting to $status is not acknowledged"),
                     )
                 } else {
                     logger.info("Successfully metadata template migration setting to $status")

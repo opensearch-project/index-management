@@ -24,18 +24,19 @@ import java.time.Instant
 @OpenForTesting
 class TransformLockManager(
     private val transformJob: Transform,
-    val context: JobExecutionContext
+    val context: JobExecutionContext,
 ) {
     private val logger = LogManager.getLogger(javaClass)
 
     private val exponentialBackoffPolicy = BackoffPolicy.exponentialBackoff(
         TimeValue.timeValueMillis(TransformSettings.DEFAULT_RENEW_LOCK_RETRY_DELAY),
-        TransformSettings.DEFAULT_RENEW_LOCK_RETRY_COUNT
+        TransformSettings.DEFAULT_RENEW_LOCK_RETRY_COUNT,
     )
     var lock: LockModel? = null
         protected set
 
     fun lockExpirationInSeconds() = lock?.let { it.lockTime.epochSecond + it.lockDurationSeconds - Instant.now().epochSecond }
+
     /**
      * Util method to attempt to get the lock on the requested scheduled job using the backoff policy.
      * If failed to acquire the lock using backoff policy will return a null lock otherwise returns acquired lock.

@@ -40,7 +40,7 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
         totalManagedIndices: Int,
         enabledState: Map<String, Boolean>,
         policies: Map<String, Policy>,
-        validationResults: List<ValidationResult?>
+        validationResults: List<ValidationResult?>,
     ) : super() {
         this.indexNames = indexNames
         this.indexPolicyIDs = indexPolicyIDs
@@ -59,7 +59,7 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
         totalManagedIndices = sin.readInt(),
         enabledState = sin.readMap(StreamInput::readString, StreamInput::readBoolean),
         policies = sin.readMap(StreamInput::readString, ::Policy),
-        validationResults = sin.readList { ValidationResult.fromStreamInput(it) }
+        validationResults = sin.readList { ValidationResult.fromStreamInput(it) },
     )
 
     @Throws(IOException::class)
@@ -71,12 +71,12 @@ open class ExplainResponse : ActionResponse, ToXContentObject {
         out.writeMap(
             enabledState,
             { _out, key -> _out.writeString(key) },
-            { _out, enable -> _out.writeBoolean(enable) }
+            { _out, enable -> _out.writeBoolean(enable) },
         )
         out.writeMap(
             policies,
             { _out, key -> _out.writeString(key) },
-            { _out, policy -> policy.writeTo(_out) }
+            { _out, policy -> policy.writeTo(_out) },
         )
         out.writeCollection(validationResults)
     }

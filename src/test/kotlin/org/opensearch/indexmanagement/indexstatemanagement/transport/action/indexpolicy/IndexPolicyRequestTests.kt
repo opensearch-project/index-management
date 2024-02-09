@@ -34,7 +34,7 @@ class IndexPolicyRequestTests : OpenSearchTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         val seqNo: Long = 123
         val primaryTerm: Long = 456
@@ -63,7 +63,7 @@ class IndexPolicyRequestTests : OpenSearchTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         val seqNo: Long = 123
         val primaryTerm: Long = 456
@@ -92,7 +92,7 @@ class IndexPolicyRequestTests : OpenSearchTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         val seqNo: Long = 123
         val primaryTerm: Long = 456
@@ -124,7 +124,7 @@ class IndexPolicyRequestTests : OpenSearchTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         val seqNo: Long = 123
         val primaryTerm: Long = 456

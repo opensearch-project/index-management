@@ -7,13 +7,13 @@ package org.opensearch.indexmanagement.controlcenter.notification.resthandler
 
 import org.junit.Assert
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.controlcenter.notification.getResourceURI
 import org.opensearch.indexmanagement.controlcenter.notification.nodeIdsInRestIT
 import org.opensearch.indexmanagement.controlcenter.notification.randomLRONConfig
 import org.opensearch.indexmanagement.controlcenter.notification.randomTaskId
 import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.makeRequest
-import org.opensearch.core.rest.RestStatus
 
 @Suppress("UNCHECKED_CAST")
 class RestDeleteLRONConfigActionIT : LRONConfigRestTestCase() {

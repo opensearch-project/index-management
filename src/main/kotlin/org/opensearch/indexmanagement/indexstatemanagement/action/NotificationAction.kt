@@ -20,7 +20,7 @@ class NotificationAction(
     val destination: Destination?,
     val channel: Channel?,
     val messageTemplate: Script,
-    index: Int
+    index: Int,
 ) : Action(name, index) {
 
     init {

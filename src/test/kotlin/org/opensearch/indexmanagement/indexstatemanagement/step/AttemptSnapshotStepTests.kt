@@ -13,7 +13,6 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
 import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
@@ -21,6 +20,8 @@ import org.opensearch.client.ClusterAdminClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.indexstatemanagement.randomSnapshotActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SNAPSHOT_DENY_LIST
 import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.AttemptSnapshotStep
@@ -31,7 +32,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.ingest.TestTemplateService.MockTemplateScript
 import org.opensearch.jobscheduler.spi.utils.LockService
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
 import org.opensearch.snapshots.ConcurrentSnapshotExecutionException
@@ -144,8 +144,11 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         return mock {
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<CreateSnapshotResponse>>(1)
-                if (createSnapshotRequest != null) listener.onResponse(createSnapshotRequest)
-                else listener.onFailure(exception)
+                if (createSnapshotRequest != null) {
+                    listener.onResponse(createSnapshotRequest)
+                } else {
+                    listener.onFailure(exception)
+                }
             }.whenever(this.mock).createSnapshot(any(), any())
         }
     }

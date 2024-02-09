@@ -28,8 +28,8 @@ class RestExplainRollupAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 GET, "$ROLLUP_JOBS_BASE_URI/{rollupID}/_explain",
-                GET, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}/_explain"
-            )
+                GET, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}/_explain",
+            ),
         )
     }
 

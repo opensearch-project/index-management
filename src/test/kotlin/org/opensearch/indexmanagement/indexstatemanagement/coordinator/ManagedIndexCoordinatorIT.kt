@@ -77,7 +77,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
             assertPredicatesOnMetaData(
                 listOf(index to listOf(ManagedIndexMetaData.POLICY_ID to policy.id::equals)),
                 getExplainMap(index),
-                false
+                false,
             )
         }
 
@@ -94,11 +94,11 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
                             policyID == null,
                         explainResponseOpenSearchPolicyIdSetting to fun(policyID: Any?): Boolean =
                             policyID == null,
-                        ManagedIndexMetaData.ENABLED to fun(enabled: Any?): Boolean = enabled == null
-                    )
+                        ManagedIndexMetaData.ENABLED to fun(enabled: Any?): Boolean = enabled == null,
+                    ),
                 ),
                 getExplainMap(index),
-                true
+                true,
             )
         }
     }
@@ -118,7 +118,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
             assertPredicatesOnMetaData(
                 listOf(index to listOf(ManagedIndexMetaData.POLICY_ID to policy.id::equals)),
                 getExplainMap(index),
-                false
+                false,
             )
         }
 
@@ -148,7 +148,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
 
         createPolicy(policy, policyID)
@@ -189,11 +189,11 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
                     indexName to listOf(
                         ManagedIndexMetaData.INDEX to indexName::equals,
                         ManagedIndexMetaData.POLICY_ID to policyID::equals,
-                        ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString()
-                    )
+                        ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString(),
+                    ),
                 ),
                 getExplainMap(indexName),
-                false
+                false,
             )
         }
 
@@ -212,7 +212,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 AttemptRolloverStep.getSuccessMessage(indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
     }
@@ -228,9 +228,9 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
             State(
                 name = "ForceMergeState",
                 actions = listOf(forceMergeActionConfig),
-                transitions = listOf(Transition(stateName = "DeleteState", conditions = null))
+                transitions = listOf(Transition(stateName = "DeleteState", conditions = null)),
             ),
-            State(name = "DeleteState", actions = listOf(deleteActionConfig), transitions = listOf())
+            State(name = "DeleteState", actions = listOf(deleteActionConfig), transitions = listOf()),
         )
 
         val policy = Policy(
@@ -240,7 +240,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
 
         createPolicy(policy, policyID)
@@ -252,7 +252,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertTrue(
                 "Segment count for [$indexName] was less than expected",
-                validateSegmentCount(indexName, min = 2)
+                validateSegmentCount(indexName, min = 2),
             )
         }
 
@@ -279,7 +279,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "maxNumSegments not set in ActionProperties",
                 forceMergeActionConfig.maxNumSegments,
-                getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.maxNumSegments
+                getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.maxNumSegments,
             )
         }
 
@@ -293,7 +293,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForForceMergeStep.getSuccessMessage(indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
@@ -303,7 +303,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         // Validate segments were merged
         assertTrue(
             "Segment count for [$indexName] after force merge is incorrect",
-            validateSegmentCount(indexName, min = 1, max = 1)
+            validateSegmentCount(indexName, min = 1, max = 1),
         )
 
         // Fifth execution: Attempt transition, which is safe to disable on, so job should be disabled
@@ -313,7 +313,7 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForForceMergeStep.getSuccessMessage(indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
@@ -334,11 +334,11 @@ class ManagedIndexCoordinatorIT : IndexStateManagementRestTestCase() {
                     indexName to listOf(
                         ManagedIndexMetaData.INDEX to indexName::equals,
                         ManagedIndexMetaData.POLICY_ID to policyID::equals,
-                        ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString()
-                    )
+                        ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString(),
+                    ),
                 ),
                 getExplainMap(indexName),
-                false
+                false,
             )
         }
     }

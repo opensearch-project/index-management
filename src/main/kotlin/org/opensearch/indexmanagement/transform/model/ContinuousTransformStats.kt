@@ -19,13 +19,13 @@ import java.time.Instant
 
 data class ContinuousTransformStats(
     val lastTimestamp: Instant?,
-    val documentsBehind: Map<String, Long>?
+    val documentsBehind: Map<String, Long>?,
 ) : ToXContentObject, Writeable {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         lastTimestamp = if (sin.readBoolean()) sin.readInstant() else null,
-        documentsBehind = if (sin.readBoolean()) sin.readMap({ it.readString() }, { it.readLong() }) else null
+        documentsBehind = if (sin.readBoolean()) sin.readMap({ it.readString() }, { it.readLong() }) else null,
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {

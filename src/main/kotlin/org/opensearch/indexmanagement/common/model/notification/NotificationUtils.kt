@@ -4,6 +4,7 @@
  */
 
 @file:JvmName("NotificationUtils")
+
 package org.opensearch.indexmanagement.common.model.notification
 
 import org.opensearch.OpenSearchStatusException
@@ -16,7 +17,7 @@ private val VALID_RESPONSE_STATUS = setOf(
     RestStatus.OK.status, RestStatus.CREATED.status, RestStatus.ACCEPTED.status,
     RestStatus.NON_AUTHORITATIVE_INFORMATION.status, RestStatus.NO_CONTENT.status,
     RestStatus.RESET_CONTENT.status, RestStatus.PARTIAL_CONTENT.status,
-    RestStatus.MULTI_STATUS.status
+    RestStatus.MULTI_STATUS.status,
 )
 
 @Throws(OpenSearchStatusException::class)

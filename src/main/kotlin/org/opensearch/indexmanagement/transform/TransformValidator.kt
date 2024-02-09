@@ -31,10 +31,11 @@ class TransformValidator(
     private val clusterService: ClusterService,
     private val client: Client,
     val settings: Settings,
-    private val jvmService: JvmService
+    private val jvmService: JvmService,
 ) {
 
     @Volatile private var circuitBreakerEnabled = TransformSettings.TRANSFORM_CIRCUIT_BREAKER_ENABLED.get(settings)
+
     @Volatile private var circuitBreakerJvmThreshold = TransformSettings.TRANSFORM_CIRCUIT_BREAKER_JVM_THRESHOLD.get(settings)
 
     init {
@@ -45,6 +46,7 @@ class TransformValidator(
             circuitBreakerJvmThreshold = it
         }
     }
+
     /**
      * // TODO: When FGAC is supported in transform should check the user has the correct permissions
      * Validates the provided transform. Validation checks include the following:

@@ -10,12 +10,12 @@ import org.junit.Before
 import org.opensearch.client.Request
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.DELETE_LRON_CONFIG
 import org.opensearch.indexmanagement.GET_LRON_CONFIG
 import org.opensearch.indexmanagement.INDEX_LRON_CONFIG
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.SecurityRestTestCase
-import org.opensearch.core.rest.RestStatus
 
 @Suppress("UNCHECKED_CAST")
 class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
@@ -34,7 +34,7 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
         val helpdeskClusterPermissions = listOf(
             INDEX_LRON_CONFIG,
             GET_LRON_CONFIG,
-            DELETE_LRON_CONFIG
+            DELETE_LRON_CONFIG,
         )
 
         // In this test suite case john is a "super-user" which has all relevant privileges
@@ -42,14 +42,14 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
         createAndAssignRole(HELPDESK_ROLE, helpdeskClusterPermissions, superUser)
         superUserClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), superUser, password).setSocketTimeout(
-                60000
+                60000,
             ).setConnectionRequestTimeout(180000)
                 .build()
 
         createUser(name = testUser, pwd = password)
         testUserClient =
             SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), testUser, password).setSocketTimeout(
-                60000
+                60000,
             ).setConnectionRequestTimeout(180000)
                 .build()
     }

@@ -9,15 +9,15 @@ import org.opensearch.Version
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.core.common.io.stream.NamedWriteableRegistry
 import org.opensearch.common.regex.Regex
 import org.opensearch.common.settings.IndexScopedSettings
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.settings.SettingsModule
 import org.opensearch.common.util.BigArrays
+import org.opensearch.core.common.io.stream.NamedWriteableRegistry
+import org.opensearch.core.index.Index
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.env.Environment
-import org.opensearch.core.index.Index
 import org.opensearch.index.IndexSettings
 import org.opensearch.index.mapper.MapperService
 import org.opensearch.index.query.QueryShardContext
@@ -48,7 +48,7 @@ object QueryShardContextFactory {
         scriptService: ScriptService,
         xContentRegistry: NamedXContentRegistry,
         namedWriteableRegistry: NamedWriteableRegistry,
-        environment: Environment
+        environment: Environment,
     ) {
         this.client = client
         this.clusterService = clusterService
@@ -80,7 +80,7 @@ object QueryShardContextFactory {
         val settingsModule = SettingsModule(
             nodeSettings,
             additionalSettings,
-            pluginsService.pluginSettingsFilter, emptySet()
+            pluginsService.pluginSettingsFilter, emptySet(),
         )
         val indexScopedSettings: IndexScopedSettings = settingsModule.indexScopedSettings
         val idxSettings = newIndexSettings(index, indexSettings, indexScopedSettings)
@@ -97,7 +97,7 @@ object QueryShardContextFactory {
             mapperRegistry,
             { createShardContext(null) },
             { false },
-            scriptService
+            scriptService,
         )
         // In order to be able to call toQuery method on QueryBuilder, we need to setup mappings in MapperService
         mapperService.merge("_doc", indexMetadata?.mapping()?.source(), MapperService.MergeReason.MAPPING_UPDATE)
@@ -119,7 +119,7 @@ object QueryShardContextFactory {
             null,
             { pattern -> Regex.simpleMatch(pattern, index?.name) },
             { true },
-            null
+            null,
         )
     }
 

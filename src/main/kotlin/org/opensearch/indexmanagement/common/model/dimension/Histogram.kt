@@ -26,7 +26,7 @@ import java.io.IOException
 data class Histogram(
     override val sourceField: String,
     override val targetField: String,
-    val interval: Double
+    val interval: Double,
 ) : Dimension(Type.HISTOGRAM, sourceField, targetField) {
 
     init {
@@ -38,7 +38,7 @@ data class Histogram(
     constructor(sin: StreamInput) : this(
         sourceField = sin.readString(),
         targetField = sin.readString(),
-        interval = sin.readDouble()
+        interval = sin.readDouble(),
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -87,7 +87,7 @@ data class Histogram(
 
     fun getRewrittenAggregation(
         aggregationBuilder: HistogramAggregationBuilder,
-        subAggregations: AggregatorFactories.Builder
+        subAggregations: AggregatorFactories.Builder,
     ): HistogramAggregationBuilder =
         HistogramAggregationBuilder(aggregationBuilder.name)
             .interval(aggregationBuilder.interval())
@@ -109,6 +109,7 @@ data class Histogram(
 
     companion object {
         const val HISTOGRAM_INTERVAL_FIELD = "interval"
+
         // There can be rounding issues with small intervals where the range query will select documents differently than the Histogram
         // so add an error to the range query and then limit the buckets indexed later.
         private const val bucketError = 0.00005
@@ -137,7 +138,7 @@ data class Histogram(
             return Histogram(
                 requireNotNull(sourceField) { "Source field must not be null" },
                 requireNotNull(targetField) { "Target field must not be null" },
-                requireNotNull(interval) { "Interval field must not be null" }
+                requireNotNull(interval) { "Interval field must not be null" },
             )
         }
 

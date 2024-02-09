@@ -6,9 +6,9 @@
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.opensearch.client.node.NodeClient
-import org.opensearch.core.common.Strings
 import org.opensearch.common.logging.DeprecationLogger
 import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.core.common.Strings
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ISM_BASE_URI
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.RetryFailedManagedIndexAction
@@ -34,12 +34,12 @@ class RestRetryFailedManagedIndexAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 POST, RETRY_BASE_URI,
-                POST, LEGACY_RETRY_BASE_URI
+                POST, LEGACY_RETRY_BASE_URI,
             ),
             ReplacedRoute(
                 POST, "$RETRY_BASE_URI/{index}",
-                POST, "$LEGACY_RETRY_BASE_URI/{index}"
-            )
+                POST, "$LEGACY_RETRY_BASE_URI/{index}",
+            ),
         )
     }
 
@@ -62,13 +62,13 @@ class RestRetryFailedManagedIndexAction : BaseRestHandler() {
         val indexType = request.param(TYPE_PARAM_KEY, DEFAULT_INDEX_TYPE)
 
         val clusterManagerTimeout = parseClusterManagerTimeout(
-            request, DeprecationLogger.getLogger(RestRetryFailedManagedIndexAction::class.java), name
+            request, DeprecationLogger.getLogger(RestRetryFailedManagedIndexAction::class.java), name,
         )
 
         val retryFailedRequest = RetryFailedManagedIndexRequest(
             indices.toList(), body["state"] as String?,
             clusterManagerTimeout,
-            indexType
+            indexType,
         )
 
         return RestChannelConsumer { channel ->

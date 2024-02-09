@@ -17,13 +17,13 @@ import org.opensearch.client.Response
 import org.opensearch.client.ResponseException
 import org.opensearch.client.RestClient
 import org.opensearch.common.settings.Settings
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.reindex.ReindexAction
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.controlcenter.notification.util.supportedActions
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.core.rest.RestStatus
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.time.Instant
@@ -46,7 +46,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
             logger.info(msg)
             val res = client.makeRequest(
                 "POST", "$notificationIndex/_doc?refresh=true",
-                StringEntity("""{"msg": "${msg.replace(System.lineSeparator(), " ")}"}""", ContentType.APPLICATION_JSON)
+                StringEntity("""{"msg": "${msg.replace(System.lineSeparator(), " ")}"}""", ContentType.APPLICATION_JSON),
             )
             logger.info(res.restStatus())
 
@@ -92,8 +92,8 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                       }
                     }
                 """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
 
         supportedActions.forEach { action ->
@@ -112,8 +112,8 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                         }
                     }
                     """.trimIndent(),
-                    ContentType.APPLICATION_JSON
-                )
+                    ContentType.APPLICATION_JSON,
+                ),
             )
         }
     }
@@ -123,7 +123,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
         insertSampleData("source-index", 10)
 
         val response = client.makeRequest(
-            "POST", "source-index/_forcemerge"
+            "POST", "source-index/_forcemerge",
         )
 
         Assert.assertTrue(response.restStatus() == RestStatus.OK)
@@ -135,7 +135,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:merge")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }
@@ -155,8 +155,8 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                     }
                 }
                 """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
 
         Assert.assertTrue(response.restStatus() == RestStatus.OK)
@@ -168,7 +168,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:Split")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }
@@ -180,7 +180,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
         closeIndex("source-index")
 
         val response = client.makeRequest(
-            "POST", "source-index/_open"
+            "POST", "source-index/_open",
         )
 
         Assert.assertTrue(response.restStatus() == RestStatus.OK)
@@ -192,7 +192,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:Open")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }
@@ -210,7 +210,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:reindex")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }
@@ -237,8 +237,8 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                       }
                     }
                 """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
 
         val response = client.makeRequest(
@@ -254,8 +254,8 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                   }
                 }
                 """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
 
         Assert.assertTrue(response.restStatus() == RestStatus.OK)
@@ -278,8 +278,8 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                         }
                     }
                 """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
         val id = policyResponse.asMap()["_id"] as String
         logger.info("policy id {}", id)
@@ -291,7 +291,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:Reindex")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
 
             // runtime policy been removed
@@ -327,8 +327,8 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                         }
                     }
                 """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
 
         waitFor(Instant.ofEpochSecond(60)) {
@@ -338,7 +338,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:Reindex")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }
@@ -355,7 +355,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:Close")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }
@@ -369,7 +369,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
         client.makeRequest("DELETE", "_plugins/_im/lron/LRON:${OpenIndexAction.NAME.replace("/", "%2F")}")
 
         val response = client.makeRequest(
-            "POST", "source-index/_open"
+            "POST", "source-index/_open",
         )
 
         Assert.assertTrue(response.restStatus() == RestStatus.OK)
@@ -382,7 +382,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:Open")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }
@@ -396,7 +396,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
         client.makeRequest("DELETE", IndexManagementPlugin.CONTROL_CENTER_INDEX)
 
         val response = client.makeRequest(
-            "POST", "source-index/_open"
+            "POST", "source-index/_open",
         )
 
         Assert.assertTrue(response.restStatus() == RestStatus.OK)
@@ -409,7 +409,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:Open")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
         }
     }
@@ -442,8 +442,8 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                         }
                     }
                 """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
 
         waitFor(Instant.ofEpochSecond(60)) {
@@ -453,7 +453,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                 (
                     client.makeRequest("GET", "$notificationIndex/_search?q=msg:reindex")
                         .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"]
+                    )["hits"]!!["total"]!!["value"],
             )
 
             try {
@@ -482,8 +482,8 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
                       }
                     }
                 """.trimIndent(),
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
         return response
     }

@@ -14,7 +14,6 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.cluster.settings.ClusterUpdateSettingsResponse
 import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
@@ -22,6 +21,7 @@ import org.opensearch.client.ClusterAdminClient
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.core.action.ActionListener
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.test.OpenSearchTestCase
 import kotlin.test.assertFailsWith
@@ -49,9 +49,9 @@ class MetadataServiceTests : OpenSearchTestCase() {
             getAdminClient(
                 getClusterAdminClient(
                     updateSettingResponse = null,
-                    updateSettingException = ex
-                )
-            )
+                    updateSettingException = ex,
+                ),
+            ),
         )
         val skipFlag = SkipExecution(client)
         val metadataService = MetadataService(client, clusterService, skipFlag, imIndices)
@@ -69,9 +69,9 @@ class MetadataServiceTests : OpenSearchTestCase() {
             getAdminClient(
                 getClusterAdminClient(
                     updateSettingResponse = null,
-                    updateSettingException = ex
-                )
-            )
+                    updateSettingException = ex,
+                ),
+            ),
         )
 
         val skipFlag = SkipExecution(client)
@@ -97,18 +97,21 @@ class MetadataServiceTests : OpenSearchTestCase() {
 
     private fun getClusterAdminClient(
         updateSettingResponse: ClusterUpdateSettingsResponse?,
-        updateSettingException: Exception?
+        updateSettingException: Exception?,
     ): ClusterAdminClient {
         assertTrue(
             "Must provide either a getMappingsResponse or getMappingsException",
-            (updateSettingResponse != null).xor(updateSettingException != null)
+            (updateSettingResponse != null).xor(updateSettingException != null),
         )
 
         return mock {
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<ClusterUpdateSettingsResponse>>(1)
-                if (updateSettingResponse != null) listener.onResponse(updateSettingResponse)
-                else listener.onFailure(updateSettingException)
+                if (updateSettingResponse != null) {
+                    listener.onResponse(updateSettingResponse)
+                } else {
+                    listener.onFailure(updateSettingException)
+                }
             }.whenever(this.mock).updateSettings(any(), any())
         }
     }

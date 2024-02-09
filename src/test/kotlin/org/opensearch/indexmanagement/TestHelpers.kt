@@ -72,7 +72,7 @@ fun RestClient.makeRequest(
     params: Map<String, String> = emptyMap(),
     entity: HttpEntity? = null,
     vararg headers: Header,
-    strictDeprecationMode: Boolean = false
+    strictDeprecationMode: Boolean = false,
 ): Response {
     val request = Request(method, endpoint)
     val options = RequestOptions.DEFAULT.toBuilder()
@@ -97,7 +97,7 @@ fun RestClient.makeRequest(
     endpoint: String,
     entity: HttpEntity? = null,
     vararg headers: Header,
-    strictDeprecationMode: Boolean = false
+    strictDeprecationMode: Boolean = false,
 ): Response {
     val request = Request(method, endpoint)
     val options = RequestOptions.DEFAULT.toBuilder()
@@ -112,7 +112,7 @@ fun RestClient.makeRequest(
 
 fun <T> waitFor(
     timeout: Instant = Instant.ofEpochSecond(20),
-    block: () -> T
+    block: () -> T,
 ): T {
     var to = timeout
     if (isMultiNode) {

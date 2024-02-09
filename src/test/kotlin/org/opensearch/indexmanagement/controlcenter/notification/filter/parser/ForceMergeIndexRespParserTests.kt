@@ -9,12 +9,12 @@ import org.junit.Assert
 import org.opensearch.OpenSearchException
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeRequest
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeResponse
-import org.opensearch.core.action.support.DefaultShardOperationFailedException
 import org.opensearch.action.support.broadcast.BroadcastResponse
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.action.support.DefaultShardOperationFailedException
+import org.opensearch.core.index.Index
 import org.opensearch.core.xcontent.DeprecationHandler
 import org.opensearch.core.xcontent.NamedXContentRegistry
-import org.opensearch.core.index.Index
 import org.opensearch.indexmanagement.controlcenter.notification.filter.OperationResult
 import org.opensearch.indexmanagement.snapshotmanagement.toJsonString
 
@@ -23,7 +23,7 @@ class ForceMergeIndexRespParserTests : BaseRespParserTests() {
     fun `test build message for completion`() {
         val xContentParser = XContentType.JSON.xContent().createParser(
             NamedXContentRegistry.EMPTY, DeprecationHandler.IGNORE_DEPRECATIONS,
-            "{\"_shards\":{\"total\":10,\"successful\":10,\"failed\":0}}"
+            "{\"_shards\":{\"total\":10,\"successful\":10,\"failed\":0}}",
         )
 
         val response = ForceMergeResponse.fromXContent(xContentParser)
@@ -35,14 +35,14 @@ class ForceMergeIndexRespParserTests : BaseRespParserTests() {
         Assert.assertEquals(title, "Force merge operation on [test-cluster/test-index-1] has completed")
         Assert.assertEquals(
             msg,
-            "The force merge operation on [test-cluster/test-index-1] has been completed."
+            "The force merge operation on [test-cluster/test-index-1] has been completed.",
         )
     }
 
     fun `test build message for completion with multiple indexes`() {
         val xContentParser = XContentType.JSON.xContent().createParser(
             NamedXContentRegistry.EMPTY, DeprecationHandler.IGNORE_DEPRECATIONS,
-            "{\"_shards\":{\"total\":10,\"successful\":10,\"failed\":0}}"
+            "{\"_shards\":{\"total\":10,\"successful\":10,\"failed\":0}}",
         )
 
         val response = ForceMergeResponse.fromXContent(xContentParser)
@@ -54,7 +54,7 @@ class ForceMergeIndexRespParserTests : BaseRespParserTests() {
         Assert.assertEquals(title, "Force merge operation on 2 indexes from [test-cluster] has completed")
         Assert.assertEquals(
             msg,
-            "[test-index-1,test-index-2] from [test-cluster] have been merged."
+            "[test-index-1,test-index-2] from [test-cluster] have been merged.",
         )
     }
 
@@ -63,12 +63,12 @@ class ForceMergeIndexRespParserTests : BaseRespParserTests() {
         ex.index = Index("test-index-1", "uuid-1")
         val resp = BroadcastResponse(
             2, 1, 1,
-            arrayListOf(DefaultShardOperationFailedException(ex))
+            arrayListOf(DefaultShardOperationFailedException(ex)),
         )
 
         val xContentParser = XContentType.JSON.xContent().createParser(
             NamedXContentRegistry.EMPTY, DeprecationHandler.IGNORE_DEPRECATIONS,
-            resp.toJsonString()
+            resp.toJsonString(),
         )
 
         val response = ForceMergeResponse.fromXContent(xContentParser)
@@ -80,7 +80,7 @@ class ForceMergeIndexRespParserTests : BaseRespParserTests() {
             Assert.assertEquals(ret.title, "Force merge operation on [test-cluster/test-index-1] has failed")
             Assert.assertEquals(
                 ret.message,
-                "index [test-index-1] shard [-1] OpenSearchException[OpenSearch exception [type=exception, reason=shard is not available]]"
+                "index [test-index-1] shard [-1] OpenSearchException[OpenSearch exception [type=exception, reason=shard is not available]]",
             )
         }
     }
@@ -96,7 +96,7 @@ class ForceMergeIndexRespParserTests : BaseRespParserTests() {
             Assert.assertEquals(ret.title, "Force merge operation on [test-cluster/test-index-1] has failed")
             Assert.assertEquals(
                 ret.message,
-                "index [test-index-1] index not exists."
+                "index [test-index-1] index not exists.",
             )
         }
     }

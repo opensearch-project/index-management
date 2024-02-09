@@ -13,11 +13,11 @@ import org.opensearch.indexmanagement.transform.model.Transform
 import java.io.IOException
 
 class PreviewTransformRequest(
-    val transform: Transform
+    val transform: Transform,
 ) : ActionRequest() {
 
     constructor(sin: StreamInput) : this(
-        transform = Transform(sin)
+        transform = Transform(sin),
     )
 
     override fun validate(): ActionRequestValidationException? {

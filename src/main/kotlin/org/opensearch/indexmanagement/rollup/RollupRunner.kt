@@ -11,13 +11,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.core.action.ActionListener
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
 import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
@@ -55,7 +55,7 @@ object RollupRunner :
     private val logger = LogManager.getLogger(javaClass)
     private val backoffPolicy = BackoffPolicy.exponentialBackoff(
         TimeValue.timeValueMillis(RollupSettings.DEFAULT_ACQUIRE_LOCK_RETRY_DELAY),
-        RollupSettings.DEFAULT_ACQUIRE_LOCK_RETRY_COUNT
+        RollupSettings.DEFAULT_ACQUIRE_LOCK_RETRY_COUNT,
     )
 
     private lateinit var clusterService: ClusterService
@@ -116,7 +116,7 @@ object RollupRunner :
     }
 
     fun registerMetadataServices(
-        rollupMetadataService: RollupMetadataService
+        rollupMetadataService: RollupMetadataService,
     ): RollupRunner {
         this.rollupMetadataService = rollupMetadataService
         return this
@@ -187,10 +187,10 @@ object RollupRunner :
     // TODO: Clean up runner
     // TODO: Scenario: The rollup job is finished, but I (the user) want to redo it all again
     /*
-    * TODO situations:
-    *  There is a rollup.metadataID and doc but theres no job in target index?
-    *        -> index was deleted and recreated as rollup -> just recreate (but we would have to start over)? Or move to FAILED?
-    * */
+     * TODO situations:
+     *  There is a rollup.metadataID and doc but theres no job in target index?
+     *        -> index was deleted and recreated as rollup -> just recreate (but we would have to start over)? Or move to FAILED?
+     * */
     @Suppress("ReturnCount", "NestedBlockDepth", "ComplexMethod", "LongMethod", "ThrowsCount")
     private suspend fun runRollupJob(job: Rollup, context: JobExecutionContext, lock: LockModel) {
         logger.debug("Running rollup job [${job.id}]")
@@ -233,7 +233,7 @@ object RollupRunner :
                     is RollupJobResult.Success -> updatableJob = updateRollupJobResult.rollup
                     is RollupJobResult.Failure -> {
                         logger.error(
-                            "Failed to update the rollup job [${updatableJob.id}] with metadata id [${metadata.id}]", updateRollupJobResult.cause
+                            "Failed to update the rollup job [${updatableJob.id}] with metadata id [${metadata.id}]", updateRollupJobResult.cause,
                         )
                         return // Exit runner early
                     }
@@ -241,7 +241,7 @@ object RollupRunner :
             }
 
             val result = withClosableContext(
-                IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user)
+                IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user),
             ) {
                 rollupMapperService.attemptCreateRollupTargetIndex(updatableJob, clusterConfigurationProvider.hasLegacyPlugin)
             }
@@ -261,7 +261,7 @@ object RollupRunner :
                 do {
                     try {
                         val rollupSearchResult = withClosableContext(
-                            IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user)
+                            IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user),
                         ) {
                             rollupSearchService.executeCompositeSearch(updatableJob, metadata)
                         }
@@ -270,7 +270,7 @@ object RollupRunner :
                                 val compositeRes: InternalComposite = rollupSearchResult.searchResponse.aggregations.get(updatableJob.id)
                                 metadata = metadata.incrementStats(rollupSearchResult.searchResponse, compositeRes)
                                 val rollupIndexResult = withClosableContext(
-                                    IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user)
+                                    IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user),
                                 ) {
                                     rollupIndexer.indexRollups(updatableJob, compositeRes)
                                 }
@@ -287,10 +287,10 @@ object RollupRunner :
                             is RollupResult.Success -> {
                                 metadata = rollupMetadataService.updateMetadata(
                                     updatableJob,
-                                    metadata.mergeStats(rollupResult.stats), rollupResult.internalComposite
+                                    metadata.mergeStats(rollupResult.stats), rollupResult.internalComposite,
                                 )
                                 updatableJob = withClosableContext(
-                                    IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, null)
+                                    IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, null),
                                 ) {
                                     client.suspendUntil { listener: ActionListener<GetRollupResponse> ->
                                         execute(GetRollupAction.INSTANCE, GetRollupRequest(updatableJob.id, null, "_local"), listener)
@@ -299,7 +299,7 @@ object RollupRunner :
                             }
                             is RollupResult.Failure -> {
                                 rollupMetadataService.updateMetadata(
-                                    metadata.copy(status = RollupMetadata.Status.FAILED, failureReason = rollupResult.cause.message)
+                                    metadata.copy(status = RollupMetadata.Status.FAILED, failureReason = rollupResult.cause.message),
                                 )
                             }
                         }
@@ -356,7 +356,7 @@ object RollupRunner :
     private suspend fun updateRollupJob(job: Rollup, metadata: RollupMetadata): RollupJobResult {
         try {
             return withClosableContext(
-                IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, null)
+                IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, null),
             ) {
                 val req = IndexRollupRequest(rollup = job, refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE)
                 val res: IndexRollupResponse = client.suspendUntil { execute(IndexRollupAction.INSTANCE, req, it) }
@@ -384,7 +384,7 @@ object RollupRunner :
     @Suppress("ReturnCount", "ComplexMethod")
     private suspend fun isJobValid(job: Rollup): RollupJobValidationResult {
         return withClosableContext(
-            IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user)
+            IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user),
         ) {
             var metadata: RollupMetadata? = null
             if (job.metadataID != null) {

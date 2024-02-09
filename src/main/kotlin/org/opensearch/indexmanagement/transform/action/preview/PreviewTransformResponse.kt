@@ -8,14 +8,14 @@ package org.opensearch.indexmanagement.transform.action.preview
 import org.opensearch.core.action.ActionResponse
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentObject
 import org.opensearch.core.xcontent.XContentBuilder
-import org.opensearch.core.rest.RestStatus
 
 class PreviewTransformResponse(
     val documents: List<Map<String, Any>>,
-    val status: RestStatus
+    val status: RestStatus,
 ) : ActionResponse(), ToXContentObject {
 
     constructor(sin: StreamInput) : this(
@@ -27,7 +27,7 @@ class PreviewTransformResponse(
             }
             documentList.toList()
         },
-        status = sin.readEnum(RestStatus::class.java)
+        status = sin.readEnum(RestStatus::class.java),
     )
 
     override fun writeTo(out: StreamOutput) {

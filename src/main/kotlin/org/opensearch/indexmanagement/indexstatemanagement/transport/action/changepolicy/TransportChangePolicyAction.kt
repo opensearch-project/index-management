@@ -12,7 +12,6 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
 import org.opensearch.action.bulk.BulkRequest
@@ -30,10 +29,12 @@ import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.action.ActionListener
 import org.opensearch.core.index.Index
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
@@ -64,7 +65,6 @@ import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -80,9 +80,9 @@ class TransportChangePolicyAction @Inject constructor(
     val clusterService: ClusterService,
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
-    val indexMetadataProvider: IndexMetadataProvider
+    val indexMetadataProvider: IndexMetadataProvider,
 ) : HandledTransportAction<ChangePolicyRequest, ISMStatusResponse>(
-    ChangePolicyAction.NAME, transportService, actionFilters, ::ChangePolicyRequest
+    ChangePolicyAction.NAME, transportService, actionFilters, ::ChangePolicyRequest,
 ) {
 
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
@@ -101,7 +101,7 @@ class TransportChangePolicyAction @Inject constructor(
         private val client: NodeClient,
         private val actionListener: ActionListener<ISMStatusResponse>,
         private val request: ChangePolicyRequest,
-        private val user: User? = buildUser(client.threadPool().threadContext)
+        private val user: User? = buildUser(client.threadPool().threadContext),
     ) {
 
         private val failedIndices = mutableListOf<FailedIndex>()
@@ -116,8 +116,8 @@ class TransportChangePolicyAction @Inject constructor(
         fun start() {
             log.debug(
                 "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                )}"
+                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+                )}",
             )
             if (user == null) {
                 getPolicy()
@@ -142,14 +142,14 @@ class TransportChangePolicyAction @Inject constructor(
                                 when (e is OpenSearchSecurityException) {
                                     true -> OpenSearchStatusException(
                                         "User doesn't have required index permissions on one or more requested indices: ${e.localizedMessage}",
-                                        RestStatus.FORBIDDEN
+                                        RestStatus.FORBIDDEN,
                                     )
                                     false -> e
-                                }
-                            )
+                                },
+                            ),
                         )
                     }
-                }
+                },
             )
         }
 
@@ -183,7 +183,7 @@ class TransportChangePolicyAction @Inject constructor(
             IndexUtils.checkAndUpdateConfigIndexMapping(
                 clusterService.state(),
                 client.admin().indices(),
-                ActionListener.wrap(::onUpdateMapping, ::onFailure)
+                ActionListener.wrap(::onUpdateMapping, ::onFailure),
             )
         }
 
@@ -192,8 +192,8 @@ class TransportChangePolicyAction @Inject constructor(
                 actionListener.onFailure(
                     OpenSearchStatusException(
                         "Could not update ${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX} with new mapping.",
-                        RestStatus.FAILED_DEPENDENCY
-                    )
+                        RestStatus.FAILED_DEPENDENCY,
+                    ),
                 )
                 return
             }
@@ -251,14 +251,14 @@ class TransportChangePolicyAction @Inject constructor(
                         override fun onFailure(t: Exception) {
                             actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                         }
-                    }
+                    },
                 )
         }
 
         private fun getManagedIndexMetadata() {
             client.multiGet(
                 buildMgetMetadataRequest(indicesToUpdate.toList().map { it.first }),
-                ActionListener.wrap(::onMgetMetadataResponse, ::onFailure)
+                ActionListener.wrap(::onMgetMetadataResponse, ::onFailure),
             )
         }
 
@@ -284,8 +284,8 @@ class TransportChangePolicyAction @Inject constructor(
                         failedIndices.add(
                             FailedIndex(
                                 indexName, indexUuid,
-                                "Failed to get managed index metadata, $mgetFailure"
-                            )
+                                "Failed to get managed index metadata, $mgetFailure",
+                            ),
                         )
                     // if there exists a transitionTo on the ManagedIndexMetaData then we will
                     // fail as they might not of meant to add a ChangePolicy when it's on the next state
@@ -293,8 +293,8 @@ class TransportChangePolicyAction @Inject constructor(
                         failedIndices.add(
                             FailedIndex(
                                 indexName, indexUuid,
-                                RestChangePolicyAction.INDEX_IN_TRANSITION
-                            )
+                                RestChangePolicyAction.INDEX_IN_TRANSITION,
+                            ),
                         )
                     // else if there is no ManagedIndexMetaData yet then the managed index has not initialized and we can change the policy safely
                     managedIndexMetadata == null -> {
@@ -302,8 +302,8 @@ class TransportChangePolicyAction @Inject constructor(
                             failedIndices.add(
                                 FailedIndex(
                                     indexName, indexUuid,
-                                    "Cannot change policy until metadata has finished migrating"
-                                )
+                                    "Cannot change policy until metadata has finished migrating",
+                                ),
                             )
                         } else {
                             managedIndicesToUpdate.add(indexName to indexUuid)
@@ -326,7 +326,7 @@ class TransportChangePolicyAction @Inject constructor(
             } else {
                 client.multiGet(
                     mgetManagedIndexConfigRequest(managedIndicesToUpdate.map { (_, indexUuid) -> indexUuid }.toTypedArray()),
-                    ActionListener.wrap(::onMultiGetResponse, ::onFailure)
+                    ActionListener.wrap(::onMultiGetResponse, ::onFailure),
                 )
             }
         }
@@ -346,7 +346,7 @@ class TransportChangePolicyAction @Inject constructor(
                     foundManagedIndices.add(it.response.id)
                     contentParser(it.response.sourceAsBytesRef).parseWithType(
                         NO_ID, it.response.seqNo,
-                        it.response.primaryTerm, SweptManagedIndexConfig.Companion::parse
+                        it.response.primaryTerm, SweptManagedIndexConfig.Companion::parse,
                     )
                 } else {
                     null
@@ -383,7 +383,7 @@ class TransportChangePolicyAction @Inject constructor(
                     override fun onFailure(t: Exception) {
                         actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                     }
-                }
+                },
             )
         }
 
@@ -408,15 +408,15 @@ class TransportChangePolicyAction @Inject constructor(
                 "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.INDEX_UUID_FIELD}",
                 "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.POLICY_ID_FIELD}",
                 "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.POLICY_FIELD}",
-                "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.CHANGE_POLICY_FIELD}"
+                "${ManagedIndexConfig.MANAGED_INDEX_TYPE}.${ManagedIndexConfig.CHANGE_POLICY_FIELD}",
             )
             val excludes = emptyArray<String>()
             val fetchSourceContext = FetchSourceContext(true, includes, excludes)
             managedIndexUuids.forEach {
                 request.add(
                     MultiGetRequest.Item(
-                        IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, it
-                    ).fetchSourceContext(fetchSourceContext).routing(it)
+                        IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, it,
+                    ).fetchSourceContext(fetchSourceContext).routing(it),
                 )
             }
             return request

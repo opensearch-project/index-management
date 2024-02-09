@@ -19,7 +19,7 @@ import java.time.Instant
 
 abstract class Action(
     val type: String,
-    val actionIndex: Int
+    val actionIndex: Int,
 ) : ToXContentObject, Writeable {
 
     var configTimeout: ActionTimeout? = null

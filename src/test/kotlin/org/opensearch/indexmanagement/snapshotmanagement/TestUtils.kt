@@ -16,14 +16,15 @@ import org.opensearch.cluster.SnapshotsInProgress
 import org.opensearch.common.UUIDs
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.ToXContent
-import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.core.xcontent.XContentParser
-import org.opensearch.common.xcontent.XContentType
-import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.indexstatemanagement.randomChannel
+import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.opensearchapi.toMap
 import org.opensearch.indexmanagement.randomCronSchedule
 import org.opensearch.indexmanagement.randomInstant
@@ -33,7 +34,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.snapshots.Snapshot
 import org.opensearch.snapshots.SnapshotId
 import org.opensearch.snapshots.SnapshotInfo
@@ -65,7 +65,7 @@ fun randomSMMetadata(
         creation = SMMetadata.WorkflowMetadata(
             currentState = creationCurrentState,
             trigger = SMMetadata.Trigger(
-                time = nextCreationTime
+                time = nextCreationTime,
             ),
             started = if (startedCreation != null) listOf(startedCreation) else null,
             latestExecution = creationLatestExecution,
@@ -74,7 +74,7 @@ fun randomSMMetadata(
         deletion = SMMetadata.WorkflowMetadata(
             currentState = deletionCurrentState,
             trigger = SMMetadata.Trigger(
-                time = nextDeletionTime
+                time = nextDeletionTime,
             ),
             started = startedDeletion,
             latestExecution = deletionLatestExecution,
@@ -112,7 +112,7 @@ fun randomSMPolicy(
     jobSchedule: IntervalSchedule = IntervalSchedule(randomInstant(), 1, ChronoUnit.MINUTES),
     seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
-    notificationConfig: NotificationConfig? = null
+    notificationConfig: NotificationConfig? = null,
 ): SMPolicy {
     if (dateFormat != null) {
         snapshotConfig["date_format"] = dateFormat
@@ -159,7 +159,7 @@ fun randomPolicyDeletion(
             maxCount = deletionMaxCount,
             maxAge = deletionMaxAge,
             minCount = deletionMinCount,
-        )
+        ),
     )
 }
 
@@ -221,7 +221,7 @@ fun mockSnapshotInfo(
         emptyList(),
         false,
         mapOf("sm_policy" to policyName),
-        remoteStoreIndexShallowCopy
+        remoteStoreIndexShallowCopy,
     )
     return result
 }
@@ -248,7 +248,7 @@ fun mockInProgressSnapshotInfo(
         "",
         mapOf("sm_policy" to "daily-snapshot"),
         Version.CURRENT,
-        remoteStoreIndexShallowCopy
+        remoteStoreIndexShallowCopy,
     )
     return SnapshotInfo(entry)
 }
@@ -264,8 +264,8 @@ fun mockSnapshotInfoList(num: Int, namePrefix: String = randomAlphaOfLength(10))
     for (i in 1..num) {
         result.add(
             mockSnapshotInfo(
-                name = namePrefix + i
-            )
+                name = namePrefix + i,
+            ),
         )
     }
     return result.toList()

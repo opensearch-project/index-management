@@ -44,8 +44,9 @@ object DeletionFinishedState : State {
                 getSnapshotExceptionInDeletionWorkflow(snapshotsStartedDeletion),
             )
             metadataBuilder = getSnapshotsRes.metadataBuilder
-            if (getSnapshotsRes.failed)
+            if (getSnapshotsRes.failed) {
                 return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
+            }
             val getSnapshots = getSnapshotsRes.snapshots
 
             val existingSnapshotsNameSet = getSnapshots.map { it.snapshotId().name }.toSet()
@@ -72,7 +73,7 @@ object DeletionFinishedState : State {
             // TODO may want to notify user that we skipped the execution because snapshot deletion time is longer than execution schedule
             job.deletion?.let {
                 val result = tryUpdatingNextExecutionTime(
-                    metadataBuilder, metadata.deletion.trigger.time, job.deletion.schedule, WorkflowType.DELETION, log
+                    metadataBuilder, metadata.deletion.trigger.time, job.deletion.schedule, WorkflowType.DELETION, log,
                 )
                 if (result.updated) {
                     metadataBuilder = result.metadataBuilder

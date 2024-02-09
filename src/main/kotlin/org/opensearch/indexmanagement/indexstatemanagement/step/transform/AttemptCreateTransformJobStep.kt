@@ -28,7 +28,7 @@ import org.opensearch.indexmanagement.transform.action.start.StartTransformReque
 import org.opensearch.transport.RemoteTransportException
 
 class AttemptCreateTransformJobStep(
-    private val action: TransformAction
+    private val action: TransformAction,
 ) : Step(name) {
 
     private val logger = LogManager.getLogger(javaClass)
@@ -109,7 +109,7 @@ class AttemptCreateTransformJobStep(
             actionMetaData = currentActionMetaData?.copy(actionProperties = ActionProperties(transformActionProperties = transformActionProperties)),
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 

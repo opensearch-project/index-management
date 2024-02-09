@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement.transform.resthandler
 
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
@@ -16,7 +17,6 @@ import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.transform.randomTransform
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.aggregations.AggregatorFactories
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
@@ -58,8 +58,8 @@ class RestStopTransformActionIT : TransformRestTestCase() {
                     enabled = true,
                     enabledAt = Instant.now(),
                     metadataId = null,
-                    continuous = false
-                )
+                    continuous = false,
+                ),
         )
         updateTransformStartTime(transform)
 
@@ -94,7 +94,7 @@ class RestStopTransformActionIT : TransformRestTestCase() {
             jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
             enabled = true,
             enabledAt = Instant.now(),
-            metadataId = null
+            metadataId = null,
         ).let { createTransform(it, it.id) }
         deleteIndex(transform.sourceIndex)
         updateTransformStartTime(transform)
@@ -142,9 +142,9 @@ class RestStopTransformActionIT : TransformRestTestCase() {
             pageSize = 1,
             groups = listOf(
                 DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1m"),
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
+                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
             ),
-            aggregations = AggregatorFactories.builder()
+            aggregations = AggregatorFactories.builder(),
         ).let { createTransform(it, it.id) }
 
         updateTransformStartTime(transform)

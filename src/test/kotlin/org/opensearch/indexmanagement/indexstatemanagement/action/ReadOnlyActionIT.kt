@@ -22,7 +22,7 @@ class ReadOnlyActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = ReadOnlyAction(0)
         val states = listOf(
-            State("ReadOnlyState", listOf(actionConfig), listOf())
+            State("ReadOnlyState", listOf(actionConfig), listOf()),
         )
 
         val policy = Policy(
@@ -32,7 +32,7 @@ class ReadOnlyActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
 
         createPolicy(policy, policyID)

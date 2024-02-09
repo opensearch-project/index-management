@@ -16,14 +16,14 @@ import java.io.IOException
 class GetTransformRequest(
     val id: String,
     val srcContext: FetchSourceContext? = null,
-    val preference: String? = null
+    val preference: String? = null,
 ) : ActionRequest() {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         id = sin.readString(),
         srcContext = if (sin.readBoolean()) FetchSourceContext(sin) else null,
-        preference = sin.readOptionalString()
+        preference = sin.readOptionalString(),
     )
 
     override fun validate(): ActionRequestValidationException? {

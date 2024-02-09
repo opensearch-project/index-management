@@ -6,8 +6,8 @@
 package org.opensearch.indexmanagement.rollup.model
 
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE
 import org.opensearch.indexmanagement.opensearchapi.parseWithType

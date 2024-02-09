@@ -50,7 +50,7 @@ import org.opensearch.transport.RemoteTransportException
 class RollupMapperService(
     val client: Client,
     val clusterService: ClusterService,
-    private val indexNameExpressionResolver: IndexNameExpressionResolver
+    private val indexNameExpressionResolver: IndexNameExpressionResolver,
 ) {
 
     private val logger = LogManager.getLogger(javaClass)
@@ -69,7 +69,7 @@ class RollupMapperService(
     private suspend fun validateAndAttemptToUpdateTargetIndex(
         rollup: Rollup,
         targetIndexResolvedName: String,
-        hasLegacyPlugin: Boolean
+        hasLegacyPlugin: Boolean,
     ): RollupJobValidationResult {
         if (rollup.isTargetIndexAlias()) {
             val aliasValidationResult = validateTargetIndexAlias(rollup, targetIndexResolvedName)
@@ -94,7 +94,6 @@ class RollupMapperService(
      */
     @Suppress("ReturnCount")
     suspend fun validateTargetIndexAlias(rollup: Rollup, targetIndexResolvedName: String): RollupJobValidationResult {
-
         val errorMessage: String
 
         if (!RollupFieldValueExpressionResolver.indexAliasUtils.hasAlias(targetIndexResolvedName)) {
@@ -190,6 +189,7 @@ class RollupMapperService(
         }
         return resp.isAcknowledged
     }
+
     @Suppress("ReturnCount")
     suspend fun prepareTargetIndex(rollup: Rollup, targetIndexResolvedName: String, hasLegacyPlugin: Boolean): RollupJobValidationResult {
         var errorMessage = ""
@@ -287,8 +287,9 @@ class RollupMapperService(
             val issues = mutableSetOf<String>()
             // Validate source fields in dimensions
             rollup.dimensions.forEach { dimension ->
-                if (!isFieldInMappings(dimension.sourceField, indexMappingSource))
+                if (!isFieldInMappings(dimension.sourceField, indexMappingSource)) {
                     issues.add("missing field ${dimension.sourceField}")
+                }
 
                 when (dimension) {
                     is DateHistogram -> {
@@ -305,8 +306,9 @@ class RollupMapperService(
 
             // Validate source fields in metrics
             rollup.metrics.forEach { metric ->
-                if (!isFieldInMappings(metric.sourceField, indexMappingSource))
+                if (!isFieldInMappings(metric.sourceField, indexMappingSource)) {
                     issues.add("missing field ${metric.sourceField}")
+                }
 
                 // TODO: Validate field type for metrics,
                 //  are all Numeric field types valid?

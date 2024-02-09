@@ -18,7 +18,7 @@ class AllocationAction(
     val include: Map<String, String>,
     val exclude: Map<String, String>,
     val waitFor: Boolean = false,
-    index: Int
+    index: Int,
 ) : Action(name, index) {
 
     init {

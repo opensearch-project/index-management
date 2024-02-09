@@ -42,7 +42,7 @@ class SnapshotActionParser : ActionParser() {
         return SnapshotAction(
             repository = requireNotNull(repository) { "SnapshotAction repository must be specified" },
             snapshot = requireNotNull(snapshot) { "SnapshotAction snapshot must be specified" },
-            index = index
+            index = index,
         )
     }
 

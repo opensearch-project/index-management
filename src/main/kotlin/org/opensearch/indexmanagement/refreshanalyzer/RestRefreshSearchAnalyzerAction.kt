@@ -29,12 +29,12 @@ class RestRefreshSearchAnalyzerAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 POST, REFRESH_SEARCH_ANALYZER_BASE_URI,
-                POST, LEGACY_REFRESH_SEARCH_ANALYZER_BASE_URI
+                POST, LEGACY_REFRESH_SEARCH_ANALYZER_BASE_URI,
             ),
             ReplacedRoute(
                 POST, "$REFRESH_SEARCH_ANALYZER_BASE_URI/{index}",
-                POST, "$LEGACY_REFRESH_SEARCH_ANALYZER_BASE_URI/{index}"
-            )
+                POST, "$LEGACY_REFRESH_SEARCH_ANALYZER_BASE_URI/{index}",
+            ),
         )
     }
 

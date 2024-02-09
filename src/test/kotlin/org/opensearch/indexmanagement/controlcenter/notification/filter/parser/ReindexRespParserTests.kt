@@ -11,13 +11,13 @@ import org.opensearch.OpenSearchException
 import org.opensearch.action.bulk.BulkItemResponse
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.index.Index
+import org.opensearch.core.tasks.TaskId
 import org.opensearch.index.reindex.BulkByScrollResponse
 import org.opensearch.index.reindex.BulkByScrollTask
 import org.opensearch.index.reindex.ReindexAction
 import org.opensearch.index.reindex.ReindexRequest
 import org.opensearch.indexmanagement.controlcenter.notification.filter.OperationResult
 import org.opensearch.tasks.Task
-import org.opensearch.core.tasks.TaskId
 import java.lang.Exception
 import java.util.concurrent.TimeUnit
 
@@ -52,9 +52,9 @@ class ReindexRespParserTests : BaseRespParserTests() {
                 TimeValue(0, TimeUnit.SECONDS),
                 0.0f,
                 "",
-                TimeValue(0, TimeUnit.SECONDS)
+                TimeValue(0, TimeUnit.SECONDS),
             ),
-            listOf(), listOf(), false
+            listOf(), listOf(), false,
         )
         val parser = ReindexRespParser(task, request, clusterService)
 
@@ -64,7 +64,7 @@ class ReindexRespParserTests : BaseRespParserTests() {
             "The reindex operation from [test-cluster/source] to [test-cluster/dest] has been completed.\n" +
                 "\n" +
                 "*Summary (number of documents)* \n" +
-                "Total: 100, Created: 100, Updated: 0, Deleted: 0, Conflicts: 0"
+                "Total: 100, Created: 100, Updated: 0, Deleted: 0, Conflicts: 0",
         )
 
         val title = parser.buildNotificationTitle(OperationResult.COMPLETE)
@@ -88,9 +88,9 @@ class ReindexRespParserTests : BaseRespParserTests() {
                 TimeValue(0, TimeUnit.SECONDS),
                 0.0f,
                 "user cancelled",
-                TimeValue(0, TimeUnit.SECONDS)
+                TimeValue(0, TimeUnit.SECONDS),
             ),
-            listOf(), listOf(), false
+            listOf(), listOf(), false,
         )
         val parser = ReindexRespParser(task, request, clusterService)
 
@@ -100,7 +100,7 @@ class ReindexRespParserTests : BaseRespParserTests() {
             "The reindex operation from [test-cluster/source] to [test-cluster/dest] has been cancelled by user's request\n" +
                 "\n" +
                 "*Summary (number of documents)* \n" +
-                "Total: 100, Created: 20, Updated: 0, Deleted: 0, Conflicts: 0"
+                "Total: 100, Created: 20, Updated: 0, Deleted: 0, Conflicts: 0",
         )
 
         val title = parser.buildNotificationTitle(OperationResult.CANCELLED)
@@ -125,10 +125,10 @@ class ReindexRespParserTests : BaseRespParserTests() {
                 0.0f,
                 "",
                 TimeValue(
-                    0, TimeUnit.SECONDS
-                )
+                    0, TimeUnit.SECONDS,
+                ),
             ),
-            listOf(BulkItemResponse.Failure("dest", "id-1", Exception("version conflicts"))), listOf(), false
+            listOf(BulkItemResponse.Failure("dest", "id-1", Exception("version conflicts"))), listOf(), false,
         )
         val parser = ReindexRespParser(task, request, clusterService)
 
@@ -142,7 +142,7 @@ class ReindexRespParserTests : BaseRespParserTests() {
                 "To see full errors, use `GET /_tasks/mJzoy8SBuTW12rbV8jSg:1`\n" +
                 "\n" +
                 "*Summary (number of documents)* \n" +
-                "Total: 100, Created: 99, Updated: 0, Deleted: 0, Conflicts: 1"
+                "Total: 100, Created: 99, Updated: 0, Deleted: 0, Conflicts: 1",
         )
 
         val title = parser.buildNotificationTitle(OperationResult.FAILED)
@@ -159,7 +159,7 @@ class ReindexRespParserTests : BaseRespParserTests() {
             Assert.assertEquals(ret.title, "Reindex operation on [test-cluster/source] has failed")
             Assert.assertEquals(
                 ret.message,
-                "The reindex operation from [test-cluster/source] to [test-cluster/dest] has failed. index doest not exists"
+                "The reindex operation from [test-cluster/source] to [test-cluster/dest] has failed. index doest not exists",
             )
         }
     }

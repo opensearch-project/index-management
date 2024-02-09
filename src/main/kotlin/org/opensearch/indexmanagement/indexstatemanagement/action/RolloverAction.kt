@@ -5,9 +5,9 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.unit.ByteSizeValue
-import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
@@ -21,14 +21,16 @@ class RolloverAction(
     val minAge: TimeValue?,
     val minPrimaryShardSize: ByteSizeValue?,
     val copyAlias: Boolean = false,
-    index: Int
+    index: Int,
 ) : Action(name, index) {
 
     init {
         if (minSize != null) require(minSize.bytes > 0) { "RolloverAction minSize value must be greater than 0" }
 
-        if (minPrimaryShardSize != null) require(minPrimaryShardSize.bytes > 0) {
-            "RolloverActionConfig minPrimaryShardSize value must be greater than 0"
+        if (minPrimaryShardSize != null) {
+            require(minPrimaryShardSize.bytes > 0) {
+                "RolloverActionConfig minPrimaryShardSize value must be greater than 0"
+            }
         }
         if (minDocs != null) require(minDocs > 0) { "RolloverAction minDocs value must be greater than 0" }
     }

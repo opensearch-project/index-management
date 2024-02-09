@@ -30,8 +30,8 @@ class RestDeleteRollupAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 DELETE, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
-                DELETE, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}"
-            )
+                DELETE, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
+            ),
         )
     }
 
