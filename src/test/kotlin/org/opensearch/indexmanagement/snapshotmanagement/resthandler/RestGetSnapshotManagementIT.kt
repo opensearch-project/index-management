@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 import org.apache.http.HttpHeaders
 import org.apache.http.message.BasicHeader
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
@@ -16,7 +17,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.ENABLED_TIME_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.SM_TYPE
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
-import org.opensearch.core.rest.RestStatus
 
 class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
 
@@ -30,7 +30,7 @@ class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
             seqNo = indexedSMPolicy.seqNo,
             primaryTerm = indexedSMPolicy.primaryTerm,
             jobLastUpdateTime = indexedSMPolicy.jobLastUpdateTime,
-            jobSchedule = indexedSMPolicy.jobSchedule
+            jobSchedule = indexedSMPolicy.jobSchedule,
         )
         assertEquals("Indexed and retrieved snapshot management policies differ", smPolicy, indexedSMPolicy)
     }
@@ -62,7 +62,7 @@ class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
         val smPolicies = randomList(1, 15) { createSMPolicy(randomSMPolicy()) }
         val response = client().makeRequest(
             "GET", IndexManagementPlugin.SM_POLICIES_URI, null,
-            BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+            BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
         )
         val map = response.asMap()
         val totalPolicies = map["total_policies"] as Int
@@ -85,7 +85,7 @@ class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
     fun `test getting all snapshot management policies when config index doesn't exist`() {
         val response = client().makeRequest(
             "GET", IndexManagementPlugin.SM_POLICIES_URI, null,
-            BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+            BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
         )
         val map = response.asMap()
         val totalPolicies = map["total_policies"] as Int

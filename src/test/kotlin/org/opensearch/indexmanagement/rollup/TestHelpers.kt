@@ -5,8 +5,8 @@
 
 package org.opensearch.indexmanagement.rollup
 
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.query.TermQueryBuilder
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
@@ -57,7 +57,7 @@ fun randomHistogram(): Histogram = OpenSearchRestTestCase.randomAlphaOfLength(10
     Histogram(
         sourceField = it,
         targetField = it,
-        interval = OpenSearchRestTestCase.randomDoubleBetween(0.0, Double.MAX_VALUE, false) // start, end, lowerInclusive
+        interval = OpenSearchRestTestCase.randomDoubleBetween(0.0, Double.MAX_VALUE, false), // start, end, lowerInclusive
     )
 }
 
@@ -114,7 +114,7 @@ fun randomRollup(): Rollup {
         continuous = OpenSearchRestTestCase.randomBoolean(),
         dimensions = randomRollupDimensions(),
         metrics = OpenSearchRestTestCase.randomList(20, ::randomRollupMetrics).distinctBy { it.targetField },
-        user = randomUser()
+        user = randomUser(),
     )
 }
 
@@ -124,7 +124,7 @@ fun randomRollupStats(): RollupStats {
         documentsProcessed = OpenSearchRestTestCase.randomNonNegativeLong(),
         rollupsIndexed = OpenSearchRestTestCase.randomNonNegativeLong(),
         indexTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong(),
-        searchTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong()
+        searchTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong(),
     )
 }
 
@@ -137,7 +137,7 @@ fun randomContinuousMetadata(): ContinuousMetadata {
     val two = randomInstant()
     return ContinuousMetadata(
         nextWindowEndTime = if (one.isAfter(two)) one else two,
-        nextWindowStartTime = if (one.isAfter(two)) two else one
+        nextWindowStartTime = if (one.isAfter(two)) two else one,
     )
 }
 
@@ -161,7 +161,7 @@ fun randomRollupMetadata(): RollupMetadata {
         continuous = randomContinuousMetadata(),
         status = status,
         failureReason = if (status == RollupMetadata.Status.FAILED) OpenSearchRestTestCase.randomAlphaOfLength(10) else null,
-        stats = randomRollupStats()
+        stats = randomRollupStats(),
     )
 }
 
@@ -176,7 +176,7 @@ fun randomISMRollup(): ISMRollup {
         targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
         pageSize = OpenSearchRestTestCase.randomIntBetween(1, 10000),
         dimensions = randomRollupDimensions(),
-        metrics = OpenSearchRestTestCase.randomList(20, ::randomRollupMetrics).distinctBy { it.targetField }
+        metrics = OpenSearchRestTestCase.randomList(20, ::randomRollupMetrics).distinctBy { it.targetField },
     )
 }
 
@@ -189,7 +189,7 @@ fun randomISMFieldCapabilities(): ISMFieldCapabilities {
         indices = OpenSearchRestTestCase.generateRandomStringArray(10, 10, true, true),
         nonSearchableIndices = OpenSearchRestTestCase.generateRandomStringArray(10, 10, true, true),
         nonAggregatableIndices = OpenSearchRestTestCase.generateRandomStringArray(10, 10, true, true),
-        meta = mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to setOf(OpenSearchRestTestCase.randomAlphaOfLength(10)))
+        meta = mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to setOf(OpenSearchRestTestCase.randomAlphaOfLength(10))),
     )
 }
 
@@ -199,7 +199,7 @@ fun randomISMIndexFieldCapabilities(): ISMIndexFieldCapabilities {
         type = OpenSearchRestTestCase.randomAlphaOfLength(10),
         isSearchable = OpenSearchRestTestCase.randomBoolean(),
         isAggregatable = OpenSearchRestTestCase.randomBoolean(),
-        meta = mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to OpenSearchRestTestCase.randomAlphaOfLength(10))
+        meta = mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to OpenSearchRestTestCase.randomAlphaOfLength(10)),
     )
 }
 
@@ -207,7 +207,7 @@ fun randomISMFieldCapabilitiesIndexResponse(): ISMFieldCapabilitiesIndexResponse
     return ISMFieldCapabilitiesIndexResponse(
         indexName = OpenSearchRestTestCase.randomAlphaOfLength(10),
         responseMap = mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to randomISMIndexFieldCapabilities()),
-        canMatch = OpenSearchRestTestCase.randomBoolean()
+        canMatch = OpenSearchRestTestCase.randomBoolean(),
     )
 }
 
@@ -215,7 +215,7 @@ fun randomISMFieldCaps(): ISMFieldCapabilitiesResponse {
     return ISMFieldCapabilitiesResponse(
         indices = OpenSearchRestTestCase.generateRandomStringArray(10, 10, false),
         responseMap = mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to randomISMFieldCapabilities())),
-        indexResponses = OpenSearchRestTestCase.randomList(4, ::randomISMFieldCapabilitiesIndexResponse)
+        indexResponses = OpenSearchRestTestCase.randomList(4, ::randomISMFieldCapabilitiesIndexResponse),
     )
 }
 
@@ -224,7 +224,9 @@ fun randomDimension(): Dimension {
     return OpenSearchRestTestCase.randomSubsetOf(1, dimensions).first()
 }
 
-fun randomTermQuery(): TermQueryBuilder { return TermQueryBuilder(OpenSearchRestTestCase.randomAlphaOfLength(5), OpenSearchRestTestCase.randomAlphaOfLength(5)) }
+fun randomTermQuery(): TermQueryBuilder {
+    return TermQueryBuilder(OpenSearchRestTestCase.randomAlphaOfLength(5), OpenSearchRestTestCase.randomAlphaOfLength(5))
+}
 
 fun DateHistogram.toJsonString(): String = this.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string()
 

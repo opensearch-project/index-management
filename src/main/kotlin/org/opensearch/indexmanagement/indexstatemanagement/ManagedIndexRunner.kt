@@ -31,13 +31,14 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.core.xcontent.NamedXContentRegistry
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.common.xcontent.XContentType
 import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
@@ -47,14 +48,14 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ErrorNotificati
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ACTION_VALIDATION_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST_NONE
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ACTION_VALIDATION_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ISM_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_JOB_INTERVAL
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ACTION_VALIDATION_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
-import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ACTION_VALIDATION_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.MetadataCheck
 import org.opensearch.indexmanagement.indexstatemanagement.util.checkMetadata
@@ -97,7 +98,6 @@ import org.opensearch.jobscheduler.spi.LockModel
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
@@ -126,10 +126,13 @@ object ManagedIndexRunner :
     private lateinit var indexMetadataProvider: IndexMetadataProvider
     private var indexStateManagementEnabled: Boolean = DEFAULT_ISM_ENABLED
     private var validationServiceEnabled: Boolean = DEFAULT_ACTION_VALIDATION_ENABLED
+
     @Suppress("MagicNumber")
     private val savePolicyRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
+
     @Suppress("MagicNumber")
     private val updateMetaDataRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
+
     @Suppress("MagicNumber")
     private val errorNotificationRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
     private var jobInterval: Int = DEFAULT_JOB_INTERVAL
@@ -308,8 +311,8 @@ object ManagedIndexRunner :
             val result = updateManagedIndexMetaData(
                 managedIndexMetaData.copy(
                     policyRetryInfo = PolicyRetryInfoMetaData(true, 0),
-                    info = info
-                )
+                    info = info,
+                ),
             )
             if (result.metadataSaved) {
                 disableManagedIndexConfig(managedIndexConfig)
@@ -321,7 +324,7 @@ object ManagedIndexRunner :
         val state = policy.getStateToExecute(managedIndexMetaData)
         val action: Action? = state?.getActionToExecute(managedIndexMetaData, indexMetadataProvider)
         val stepContext = StepContext(
-            managedIndexMetaData, clusterService, client, threadPool.threadContext, policy.user, scriptService, settings, jobContext.lockService
+            managedIndexMetaData, clusterService, client, threadPool.threadContext, policy.user, scriptService, settings, jobContext.lockService,
         )
         val step: Step? = action?.getStepToExecute(stepContext)
         val currentActionMetaData = action?.getUpdatedActionMetadata(managedIndexMetaData, state.name)
@@ -338,7 +341,7 @@ object ManagedIndexRunner :
             logger.error("Action=${action.type} has timed out")
             val updated = updateManagedIndexMetaData(
                 managedIndexMetaData
-                    .copy(actionMetaData = currentActionMetaData?.copy(failed = true), info = info)
+                    .copy(actionMetaData = currentActionMetaData?.copy(failed = true), info = info),
             )
             if (updated.metadataSaved) {
                 disableManagedIndexConfig(managedIndexConfig)
@@ -366,8 +369,8 @@ object ManagedIndexRunner :
                 val info = mapOf("message" to "Previous action was not able to update IndexMetaData.")
                 val updated = updateManagedIndexMetaData(
                     managedIndexMetaData.copy(
-                        policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
-                    )
+                        policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info,
+                    ),
                 )
                 if (updated.metadataSaved) {
                     disableManagedIndexConfig(managedIndexConfig)
@@ -383,8 +386,8 @@ object ManagedIndexRunner :
             val info = mapOf("message" to "Failed to execute action=${action?.type} as extension [$actionExtensionName] is not enabled.")
             val updated = updateManagedIndexMetaData(
                 managedIndexMetaData.copy(
-                    policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
-                )
+                    policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info,
+                ),
             )
             if (updated.metadataSaved) {
                 disableManagedIndexConfig(managedIndexConfig)
@@ -399,8 +402,8 @@ object ManagedIndexRunner :
             val info = mapOf("message" to "Attempted to execute action=${action.type} which is not allowed.")
             val updated = updateManagedIndexMetaData(
                 managedIndexMetaData.copy(
-                    policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info
-                )
+                    policyRetryInfo = PolicyRetryInfoMetaData(true, 0), info = info,
+                ),
             )
             if (updated.metadataSaved) {
                 disableManagedIndexConfig(managedIndexConfig)
@@ -418,8 +421,8 @@ object ManagedIndexRunner :
             if (validationServiceEnabled) {
                 val validationResult = withClosableContext(
                     IndexManagementSecurityContext(
-                        managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user
-                    )
+                        managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user,
+                    ),
                 ) {
                     actionValidation.validate(action.type, stepContext.metadata.index)
                 }
@@ -439,8 +442,8 @@ object ManagedIndexRunner :
             // Step null check is done in getStartingManagedIndexMetaData
             withClosableContext(
                 IndexManagementSecurityContext(
-                    managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user
-                )
+                    managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user,
+                ),
             ) {
                 step.preExecute(logger, stepContext.getUpdatedContext(startingManagedIndexMetaData)).execute().postExecute(logger)
             }
@@ -519,7 +522,7 @@ object ManagedIndexRunner :
             return withContext(Dispatchers.IO) {
                 val xcp = XContentHelper.createParser(
                     xContentRegistry, LoggingDeprecationHandler.INSTANCE,
-                    policySource, XContentType.JSON
+                    policySource, XContentType.JSON,
                 )
                 xcp.parseWithType(getResponse.id, getResponse.seqNo, getResponse.primaryTerm, Policy.Companion::parse)
             }
@@ -547,7 +550,7 @@ object ManagedIndexRunner :
     private suspend fun savePolicyToManagedIndexConfig(managedIndexConfig: ManagedIndexConfig, policy: Policy): Boolean {
         val updatedManagedIndexConfig = managedIndexConfig.copy(
             policyID = policy.id, policy = policy,
-            policySeqNo = policy.seqNo, policyPrimaryTerm = policy.primaryTerm, changePolicy = null
+            policySeqNo = policy.seqNo, policyPrimaryTerm = policy.primaryTerm, changePolicy = null,
         )
         val indexRequest = managedIndexConfigIndexRequest(updatedManagedIndexConfig)
         var savedPolicy = false
@@ -584,12 +587,12 @@ object ManagedIndexRunner :
     private suspend fun getFailedInitializedManagedIndexMetaData(
         managedIndexMetaData: ManagedIndexMetaData?,
         managedIndexConfig: ManagedIndexConfig,
-        policyID: String
+        policyID: String,
     ): ManagedIndexMetaData {
         // we either haven't initialized any metadata yet or we have already initialized metadata but still have no policy
         return managedIndexMetaData?.copy(
             policyRetryInfo = PolicyRetryInfoMetaData(failed = true, consumedRetries = 0),
-            info = mapOf("message" to "Fail to load policy: $policyID")
+            info = mapOf("message" to "Fail to load policy: $policyID"),
         ) ?: ManagedIndexMetaData(
             index = managedIndexConfig.index,
             indexUuid = managedIndexConfig.indexUuid,
@@ -604,7 +607,7 @@ object ManagedIndexRunner :
             actionMetaData = null,
             stepMetaData = null,
             policyRetryInfo = PolicyRetryInfoMetaData(failed = true, consumedRetries = 0),
-            info = mapOf("message" to "Fail to load policy: $policyID")
+            info = mapOf("message" to "Fail to load policy: $policyID"),
         )
     }
 
@@ -612,7 +615,7 @@ object ManagedIndexRunner :
     private suspend fun getInitializedManagedIndexMetaData(
         managedIndexMetaData: ManagedIndexMetaData?,
         managedIndexConfig: ManagedIndexConfig,
-        policy: Policy
+        policy: Policy,
     ): ManagedIndexMetaData {
         val state = managedIndexConfig.changePolicy?.state ?: policy.defaultState
         val stateMetaData = StateMetaData(state, Instant.now().toEpochMilli())
@@ -632,7 +635,7 @@ object ManagedIndexRunner :
                 actionMetaData = null,
                 stepMetaData = null,
                 policyRetryInfo = PolicyRetryInfoMetaData(failed = false, consumedRetries = 0),
-                info = mapOf("message" to "Successfully initialized policy: ${policy.id}")
+                info = mapOf("message" to "Successfully initialized policy: ${policy.id}"),
             )
             managedIndexMetaData.policySeqNo == null || managedIndexMetaData.policyPrimaryTerm == null ->
                 // If there is seqNo and PrimaryTerm it is first time populating Policy.
@@ -642,7 +645,7 @@ object ManagedIndexRunner :
                     policyPrimaryTerm = policy.primaryTerm,
                     stateMetaData = stateMetaData,
                     policyRetryInfo = PolicyRetryInfoMetaData(failed = false, consumedRetries = 0),
-                    info = mapOf("message" to "Successfully initialized policy: ${policy.id}")
+                    info = mapOf("message" to "Successfully initialized policy: ${policy.id}"),
                 )
             // this is an edge case where a user deletes the job config or index and we already have a policySeqNo/primaryTerm
             // in the metadata, in this case we just want to say we successfully initialized the policy again but we will not
@@ -653,7 +656,7 @@ object ManagedIndexRunner :
                 // If existing PolicySeqNo and PolicyPrimaryTerm is equal to cached Policy then no issue.
                 managedIndexMetaData.copy(
                     policyRetryInfo = PolicyRetryInfoMetaData(failed = false, consumedRetries = 0),
-                    info = mapOf("message" to "Successfully initialized policy: ${policy.id}")
+                    info = mapOf("message" to "Successfully initialized policy: ${policy.id}"),
                 )
             else ->
                 // else this means we either tried to load a policy with a different id, seqno, or primaryterm from what is
@@ -664,8 +667,8 @@ object ManagedIndexRunner :
                         "message" to "Fail to load policy: ${policy.id} with " +
                             "seqNo ${policy.seqNo} and primaryTerm ${policy.primaryTerm} as it" +
                             " does not match what's in the metadata [policyID=${managedIndexMetaData.policyID}," +
-                            " policySeqNo=${managedIndexMetaData.policySeqNo}, policyPrimaryTerm=${managedIndexMetaData.policyPrimaryTerm}]"
-                    )
+                            " policySeqNo=${managedIndexMetaData.policySeqNo}, policyPrimaryTerm=${managedIndexMetaData.policyPrimaryTerm}]",
+                    ),
                 )
         }
     }
@@ -677,7 +680,7 @@ object ManagedIndexRunner :
     private suspend fun updateManagedIndexMetaData(
         managedIndexMetaData: ManagedIndexMetaData,
         lastUpdateResult: UpdateMetadataResult? = null,
-        create: Boolean = false
+        create: Boolean = false,
     ): UpdateMetadataResult {
         var result = UpdateMetadataResult()
         if (!imIndices.attemptUpdateConfigIndexMapping()) {
@@ -706,7 +709,7 @@ object ManagedIndexRunner :
             logger.error(
                 "There was VersionConflictEngineException trying to update the metadata for " +
                     "${managedIndexMetaData.index}. Message: ${e.message}",
-                e
+                e,
             )
         } catch (e: Exception) {
             logger.error("Failed to save ManagedIndexMetaData for [index=${managedIndexMetaData.index}]", e)
@@ -717,7 +720,7 @@ object ManagedIndexRunner :
     data class UpdateMetadataResult(
         val metadataSaved: Boolean = false,
         val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
-        val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+        val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
     )
 
     /**
@@ -728,9 +731,8 @@ object ManagedIndexRunner :
     private suspend fun initChangePolicy(
         managedIndexConfig: ManagedIndexConfig,
         managedIndexMetaData: ManagedIndexMetaData,
-        actionToExecute: Action?
+        actionToExecute: Action?,
     ) {
-
         // should never happen since we only call this if there is a changePolicy, but we'll do it to make changePolicy non null
         val changePolicy = managedIndexConfig.changePolicy
         if (changePolicy == null) {
@@ -745,14 +747,14 @@ object ManagedIndexRunner :
         val updatedManagedIndexMetaData = if (policy == null) {
             managedIndexMetaData.copy(
                 info = mapOf("message" to "Failed to load change policy: ${changePolicy.policyID}"),
-                policyRetryInfo = PolicyRetryInfoMetaData(failed = true, consumedRetries = 0)
+                policyRetryInfo = PolicyRetryInfoMetaData(failed = true, consumedRetries = 0),
             )
         } else {
             // if the action to execute is transition then set the actionMetaData to a new transition metadata to reflect we are
             // in transition (in case we triggered change policy from entering transition) or to reflect this is a new policy transition phase
             val newTransitionMetaData = ActionMetaData(
                 TransitionsAction.name, Instant.now().toEpochMilli(), -1,
-                false, 0, 0, null
+                false, 0, 0, null,
             )
             val actionMetaData = if (actionToExecute?.type == TransitionsAction.name) {
                 newTransitionMetaData
@@ -767,7 +769,7 @@ object ManagedIndexRunner :
                 policyCompleted = false,
                 policySeqNo = policy.seqNo,
                 policyPrimaryTerm = policy.primaryTerm,
-                policyID = policy.id
+                policyID = policy.id,
             )
         }
 
@@ -786,11 +788,11 @@ object ManagedIndexRunner :
         }
 
         /*
-        * Try to update the ManagedIndexMetaData in cluster state, we need to do this first before updating the
-        * ManagedIndexConfig because if this fails we can fail early and still retry this whole process on the next
-        * execution whereas if we do the update to ManagedIndexConfig first we lose the ChangePolicy on the job and
-        * could fail to update the ManagedIndexMetaData which would put us in a bad state
-        * */
+         * Try to update the ManagedIndexMetaData in cluster state, we need to do this first before updating the
+         * ManagedIndexConfig because if this fails we can fail early and still retry this whole process on the next
+         * execution whereas if we do the update to ManagedIndexConfig first we lose the ChangePolicy on the job and
+         * could fail to update the ManagedIndexMetaData which would put us in a bad state
+         * */
         val updated = updateManagedIndexMetaData(updatedManagedIndexMetaData)
 
         if (!updated.metadataSaved || policy == null) return
@@ -827,7 +829,7 @@ object ManagedIndexRunner :
                             ErrorNotification.CHANNEL_TITLE,
                             metadata,
                             compiledMessage,
-                            policy.user
+                            policy.user,
                         )
                     }
                 }
@@ -940,7 +942,7 @@ object ManagedIndexRunner :
                 if (bulkItemResponse.isFailed) {
                     logger.warn(
                         "Failed to delete managed index job/metadata [id=${bulkItemResponse.id}] for ${managedIndexConfig.index}" +
-                            " after a successful $actionType [result=${bulkItemResponse.failureMessage}]"
+                            " after a successful $actionType [result=${bulkItemResponse.failureMessage}]",
                     )
                 }
             }

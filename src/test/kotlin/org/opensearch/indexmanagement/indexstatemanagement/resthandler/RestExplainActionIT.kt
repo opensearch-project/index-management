@@ -6,18 +6,14 @@
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
-import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
-import org.opensearch.indexmanagement.makeRequest
-import org.opensearch.indexmanagement.opensearchapi.toMap
-import org.opensearch.indexmanagement.waitFor
-import org.opensearch.rest.RestRequest
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.OpenAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
+import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ExplainFilter
 import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
@@ -25,6 +21,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomState
 import org.opensearch.indexmanagement.indexstatemanagement.util.SHOW_POLICY_QUERY_PARAM
 import org.opensearch.indexmanagement.indexstatemanagement.util.TOTAL_MANAGED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT_TYPE_AND_USER
+import org.opensearch.indexmanagement.makeRequest
+import org.opensearch.indexmanagement.opensearchapi.toMap
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
@@ -32,6 +30,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
+import org.opensearch.indexmanagement.waitFor
+import org.opensearch.rest.RestRequest
 import java.time.Instant
 import java.util.Locale
 
@@ -47,8 +47,8 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             indexName to mapOf<String, Any?>(
                 explainResponseOpendistroPolicyIdSetting to null,
                 explainResponseOpenSearchPolicyIdSetting to null,
-                ManagedIndexMetaData.ENABLED to null
-            )
+                ManagedIndexMetaData.ENABLED to null,
+            ),
         )
         assertResponseMap(expected, getExplainMap(indexName))
     }
@@ -57,7 +57,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         val indexName = "${testIndexName}_movies"
         createIndex(indexName, null)
         val expected = mapOf(
-            "total_managed_indices" to 0
+            "total_managed_indices" to 0,
         )
         assertResponseMap(expected, getExplainMap(null))
     }
@@ -78,13 +78,13 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                 "index" to indexName1,
                 "index_uuid" to getUuid(indexName1),
                 "policy_id" to policy.id,
-                ManagedIndexMetaData.ENABLED to true
+                ManagedIndexMetaData.ENABLED to true,
             ),
             indexName2 to mapOf<String, Any?>(
                 explainResponseOpendistroPolicyIdSetting to null,
                 explainResponseOpenSearchPolicyIdSetting to null,
-                ManagedIndexMetaData.ENABLED to null
-            )
+                ManagedIndexMetaData.ENABLED to null,
+            ),
         )
         waitFor {
             assertResponseMap(expected, getExplainMap("$indexName1,$indexName2"))
@@ -106,9 +106,9 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                 "index" to indexName1,
                 "index_uuid" to getUuid(indexName1),
                 "policy_id" to policy.id,
-                "enabled" to true
+                "enabled" to true,
             ),
-            "total_managed_indices" to 1
+            "total_managed_indices" to 1,
         )
         waitFor {
             assertResponseMap(expected, getExplainMap(null))
@@ -131,7 +131,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                 "index" to indexName1,
                 "index_uuid" to getUuid(indexName1),
                 "policy_id" to policy.id,
-                ManagedIndexMetaData.ENABLED to true
+                ManagedIndexMetaData.ENABLED to true,
             ),
             indexName2 to mapOf<String, Any>(
                 explainResponseOpendistroPolicyIdSetting to policy.id,
@@ -139,13 +139,13 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                 "index" to indexName2,
                 "index_uuid" to getUuid(indexName2),
                 "policy_id" to policy.id,
-                ManagedIndexMetaData.ENABLED to true
+                ManagedIndexMetaData.ENABLED to true,
             ),
             indexName3 to mapOf<String, Any?>(
                 explainResponseOpendistroPolicyIdSetting to null,
                 explainResponseOpenSearchPolicyIdSetting to null,
-                ManagedIndexMetaData.ENABLED to null
-            )
+                ManagedIndexMetaData.ENABLED to null,
+            ),
         )
         waitFor {
             assertResponseMap(expected, getExplainMap("$indexName1*"))
@@ -174,7 +174,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             "index" to indexName1,
             "index_uuid" to getUuid(indexName1),
             "policy_id" to policy.id,
-            "enabled" to true
+            "enabled" to true,
         )
         val indexName2Map = indexName2 to mapOf<String, Any>(
             explainResponseOpendistroPolicyIdSetting to policy.id,
@@ -182,7 +182,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             "index" to indexName2,
             "index_uuid" to getUuid(indexName2),
             "policy_id" to policy.id,
-            "enabled" to true
+            "enabled" to true,
         )
         val indexName4Map = indexName4 to mapOf<String, Any>(
             explainResponseOpendistroPolicyIdSetting to policy.id,
@@ -190,7 +190,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             "index" to indexName4,
             "index_uuid" to getUuid(indexName4),
             "policy_id" to policy.id,
-            "enabled" to true
+            "enabled" to true,
         )
         val indexName5Map = indexName5 to mapOf<String, Any>(
             explainResponseOpendistroPolicyIdSetting to policy.id,
@@ -198,7 +198,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             "index" to indexName5,
             "index_uuid" to getUuid(indexName5),
             "policy_id" to policy.id,
-            "enabled" to true
+            "enabled" to true,
         )
         val datastreamMap = ".ds-$dataStreamName-000001" to mapOf<String, Any>(
             explainResponseOpendistroPolicyIdSetting to policy.id,
@@ -206,7 +206,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             "index" to ".ds-$dataStreamName-000001",
             "index_uuid" to getUuid(".ds-$dataStreamName-000001"),
             "policy_id" to policy.id,
-            "enabled" to true
+            "enabled" to true,
         )
 
         waitFor {
@@ -215,7 +215,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                 indexName2Map,
                 indexName4Map,
                 indexName5Map,
-                "total_managed_indices" to 4
+                "total_managed_indices" to 4,
             )
             // These should match all non datastream managed indices
             assertResponseMap(expected, getExplainMap(indexName = null, queryParams = "queryString=$testIndexName*"))
@@ -230,7 +230,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                 indexName4Map,
                 indexName5Map,
                 datastreamMap,
-                "total_managed_indices" to 5
+                "total_managed_indices" to 5,
             )
             // These should match all managed indices including datastreams
             assertResponseMap(expected, getExplainMap(indexName = null, queryParams = "queryString=*$testIndexName-*"))
@@ -241,7 +241,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             val expected = mapOf(
                 datastreamMap,
-                "total_managed_indices" to 1
+                "total_managed_indices" to 1,
             )
             // These should match all datastream managed indices (and system/hidden indices)
             assertResponseMap(expected, getExplainMap(indexName = null, queryParams = "queryString=.*"))
@@ -251,7 +251,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             val expected = mapOf(
                 indexName4Map,
-                "total_managed_indices" to 1
+                "total_managed_indices" to 1,
             )
             // These should match all just the single index, and validates that it does not match the 15-02-2022 index
             // i.e. if it was still matching on tokens then ["2022", "02", "15"] would match both which we don't want
@@ -286,15 +286,15 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                         StateMetaData.STATE to fun(stateMetaDataMap: Any?): Boolean =
                             assertStateEquals(
                                 StateMetaData(policy.defaultState, Instant.now().toEpochMilli()),
-                                stateMetaDataMap
+                                stateMetaDataMap,
                             ),
                         PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
                             assertRetryInfoEquals(PolicyRetryInfoMetaData(false, 0), retryInfoMetaDataMap),
                         ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString(),
-                        ManagedIndexMetaData.ENABLED to true::equals
-                    )
+                        ManagedIndexMetaData.ENABLED to true::equals,
+                    ),
                 ),
-                getExplainMap(indexName)
+                getExplainMap(indexName),
             )
         }
     }
@@ -307,11 +307,11 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         val changePolicy = ChangePolicy(newPolicy.id, null, emptyList(), false)
         client().makeRequest(
             RestRequest.Method.POST.toString(),
-            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$indexName", emptyMap(), changePolicy.toHttpEntity()
+            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$indexName", emptyMap(), changePolicy.toHttpEntity(),
         )
         val deletePolicyResponse = client().makeRequest(
             RestRequest.Method.DELETE.toString(),
-            "${IndexManagementPlugin.LEGACY_POLICY_BASE_URI}/${changePolicy.policyID}"
+            "${IndexManagementPlugin.LEGACY_POLICY_BASE_URI}/${changePolicy.policyID}",
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, deletePolicyResponse.restStatus())
 
@@ -335,10 +335,10 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                             assertRetryInfoEquals(PolicyRetryInfoMetaData(true, 0), retryInfoMetaDataMap),
                         ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString(),
                         ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
-                        ManagedIndexMetaData.ENABLED to true::equals
-                    )
+                        ManagedIndexMetaData.ENABLED to true::equals,
+                    ),
                 ),
-                explainMap
+                explainMap,
             )
         }
     }
@@ -377,7 +377,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         val stateWithDeleteAction = randomState(actions = listOf(DeleteAction(index = 0)))
         val updatedStateWithReadOnlyAction = stateWithReadOnlyAction.copy(
             actions = listOf(stateWithReadOnlyAction.actions.first(), OpenAction(index = 1)),
-            transitions = listOf(Transition(stateWithDeleteAction.name, null))
+            transitions = listOf(Transition(stateWithDeleteAction.name, null)),
         )
         val policy2 = createPolicy(randomPolicy(states = listOf(stateWithDeleteAction, updatedStateWithReadOnlyAction)))
 
@@ -411,18 +411,18 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
             StateMetaData.STATE to fun(stateMetaDataMap: Any?): Boolean = assertStateEquals(
                 StateMetaData(policy1.defaultState, Instant.now().toEpochMilli()),
-                stateMetaDataMap
+                stateMetaDataMap,
             ),
             ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean = assertActionEquals(
                 ActionMetaData(
                     name = "read_only", startTime = Instant.now().toEpochMilli(), failed = false,
-                    index = 0, consumedRetries = 0, lastRetryTime = null, actionProperties = null
+                    index = 0, consumedRetries = 0, lastRetryTime = null, actionProperties = null,
                 ),
-                actionMetaDataMap
+                actionMetaDataMap,
             ),
             PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
                 assertRetryInfoEquals(PolicyRetryInfoMetaData(false, 0), retryInfoMetaDataMap),
-            ManagedIndexMetaData.ENABLED to true::equals
+            ManagedIndexMetaData.ENABLED to true::equals,
         )
 
         val index2Predicates = indexName2 to listOf(
@@ -436,18 +436,18 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
             StateMetaData.STATE to fun(stateMetaDataMap: Any?): Boolean = assertStateEquals(
                 StateMetaData(policy2.defaultState, Instant.now().toEpochMilli()),
-                stateMetaDataMap
+                stateMetaDataMap,
             ),
             ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean = assertActionEquals(
                 ActionMetaData(
                     name = "delete", startTime = Instant.now().toEpochMilli(), failed = false,
-                    index = 0, consumedRetries = 0, lastRetryTime = null, actionProperties = null
+                    index = 0, consumedRetries = 0, lastRetryTime = null, actionProperties = null,
                 ),
-                actionMetaDataMap
+                actionMetaDataMap,
             ),
             PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
                 assertRetryInfoEquals(PolicyRetryInfoMetaData(false, 0), retryInfoMetaDataMap),
-            ManagedIndexMetaData.ENABLED to true::equals
+            ManagedIndexMetaData.ENABLED to true::equals,
         )
 
         // check metadata for result from filtering on the first policy and its state
@@ -455,19 +455,19 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             val filterPolicy = ExplainFilter(
                 policyID = policy1.id,
                 state = policy1.states[0].name,
-                failed = false
+                failed = false,
             )
 
             val resp = client().makeRequest(
                 RestRequest.Method.POST.toString(),
-                RestExplainAction.EXPLAIN_BASE_URI, emptyMap(), filterPolicy.toHttpEntity()
+                RestExplainAction.EXPLAIN_BASE_URI, emptyMap(), filterPolicy.toHttpEntity(),
             )
 
             assertEquals("Unexpected RestStatus", RestStatus.OK, resp.restStatus())
 
             assertPredicatesOnMetaData(
                 listOf(index1Predicates),
-                resp.asMap(), false
+                resp.asMap(), false,
             )
         }
 
@@ -480,21 +480,21 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             val filterPolicy = ExplainFilter(
                 actionType = "delete",
-                failed = false
+                failed = false,
             )
 
             val resp = client().makeRequest(
                 RestRequest.Method.POST.toString(),
-                RestExplainAction.EXPLAIN_BASE_URI, emptyMap(), filterPolicy.toHttpEntity()
+                RestExplainAction.EXPLAIN_BASE_URI, emptyMap(), filterPolicy.toHttpEntity(),
             )
 
             assertEquals("Unexpected RestStatus", RestStatus.OK, resp.restStatus())
 
             assertPredicatesOnMetaData(
                 listOf(
-                    index2Predicates
+                    index2Predicates,
                 ),
-                resp.asMap(), false
+                resp.asMap(), false,
             )
         }
 
@@ -515,12 +515,12 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         val states = listOf(
             randomState().copy(
                 transitions = listOf(),
-                actions = listOf(config)
-            )
+                actions = listOf(config),
+            ),
         )
         val invalidPolicy = randomPolicy().copy(
             states = states,
-            defaultState = states[0].name
+            defaultState = states[0].name,
         )
 
         // for successful index
@@ -545,12 +545,12 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig1)
         waitFor {
             val explainFilter = ExplainFilter(
-                failed = true
+                failed = true,
             )
 
             val resp = client().makeRequest(
                 RestRequest.Method.POST.toString(),
-                RestExplainAction.EXPLAIN_BASE_URI, emptyMap(), explainFilter.toHttpEntity()
+                RestExplainAction.EXPLAIN_BASE_URI, emptyMap(), explainFilter.toHttpEntity(),
             )
 
             assertEquals("Unexpected RestStatus", RestStatus.OK, resp.restStatus())
@@ -566,24 +566,24 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                         ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
                         StepMetaData.STEP to fun(stepMetaDataMap: Any?): Boolean = assertStepEquals(
                             StepMetaData("attempt_allocation", Instant.now().toEpochMilli(), Step.StepStatus.FAILED),
-                            stepMetaDataMap
+                            stepMetaDataMap,
                         ),
-                        ManagedIndexMetaData.ENABLED to true::equals
-                    )
+                        ManagedIndexMetaData.ENABLED to true::equals,
+                    ),
                 ),
-                resp.asMap(), false
+                resp.asMap(), false,
             )
         }
 
         updateManagedIndexConfigStartTime(managedIndexConfig2)
         waitFor {
             val explainFilter = ExplainFilter(
-                failed = false
+                failed = false,
             )
 
             val resp = client().makeRequest(
                 RestRequest.Method.POST.toString(),
-                RestExplainAction.EXPLAIN_BASE_URI, emptyMap(), explainFilter.toHttpEntity()
+                RestExplainAction.EXPLAIN_BASE_URI, emptyMap(), explainFilter.toHttpEntity(),
             )
 
             assertEquals("Unexpected RestStatus", RestStatus.OK, resp.restStatus())
@@ -599,12 +599,12 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                         ManagedIndexMetaData.INDEX_CREATION_DATE to fun(indexCreationDate: Any?): Boolean = (indexCreationDate as Long) > 1L,
                         StepMetaData.STEP to fun(stepMetaDataMap: Any?): Boolean = assertStepEquals(
                             StepMetaData("set_read_only", Instant.now().toEpochMilli(), Step.StepStatus.STARTING),
-                            stepMetaDataMap
+                            stepMetaDataMap,
                         ),
-                        ManagedIndexMetaData.ENABLED to true::equals
-                    )
+                        ManagedIndexMetaData.ENABLED to true::equals,
+                    ),
                 ),
-                resp.asMap(), false
+                resp.asMap(), false,
             )
         }
 

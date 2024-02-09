@@ -43,7 +43,7 @@ object DeletingState : State {
         if (job.deletion == null) {
             log.warn("Policy deletion config becomes null before trying to delete old snapshots. Reset.")
             return SMResult.Fail(
-                metadataBuilder.resetDeletion(), WorkflowType.DELETION, forceReset = true
+                metadataBuilder.resetDeletion(), WorkflowType.DELETION, forceReset = true,
             )
         }
 
@@ -55,19 +55,20 @@ object DeletingState : State {
             getSnapshotsErrorMessage(),
         )
         metadataBuilder = getSnapshotsRes.metadataBuilder
-        if (getSnapshotsRes.failed)
+        if (getSnapshotsRes.failed) {
             return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
+        }
         val getSnapshots = getSnapshotsRes.snapshots
 
         snapshotsToDelete = filterByDeleteCondition(
             getSnapshots.filter { it.state() != SnapshotState.IN_PROGRESS },
-            job.deletion.condition, log
+            job.deletion.condition, log,
         )
         if (snapshotsToDelete.isNotEmpty()) {
             try {
                 val req = DeleteSnapshotRequest(
                     job.snapshotConfig["repository"] as String,
-                    *snapshotsToDelete.toTypedArray()
+                    *snapshotsToDelete.toTypedArray(),
                 )
                 client.admin().cluster().suspendUntil<ClusterAdminClient, AcknowledgedResponse> { deleteSnapshot(req, it) }
 

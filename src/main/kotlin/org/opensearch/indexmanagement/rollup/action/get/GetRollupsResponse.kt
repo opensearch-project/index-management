@@ -8,6 +8,7 @@ package org.opensearch.indexmanagement.rollup.action.get
 import org.opensearch.core.action.ActionResponse
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.ToXContentObject
 import org.opensearch.core.xcontent.XContentBuilder
@@ -17,7 +18,6 @@ import org.opensearch.indexmanagement.rollup.model.Rollup.Companion.ROLLUP_TYPE
 import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
-import org.opensearch.core.rest.RestStatus
 import java.io.IOException
 
 class GetRollupsResponse : ActionResponse, ToXContentObject {
@@ -28,7 +28,7 @@ class GetRollupsResponse : ActionResponse, ToXContentObject {
     constructor(
         rollups: List<Rollup>,
         totalRollups: Int,
-        status: RestStatus
+        status: RestStatus,
     ) : super() {
         this.rollups = rollups
         this.totalRollups = totalRollups
@@ -39,7 +39,7 @@ class GetRollupsResponse : ActionResponse, ToXContentObject {
     constructor(sin: StreamInput) : this(
         rollups = sin.readList(::Rollup),
         totalRollups = sin.readInt(),
-        status = sin.readEnum(RestStatus::class.java)
+        status = sin.readEnum(RestStatus::class.java),
     )
 
     @Throws(IOException::class)

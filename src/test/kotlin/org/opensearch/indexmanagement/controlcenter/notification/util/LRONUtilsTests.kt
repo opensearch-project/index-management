@@ -6,10 +6,10 @@
 package org.opensearch.indexmanagement.controlcenter.notification.util
 
 import org.junit.Assert
+import org.opensearch.core.tasks.TaskId
 import org.opensearch.index.reindex.ReindexAction
 import org.opensearch.indexmanagement.controlcenter.notification.randomActionName
 import org.opensearch.indexmanagement.controlcenter.notification.randomTaskId
-import org.opensearch.core.tasks.TaskId
 import org.opensearch.test.OpenSearchTestCase
 import kotlin.IllegalArgumentException
 

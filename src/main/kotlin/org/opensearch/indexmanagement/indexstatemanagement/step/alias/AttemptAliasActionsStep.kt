@@ -51,7 +51,7 @@ class AttemptAliasActionsStep(private val action: AliasAction) : Step(name) {
     private fun handleResponse(
         response: AcknowledgedResponse,
         indexName: String,
-        actions: List<IndicesAliasesRequest.AliasActions>
+        actions: List<IndicesAliasesRequest.AliasActions>,
     ) {
         if (response.isAcknowledged) {
             stepStatus = StepStatus.COMPLETED
@@ -66,7 +66,7 @@ class AttemptAliasActionsStep(private val action: AliasAction) : Step(name) {
         return currentMetadata.copy(
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 
@@ -77,7 +77,7 @@ class AttemptAliasActionsStep(private val action: AliasAction) : Step(name) {
         const val name = "attempt_alias"
         fun getFailedMessage(
             index: String,
-            actions: List<IndicesAliasesRequest.AliasActions>
+            actions: List<IndicesAliasesRequest.AliasActions>,
         ) = "Failed to update alias [index=$index] for actions: [actions=$actions]"
 
         fun getSuccessMessage(index: String) = "Successfully updated alias [index=$index]"

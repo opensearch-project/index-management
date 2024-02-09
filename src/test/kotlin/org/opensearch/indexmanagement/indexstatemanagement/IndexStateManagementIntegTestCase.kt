@@ -11,23 +11,24 @@ import org.junit.After
 import org.junit.Before
 import org.opensearch.OpenSearchParseException
 import org.opensearch.action.ActionRequest
-import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.admin.cluster.reroute.ClusterRerouteRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.client.Request
 import org.opensearch.client.Response
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.routing.allocation.command.MoveAllocationCommand
-import org.opensearch.core.common.Strings
 import org.opensearch.common.settings.Settings
-import org.opensearch.core.xcontent.DeprecationHandler
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.core.xcontent.XContentParser
-import org.opensearch.core.xcontent.XContentParserUtils
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.common.xcontent.json.JsonXContent
+import org.opensearch.core.action.ActionResponse
+import org.opensearch.core.common.Strings
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.DeprecationHandler
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.XContentParser
+import org.opensearch.core.xcontent.XContentParserUtils
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementRestTestCase.Companion.wipeAllIndices
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
@@ -49,7 +50,6 @@ import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.plugins.ActionPlugin
 import org.opensearch.plugins.Plugin
 import org.opensearch.rest.RestRequest
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.OpenSearchIntegTestCase
 import org.opensearch.test.rest.OpenSearchRestTestCase.entityAsMap
 import java.io.IOException
@@ -85,7 +85,7 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
         actionMetaData = null,
         stepMetaData = null,
         policyRetryInfo = PolicyRetryInfoMetaData(false, 0),
-        info = mapOf("message" to "Happy moving")
+        info = mapOf("message" to "Happy moving"),
     )
 
     override fun nodePlugins(): Collection<Class<out Plugin>> {
@@ -97,9 +97,9 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
             return listOf(
                 ActionPlugin.ActionHandler(
                     UpdateManagedIndexMetaDataAction.INSTANCE,
-                    TransportUpdateManagedIndexMetaDataAction::class.java
+                    TransportUpdateManagedIndexMetaDataAction::class.java,
                 ),
-                ActionPlugin.ActionHandler(ExplainAction.INSTANCE, TransportExplainAction::class.java)
+                ActionPlugin.ActionHandler(ExplainAction.INSTANCE, TransportExplainAction::class.java),
             )
         }
     }
@@ -120,7 +120,7 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
     fun createPolicy(
         policy: Policy,
         policyId: String = randomAlphaOfLength(10),
-        refresh: Boolean = true
+        refresh: Boolean = true,
     ): Policy {
         val response = createPolicyJson(policy.toJsonString(), policyId, refresh)
 
@@ -128,28 +128,28 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
             .createParser(
                 NamedXContentRegistry.EMPTY,
                 LoggingDeprecationHandler.INSTANCE,
-                response.entity.content
+                response.entity.content,
             ).map()
         val createdId = policyJson["_id"] as String
         assertEquals("policy ids are not the same", policyId, createdId)
         return policy.copy(
             id = createdId,
             seqNo = (policyJson["_seq_no"] as Int).toLong(),
-            primaryTerm = (policyJson["_primary_term"] as Int).toLong()
+            primaryTerm = (policyJson["_primary_term"] as Int).toLong(),
         )
     }
 
     protected fun createPolicyJson(
         policyString: String,
         policyId: String,
-        refresh: Boolean = true
+        refresh: Boolean = true,
     ): Response {
         val response = getRestClient()
             .makeRequest(
                 "PUT",
                 "${IndexManagementPlugin.POLICY_BASE_URI}/$policyId?refresh=$refresh",
                 emptyMap(),
-                StringEntity(policyString, ContentType.APPLICATION_JSON)
+                StringEntity(policyString, ContentType.APPLICATION_JSON),
             )
         assertEquals("Unable to create a new policy", RestStatus.CREATED, response.restStatus())
         return response
@@ -159,7 +159,7 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
 
     protected fun addPolicyToIndex(
         index: String,
-        policyID: String
+        policyID: String,
     ) {
         val body = """
             {
@@ -192,7 +192,7 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
         """.trimIndent()
         val response = getRestClient().makeRequest(
             "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_search", emptyMap(),
-            StringEntity(request, ContentType.APPLICATION_JSON)
+            StringEntity(request, ContentType.APPLICATION_JSON),
         )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
         val searchResponse =
@@ -214,8 +214,8 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
             StringEntity(
                 "{\"doc\":{\"managed_index\":{\"schedule\":{\"interval\":{\"start_time\":" +
                     "\"$startTimeMillis\"}}}}}",
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
@@ -228,8 +228,8 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
             "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_update/${update.id}",
             StringEntity(
                 "{\"doc\":{\"managed_index\": $policyJsonString }}",
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
@@ -238,8 +238,8 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
             "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_update/${update.id}",
             StringEntity(
                 "{\"doc\":{\"managed_index\": {\"policy_seq_no\": \"0\", \"policy_primary_term\": \"1\"} }}",
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
@@ -260,7 +260,7 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
             return XContentHelper.convertToMap(
                 XContentType.JSON.xContent(),
                 `is`,
-                true
+                true,
             )
         }
     }
@@ -272,7 +272,7 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
 
         val response = getRestClient().makeRequest(
             RestRequest.Method.GET.toString(),
-            "${RestExplainAction.EXPLAIN_BASE_URI}/$indexName"
+            "${RestExplainAction.EXPLAIN_BASE_URI}/$indexName",
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
 
@@ -281,13 +281,16 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
         XContentParserUtils.ensureExpectedToken(
             XContentParser.Token.START_OBJECT,
             xcp.nextToken(),
-            xcp
+            xcp,
         )
         while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
             xcp.currentName()
             xcp.nextToken()
-            if (xcp.currentName() == TOTAL_MANAGED_INDICES) xcp.intValue()
-            else metadata = ManagedIndexMetaData.parse(xcp)
+            if (xcp.currentName() == TOTAL_MANAGED_INDICES) {
+                xcp.intValue()
+            } else {
+                metadata = ManagedIndexMetaData.parse(xcp)
+            }
         }
         return metadata
     }
@@ -315,7 +318,7 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
                 .createParser(
                     NamedXContentRegistry.EMPTY,
                     DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
-                    response.entity.content
+                    response.entity.content,
                 )
                 .use { parser -> parser.list() }
         } catch (e: IOException) {
@@ -350,7 +353,7 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
         """.trimIndent()
         val res = getRestClient().makeRequest(
             "PUT", "_cluster/settings", emptyMap(),
-            StringEntity(request, ContentType.APPLICATION_JSON)
+            StringEntity(request, ContentType.APPLICATION_JSON),
         )
         assertEquals("Request failed", RestStatus.OK, res.restStatus())
     }

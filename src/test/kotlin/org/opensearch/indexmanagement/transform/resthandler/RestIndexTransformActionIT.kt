@@ -7,13 +7,13 @@ package org.opensearch.indexmanagement.transform.resthandler
 
 import org.opensearch.client.ResponseException
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.transform.TransformRestTestCase
 import org.opensearch.indexmanagement.transform.randomTransform
 import org.opensearch.indexmanagement.util.NO_ID
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 
 @TestLogging(value = "level:DEBUG", reason = "Debugging tests")
@@ -29,7 +29,7 @@ class RestIndexTransformActionIT : TransformRestTestCase() {
             "PUT",
             "$TRANSFORM_BASE_URI/${transform.id}",
             emptyMap(),
-            transform.toHttpEntity()
+            transform.toHttpEntity(),
         )
         assertEquals("Create transform failed", RestStatus.CREATED, response.restStatus())
         val responseBody = response.asMap()
@@ -47,7 +47,7 @@ class RestIndexTransformActionIT : TransformRestTestCase() {
                 "PUT",
                 TRANSFORM_BASE_URI,
                 emptyMap(),
-                transform.toHttpEntity()
+                transform.toHttpEntity(),
             )
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
@@ -63,7 +63,7 @@ class RestIndexTransformActionIT : TransformRestTestCase() {
                 "POST",
                 "$TRANSFORM_BASE_URI/some_transform",
                 emptyMap(),
-                transform.toHttpEntity()
+                transform.toHttpEntity(),
             )
             fail("Expected 405 Method Not Allowed response")
         } catch (e: ResponseException) {
@@ -81,7 +81,7 @@ class RestIndexTransformActionIT : TransformRestTestCase() {
         val expected = createParser(
             XContentType.JSON.xContent(),
             javaClass.classLoader.getResource("mappings/opendistro-ism-config.json")
-                .readText()
+                .readText(),
         )
         val expectedMap = expected.map()
 
@@ -96,7 +96,7 @@ class RestIndexTransformActionIT : TransformRestTestCase() {
                 "PUT",
                 "$TRANSFORM_BASE_URI/${transform.id}?refresh=true&if_seq_no=${transform.seqNo}&if_primary_term=${transform.primaryTerm}",
                 emptyMap(),
-                transform.copy(continuous = !transform.continuous, pageSize = 50).toHttpEntity() // Lower page size to make sure that doesn't throw an error first
+                transform.copy(continuous = !transform.continuous, pageSize = 50).toHttpEntity(), // Lower page size to make sure that doesn't throw an error first
             )
             fail("Expected 405 Method Not Allowed response")
         } catch (e: ResponseException) {
@@ -105,12 +105,12 @@ class RestIndexTransformActionIT : TransformRestTestCase() {
             val expectedErrorMessage = mapOf(
                 "error" to mapOf(
                     "root_cause" to listOf<Map<String, Any>>(
-                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [continuous]")
+                        mapOf("type" to "status_exception", "reason" to "Not allowed to modify [continuous]"),
                     ),
                     "type" to "status_exception",
-                    "reason" to "Not allowed to modify [continuous]"
+                    "reason" to "Not allowed to modify [continuous]",
                 ),
-                "status" to 400
+                "status" to 400,
             )
             assertEquals(expectedErrorMessage, actualMessage)
         }

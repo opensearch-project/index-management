@@ -30,7 +30,7 @@ class ShrinkAction(
     val aliases: List<Alias>?,
     val switchAliases: Boolean = false,
     val forceUnsafe: Boolean?,
-    index: Int
+    index: Int,
 ) : Action(name, index) {
     init {
         val numSet = arrayOf(maxShardSize != null, percentageOfSourceShards != null, numNewShards != null).count { it }
@@ -61,7 +61,7 @@ class ShrinkAction(
         AttemptMoveShardsStep.name to attemptMoveShardsStep,
         WaitForMoveShardsStep.name to waitForMoveShardsStep,
         AttemptShrinkStep.name to attemptShrinkStep,
-        WaitForShrinkStep.name to waitForShrinkStep
+        WaitForShrinkStep.name to waitForShrinkStep,
     )
     override fun getSteps(): List<Step> = listOf(attemptMoveShardsStep, waitForMoveShardsStep, attemptShrinkStep, waitForShrinkStep)
 
@@ -104,7 +104,9 @@ class ShrinkAction(
         if (maxShardSize != null) builder.field(MAX_SHARD_SIZE_FIELD, maxShardSize.stringRep)
         if (percentageOfSourceShards != null) builder.field(PERCENTAGE_OF_SOURCE_SHARDS_FIELD, percentageOfSourceShards)
         if (targetIndexTemplate != null) builder.field(TARGET_INDEX_TEMPLATE_FIELD, targetIndexTemplate)
-        if (aliases != null) { builder.aliasesField(aliases) }
+        if (aliases != null) {
+            builder.aliasesField(aliases)
+        }
         builder.field(SWITCH_ALIASES, switchAliases)
         if (forceUnsafe != null) builder.field(FORCE_UNSAFE_FIELD, forceUnsafe)
         builder.endObject()

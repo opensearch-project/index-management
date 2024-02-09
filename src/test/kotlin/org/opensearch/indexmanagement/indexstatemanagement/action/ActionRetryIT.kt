@@ -53,9 +53,9 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 ActionMetaData(
                     "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 1,
-                    managedIndexMetaData.actionMetaData?.lastRetryTime, null
+                    managedIndexMetaData.actionMetaData?.lastRetryTime, null,
                 ),
-                managedIndexMetaData.actionMetaData
+                managedIndexMetaData.actionMetaData,
             )
 
             assertEquals(expectedInfoString, managedIndexMetaData.info.toString())
@@ -69,9 +69,9 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 ActionMetaData(
                     "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, false, 2,
-                    managedIndexMetaData.actionMetaData?.lastRetryTime, null
+                    managedIndexMetaData.actionMetaData?.lastRetryTime, null,
                 ),
-                managedIndexMetaData.actionMetaData
+                managedIndexMetaData.actionMetaData,
             )
 
             assertEquals(expectedInfoString, managedIndexMetaData.info.toString())
@@ -85,9 +85,9 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 ActionMetaData(
                     "rollover", managedIndexMetaData.actionMetaData?.startTime, 0, true, 2,
-                    managedIndexMetaData.actionMetaData?.lastRetryTime, null
+                    managedIndexMetaData.actionMetaData?.lastRetryTime, null,
                 ),
-                managedIndexMetaData.actionMetaData
+                managedIndexMetaData.actionMetaData,
             )
 
             assertEquals(expectedInfoString, managedIndexMetaData.info.toString())
@@ -149,20 +149,20 @@ class ActionRetryIT : IndexStateManagementRestTestCase() {
                         ActionMetaData.ACTION to fun(actionMetaDataMap: Any?): Boolean =
                             assertActionEquals(
                                 ActionMetaData("rollover", Instant.now().toEpochMilli(), 0, false, 1, null, null),
-                                actionMetaDataMap
+                                actionMetaDataMap,
                             ),
                         StepMetaData.STEP to fun(stepMetaDataMap: Any?): Boolean =
                             assertStepEquals(
                                 StepMetaData("attempt_rollover", Instant.now().toEpochMilli(), Step.StepStatus.FAILED),
-                                stepMetaDataMap
+                                stepMetaDataMap,
                             ),
                         PolicyRetryInfoMetaData.RETRY_INFO to fun(retryInfoMetaDataMap: Any?): Boolean =
                             assertRetryInfoEquals(PolicyRetryInfoMetaData(false, 0), retryInfoMetaDataMap),
                         ManagedIndexMetaData.INFO to fun(info: Any?): Boolean = expectedInfoString == info.toString(),
-                        ManagedIndexMetaData.ENABLED to true::equals
-                    )
+                        ManagedIndexMetaData.ENABLED to true::equals,
+                    ),
                 ),
-                getExplainMap(indexName)
+                getExplainMap(indexName),
             )
         }
     }

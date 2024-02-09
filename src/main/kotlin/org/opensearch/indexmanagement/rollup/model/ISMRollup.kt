@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement.rollup.model
 
 import org.apache.commons.codec.digest.DigestUtils
+import org.opensearch.commons.authuser.User
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
@@ -14,7 +15,6 @@ import org.opensearch.core.xcontent.ToXContentObject
 import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParserUtils
-import org.opensearch.commons.authuser.User
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
@@ -31,7 +31,7 @@ data class ISMRollup(
     val targetIndex: String,
     val pageSize: Int,
     val dimensions: List<Dimension>,
-    val metrics: List<RollupMetrics>
+    val metrics: List<RollupMetrics>,
 ) : ToXContentObject, Writeable {
 
     // TODO: This can be moved to a common place, since this is shared between Rollup and ISMRollup
@@ -80,7 +80,7 @@ data class ISMRollup(
             continuous = false,
             dimensions = dimensions,
             metrics = metrics,
-            user = user
+            user = user,
         )
     }
 
@@ -99,12 +99,12 @@ data class ISMRollup(
                         Dimension.Type.DATE_HISTOGRAM -> DateHistogram(sin)
                         Dimension.Type.TERMS -> Terms(sin)
                         Dimension.Type.HISTOGRAM -> Histogram(sin)
-                    }
+                    },
                 )
             }
             dimensionsList.toList()
         },
-        metrics = sin.readList(::RollupMetrics)
+        metrics = sin.readList(::RollupMetrics),
     )
 
     override fun toString(): String {
@@ -146,7 +146,7 @@ data class ISMRollup(
         @JvmStatic
         @Throws(IOException::class)
         fun parse(
-            xcp: XContentParser
+            xcp: XContentParser,
         ): ISMRollup {
             var description = ""
             var targetIndex = ""
@@ -168,7 +168,7 @@ data class ISMRollup(
                         XContentParserUtils.ensureExpectedToken(
                             XContentParser.Token.START_ARRAY,
                             xcp.currentToken(),
-                            xcp
+                            xcp,
                         )
                         while (xcp.nextToken() != XContentParser.Token.END_ARRAY) {
                             dimensions.add(Dimension.parse(xcp))
@@ -178,7 +178,7 @@ data class ISMRollup(
                         XContentParserUtils.ensureExpectedToken(
                             XContentParser.Token.START_ARRAY,
                             xcp.currentToken(),
-                            xcp
+                            xcp,
                         )
                         while (xcp.nextToken() != XContentParser.Token.END_ARRAY) {
                             metrics.add(RollupMetrics.parse(xcp))
@@ -193,7 +193,7 @@ data class ISMRollup(
                 pageSize = pageSize,
                 dimensions = dimensions,
                 metrics = metrics,
-                targetIndex = targetIndex
+                targetIndex = targetIndex,
             )
         }
     }

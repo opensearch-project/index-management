@@ -110,7 +110,7 @@ class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
             Settings.builder()
                 .put(AttemptMoveShardsStep.ROUTING_SETTING, shrinkActionProperties.nodeName)
                 .put(INDEX_NUMBER_OF_SHARDS, shrinkActionProperties.targetNumShards)
-                .build()
+                .build(),
         )
         action.aliases?.forEach { req.targetIndexRequest.alias(it) }
         val resizeResponse: ResizeResponse = context.client.admin().indices().suspendUntil { resizeIndex(req, it) }
@@ -125,12 +125,12 @@ class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
         return currentMetadata.copy(
             actionMetaData = currentMetadata.actionMetaData?.copy(
                 actionProperties = ActionProperties(
-                    shrinkActionProperties = shrinkActionProperties
-                )
+                    shrinkActionProperties = shrinkActionProperties,
+                ),
             ),
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 

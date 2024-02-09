@@ -7,24 +7,24 @@ package org.opensearch.indexmanagement
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionRequest
-import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.support.ActionFilter
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.node.DiscoveryNodes
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.inject.Inject
 import org.opensearch.common.lifecycle.Lifecycle
 import org.opensearch.common.lifecycle.LifecycleComponent
 import org.opensearch.common.lifecycle.LifecycleListener
-import org.opensearch.common.inject.Inject
-import org.opensearch.core.common.io.stream.NamedWriteableRegistry
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.IndexScopedSettings
 import org.opensearch.common.settings.Setting
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.settings.SettingsFilter
 import org.opensearch.common.util.concurrent.ThreadContext
+import org.opensearch.core.action.ActionResponse
+import org.opensearch.core.common.io.stream.NamedWriteableRegistry
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
@@ -51,6 +51,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.MetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.PluginVersionSweepCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
+import org.opensearch.indexmanagement.indexstatemanagement.migration.ISMTemplateService
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestAddPolicyAction
@@ -87,7 +88,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.upda
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.updateindexmetadata.UpdateManagedIndexMetaDataAction
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.validation.ActionValidation
-import org.opensearch.indexmanagement.indexstatemanagement.migration.ISMTemplateService
 import org.opensearch.indexmanagement.refreshanalyzer.RefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.refreshanalyzer.TransportRefreshSearchAnalyzerAction
@@ -127,6 +127,7 @@ import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.rollup.util.QueryShardContextFactory
 import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionResolver
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.snapshotmanagement.SMRunner
 import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestCreateSMPolicyHandler
 import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestDeleteSMPolicyHandler
 import org.opensearch.indexmanagement.snapshotmanagement.api.resthandler.RestExplainSMPolicyHandler
@@ -142,7 +143,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.Trans
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.TransportIndexSMPolicyAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.start.TransportStartSMAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.stop.TransportStopSMAction
-import org.opensearch.indexmanagement.snapshotmanagement.SMRunner
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings
@@ -312,7 +312,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             extension.overrideClusterStateIndexUuidSetting()?.let {
                 if (customIndexUUIDSetting != null) {
                     error(
-                        "Multiple extensions of IndexManagement plugin overriding ClusterStateIndexUUIDSetting - not supported"
+                        "Multiple extensions of IndexManagement plugin overriding ClusterStateIndexUUIDSetting - not supported",
                     )
                 }
                 customIndexUUIDSetting = extension.overrideClusterStateIndexUuidSetting()
@@ -328,7 +328,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         indexScopedSettings: IndexScopedSettings,
         settingsFilter: SettingsFilter,
         indexNameExpressionResolver: IndexNameExpressionResolver,
-        nodesInCluster: Supplier<DiscoveryNodes>
+        nodesInCluster: Supplier<DiscoveryNodes>,
     ): List<RestHandler> {
         return listOf(
             RestRefreshSearchAnalyzerAction(),
@@ -362,7 +362,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             RestUpdateSMPolicyHandler(),
             RestIndexLRONConfigAction(),
             RestGetLRONConfigAction(),
-            RestDeleteLRONConfigAction()
+            RestDeleteLRONConfigAction(),
         )
     }
 
@@ -378,7 +378,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         nodeEnvironment: NodeEnvironment,
         namedWriteableRegistry: NamedWriteableRegistry,
         indexNameExpressionResolver: IndexNameExpressionResolver,
-        repositoriesServiceSupplier: Supplier<RepositoriesService>
+        repositoriesServiceSupplier: Supplier<RepositoriesService>,
     ): Collection<Any> {
         val settings = environment.settings()
         this.clusterService = clusterService
@@ -388,7 +388,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             scriptService,
             xContentRegistry,
             namedWriteableRegistry,
-            environment
+            environment,
         )
         rollupInterceptor = RollupInterceptor(clusterService, settings, indexNameExpressionResolver)
         val jvmService = JvmService(environment.settings())
@@ -399,7 +399,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             settings,
             indexNameExpressionResolver,
             jvmService,
-            threadPool
+            threadPool,
         )
         fieldCapsFilter = FieldCapsFilter(clusterService, settings, indexNameExpressionResolver)
         this.indexNameExpressionResolver = indexNameExpressionResolver
@@ -428,14 +428,14 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
                 client,
                 threadPool,
                 clusterService,
-                indexManagementIndices
+                indexManagementIndices,
             )
 
         indexMetadataProvider = IndexMetadataProvider(
             settings, client, clusterService,
             hashMapOf(
-                DEFAULT_INDEX_TYPE to DefaultIndexMetadataService(customIndexUUIDSetting)
-            )
+                DEFAULT_INDEX_TYPE to DefaultIndexMetadataService(customIndexUUIDSetting),
+            ),
         )
         indexMetadataServices.forEach { indexMetadataProvider.addMetadataServices(it) }
 
@@ -460,7 +460,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 
         val managedIndexCoordinator = ManagedIndexCoordinator(
             environment.settings(),
-            client, clusterService, threadPool, indexManagementIndices, metadataService, templateService, indexMetadataProvider, xContentRegistry
+            client, clusterService, threadPool, indexManagementIndices, metadataService, templateService, indexMetadataProvider, xContentRegistry,
         )
 
         val smRunner = SMRunner.init(client, threadPool, settings, indexManagementIndices, clusterService)
@@ -486,7 +486,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             indexStateManagementHistory,
             indexMetadataProvider,
             smRunner,
-            pluginVersionSweepCoordinator
+            pluginVersionSweepCoordinator,
         )
     }
 
@@ -564,7 +564,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             LegacyOpenDistroRollupSettings.ROLLUP_ENABLED,
             LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_ENABLED,
             LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS,
-            SnapshotManagementSettings.FILTER_BY_BACKEND_ROLES
+            SnapshotManagementSettings.FILTER_BY_BACKEND_ROLES,
         )
     }
 
@@ -607,7 +607,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             ActionPlugin.ActionHandler(SMActions.GET_SM_POLICIES_ACTION_TYPE, TransportGetSMPoliciesAction::class.java),
             ActionPlugin.ActionHandler(IndexLRONConfigAction.INSTANCE, TransportIndexLRONConfigAction::class.java),
             ActionPlugin.ActionHandler(GetLRONConfigAction.INSTANCE, TransportGetLRONConfigAction::class.java),
-            ActionPlugin.ActionHandler(DeleteLRONConfigAction.INSTANCE, TransportDeleteLRONConfigAction::class.java)
+            ActionPlugin.ActionHandler(DeleteLRONConfigAction.INSTANCE, TransportDeleteLRONConfigAction::class.java),
         )
     }
 
@@ -623,11 +623,11 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         return listOf(
             SystemIndexDescriptor(
                 INDEX_MANAGEMENT_INDEX,
-                "Index for storing index management configuration and metadata."
+                "Index for storing index management configuration and metadata.",
             ),
             SystemIndexDescriptor(
                 CONTROL_CENTER_INDEX,
-                "Index for storing notification policy of long running index operations."
+                "Index for storing notification policy of long running index operations.",
             ),
 
         )
@@ -635,7 +635,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 }
 
 class GuiceHolder @Inject constructor(
-    remoteClusterService: TransportService
+    remoteClusterService: TransportService,
 ) : LifecycleComponent {
     override fun close() { /* do nothing */ }
     override fun lifecycleState(): Lifecycle.State? {

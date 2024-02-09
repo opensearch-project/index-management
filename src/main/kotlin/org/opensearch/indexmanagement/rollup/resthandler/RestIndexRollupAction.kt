@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.rollup.resthandler
 
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ROLLUP_JOBS_BASE_URI
@@ -29,7 +30,6 @@ import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.PUT
 import org.opensearch.rest.RestResponse
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.rest.action.RestResponseListener
 import java.io.IOException
 import java.time.Instant
@@ -44,12 +44,12 @@ class RestIndexRollupAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 PUT, ROLLUP_JOBS_BASE_URI,
-                PUT, LEGACY_ROLLUP_JOBS_BASE_URI
+                PUT, LEGACY_ROLLUP_JOBS_BASE_URI,
             ),
             ReplacedRoute(
                 PUT, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
-                PUT, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}"
-            )
+                PUT, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
+            ),
         )
     }
 
@@ -80,8 +80,7 @@ class RestIndexRollupAction : BaseRestHandler() {
         }
     }
 
-    private fun indexRollupResponse(channel: RestChannel):
-        RestResponseListener<IndexRollupResponse> {
+    private fun indexRollupResponse(channel: RestChannel): RestResponseListener<IndexRollupResponse> {
         return object : RestResponseListener<IndexRollupResponse>(channel) {
             @Throws(Exception::class)
             override fun buildResponse(response: IndexRollupResponse): RestResponse {

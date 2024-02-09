@@ -113,7 +113,7 @@ class WaitForTransformCompletionStep : Step(name) {
             actionMetaData = currentMetadata.actionMetaData,
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
     }
 

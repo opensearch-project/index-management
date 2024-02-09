@@ -25,7 +25,7 @@ class LegacyOpenDistroRollupSettings {
             DEFAULT_ROLLUP_ENABLED,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val ROLLUP_SEARCH_ENABLED: Setting<Boolean> = Setting.boolSetting(
@@ -33,7 +33,7 @@ class LegacyOpenDistroRollupSettings {
             true,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val ROLLUP_INDEX: Setting<Boolean> = Setting.boolSetting(
@@ -41,7 +41,7 @@ class LegacyOpenDistroRollupSettings {
             false,
             Setting.Property.IndexScope,
             Setting.Property.InternalIndex,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val ROLLUP_INGEST_BACKOFF_MILLIS: Setting<TimeValue> = Setting.positiveTimeSetting(
@@ -49,7 +49,7 @@ class LegacyOpenDistroRollupSettings {
             TimeValue.timeValueMillis(1000),
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val ROLLUP_INGEST_BACKOFF_COUNT: Setting<Int> = Setting.intSetting(
@@ -57,7 +57,7 @@ class LegacyOpenDistroRollupSettings {
             5,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val ROLLUP_SEARCH_BACKOFF_MILLIS: Setting<TimeValue> = Setting.positiveTimeSetting(
@@ -65,7 +65,7 @@ class LegacyOpenDistroRollupSettings {
             TimeValue.timeValueMillis(1000),
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val ROLLUP_SEARCH_BACKOFF_COUNT: Setting<Int> = Setting.intSetting(
@@ -73,7 +73,7 @@ class LegacyOpenDistroRollupSettings {
             5,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val ROLLUP_DASHBOARDS: Setting<Boolean> = Setting.boolSetting(
@@ -81,7 +81,7 @@ class LegacyOpenDistroRollupSettings {
             DEFAULT_ROLLUP_ENABLED,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
     }
 }

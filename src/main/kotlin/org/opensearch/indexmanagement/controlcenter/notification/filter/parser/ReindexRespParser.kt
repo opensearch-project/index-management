@@ -6,18 +6,18 @@
 package org.opensearch.indexmanagement.controlcenter.notification.filter.parser
 
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.core.tasks.TaskId
 import org.opensearch.index.reindex.BulkByScrollResponse
 import org.opensearch.index.reindex.ReindexRequest
 import org.opensearch.indexmanagement.controlcenter.notification.filter.NotificationActionListener
 import org.opensearch.indexmanagement.controlcenter.notification.filter.OperationResult
 import org.opensearch.tasks.Task
-import org.opensearch.core.tasks.TaskId
 import java.util.function.Consumer
 
 class ReindexRespParser(
     val task: Task,
     val request: ReindexRequest,
-    val clusterService: ClusterService
+    val clusterService: ClusterService,
 ) : ResponseParser<BulkByScrollResponse> {
 
     private val sourceIndex = getIndexName(request, clusterService)
@@ -25,15 +25,15 @@ class ReindexRespParser(
     override fun parseAndSendNotification(
         response: BulkByScrollResponse?,
         ex: Exception?,
-        callback: Consumer<ActionRespParseResult>
+        callback: Consumer<ActionRespParseResult>,
     ) {
         if (ex != null) {
             callback.accept(
                 ActionRespParseResult(
                     OperationResult.FAILED,
                     buildNotificationMessage(null, ex),
-                    buildNotificationTitle(OperationResult.FAILED)
-                )
+                    buildNotificationTitle(OperationResult.FAILED),
+                ),
             )
             return
         }
@@ -45,24 +45,24 @@ class ReindexRespParser(
                 ActionRespParseResult(
                     OperationResult.FAILED,
                     buildNotificationMessage(response),
-                    buildNotificationTitle(OperationResult.FAILED)
-                )
+                    buildNotificationTitle(OperationResult.FAILED),
+                ),
             )
         } else if (!response.reasonCancelled.isNullOrEmpty()) {
             callback.accept(
                 ActionRespParseResult(
                     OperationResult.FAILED,
                     buildNotificationMessage(response),
-                    buildNotificationTitle(OperationResult.CANCELLED)
-                )
+                    buildNotificationTitle(OperationResult.CANCELLED),
+                ),
             )
         } else {
             callback.accept(
                 ActionRespParseResult(
                     OperationResult.COMPLETE,
                     buildNotificationMessage(response),
-                    buildNotificationTitle(OperationResult.COMPLETE)
-                )
+                    buildNotificationTitle(OperationResult.COMPLETE),
+                ),
             )
         }
     }
@@ -70,10 +70,10 @@ class ReindexRespParser(
     override fun buildNotificationMessage(
         response: BulkByScrollResponse?,
         exception: Exception?,
-        isTimeout: Boolean
+        isTimeout: Boolean,
     ): String {
         val result = StringBuilder(
-            "The reindex operation from $sourceIndex to ${getIndexName(request.destination, clusterService)} "
+            "The reindex operation from $sourceIndex to ${getIndexName(request.destination, clusterService)} ",
         )
         if (exception != null) {
             result.append("${NotificationActionListener.FAILED} ${exception.message}")
@@ -104,14 +104,14 @@ class ReindexRespParser(
                         "\nTo see full errors, use `GET /_tasks/$taskId`"
                 } else {
                     NotificationActionListener.COMPLETED
-                }
+                },
             )
             append("\n\n")
             append("*Summary (number of documents)* \n")
             append(
                 "Total: ${response.total}, Created: ${response.created}, " +
                     "Updated: ${response.updated}, Deleted: ${response.deleted}, " +
-                    "Conflicts: ${response.versionConflicts}"
+                    "Conflicts: ${response.versionConflicts}",
             )
         }
 

@@ -35,12 +35,12 @@ class RestChangePolicyAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 POST, CHANGE_POLICY_BASE_URI,
-                POST, LEGACY_CHANGE_POLICY_BASE_URI
+                POST, LEGACY_CHANGE_POLICY_BASE_URI,
             ),
             ReplacedRoute(
                 POST, "$CHANGE_POLICY_BASE_URI/{index}",
-                POST, "$LEGACY_CHANGE_POLICY_BASE_URI/{index}"
-            )
+                POST, "$LEGACY_CHANGE_POLICY_BASE_URI/{index}",
+            ),
         )
     }
 

@@ -36,7 +36,7 @@ class ForceMergeActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
 
         createPolicy(policy, policyID)
@@ -64,7 +64,7 @@ class ForceMergeActionIT : IndexStateManagementRestTestCase() {
             assertEquals(
                 "maxNumSegments not set in ActionProperties",
                 forceMergeActionConfig.maxNumSegments,
-                getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.maxNumSegments
+                getExplainManagedIndexMetaData(indexName).actionMetaData?.actionProperties?.maxNumSegments,
             )
         }
 
@@ -92,7 +92,7 @@ class ForceMergeActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
 
         createPolicy(policy, policyID)

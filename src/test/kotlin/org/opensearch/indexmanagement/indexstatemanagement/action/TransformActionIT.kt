@@ -97,14 +97,14 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
             dataSelectionQuery = MatchAllQueryBuilder(),
             groups = listOf(
                 DateHistogram(sourceField = "timestamp", fixedInterval = "1d"),
-                Terms(sourceField = "wrong_field", targetField = "wrong_field")
+                Terms(sourceField = "wrong_field", targetField = "wrong_field"),
             ),
             aggregations = AggregatorFactories.builder()
                 .addAggregator(sumAggregation())
                 .addAggregator(maxAggregation())
                 .addAggregator(minAggregation())
                 .addAggregator(avgAggregation())
-                .addAggregator(valueCountAggregation())
+                .addAggregator(valueCountAggregation()),
         )
         val policy = preparePolicyContainingTransform(indexName, ismTransform, policyId)
         createPolicy(policy, policyId)
@@ -125,14 +125,14 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
             dataSelectionQuery = MatchAllQueryBuilder(),
             groups = listOf(
                 DateHistogram(sourceField = "timestamp", fixedInterval = "1d"),
-                Terms(sourceField = "wrong_field", targetField = "wrong_field")
+                Terms(sourceField = "wrong_field", targetField = "wrong_field"),
             ),
             aggregations = AggregatorFactories.builder()
                 .addAggregator(sumAggregation())
                 .addAggregator(maxAggregation())
                 .addAggregator(minAggregation())
                 .addAggregator(avgAggregation())
-                .addAggregator(valueCountAggregation())
+                .addAggregator(valueCountAggregation()),
         )
         val transform = ismTransform.toTransform(indexName)
         val policy = preparePolicyContainingTransform(indexName, ismTransform, policyId, retry = 1)
@@ -146,7 +146,7 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 AttemptCreateTransformJobStep.getFailedMessage(transform.id, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
     }
@@ -173,14 +173,14 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
             dataSelectionQuery = MatchAllQueryBuilder(),
             groups = listOf(
                 DateHistogram(sourceField = "timestamp", fixedInterval = "1d"),
-                Terms(sourceField = "category", targetField = "category")
+                Terms(sourceField = "category", targetField = "category"),
             ),
             aggregations = AggregatorFactories.builder()
                 .addAggregator(sumAggregation())
                 .addAggregator(maxAggregation())
                 .addAggregator(minAggregation())
                 .addAggregator(avgAggregation())
-                .addAggregator(valueCountAggregation())
+                .addAggregator(valueCountAggregation()),
         )
     }
 
@@ -188,7 +188,7 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
         val actionConfig = TransformAction(ismTransform, 0)
         actionConfig.configRetry = ActionRetry(retry)
         val states = listOf(
-            State("transform", listOf(actionConfig), listOf())
+            State("transform", listOf(actionConfig), listOf()),
         )
         return Policy(
             id = policyId,
@@ -202,9 +202,9 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
                 ISMTemplate(
                     indexPatterns = listOf(indexName),
                     priority = 100,
-                    lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS)
-                )
-            )
+                    lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                ),
+            ),
         )
     }
 
@@ -212,13 +212,13 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
         indexName: String,
         ismTransform: ISMTransform,
         policyId: String,
-        retry: Long = 0
+        retry: Long = 0,
     ): Policy {
         val actionConfig = TransformAction(ismTransform, 0)
         actionConfig.configRetry = ActionRetry(retry)
         val states = listOf(
             State("transform1", listOf(actionConfig), listOf(Transition(stateName = "transform2", conditions = null))),
-            State("transform2", listOf(actionConfig), listOf())
+            State("transform2", listOf(actionConfig), listOf()),
         )
         return Policy(
             id = policyId,
@@ -232,9 +232,9 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
                 ISMTemplate(
                     indexPatterns = listOf(indexName),
                     priority = 100,
-                    lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS)
-                )
-            )
+                    lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                ),
+            ),
         )
     }
 
@@ -248,8 +248,8 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
                     "\"index_patterns\": [ \"$dataStreamName\" ], " +
                     "\"data_stream\": { \"timestamp_field\": { \"name\": \"timestamp\" } }, " +
                     "\"template\": { \"mappings\": { $SOURCE_INDEX_MAPPING } } }",
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
         // create data stream
         client().makeRequest("PUT", "/_data_stream/$dataStreamName")
@@ -269,7 +269,7 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 AttemptCreateTransformJobStep.getSuccessMessage(transformId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
@@ -282,7 +282,7 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForTransformCompletionStep.getJobCompletionMessage(transformId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
     }
@@ -301,7 +301,7 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 AttemptCreateTransformJobStep.getSuccessMessage(transformId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
@@ -312,7 +312,7 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForTransformCompletionStep.getJobCompletionMessage(transformId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
@@ -321,7 +321,7 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 AttemptTransitionStep.getSuccessMessage(indexName, "transform2"),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
@@ -330,7 +330,7 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 AttemptCreateTransformJobStep.getSuccessRestartMessage(transformId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
 
@@ -341,7 +341,7 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 WaitForTransformCompletionStep.getJobCompletionMessage(transformId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
     }
@@ -369,7 +369,7 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             assertEquals(
                 AttemptCreateTransformJobStep.getFailedMessage(transformId, indexName),
-                getExplainManagedIndexMetaData(indexName).info?.get("message")
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
             )
         }
     }

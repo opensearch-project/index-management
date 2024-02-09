@@ -33,7 +33,7 @@ class UpdateManagedIndexMetaDataRequest : AcknowledgedRequest<UpdateManagedIndex
 
     constructor(
         indicesToAddManagedIndexMetaDataTo: List<Pair<Index, ManagedIndexMetaData>> = listOf(),
-        indicesToRemoveManagedIndexMetaDataFrom: List<Index> = listOf()
+        indicesToRemoveManagedIndexMetaDataFrom: List<Index> = listOf(),
     ) {
         this.indicesToAddManagedIndexMetaDataTo = indicesToAddManagedIndexMetaDataTo
         this.indicesToRemoveManagedIndexMetaDataFrom = indicesToRemoveManagedIndexMetaDataFrom
@@ -45,7 +45,7 @@ class UpdateManagedIndexMetaDataRequest : AcknowledgedRequest<UpdateManagedIndex
         if (this.indicesToAddManagedIndexMetaDataTo.isEmpty() && this.indicesToRemoveManagedIndexMetaDataFrom.isEmpty()) {
             validationException = addValidationError(
                 "At least one non-empty List must be given for UpdateManagedIndexMetaDataRequest",
-                validationException
+                validationException,
             )
         }
 

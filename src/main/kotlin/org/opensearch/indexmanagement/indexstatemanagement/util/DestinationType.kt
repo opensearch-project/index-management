@@ -13,5 +13,5 @@ enum class DestinationType(val value: String) {
     CHIME("chime"),
     SLACK("slack"),
     CUSTOM_WEBHOOK("custom_webhook"),
-    TEST_ACTION("test_action")
+    TEST_ACTION("test_action"),
 }

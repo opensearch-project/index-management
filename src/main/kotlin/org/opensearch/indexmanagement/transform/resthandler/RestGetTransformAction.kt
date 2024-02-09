@@ -31,7 +31,7 @@ class RestGetTransformAction : BaseRestHandler() {
         return listOf(
             Route(GET, TRANSFORM_BASE_URI),
             Route(GET, "$TRANSFORM_BASE_URI/{transformID}"),
-            Route(HEAD, "$TRANSFORM_BASE_URI/{transformID}")
+            Route(HEAD, "$TRANSFORM_BASE_URI/{transformID}"),
         )
     }
 
@@ -53,7 +53,7 @@ class RestGetTransformAction : BaseRestHandler() {
                     from,
                     size,
                     sortField,
-                    sortDirection
+                    sortDirection,
                 )
                 client.execute(GetTransformsAction.INSTANCE, req, RestToXContentListener(channel))
             } else {

@@ -11,22 +11,22 @@ import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.ResourceNotFoundException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.core.common.bytes.BytesReference
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
-import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.commons.ConfigConstants
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.common.bytes.BytesReference
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.IdsQueryBuilder
 import org.opensearch.index.query.WildcardQueryBuilder
@@ -49,9 +49,9 @@ class TransportExplainTransformAction @Inject constructor(
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
-    val xContentRegistry: NamedXContentRegistry
+    val xContentRegistry: NamedXContentRegistry,
 ) : HandledTransportAction<ExplainTransformRequest, ExplainTransformResponse>(
-    ExplainTransformAction.NAME, transportService, actionFilters, ::ExplainTransformRequest
+    ExplainTransformAction.NAME, transportService, actionFilters, ::ExplainTransformRequest,
 ) {
 
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
@@ -68,8 +68,8 @@ class TransportExplainTransformAction @Inject constructor(
     override fun doExecute(task: Task, request: ExplainTransformRequest, actionListener: ActionListener<ExplainTransformResponse>) {
         log.debug(
             "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-            )}"
+                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+            )}",
         )
         val ids = request.transformIDs
         // Instantiate concrete ids to metadata map by removing wildcard matches
@@ -159,13 +159,13 @@ class TransportExplainTransformAction @Inject constructor(
                                             explainTransform.copy(
                                                 metadata = metadata.copy(
                                                     shardIDToGlobalCheckpoint = null,
-                                                    continuousStats = continuousStats
-                                                )
+                                                    continuousStats = continuousStats,
+                                                ),
                                             )
                                         }
                                     }
                                 }
-                            }
+                            },
                         )
                     }
 
@@ -181,7 +181,7 @@ class TransportExplainTransformAction @Inject constructor(
                             else -> actionListener.onFailure(e)
                         }
                     }
-                }
+                },
             )
         }
     }
@@ -189,7 +189,7 @@ class TransportExplainTransformAction @Inject constructor(
     private fun contentParser(bytesReference: BytesReference): XContentParser {
         return XContentHelper.createParser(
             xContentRegistry,
-            LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON
+            LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON,
         )
     }
 }

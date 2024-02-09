@@ -23,13 +23,13 @@ import org.opensearch.core.common.io.stream.Writeable
 class ISMFieldCapabilitiesIndexResponse(
     private val indexName: String,
     private val responseMap: Map<String, ISMIndexFieldCapabilities>,
-    private val canMatch: Boolean
+    private val canMatch: Boolean,
 ) : Writeable {
 
     constructor(sin: StreamInput) : this(
         indexName = sin.readString(),
         responseMap = sin.readMap({ it.readString() }, { ISMIndexFieldCapabilities(it) }),
-        canMatch = sin.readBoolean()
+        canMatch = sin.readBoolean(),
     )
 
     override fun writeTo(out: StreamOutput) {
@@ -37,7 +37,7 @@ class ISMFieldCapabilitiesIndexResponse(
         out.writeMap(
             responseMap,
             { writer, value -> writer.writeString(value) },
-            { writer, value -> value.writeTo(writer) }
+            { writer, value -> value.writeTo(writer) },
         )
         out.writeBoolean(canMatch)
     }
@@ -46,7 +46,7 @@ class ISMFieldCapabilitiesIndexResponse(
 class ISMFieldCapabilitiesResponse(
     val indices: Array<String>,
     val responseMap: Map<String, Map<String, ISMFieldCapabilities>>,
-    val indexResponses: List<ISMFieldCapabilitiesIndexResponse>
+    val indexResponses: List<ISMFieldCapabilitiesIndexResponse>,
 ) {
 
     fun toFieldCapabilitiesResponse(): FieldCapabilitiesResponse {
@@ -55,7 +55,7 @@ class ISMFieldCapabilitiesResponse(
         out.writeMap(
             responseMap,
             { writer, value -> writer.writeString(value) },
-            { writer, value -> writer.writeMap(value, { w, v -> w.writeString(v) }, { w, v -> v.writeTo(w) }) }
+            { writer, value -> writer.writeMap(value, { w, v -> w.writeString(v) }, { w, v -> v.writeTo(w) }) },
         )
         out.writeList(indexResponses)
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
@@ -83,7 +83,7 @@ class ISMFieldCapabilities(
     private val indices: Array<String>?,
     private val nonSearchableIndices: Array<String>?,
     private val nonAggregatableIndices: Array<String>?,
-    private val meta: Map<String, Set<String>>
+    private val meta: Map<String, Set<String>>,
 ) : Writeable {
 
     override fun writeTo(out: StreamOutput) {
@@ -97,7 +97,7 @@ class ISMFieldCapabilities(
         out.writeMap(
             meta,
             { writer, value -> writer.writeString(value) },
-            { writer, value -> writer.writeCollection(value) { w, v -> w.writeString(v) } }
+            { writer, value -> writer.writeCollection(value) { w, v -> w.writeString(v) } },
         )
     }
 
@@ -109,7 +109,7 @@ class ISMFieldCapabilities(
         indices = sin.readOptionalStringArray(),
         nonSearchableIndices = sin.readOptionalStringArray(),
         nonAggregatableIndices = sin.readOptionalStringArray(),
-        meta = sin.readMap({ it.readString() }, { it.readSet { it.readString() } })
+        meta = sin.readMap({ it.readString() }, { it.readSet { it.readString() } }),
     )
 }
 
@@ -118,7 +118,7 @@ class ISMIndexFieldCapabilities(
     private val type: String,
     private val isSearchable: Boolean,
     private val isAggregatable: Boolean,
-    private val meta: Map<String, String>
+    private val meta: Map<String, String>,
 ) : Writeable {
 
     constructor(sin: StreamInput) : this(
@@ -126,7 +126,7 @@ class ISMIndexFieldCapabilities(
         type = sin.readString(),
         isSearchable = sin.readBoolean(),
         isAggregatable = sin.readBoolean(),
-        meta = sin.readMap({ it.readString() }, { it.readString() })
+        meta = sin.readMap({ it.readString() }, { it.readString() }),
     )
 
     override fun writeTo(out: StreamOutput) {
@@ -137,7 +137,7 @@ class ISMIndexFieldCapabilities(
         out.writeMap(
             meta,
             { writer, value: String -> writer.writeString(value) },
-            { writer, value: String -> writer.writeString(value) }
+            { writer, value: String -> writer.writeString(value) },
         )
     }
 }

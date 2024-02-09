@@ -27,7 +27,7 @@ data class SweptManagedIndexConfig(
     val uuid: String,
     val policyID: String,
     val policy: Policy?,
-    val changePolicy: ChangePolicy?
+    val changePolicy: ChangePolicy?,
 ) {
 
     companion object {
@@ -66,7 +66,7 @@ data class SweptManagedIndexConfig(
                 uuid,
                 policyID,
                 policy,
-                changePolicy
+                changePolicy,
             )
         }
     }

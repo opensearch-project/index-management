@@ -19,7 +19,8 @@ abstract class Metric(val type: Type) : ToXContentObject, Writeable {
         SUM("sum"),
         MAX("max"),
         MIN("min"),
-        VALUE_COUNT("value_count");
+        VALUE_COUNT("value_count"),
+        ;
 
         override fun toString(): String {
             return type

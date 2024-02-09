@@ -4,6 +4,7 @@
  */
 
 @file:Suppress("TopLevelPropertyNaming", "MatchingDeclarationName")
+
 package org.opensearch.indexmanagement.snapshotmanagement.util
 
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.NAME_FIELD

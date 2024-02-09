@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.api.resthandler
 
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.client.node.NodeClient
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.SM_POLICIES_URI
@@ -23,7 +24,6 @@ import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.BytesRestResponse
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestResponse
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.rest.action.RestResponseListener
 import java.time.Instant
 
@@ -57,7 +57,7 @@ abstract class RestBaseIndexSMPolicyHandler : BaseRestHandler() {
                         }
                         return restResponse
                     }
-                }
+                },
             )
         }
     }

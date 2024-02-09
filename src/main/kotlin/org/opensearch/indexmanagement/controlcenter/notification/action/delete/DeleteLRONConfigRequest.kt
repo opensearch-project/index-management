@@ -14,11 +14,11 @@ import org.opensearch.indexmanagement.controlcenter.notification.util.LRON_DOC_I
 import java.io.IOException
 
 class DeleteLRONConfigRequest(
-    val docId: String
+    val docId: String,
 ) : ActionRequest() {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        docId = sin.readString()
+        docId = sin.readString(),
     )
 
     override fun validate(): ActionRequestValidationException? {
@@ -26,7 +26,7 @@ class DeleteLRONConfigRequest(
         if (!(docId.startsWith(LRON_DOC_ID_PREFIX))) {
             validationException = ValidateActions.addValidationError(
                 "Invalid LRONConfig ID",
-                validationException
+                validationException,
             )
         }
         return validationException

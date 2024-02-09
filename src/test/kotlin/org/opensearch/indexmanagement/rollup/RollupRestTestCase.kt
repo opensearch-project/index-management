@@ -18,11 +18,12 @@ import org.opensearch.client.Response
 import org.opensearch.client.RestClient
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.common.xcontent.json.JsonXContent
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
-import org.opensearch.common.xcontent.XContentType
-import org.opensearch.common.xcontent.json.JsonXContent
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
@@ -36,7 +37,6 @@ import org.opensearch.indexmanagement.util._ID
 import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 
 abstract class RollupRestTestCase : IndexManagementRestTestCase() {
@@ -91,7 +91,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         rollup: Rollup,
         rollupId: String,
         refresh: Boolean = true,
-        client: RestClient? = null
+        client: RestClient? = null,
     ): Rollup {
         val response = createRollupJson(rollup.toJsonString(), rollupId, refresh, client)
 
@@ -103,7 +103,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         return rollup.copy(
             id = createdId,
             seqNo = (rollupJson["_seq_no"] as Int).toLong(),
-            primaryTerm = (rollupJson["_primary_term"] as Int).toLong()
+            primaryTerm = (rollupJson["_primary_term"] as Int).toLong(),
         )
     }
 
@@ -111,7 +111,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         rollupString: String,
         rollupId: String,
         refresh: Boolean = true,
-        userClient: RestClient? = null
+        userClient: RestClient? = null,
     ): Response {
         val client = userClient ?: client()
         val response = client
@@ -119,7 +119,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
                 "PUT",
                 "$ROLLUP_JOBS_BASE_URI/$rollupId?refresh=$refresh",
                 emptyMap(),
-                StringEntity(rollupString, APPLICATION_JSON)
+                StringEntity(rollupString, APPLICATION_JSON),
             )
         assertEquals("Unable to create a new rollup", RestStatus.CREATED, response.restStatus())
         return response
@@ -167,7 +167,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         """.trimIndent()
         val response = client().makeRequest(
             "POST", "${rollup.sourceIndex}/_doc?refresh=true",
-            emptyMap(), StringEntity(request, APPLICATION_JSON)
+            emptyMap(), StringEntity(request, APPLICATION_JSON),
         )
         assertEquals("Request failed", RestStatus.CREATED, response.restStatus())
     }
@@ -258,7 +258,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         """.trimIndent()
         val res = client().makeRequest(
             "PUT", "_cluster/settings", emptyMap(),
-            StringEntity(request, APPLICATION_JSON)
+            StringEntity(request, APPLICATION_JSON),
         )
         assertEquals("Request failed", RestStatus.OK, res.restStatus())
     }

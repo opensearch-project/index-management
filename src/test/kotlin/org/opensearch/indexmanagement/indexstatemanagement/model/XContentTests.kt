@@ -6,11 +6,11 @@
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.xcontent.XContentParser
+import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
-import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.DestinationType
 import org.opensearch.indexmanagement.indexstatemanagement.nonNullRandomConditions
 import org.opensearch.indexmanagement.indexstatemanagement.randomAliasAction
@@ -142,21 +142,21 @@ class XContentTests : OpenSearchTestCase() {
         val chimeParsedNotificationAction = ISMActionsParser.instance.parse(parser(chimeNotificationActionString), 0)
         assertEquals(
             "Round tripping chime NotificationAction doesn't work",
-            chimeNotificationAction.convertToMap(), chimeParsedNotificationAction.convertToMap()
+            chimeNotificationAction.convertToMap(), chimeParsedNotificationAction.convertToMap(),
         )
 
         val slackNotificationActionString = slackNotificationAction.toJsonString()
         val slackParsedNotificationAction = ISMActionsParser.instance.parse(parser(slackNotificationActionString), 0)
         assertEquals(
             "Round tripping slack NotificationAction doesn't work",
-            slackNotificationAction.convertToMap(), slackParsedNotificationAction.convertToMap()
+            slackNotificationAction.convertToMap(), slackParsedNotificationAction.convertToMap(),
         )
 
         val customNotificationActionString = customNotificationAction.toJsonString()
         val customParsedNotificationAction = ISMActionsParser.instance.parse(parser(customNotificationActionString), 0)
         assertEquals(
             "Round tripping custom webhook NotificationAction doesn't work",
-            customNotificationAction.convertToMap(), customParsedNotificationAction.convertToMap()
+            customNotificationAction.convertToMap(), customParsedNotificationAction.convertToMap(),
         )
     }
 
@@ -167,7 +167,7 @@ class XContentTests : OpenSearchTestCase() {
         val parsedSnapshotAction = ISMActionsParser.instance.parse(parser(snapshotActionString), 0)
         assertEquals(
             "Round tripping SnapshotAction doesn't work",
-            snapshotAction.convertToMap(), parsedSnapshotAction.convertToMap()
+            snapshotAction.convertToMap(), parsedSnapshotAction.convertToMap(),
         )
     }
 
@@ -175,7 +175,7 @@ class XContentTests : OpenSearchTestCase() {
         val allocationAction = randomAllocationActionConfig(
             require = mapOf("box_type" to "hot"),
             include = mapOf(randomAlphaOfLengthBetween(1, 10) to randomAlphaOfLengthBetween(1, 10)),
-            exclude = mapOf(randomAlphaOfLengthBetween(1, 10) to randomAlphaOfLengthBetween(1, 10))
+            exclude = mapOf(randomAlphaOfLengthBetween(1, 10) to randomAlphaOfLengthBetween(1, 10)),
         )
 
         val allocationActionString = allocationAction.toJsonString()
@@ -252,7 +252,7 @@ class XContentTests : OpenSearchTestCase() {
             actionMetaData = null,
             stepMetaData = null,
             policyRetryInfo = null,
-            info = null
+            info = null,
         )
         val metadataString = metadata.toJsonString()
         val parsedMetaData = ManagedIndexMetaData.parse(parser(metadataString))
@@ -297,7 +297,7 @@ class XContentTests : OpenSearchTestCase() {
                 val aliasAction = randomAliasAction(true)
                 val aliasActionString = aliasAction.toJsonString()
                 ISMActionsParser.instance.parse(parser(aliasActionString), 0)
-            }
+            },
         )
     }
 

@@ -15,7 +15,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class IndexPriorityAction(
     val indexPriority: Int,
-    index: Int
+    index: Int,
 ) : Action(name, index) {
 
     init {

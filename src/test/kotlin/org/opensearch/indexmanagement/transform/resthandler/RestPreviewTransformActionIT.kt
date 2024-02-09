@@ -9,6 +9,7 @@ import org.junit.AfterClass
 import org.junit.Before
 import org.opensearch.client.ResponseException
 import org.opensearch.common.time.DateFormatter
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.Terms
@@ -17,7 +18,6 @@ import org.opensearch.indexmanagement.transform.TransformRestTestCase
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.randomTransform
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.search.aggregations.AggregationBuilders
 import org.opensearch.search.aggregations.AggregatorFactories
 import java.time.Instant
@@ -34,9 +34,9 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
     private val transform = randomTransform().copy(
         sourceIndex = sourceIndex,
         groups = listOf(
-            Terms(sourceField = "store_and_fwd_flag", targetField = "flag")
+            Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
         ),
-        aggregations = factories
+        aggregations = factories,
     )
 
     @Before
@@ -67,7 +67,7 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
             "POST",
             "$TRANSFORM_BASE_URI/_preview",
             emptyMap(),
-            transform.toHttpEntity()
+            transform.toHttpEntity(),
         )
         val expectedKeys = setOf("revenue", "passengerCount", "flag", "transform._doc_count", "_doc_count")
         assertEquals("Preview transform failed", RestStatus.OK, response.restStatus())
@@ -94,16 +94,16 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
             roles = emptyList(),
             pageSize = 1,
             groups = listOf(
-                Terms(sourceField = pickupDateTime, targetField = pickupDateTime)
+                Terms(sourceField = pickupDateTime, targetField = pickupDateTime),
             ),
-            aggregations = AggregatorFactories.builder().addAggregator(AggregationBuilders.avg(fareAmount).field(fareAmount))
+            aggregations = AggregatorFactories.builder().addAggregator(AggregationBuilders.avg(fareAmount).field(fareAmount)),
         ).let { createTransform(it, it.id) }
 
         val response = client().makeRequest(
             "POST",
             "$TRANSFORM_BASE_URI/_preview",
             emptyMap(),
-            transform.toHttpEntity()
+            transform.toHttpEntity(),
         )
         val expectedKeys = setOf("fare_amount", "tpep_pickup_datetime", "transform._doc_count", "_doc_count")
         assertEquals("Preview transform failed", RestStatus.OK, response.restStatus())
@@ -120,14 +120,14 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
             .addAggregator(AggregationBuilders.sum("revenue").field("total_amountdzdfd"))
         val transform = transform.copy(
             groups = listOf(Terms(sourceField = "non-existent", targetField = "non-existent")),
-            aggregations = factories
+            aggregations = factories,
         )
         try {
             client().makeRequest(
                 "POST",
                 "$TRANSFORM_BASE_URI/_preview",
                 emptyMap(),
-                transform.toHttpEntity()
+                transform.toHttpEntity(),
             )
             fail("expected exception")
         } catch (e: ResponseException) {
@@ -142,7 +142,7 @@ class RestPreviewTransformActionIT : TransformRestTestCase() {
                 "POST",
                 "$TRANSFORM_BASE_URI/_preview",
                 emptyMap(),
-                transform.toHttpEntity()
+                transform.toHttpEntity(),
             )
             fail("expected exception")
         } catch (e: ResponseException) {

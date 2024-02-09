@@ -8,8 +8,9 @@ package org.opensearch.indexmanagement
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
 import org.opensearch.common.settings.Settings
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_INDEX_BASE
 import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_WRITE_INDEX_ALIAS
 import org.opensearch.indexmanagement.IndexManagementIndices.Companion.indexManagementMappings
@@ -32,7 +33,6 @@ import org.opensearch.indexmanagement.opensearchapi.string
 import org.opensearch.indexmanagement.refreshanalyzer.RestRefreshSearchAnalyzerAction
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.rest.RestRequest
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import java.util.Locale
 
@@ -41,22 +41,22 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
     /*
-    * If this test fails it means you changed the config mappings
-    * This test is to ensure you did not forget to increase the schema_version in the mappings _meta object
-    * The schema_version is used at runtime to check if the mappings need to be updated for the index
-    * Once you are sure you increased the schema_version or know it is not needed you can update the cached mappings with the new values
-    * */
+     * If this test fails it means you changed the config mappings
+     * This test is to ensure you did not forget to increase the schema_version in the mappings _meta object
+     * The schema_version is used at runtime to check if the mappings need to be updated for the index
+     * Once you are sure you increased the schema_version or know it is not needed you can update the cached mappings with the new values
+     * */
     fun `test config mappings schema version number`() {
         val cachedMappings = javaClass.classLoader.getResource("mappings/cached-opendistro-ism-config.json")!!.readText()
         assertEquals("I see you updated the config mappings. Did you also update the schema_version?", cachedMappings, indexManagementMappings)
     }
 
     /*
-    * If this test fails it means you changed the history mappings
-    * This test is to ensure you did not forget to increase the schema_version in the mappings _meta object
-    * The schema_version is used at runtime to check if the mappings need to be updated for the index
-    * Once you are sure you increased the schema_version or know it is not needed you can update the cached mappings with the new values
-    * */
+     * If this test fails it means you changed the history mappings
+     * This test is to ensure you did not forget to increase the schema_version in the mappings _meta object
+     * The schema_version is used at runtime to check if the mappings need to be updated for the index
+     * Once you are sure you increased the schema_version or know it is not needed you can update the cached mappings with the new values
+     * */
     fun `test history mappings schema version number`() {
         val cachedMappings = javaClass.classLoader.getResource("mappings/cached-opendistro-ism-history.json")!!.readText()
         assertEquals("I see you updated the history mappings. Did you also update the schema_version?", cachedMappings, indexStateManagementHistoryMappings)
@@ -134,7 +134,7 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
         val entity = StringEntity(mapping, ContentType.APPLICATION_JSON)
         client().makeRequest(
             RestRequest.Method.PUT.toString(),
-            "/$INDEX_MANAGEMENT_INDEX/_mapping", emptyMap(), entity
+            "/$INDEX_MANAGEMENT_INDEX/_mapping", emptyMap(), entity,
         )
 
         verifyIndexSchemaVersion(INDEX_MANAGEMENT_INDEX, 0)
@@ -143,7 +143,7 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
         val changePolicy = ChangePolicy(newPolicy.id, null, emptyList(), false)
         val response = client().makeRequest(
             RestRequest.Method.POST.toString(),
-            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$index", emptyMap(), changePolicy.toHttpEntity()
+            "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$index", emptyMap(), changePolicy.toHttpEntity(),
         )
 
         verifyIndexSchemaVersion(INDEX_MANAGEMENT_INDEX, configSchemaVersion)
@@ -165,38 +165,38 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
         val addPolicyResponse = client().makeRequest(
             RestRequest.Method.POST.toString(),
             "${RestAddPolicyAction.LEGACY_ADD_POLICY_BASE_URI}/$indexName",
-            StringEntity("{ \"policy_id\": \"$policyId\" }", ContentType.APPLICATION_JSON)
+            StringEntity("{ \"policy_id\": \"$policyId\" }", ContentType.APPLICATION_JSON),
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, addPolicyResponse.restStatus())
 
         val changePolicyResponse = client().makeRequest(
             RestRequest.Method.POST.toString(),
             "${RestAddPolicyAction.LEGACY_ADD_POLICY_BASE_URI}/$indexName",
-            StringEntity("{ \"policy_id\": \"$policyId\" }", ContentType.APPLICATION_JSON)
+            StringEntity("{ \"policy_id\": \"$policyId\" }", ContentType.APPLICATION_JSON),
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, changePolicyResponse.restStatus())
 
         val retryFailedResponse = client().makeRequest(
             RestRequest.Method.POST.toString(),
-            "${RestRetryFailedManagedIndexAction.LEGACY_RETRY_BASE_URI}/$indexName"
+            "${RestRetryFailedManagedIndexAction.LEGACY_RETRY_BASE_URI}/$indexName",
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, retryFailedResponse.restStatus())
 
         val explainResponse = client().makeRequest(
             RestRequest.Method.GET.toString(),
-            "${RestExplainAction.LEGACY_EXPLAIN_BASE_URI}/$indexName"
+            "${RestExplainAction.LEGACY_EXPLAIN_BASE_URI}/$indexName",
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, explainResponse.restStatus())
 
         val removePolicyResponse = client().makeRequest(
             RestRequest.Method.POST.toString(),
-            "${RestRemovePolicyAction.LEGACY_REMOVE_POLICY_BASE_URI}/$indexName"
+            "${RestRemovePolicyAction.LEGACY_REMOVE_POLICY_BASE_URI}/$indexName",
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, removePolicyResponse.restStatus())
 
         val deletePolicyResponse = client().makeRequest(
             RestRequest.Method.DELETE.toString(),
-            "${IndexManagementPlugin.LEGACY_POLICY_BASE_URI}/$policyId"
+            "${IndexManagementPlugin.LEGACY_POLICY_BASE_URI}/$policyId",
         )
         assertEquals("Unexpected RestStatus", RestStatus.OK, deletePolicyResponse.restStatus())
 
@@ -219,8 +219,8 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
             "PUT", "${IndexManagementPlugin.LEGACY_ROLLUP_JOBS_BASE_URI}/${rollup.id}", emptyMap(),
             StringEntity(
                 rollupJsonString,
-                ContentType.APPLICATION_JSON
-            )
+                ContentType.APPLICATION_JSON,
+            ),
         )
         assertEquals("Create rollup failed", RestStatus.CREATED, createRollupResponse.restStatus())
 

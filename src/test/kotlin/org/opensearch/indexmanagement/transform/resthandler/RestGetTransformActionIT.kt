@@ -6,13 +6,13 @@
 package org.opensearch.indexmanagement.transform.resthandler
 
 import org.opensearch.client.ResponseException
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.Dimension
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.transform.TransformRestTestCase
 import org.opensearch.indexmanagement.transform.action.get.GetTransformsRequest.Companion.DEFAULT_SIZE
 import org.opensearch.indexmanagement.transform.randomTransform
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.junit.annotations.TestLogging
 
@@ -33,7 +33,7 @@ class RestGetTransformActionIT : TransformRestTestCase() {
             // Roles are deprecated and will not be returned
             roles = listOf(),
             // User information is not returned as part of REST output
-            user = null
+            user = null,
         )
         assertEquals("Indexed and retrieved transform differ", transform, indexedTransform)
     }

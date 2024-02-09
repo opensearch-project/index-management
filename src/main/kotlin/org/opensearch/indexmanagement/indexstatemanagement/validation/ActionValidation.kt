@@ -7,15 +7,15 @@ package org.opensearch.indexmanagement.indexstatemanagement.validation
 
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
-import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ValidationResult
+import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.monitor.jvm.JvmService
 
 @OpenForTesting
 class ActionValidation(
     val settings: Settings,
     val clusterService: ClusterService,
-    val jvmService: JvmService
+    val jvmService: JvmService,
 ) {
 
     @Suppress("ComplexMethod")

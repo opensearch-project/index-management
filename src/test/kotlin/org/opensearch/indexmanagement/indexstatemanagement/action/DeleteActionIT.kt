@@ -22,7 +22,7 @@ class DeleteActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = DeleteAction(0)
         val states = listOf(
-            State("DeleteState", listOf(actionConfig), listOf())
+            State("DeleteState", listOf(actionConfig), listOf()),
         )
 
         val policy = Policy(
@@ -32,7 +32,7 @@ class DeleteActionIT : IndexStateManagementRestTestCase() {
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
             defaultState = states[0].name,
-            states = states
+            states = states,
         )
         createPolicy(policy, policyID)
         createIndex(indexName, policyID)

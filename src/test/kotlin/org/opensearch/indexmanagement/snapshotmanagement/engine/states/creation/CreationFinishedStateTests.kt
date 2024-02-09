@@ -153,7 +153,7 @@ class CreationFinishedStateTests : MocksTestCase() {
         )
         val job = randomSMPolicy(
             policyName = "daily-snapshot",
-            creationTimeLimit = TimeValue.timeValueSeconds(5)
+            creationTimeLimit = TimeValue.timeValueSeconds(5),
         )
         val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
 

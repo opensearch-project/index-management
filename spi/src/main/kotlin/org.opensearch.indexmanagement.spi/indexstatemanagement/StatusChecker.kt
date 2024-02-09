@@ -19,7 +19,8 @@ interface StatusChecker {
 
 enum class Status(private val value: String) {
     ENABLED("enabled"),
-    DISABLED("disabled");
+    DISABLED("disabled"),
+    ;
 
     override fun toString(): String {
         return value

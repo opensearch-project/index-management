@@ -6,8 +6,8 @@
 package org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain
 
 import org.opensearch.common.io.stream.BytesStreamOutput
-import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.indexmanagement.common.model.rest.SearchParams
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.test.OpenSearchTestCase

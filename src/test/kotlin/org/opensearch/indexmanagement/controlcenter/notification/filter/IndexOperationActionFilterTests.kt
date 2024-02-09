@@ -8,8 +8,6 @@ package org.opensearch.indexmanagement.controlcenter.notification.filter
 import org.junit.Assert
 import org.junit.Before
 import org.mockito.Mockito
-import org.opensearch.core.action.ActionListener
-import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeAction
 import org.opensearch.action.admin.indices.open.OpenIndexAction
 import org.opensearch.action.admin.indices.shrink.ResizeAction
@@ -18,11 +16,13 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.OpenSearchAllocationTestCase
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.action.ActionResponse
+import org.opensearch.core.tasks.TaskId
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.reindex.ReindexAction
 import org.opensearch.index.reindex.ReindexRequest
 import org.opensearch.tasks.Task
-import org.opensearch.core.tasks.TaskId
 import org.opensearch.threadpool.ThreadPool
 
 class IndexOperationActionFilterTests : OpenSearchAllocationTestCase() {
@@ -49,7 +49,7 @@ class IndexOperationActionFilterTests : OpenSearchAllocationTestCase() {
         val activeShardsObserver = ActiveShardsObserver(clusterService, client.threadPool())
 
         filter = IndexOperationActionFilter(
-            this.client, clusterService, activeShardsObserver, indexNameExpressionResolver
+            this.client, clusterService, activeShardsObserver, indexNameExpressionResolver,
         )
     }
 
@@ -64,7 +64,7 @@ class IndexOperationActionFilterTests : OpenSearchAllocationTestCase() {
                 task,
                 ReindexAction.NAME,
                 ReindexRequest(),
-                listener
+                listener,
             )
 
             Assert.assertNotSame(listener, newListener)
@@ -80,7 +80,7 @@ class IndexOperationActionFilterTests : OpenSearchAllocationTestCase() {
             task,
             "test",
             ReindexRequest(),
-            listener
+            listener,
         )
 
         Assert.assertSame(listener, newListener)
@@ -94,7 +94,7 @@ class IndexOperationActionFilterTests : OpenSearchAllocationTestCase() {
             task,
             ReindexAction.NAME,
             ReindexRequest(),
-            listener
+            listener,
         )
 
         Assert.assertSame(listener, newListener)

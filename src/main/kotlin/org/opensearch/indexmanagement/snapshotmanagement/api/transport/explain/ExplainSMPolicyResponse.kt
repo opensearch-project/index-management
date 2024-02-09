@@ -36,7 +36,7 @@ class ExplainSMPolicyResponse : ActionResponse, ToXContentObject {
                 policiesToExplain[it.readString()] = sin.readOptionalValue(::ExplainSMPolicy)
             }
             policiesToExplain.toMap()
-        }
+        },
     )
 
     @Throws(IOException::class)

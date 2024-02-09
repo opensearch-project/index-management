@@ -4,24 +4,25 @@
  */
 
 @file:JvmName("LRONUtils")
+
 package org.opensearch.indexmanagement.controlcenter.notification.util
 
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeAction
 import org.opensearch.action.admin.indices.open.OpenIndexAction
 import org.opensearch.action.admin.indices.shrink.ResizeAction
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.client.node.NodeClient
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.tasks.TaskId
 import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.index.reindex.ReindexAction
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
-import org.opensearch.core.rest.RestStatus
-import org.opensearch.core.tasks.TaskId
 
 const val LRON_DOC_ID_PREFIX = "LRON:"
 
@@ -34,7 +35,7 @@ val supportedActions = setOf(
     ReindexAction.NAME,
     ResizeAction.NAME,
     ForceMergeAction.NAME,
-    OpenIndexAction.NAME
+    OpenIndexAction.NAME,
 )
 
 fun validateTaskIdAndActionName(taskId: TaskId?, actionName: String?) {
@@ -69,7 +70,7 @@ fun getLRONConfigAndParse(
     client: NodeClient,
     docId: String,
     xContentRegistry: NamedXContentRegistry,
-    actionListener: ActionListener<LRONConfigResponse>
+    actionListener: ActionListener<LRONConfigResponse>,
 ) {
     val getRequest = GetRequest(IndexManagementPlugin.CONTROL_CENTER_INDEX, docId)
     client.get(
@@ -80,8 +81,8 @@ fun getLRONConfigAndParse(
                     actionListener.onFailure(
                         OpenSearchStatusException(
                             "lronConfig $docId not found",
-                            RestStatus.NOT_FOUND
-                        )
+                            RestStatus.NOT_FOUND,
+                        ),
                     )
                     return
                 }
@@ -97,14 +98,14 @@ fun getLRONConfigAndParse(
                 actionListener.onResponse(
                     LRONConfigResponse(
                         id = response.id,
-                        lronConfig = lronConfig
-                    )
+                        lronConfig = lronConfig,
+                    ),
                 )
             }
 
             override fun onFailure(t: Exception) {
                 actionListener.onFailure(t)
             }
-        }
+        },
     )
 }

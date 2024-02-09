@@ -56,9 +56,9 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
                     LegacyOpenDistroRollupSettings.ROLLUP_INDEX,
                     LegacyOpenDistroRollupSettings.ROLLUP_ENABLED,
                     LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_ENABLED,
-                    LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS
-                )
-            )
+                    LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS,
+                ),
+            ),
         )
     }
 
@@ -95,16 +95,16 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
                     RollupSettings.ROLLUP_SEARCH_ENABLED,
                     RollupSettings.ROLLUP_SEARCH_ALL_JOBS,
                     RollupSettings.ROLLUP_DASHBOARDS,
-                    SnapshotManagementSettings.FILTER_BY_BACKEND_ROLES
-                )
-            )
+                    SnapshotManagementSettings.FILTER_BY_BACKEND_ROLES,
+                ),
+            ),
         )
     }
 
     fun testLegacyOpenDistroSettingsFallback() {
         assertEquals(
             ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED.get(Settings.EMPTY),
-            LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED.get(Settings.EMPTY)
+            LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED.get(Settings.EMPTY),
         )
     }
 
@@ -127,7 +127,7 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
         assertEquals(ManagedIndexSettings.ROLLOVER_SKIP.get(settings), false)
 
         assertSettingDeprecationsAndWarnings(
-            arrayOf(LegacyOpenDistroManagedIndexSettings.ROLLOVER_SKIP)
+            arrayOf(LegacyOpenDistroManagedIndexSettings.ROLLOVER_SKIP),
         )
     }
 
@@ -207,8 +207,8 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
                 LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
                 LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_MILLIS,
                 LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
-                LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS
-            )
+                LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS,
+            ),
         )
     }
 }

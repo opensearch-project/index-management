@@ -42,7 +42,7 @@ data class ISMTransform(
     val pageSize: Int,
     val dataSelectionQuery: QueryBuilder = MatchAllQueryBuilder(),
     val groups: List<Dimension>,
-    val aggregations: AggregatorFactories.Builder = AggregatorFactories.builder()
+    val aggregations: AggregatorFactories.Builder = AggregatorFactories.builder(),
 ) : ToXContentObject, Writeable {
 
     init {
@@ -92,7 +92,7 @@ data class ISMTransform(
             continuous = false,
             groups = this.groups,
             aggregations = this.aggregations,
-            user = user
+            user = user,
         )
     }
 
@@ -112,12 +112,12 @@ data class ISMTransform(
                         Dimension.Type.DATE_HISTOGRAM -> DateHistogram(sin)
                         Dimension.Type.TERMS -> Terms(sin)
                         Dimension.Type.HISTOGRAM -> Histogram(sin)
-                    }
+                    },
                 )
             }
             dimensionList.toList()
         },
-        aggregations = requireNotNull(sin.readOptionalWriteable { AggregatorFactories.Builder(it) }) { "Aggregations cannot be null" }
+        aggregations = requireNotNull(sin.readOptionalWriteable { AggregatorFactories.Builder(it) }) { "Aggregations cannot be null" },
     )
 
     override fun toString(): String {
@@ -180,7 +180,7 @@ data class ISMTransform(
                         val sourceParser = XContentType.JSON.xContent().createParser(
                             registry, LoggingDeprecationHandler.INSTANCE,
                             BytesReference
-                                .bytes(xContentBuilder).streamInput()
+                                .bytes(xContentBuilder).streamInput(),
                         )
                         dataSelectionQuery = AbstractQueryBuilder.parseInnerQueryBuilder(sourceParser)
                     }
@@ -201,7 +201,7 @@ data class ISMTransform(
                 pageSize = pageSize,
                 dataSelectionQuery = dataSelectionQuery,
                 groups = groups,
-                aggregations = aggregations
+                aggregations = aggregations,
             )
         }
     }

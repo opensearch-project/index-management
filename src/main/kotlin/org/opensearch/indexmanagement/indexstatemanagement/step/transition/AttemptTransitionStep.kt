@@ -11,6 +11,7 @@ import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.core.common.unit.ByteSizeValue
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getOldestRolloverTime
@@ -22,7 +23,6 @@ import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 
@@ -87,7 +87,7 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
                         stepStatus = StepStatus.FAILED
                         info = mapOf(
                             "message" to message,
-                            "shard_failures" to statsResponse.shardFailures.map { it.getUsefulCauseString() }
+                            "shard_failures" to statsResponse.shardFailures.map { it.getUsefulCauseString() },
                         )
                         return this
                     }
@@ -107,7 +107,7 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             if (stateName != null) {
                 logger.info(
                     "$indexName transition conditions evaluated to true [indexCreationDate=$indexCreationDate," +
-                        " numDocs=$numDocs, indexSize=${indexSize?.bytes},stepStartTime=${stepStartTime.toEpochMilli()}]"
+                        " numDocs=$numDocs, indexSize=${indexSize?.bytes},stepStartTime=${stepStartTime.toEpochMilli()}]",
                 )
                 stepStatus = StepStatus.COMPLETED
                 message = getSuccessMessage(indexName, stateName)
@@ -140,7 +140,7 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             policyCompleted = policyCompleted,
             transitionTo = stateName,
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
-            info = info
+            info = info,
         )
     }
 
@@ -150,7 +150,7 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
         indexMetadataProvider: IndexMetadataProvider,
         clusterService: ClusterService,
         indexName: String,
-        inCluster: Boolean
+        inCluster: Boolean,
     ): Long {
         try {
             // If we do have an index creation date cached already then use that

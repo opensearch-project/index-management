@@ -16,7 +16,7 @@ import java.io.IOException
 
 class ExplainTransformResponse(
     val idsToExplain: Map<String, ExplainTransform?>,
-    private val failedToExplain: Map<String, String>
+    private val failedToExplain: Map<String, String>,
 ) : ActionResponse(), ToXContentObject {
 
     internal fun getIdsToExplain(): Map<String, ExplainTransform?> {
@@ -33,7 +33,7 @@ class ExplainTransformResponse(
             }
             idsToExplain.toMap()
         },
-        failedToExplain = sin.readMap({ it.readString() }, { it.readString() })
+        failedToExplain = sin.readMap({ it.readString() }, { it.readString() }),
     )
 
     @Throws(IOException::class)
@@ -47,7 +47,7 @@ class ExplainTransformResponse(
         out.writeMap(
             failedToExplain,
             { writer, value: String -> writer.writeString(value) },
-            { writer, value: String -> writer.writeString(value) }
+            { writer, value: String -> writer.writeString(value) },
         )
     }
 

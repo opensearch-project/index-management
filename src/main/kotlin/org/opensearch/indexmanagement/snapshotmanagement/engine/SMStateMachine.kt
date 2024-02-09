@@ -10,21 +10,21 @@ import org.apache.logging.log4j.Logger
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.client.Client
 import org.opensearch.common.settings.Settings
-import org.opensearch.commons.ConfigConstants
-import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
-import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.commons.ConfigConstants
 import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.retry
+import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException.ExceptionKey
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.WorkflowType
 import org.opensearch.indexmanagement.snapshotmanagement.indexMetadata
-import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED
+import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.threadpool.ThreadPool
 import java.time.Instant.now
@@ -65,25 +65,25 @@ class SMStateMachine(
                     log.debug("Start executing {}.", currentState)
                     log.debug(
                         "User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
-                            ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                        )}"
+                            ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+                        )}",
                     )
                     result = withClosableContext(
                         IndexManagementSecurityContext(
-                            job.id, settings, threadPool.threadContext, job.user
-                        )
+                            job.id, settings, threadPool.threadContext, job.user,
+                        ),
                     ) {
                         log.debug(
                             "User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
-                                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                            )}"
+                                ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+                            )}",
                         )
                         currentState.instance.execute(this@SMStateMachine) as SMResult
                     }
                     log.debug(
                         "User and roles string from thread context: ${threadPool.threadContext.getTransient<String>(
-                            ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                        )}"
+                            ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+                        )}",
                     )
 
                     when (result) {
@@ -93,7 +93,7 @@ class SMStateMachine(
                                 result.metadataToSave
                                     .setCurrentState(currentState)
                                     .resetRetry()
-                                    .build()
+                                    .build(),
                             )
                             // break the nextStates loop, to avoid executing other lateral states
                             break
@@ -104,7 +104,7 @@ class SMStateMachine(
                                 result.metadataToSave
                                     .setCurrentState(prevState)
                                     .resetRetry()
-                                    .build()
+                                    .build(),
                             )
                             // can still execute other lateral states if exists
                         }
@@ -145,7 +145,7 @@ class SMStateMachine(
                     job.policyName,
                     message,
                     job.user,
-                    log
+                    log,
                 )
             } else {
                 job.notificationConfig?.sendFailureNotification(client, job.policyName, message, job.user, log)
@@ -178,7 +178,7 @@ class SMStateMachine(
                 log.warn(errorMessage)
                 metadataBuilder.setLatestExecution(
                     status = SMMetadata.LatestExecution.Status.FAILED,
-                    endTime = now()
+                    endTime = now(),
                 ).resetWorkflow()
             }
         }
@@ -221,7 +221,7 @@ class SMStateMachine(
     }
 
     private val updateMetaDataRetryPolicy = BackoffPolicy.exponentialBackoff(
-        TimeValue.timeValueMillis(EXPONENTIAL_BACKOFF_MILLIS), MAX_NUMBER_OF_RETRIES
+        TimeValue.timeValueMillis(EXPONENTIAL_BACKOFF_MILLIS), MAX_NUMBER_OF_RETRIES,
     )
 
     /**

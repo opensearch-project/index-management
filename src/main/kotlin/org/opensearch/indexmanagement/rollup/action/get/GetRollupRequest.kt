@@ -21,7 +21,7 @@ class GetRollupRequest : ActionRequest {
     constructor(
         id: String,
         srcContext: FetchSourceContext? = null,
-        preference: String? = null
+        preference: String? = null,
     ) : super() {
         this.id = id
         this.srcContext = srcContext
@@ -32,7 +32,7 @@ class GetRollupRequest : ActionRequest {
     constructor(sin: StreamInput) : this(
         id = sin.readString(),
         srcContext = if (sin.readBoolean()) FetchSourceContext(sin) else null,
-        preference = sin.readOptionalString()
+        preference = sin.readOptionalString(),
     )
 
     override fun validate(): ActionRequestValidationException? {

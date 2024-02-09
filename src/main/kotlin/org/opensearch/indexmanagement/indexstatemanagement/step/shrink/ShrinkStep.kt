@@ -26,7 +26,7 @@ abstract class ShrinkStep(
     name: String,
     private val cleanupSettings: Boolean,
     private val cleanupLock: Boolean,
-    private val cleanupTargetIndex: Boolean
+    private val cleanupTargetIndex: Boolean,
 ) : Step(name) {
     protected val logger: Logger = LogManager.getLogger(javaClass)
     protected var stepStatus = StepStatus.STARTING
@@ -74,7 +74,7 @@ abstract class ShrinkStep(
         if (lock == null) {
             cleanupAndFail(
                 "Failed to renew lock on node [${localShrinkActionProperties.nodeName}]",
-                "Shrink action failed to renew lock on node [${localShrinkActionProperties.nodeName}]"
+                "Shrink action failed to renew lock on node [${localShrinkActionProperties.nodeName}]",
             )
             return null
         }
@@ -141,7 +141,7 @@ abstract class ShrinkStep(
                 }
             } else {
                 logger.error(
-                    "Shrink action failed to delete target index [$targetIndexName] after a failure due to a null client in the step context"
+                    "Shrink action failed to delete target index [$targetIndexName] after a failure due to a null client in the step context",
                 )
             }
         } catch (e: Exception) {
@@ -157,7 +157,7 @@ abstract class ShrinkStep(
                 if (!released) logger.error("Failed to release Shrink action lock on node [${shrinkActionProperties.nodeName}]")
             } else {
                 logger.error(
-                    "Shrink action failed to release lock on node [${shrinkActionProperties.nodeName}] due to uninitialized metadata values."
+                    "Shrink action failed to release lock on node [${shrinkActionProperties.nodeName}] due to uninitialized metadata values.",
                 )
             }
         } catch (e: Exception) {

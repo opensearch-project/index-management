@@ -26,7 +26,7 @@ import java.io.IOException
 data class State(
     val name: String,
     val actions: List<Action>,
-    val transitions: List<Transition>
+    val transitions: List<Transition>,
 ) : ToXContentObject, Writeable {
 
     init {
@@ -58,7 +58,7 @@ data class State(
     constructor(sin: StreamInput) : this(
         sin.readString(),
         sin.readList { ISMActionsParser.instance.fromStreamInput(it) },
-        sin.readList(::Transition)
+        sin.readList(::Transition),
     )
 
     @Throws(IOException::class)
@@ -70,7 +70,7 @@ data class State(
 
     fun getActionToExecute(
         managedIndexMetaData: ManagedIndexMetaData,
-        indexMetadataProvider: IndexMetadataProvider
+        indexMetadataProvider: IndexMetadataProvider,
     ): Action? {
         var actionConfig: Action?
         val actionMetaData = managedIndexMetaData.actionMetaData
@@ -140,7 +140,7 @@ data class State(
             return State(
                 name = requireNotNull(name) { "State name is null" },
                 actions = actions.toList(),
-                transitions = transitions.toList()
+                transitions = transitions.toList(),
             )
         }
     }

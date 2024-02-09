@@ -6,14 +6,14 @@
 package org.opensearch.indexmanagement.util
 
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.query.ExistsQueryBuilder
 import org.opensearch.index.query.TermsQueryBuilder
-import org.opensearch.core.rest.RestStatus
 
 @Suppress("ReturnCount", "UtilityClassWithPublicConstructor")
 class SecurityUtils {
@@ -44,12 +44,12 @@ class SecurityUtils {
                     throw IndexManagementException.wrap(
                         OpenSearchStatusException(
                             "Filter by user backend roles in IndexManagement is not supported with security disabled",
-                            RestStatus.FORBIDDEN
-                        )
+                            RestStatus.FORBIDDEN,
+                        ),
                     )
                 } else if (user.backendRoles.isEmpty()) {
                     throw IndexManagementException.wrap(
-                        OpenSearchStatusException("User doesn't have backend roles configured. Contact administrator", RestStatus.FORBIDDEN)
+                        OpenSearchStatusException("User doesn't have backend roles configured. Contact administrator", RestStatus.FORBIDDEN),
                     )
                 }
             }
@@ -66,16 +66,16 @@ class SecurityUtils {
                         IndexManagementException.wrap(
                             OpenSearchStatusException(
                                 "Filter by user backend roles in IndexManagement is not supported with security disabled",
-                                RestStatus.FORBIDDEN
-                            )
-                        )
+                                RestStatus.FORBIDDEN,
+                            ),
+                        ),
                     )
                     return false
                 } else if (user.backendRoles.isEmpty()) {
                     actionListener.onFailure(
                         IndexManagementException.wrap(
-                            OpenSearchStatusException("User doesn't have backend roles configured. Contact administrator", RestStatus.FORBIDDEN)
-                        )
+                            OpenSearchStatusException("User doesn't have backend roles configured. Contact administrator", RestStatus.FORBIDDEN),
+                        ),
                     )
                     return false
                 }
@@ -93,13 +93,13 @@ class SecurityUtils {
             filterEnabled: Boolean = false,
             resourceName: String,
             resourceId: String,
-            actionListener: ActionListener<T>
+            actionListener: ActionListener<T>,
         ): Boolean {
             if (!userHasPermissionForResource(requestedUser, resourceUser, filterEnabled)) {
                 actionListener.onFailure(
                     IndexManagementException.wrap(
-                        OpenSearchStatusException("Do not have permission for $resourceName [$resourceId]", RestStatus.FORBIDDEN)
-                    )
+                        OpenSearchStatusException("Do not have permission for $resourceName [$resourceId]", RestStatus.FORBIDDEN),
+                    ),
                 )
                 return false
             }
@@ -115,11 +115,11 @@ class SecurityUtils {
             resourceUser: User?,
             filterEnabled: Boolean = false,
             resourceName: String,
-            resourceId: String
+            resourceId: String,
         ) {
             if (!userHasPermissionForResource(requestedUser, resourceUser, filterEnabled)) {
                 throw IndexManagementException.wrap(
-                    OpenSearchStatusException("Do not have permission for $resourceName [$resourceId]", RestStatus.FORBIDDEN)
+                    OpenSearchStatusException("Do not have permission for $resourceName [$resourceId]", RestStatus.FORBIDDEN),
                 )
             }
         }
@@ -131,7 +131,7 @@ class SecurityUtils {
         fun userHasPermissionForResource(
             requestedUser: User?,
             resourceUser: User?,
-            filterEnabled: Boolean = false
+            filterEnabled: Boolean = false,
         ): Boolean {
             // Will not filter if filter is not enabled or stored user is null or requested user is null or if the user is admin
             if (!filterEnabled || resourceUser == null || requestedUser == null || requestedUser.roles.contains(ADMIN_ROLE)) {
@@ -153,11 +153,11 @@ class SecurityUtils {
             }
 
             val filterQuery = BoolQueryBuilder().should(
-                TermsQueryBuilder("$filterPathPrefix.backend_roles.keyword", user.backendRoles)
+                TermsQueryBuilder("$filterPathPrefix.backend_roles.keyword", user.backendRoles),
             ).should(
                 BoolQueryBuilder().mustNot(
-                    ExistsQueryBuilder(filterPathPrefix)
-                )
+                    ExistsQueryBuilder(filterPathPrefix),
+                ),
             )
             queryBuilder.filter(filterQuery)
         }

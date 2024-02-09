@@ -86,9 +86,9 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
                     RollupMetadata(
                         rollupID = rollup.id, lastUpdatedTime = Instant.now(),
                         status = RollupMetadata.Status.FAILED, failureReason = "Not able to get the rollup metadata [${rollup.metadataID}]",
-                        stats = RollupStats(0, 0, 0, 0, 0)
+                        stats = RollupStats(0, 0, 0, 0, 0),
                     ),
-                    false
+                    false,
                 )
             }
         }
@@ -119,8 +119,8 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
         return MetadataResult.Success(
             metadata.copy(
                 continuous = continuousMetadata,
-                status = RollupMetadata.Status.STARTED
-            )
+                status = RollupMetadata.Status.STARTED,
+            ),
         )
     }
 
@@ -129,20 +129,20 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
         MetadataResult.Success(
             RollupMetadata(
                 rollupID = rollup.id, lastUpdatedTime = Instant.now(), status = RollupMetadata.Status.INIT,
-                stats = RollupStats(0, 0, 0, 0, 0)
-            )
+                stats = RollupStats(0, 0, 0, 0, 0),
+            ),
         )
 
     // This updates the metadata for a non-continuous rollup after an execution of the composite search and ingestion of rollup data
     private fun getUpdatedNonContinuousMetadata(
         metadata: RollupMetadata,
-        internalComposite: InternalComposite
+        internalComposite: InternalComposite,
     ): RollupMetadata {
         val afterKey = internalComposite.afterKey()
         return metadata.copy(
             afterKey = afterKey,
             lastUpdatedTime = Instant.now(),
-            status = if (afterKey == null) RollupMetadata.Status.FINISHED else RollupMetadata.Status.STARTED
+            status = if (afterKey == null) RollupMetadata.Status.FINISHED else RollupMetadata.Status.STARTED,
         )
     }
 
@@ -165,8 +165,8 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
                 continuous = ContinuousMetadata(nextWindowStartTime, nextWindowEndTime),
                 status = RollupMetadata.Status.INIT,
                 failureReason = null,
-                stats = RollupStats(0, 0, 0, 0, 0)
-            )
+                stats = RollupStats(0, 0, 0, 0, 0),
+            ),
         )
     }
 
@@ -264,21 +264,25 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
     private fun getUpdatedContinuousMetadata(
         rollup: Rollup,
         metadata: RollupMetadata,
-        internalComposite: InternalComposite
+        internalComposite: InternalComposite,
     ): RollupMetadata {
         val afterKey = internalComposite.afterKey()
         // TODO: get rid of !!
         val nextStart = if (afterKey == null) {
             getShiftedTime(metadata.continuous!!.nextWindowStartTime, rollup)
-        } else metadata.continuous!!.nextWindowStartTime
+        } else {
+            metadata.continuous!!.nextWindowStartTime
+        }
         val nextEnd = if (afterKey == null) {
             getShiftedTime(metadata.continuous.nextWindowEndTime, rollup)
-        } else metadata.continuous.nextWindowEndTime
+        } else {
+            metadata.continuous.nextWindowEndTime
+        }
         return metadata.copy(
             afterKey = internalComposite.afterKey(),
             lastUpdatedTime = Instant.now(),
             continuous = ContinuousMetadata(nextStart, nextEnd),
-            status = RollupMetadata.Status.STARTED
+            status = RollupMetadata.Status.STARTED,
         )
     }
 
@@ -302,7 +306,9 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
 
             return if (rollupMetadata != null) {
                 MetadataResult.Success(rollupMetadata!!)
-            } else MetadataResult.NoMetadata
+            } else {
+                MetadataResult.NoMetadata
+            }
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
             logger.error("$errorMessage: $unwrappedException")
@@ -348,14 +354,14 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
                 status = RollupMetadata.Status.FAILED,
                 failureReason = reason,
                 lastUpdatedTime = Instant.now(),
-                stats = RollupStats(0, 0, 0, 0, 0)
+                stats = RollupStats(0, 0, 0, 0, 0),
             )
         } else {
             // Update the given existing metadata
             updatedMetadata = existingMetadata.copy(
                 status = RollupMetadata.Status.FAILED,
                 failureReason = reason,
-                lastUpdatedTime = Instant.now()
+                lastUpdatedTime = Instant.now(),
             )
         }
 
@@ -397,8 +403,8 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
                     seqNo = response.seqNo,
                     primaryTerm = response.primaryTerm,
                     status = status,
-                    failureReason = failureReason
-                )
+                    failureReason = failureReason,
+                ),
             )
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception

@@ -27,7 +27,7 @@ class LegacyOpenDistroManagedIndexSettings {
             DEFAULT_ISM_ENABLED,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         // 0: migration is going on
@@ -37,7 +37,7 @@ class LegacyOpenDistroManagedIndexSettings {
             "opendistro.index_state_management.metadata_migration.status",
             DEFAULT_METADATA_SERVICE_STATUS,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
 
         // 0: enabled, use onClusterManager time as ISM template last_updated_time
@@ -49,7 +49,7 @@ class LegacyOpenDistroManagedIndexSettings {
             ManagedIndexSettings.DEFAULT_TEMPLATE_MIGRATION_TIMESTAMP,
             -2L,
             Setting.Property.NodeScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
 
         val METADATA_SERVICE_ENABLED: Setting<Boolean> = Setting.boolSetting(
@@ -57,21 +57,21 @@ class LegacyOpenDistroManagedIndexSettings {
             DEFAULT_METADATA_SERVICE_ENABLED,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val POLICY_ID: Setting<String> = Setting.simpleString(
             "index.opendistro.index_state_management.policy_id",
             Setting.Property.IndexScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val ROLLOVER_ALIAS: Setting<String> = Setting.simpleString(
             "index.opendistro.index_state_management.rollover_alias",
             Setting.Property.IndexScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val ROLLOVER_SKIP: Setting<Boolean> = Setting.boolSetting(
@@ -79,14 +79,14 @@ class LegacyOpenDistroManagedIndexSettings {
             false,
             Setting.Property.IndexScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val AUTO_MANAGE: Setting<Boolean> = Setting.boolSetting(
             "index.opendistro.index_state_management.auto_manage",
             true,
             Setting.Property.IndexScope,
-            Setting.Property.Dynamic
+            Setting.Property.Dynamic,
         )
 
         val JOB_INTERVAL: Setting<Int> = Setting.intSetting(
@@ -95,7 +95,7 @@ class LegacyOpenDistroManagedIndexSettings {
             1,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val SWEEP_PERIOD: Setting<TimeValue> = Setting.timeSetting(
@@ -104,7 +104,7 @@ class LegacyOpenDistroManagedIndexSettings {
             TimeValue.timeValueMinutes(5),
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val COORDINATOR_BACKOFF_MILLIS: Setting<TimeValue> = Setting.positiveTimeSetting(
@@ -112,7 +112,7 @@ class LegacyOpenDistroManagedIndexSettings {
             TimeValue.timeValueMillis(50),
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val COORDINATOR_BACKOFF_COUNT: Setting<Int> = Setting.intSetting(
@@ -121,7 +121,7 @@ class LegacyOpenDistroManagedIndexSettings {
             0,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val HISTORY_ENABLED: Setting<Boolean> = Setting.boolSetting(
@@ -129,7 +129,7 @@ class LegacyOpenDistroManagedIndexSettings {
             true,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val HISTORY_MAX_DOCS: Setting<Long> = Setting.longSetting(
@@ -138,7 +138,7 @@ class LegacyOpenDistroManagedIndexSettings {
             0L,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val HISTORY_INDEX_MAX_AGE: Setting<TimeValue> = Setting.positiveTimeSetting(
@@ -146,7 +146,7 @@ class LegacyOpenDistroManagedIndexSettings {
             TimeValue.timeValueHours(24),
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val HISTORY_ROLLOVER_CHECK_PERIOD: Setting<TimeValue> = Setting.positiveTimeSetting(
@@ -154,7 +154,7 @@ class LegacyOpenDistroManagedIndexSettings {
             TimeValue.timeValueHours(8),
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val HISTORY_RETENTION_PERIOD: Setting<TimeValue> = Setting.positiveTimeSetting(
@@ -162,7 +162,7 @@ class LegacyOpenDistroManagedIndexSettings {
             TimeValue(30, TimeUnit.DAYS),
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val HISTORY_NUMBER_OF_SHARDS: Setting<Int> = Setting.intSetting(
@@ -170,7 +170,7 @@ class LegacyOpenDistroManagedIndexSettings {
             1,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val HISTORY_NUMBER_OF_REPLICAS: Setting<Int> = Setting.intSetting(
@@ -178,7 +178,7 @@ class LegacyOpenDistroManagedIndexSettings {
             1,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val ALLOW_LIST: Setting<List<String>> = Setting.listSetting(
@@ -187,7 +187,7 @@ class LegacyOpenDistroManagedIndexSettings {
             Function.identity(),
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val SNAPSHOT_DENY_LIST: Setting<List<String>> = Setting.listSetting(
@@ -196,7 +196,7 @@ class LegacyOpenDistroManagedIndexSettings {
             Function.identity(),
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
 
         val RESTRICTED_INDEX_PATTERN = Setting.simpleString(
@@ -204,7 +204,7 @@ class LegacyOpenDistroManagedIndexSettings {
             ManagedIndexSettings.DEFAULT_RESTRICTED_PATTERN,
             Setting.Property.NodeScope,
             Setting.Property.Dynamic,
-            Setting.Property.Deprecated
+            Setting.Property.Deprecated,
         )
     }
 }

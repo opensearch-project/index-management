@@ -16,8 +16,8 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.index.shard.ShardId
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.opensearchapi.withClosableContext
@@ -62,7 +62,7 @@ object TransformRunner :
         settings: Settings,
         indexNameExpressionResolver: IndexNameExpressionResolver,
         jvmService: JvmService,
-        threadPool: ThreadPool
+        threadPool: ThreadPool,
     ): TransformRunner {
         this.clusterService = clusterService
         this.client = client
@@ -110,7 +110,7 @@ object TransformRunner :
         var bucketsToTransform = BucketsToTransform(HashSet(), metadata)
 
         val transformContext = TransformContext(
-            TransformLockManager(transform, context)
+            TransformLockManager(transform, context),
         )
 
         // Acquires the lock if there is no running job execution for the given transform; Lock is acquired per transform
@@ -145,7 +145,7 @@ object TransformRunner :
                                 newGlobalCheckpoints = transformSearchService.getShardsGlobalCheckpoint(transform.sourceIndex)
                                 bucketsToTransform = bucketsToTransform.initializeShardsToSearch(
                                     metadata.shardIDToGlobalCheckpoint,
-                                    newGlobalCheckpoints
+                                    newGlobalCheckpoints,
                                 )
                             }
                             // If there are shards to search do it here
@@ -182,7 +182,7 @@ object TransformRunner :
             currentMetadata = currentMetadata.copy(
                 lastUpdatedAt = Instant.now(),
                 status = TransformMetadata.Status.FAILED,
-                failureReason = e.localizedMessage
+                failureReason = e.localizedMessage,
             )
         } finally {
             transformLockManager.lock?.let {
@@ -190,7 +190,7 @@ object TransformRunner :
                 if (transform.continuous && currentMetadata.status != TransformMetadata.Status.FAILED) {
                     currentMetadata = currentMetadata.copy(
                         shardIDToGlobalCheckpoint = newGlobalCheckpoints,
-                        continuousStats = ContinuousTransformStats(newGlobalCheckpointTime, null)
+                        continuousStats = ContinuousTransformStats(newGlobalCheckpointTime, null),
                     )
                 }
                 transformMetadataService.writeMetadata(currentMetadata, true)
@@ -206,7 +206,7 @@ object TransformRunner :
     private suspend fun getBucketsToTransformIteration(
         transform: Transform,
         bucketsToTransform: BucketsToTransform,
-        transformContext: TransformContext
+        transformContext: TransformContext,
     ): BucketsToTransform {
         var currentBucketsToTransform = bucketsToTransform
         val currentShard = bucketsToTransform.currentShard
@@ -219,7 +219,7 @@ object TransformRunner :
                     transform,
                     currentBucketsToTransform.metadata.afterKey,
                     currentShard,
-                    transformContext
+                    transformContext,
                 )
             }
             currentBucketsToTransform.modifiedBuckets.addAll(shardLevelModifiedBuckets.modifiedBuckets)
@@ -229,11 +229,11 @@ object TransformRunner :
                 metadata = currentBucketsToTransform.metadata.copy(
                     stats = currentBucketsToTransform.metadata.stats.copy(
                         pagesProcessed = currentBucketsToTransform.metadata.stats.pagesProcessed + 1,
-                        searchTimeInMillis = mergedSearchTime
+                        searchTimeInMillis = mergedSearchTime,
                     ),
-                    afterKey = shardLevelModifiedBuckets.afterKey
+                    afterKey = shardLevelModifiedBuckets.afterKey,
                 ),
-                currentShard = currentShard
+                currentShard = currentShard,
             )
         }
         // If finished with this shard, go to the next
@@ -256,7 +256,9 @@ object TransformRunner :
             val failureMessage = "Failed validation - ${validationResult.issues}"
             val failureMetadata = transformMetadata.copy(status = TransformMetadata.Status.FAILED, failureReason = failureMessage)
             transformMetadataService.writeMetadata(failureMetadata, true)
-        } else transformMetadata
+        } else {
+            transformMetadata
+        }
     }
 
     /**
@@ -267,15 +269,14 @@ object TransformRunner :
     private suspend fun computeBucketsIteration(
         transform: Transform,
         metadata: TransformMetadata,
-        transformContext: TransformContext
+        transformContext: TransformContext,
     ): TransformMetadata {
-
         val transformSearchResult = withTransformSecurityContext(transform) {
             transformSearchService.executeCompositeSearch(
                 transform,
                 metadata.afterKey,
                 null,
-                transformContext
+                transformContext,
             )
         }
         val indexTimeInMillis = withTransformSecurityContext(transform) {
@@ -286,12 +287,12 @@ object TransformRunner :
         val updatedStats = stats.copy(
             pagesProcessed = stats.pagesProcessed,
             indexTimeInMillis = stats.indexTimeInMillis + indexTimeInMillis,
-            documentsIndexed = transformSearchResult.docsToIndex.size.toLong()
+            documentsIndexed = transformSearchResult.docsToIndex.size.toLong(),
         )
         return metadata.mergeStats(updatedStats).copy(
             afterKey = afterKey,
             lastUpdatedAt = Instant.now(),
-            status = if (afterKey == null) TransformMetadata.Status.FINISHED else TransformMetadata.Status.STARTED
+            status = if (afterKey == null) TransformMetadata.Status.FINISHED else TransformMetadata.Status.STARTED,
         )
     }
 
@@ -299,7 +300,7 @@ object TransformRunner :
         transform: Transform,
         metadata: TransformMetadata,
         modifiedBuckets: MutableSet<Map<String, Any>>,
-        transformContext: TransformContext
+        transformContext: TransformContext,
     ): TransformMetadata {
         val updatedMetadata = if (modifiedBuckets.isNotEmpty()) {
             val transformSearchResult = withTransformSecurityContext(transform) {
@@ -312,13 +313,15 @@ object TransformRunner :
             val updatedStats = stats.copy(
                 pagesProcessed = if (transform.continuous) 0 else stats.pagesProcessed,
                 indexTimeInMillis = stats.indexTimeInMillis + indexTimeInMillis,
-                documentsIndexed = transformSearchResult.docsToIndex.size.toLong()
+                documentsIndexed = transformSearchResult.docsToIndex.size.toLong(),
             )
             metadata.mergeStats(updatedStats).copy(
                 lastUpdatedAt = Instant.now(),
-                status = TransformMetadata.Status.STARTED
+                status = TransformMetadata.Status.STARTED,
             )
-        } else metadata.copy(lastUpdatedAt = Instant.now(), status = TransformMetadata.Status.STARTED)
+        } else {
+            metadata.copy(lastUpdatedAt = Instant.now(), status = TransformMetadata.Status.STARTED)
+        }
         return updatedMetadata
     }
 
@@ -329,17 +332,17 @@ object TransformRunner :
     private suspend fun updateTransform(transform: Transform): Transform {
         val request = IndexTransformRequest(
             transform = transform.copy(updatedAt = Instant.now()),
-            refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
+            refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE,
         )
         return withClosableContext(
-            IndexManagementSecurityContext(transform.id, settings, threadPool.threadContext, null)
+            IndexManagementSecurityContext(transform.id, settings, threadPool.threadContext, null),
         ) {
             val response: IndexTransformResponse = client.suspendUntil {
                 execute(IndexTransformAction.INSTANCE, request, it)
             }
             return@withClosableContext transform.copy(
                 seqNo = response.seqNo,
-                primaryTerm = response.primaryTerm
+                primaryTerm = response.primaryTerm,
             )
         }
     }

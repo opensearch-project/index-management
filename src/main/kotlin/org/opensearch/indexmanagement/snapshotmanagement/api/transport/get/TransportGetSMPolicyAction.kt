@@ -16,6 +16,7 @@ import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -24,7 +25,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.parseSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.verifyUserHasPermissionForResource
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.transport.TransportService
 
 class TransportGetSMPolicyAction @Inject constructor(
@@ -34,7 +34,7 @@ class TransportGetSMPolicyAction @Inject constructor(
     val clusterService: ClusterService,
     val settings: Settings,
 ) : BaseTransportAction<GetSMPolicyRequest, GetSMPolicyResponse>(
-    GET_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::GetSMPolicyRequest
+    GET_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::GetSMPolicyRequest,
 ) {
 
     private val log = LogManager.getLogger(javaClass)
@@ -50,7 +50,7 @@ class TransportGetSMPolicyAction @Inject constructor(
     override suspend fun executeRequest(
         request: GetSMPolicyRequest,
         user: User?,
-        threadContext: ThreadContext.StoredContext
+        threadContext: ThreadContext.StoredContext,
     ): GetSMPolicyResponse {
         val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.policyID)
         val getResponse: GetResponse = try {

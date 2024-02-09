@@ -8,16 +8,16 @@ package org.opensearch.indexmanagement.rollup
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.search.SearchPhaseExecutionException
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.search.TransportSearchAction.SEARCH_CANCEL_AFTER_TIME_INTERVAL_SETTING
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
-import org.opensearch.core.common.breaker.CircuitBreakingException
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.common.breaker.CircuitBreakingException
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.rollup.model.Rollup
@@ -39,7 +39,7 @@ import kotlin.math.pow
 class RollupSearchService(
     settings: Settings,
     clusterService: ClusterService,
-    val client: Client
+    val client: Client,
 ) {
 
     private val logger = LogManager.getLogger(javaClass)
@@ -108,10 +108,12 @@ class RollupSearchService(
                     val decay = 2f.pow(retryCount++)
                     client.suspendUntil { listener: ActionListener<SearchResponse> ->
                         val pageSize = max(1, job.pageSize.div(decay.toInt()))
-                        if (decay > 1) logger.warn(
-                            "Composite search failed for rollup, retrying [#${retryCount - 1}] -" +
-                                " reducing page size of composite aggregation from ${job.pageSize} to $pageSize"
-                        )
+                        if (decay > 1) {
+                            logger.warn(
+                                "Composite search failed for rollup, retrying [#${retryCount - 1}] -" +
+                                    " reducing page size of composite aggregation from ${job.pageSize} to $pageSize",
+                            )
+                        }
 
                         val searchRequest = job.copy(pageSize = pageSize).getRollupSearchRequest(metadata)
                         val cancelTimeoutTimeValue = TimeValue.timeValueMinutes(getCancelAfterTimeInterval(cancelAfterTimeInterval.minutes))
@@ -119,7 +121,7 @@ class RollupSearchService(
 
                         search(searchRequest, listener)
                     }
-                }
+                },
             )
         } catch (e: SearchPhaseExecutionException) {
             logger.error(e.message, e.cause)

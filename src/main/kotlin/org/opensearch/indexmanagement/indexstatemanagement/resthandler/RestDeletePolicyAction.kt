@@ -30,8 +30,8 @@ class RestDeletePolicyAction : BaseRestHandler() {
         return listOf(
             ReplacedRoute(
                 DELETE, "$POLICY_BASE_URI/{policyID}",
-                DELETE, "$LEGACY_POLICY_BASE_URI/{policyID}"
-            )
+                DELETE, "$LEGACY_POLICY_BASE_URI/{policyID}",
+            ),
         )
     }
 

@@ -34,7 +34,7 @@ class ExplainRollupResponse : ActionResponse, ToXContentObject {
                 idsToExplain[it.readString()] = if (sin.readBoolean()) ExplainRollup(it) else null
             }
             idsToExplain.toMap()
-        }
+        },
     )
 
     @Throws(IOException::class)

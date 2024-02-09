@@ -17,7 +17,7 @@ class DeletionStartStateTests : MocksTestCase() {
 
     fun `test start state execution`() = runBlocking {
         val metadata = randomSMMetadata(
-            deletionCurrentState = SMState.DELETION_FINISHED
+            deletionCurrentState = SMState.DELETION_FINISHED,
         )
         val job = randomSMPolicy()
         val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)

@@ -12,7 +12,6 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
 import org.opensearch.action.bulk.BulkRequest
@@ -28,11 +27,13 @@ import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.inject.Inject
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.action.ActionListener
 import org.opensearch.core.index.Index
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
@@ -53,7 +54,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
@@ -64,9 +64,9 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
     val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
-    val indexMetadataProvider: IndexMetadataProvider
+    val indexMetadataProvider: IndexMetadataProvider,
 ) : HandledTransportAction<RetryFailedManagedIndexRequest, ISMStatusResponse>(
-    RetryFailedManagedIndexAction.NAME, transportService, actionFilters, ::RetryFailedManagedIndexRequest
+    RetryFailedManagedIndexAction.NAME, transportService, actionFilters, ::RetryFailedManagedIndexRequest,
 ) {
     override fun doExecute(task: Task, request: RetryFailedManagedIndexRequest, listener: ActionListener<ISMStatusResponse>) {
         RetryFailedManagedIndexHandler(client, listener, request).start()
@@ -76,7 +76,7 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
         private val client: NodeClient,
         private val actionListener: ActionListener<ISMStatusResponse>,
         private val request: RetryFailedManagedIndexRequest,
-        private val user: User? = buildUser(client.threadPool().threadContext)
+        private val user: User? = buildUser(client.threadPool().threadContext),
     ) {
         private val failedIndices: MutableList<FailedIndex> = mutableListOf()
         private val listOfMetadata: MutableList<ManagedIndexMetaData> = mutableListOf()
@@ -90,8 +90,8 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
         fun start() {
             log.debug(
                 "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
-                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
-                )}"
+                    ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
+                )}",
             )
             if (user == null) {
                 // Security plugin is not enabled
@@ -117,14 +117,14 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
                                 when (e is OpenSearchSecurityException) {
                                     true -> OpenSearchStatusException(
                                         "User doesn't have required index permissions on one or more requested indices: ${e.localizedMessage}",
-                                        RestStatus.FORBIDDEN
+                                        RestStatus.FORBIDDEN,
                                     )
                                     false -> e
-                                }
-                            )
+                                },
+                            ),
                         )
                     }
-                }
+                },
             )
         }
 
@@ -177,7 +177,7 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
                             override fun onFailure(t: Exception) {
                                 actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                             }
-                        }
+                        },
                     )
             }
         }
@@ -207,14 +207,14 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
                         // get back metadata from config index
                         client.multiGet(
                             buildMgetMetadataRequest(indicesToRetry.toList().map { it.first }),
-                            ActionListener.wrap(::onMgetMetadataResponse, ::onFailure)
+                            ActionListener.wrap(::onMgetMetadataResponse, ::onFailure),
                         )
                     }
 
                     override fun onFailure(t: Exception) {
                         actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                     }
-                }
+                },
             )
         }
 
@@ -276,12 +276,12 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
                                     failed = false,
                                     consumedRetries = 0,
                                     lastRetryTime = null,
-                                    startTime = null
+                                    startTime = null,
                                 ),
                                 transitionTo = request.startState,
-                                info = mapOf("message" to "Pending retry of failed managed index")
-                            )
-                        )
+                                info = mapOf("message" to "Pending retry of failed managed index"),
+                            ),
+                        ),
                     )
                 }
             }
@@ -322,7 +322,7 @@ class TransportRetryFailedManagedIndexAction @Inject constructor(
                     failedIndices.addAll(
                         listOfIndexToMetadata.map {
                             FailedIndex(it.first.name, it.first.uuid, "Failed to update due to ClusterBlockException. ${e.message}")
-                        }
+                        },
                     )
                 }
 

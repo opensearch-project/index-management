@@ -32,11 +32,11 @@ class AttemptCreateTransformJobStepTests : OpenSearchTestCase() {
         null,
         ActionMetaData(
             AttemptCreateTransformJobStep.name, 1, 0, false, 0, null,
-            ActionProperties(transformActionProperties = TransformActionProperties(transformId))
+            ActionProperties(transformActionProperties = TransformActionProperties(transformId)),
         ),
         null,
         null,
-        null
+        null,
     )
     private val step = AttemptCreateTransformJobStep(transformAction)
 
@@ -46,16 +46,16 @@ class AttemptCreateTransformJobStepTests : OpenSearchTestCase() {
         assertEquals(
             "Step status is not FAILED",
             Step.StepStatus.FAILED,
-            updatedManagedIndexMedaData.stepMetaData?.stepStatus
+            updatedManagedIndexMedaData.stepMetaData?.stepStatus,
         )
         assertEquals(
             "Error message is not expected",
             AttemptCreateTransformJobStep.getFailedMessage(transformId, indexName),
-            updatedManagedIndexMedaData.info?.get("message")
+            updatedManagedIndexMedaData.info?.get("message"),
         )
         assertNull(
             "TransformId in action properties is not cleaned up",
-            updatedManagedIndexMedaData.actionMetaData?.actionProperties?.transformActionProperties?.transformId
+            updatedManagedIndexMedaData.actionMetaData?.actionProperties?.transformActionProperties?.transformId,
         )
     }
 

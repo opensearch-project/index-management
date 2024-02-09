@@ -11,7 +11,7 @@ import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 
 class ExplainSMPolicyRequest(
-    val policyNames: Array<String>
+    val policyNames: Array<String>,
 ) : ActionRequest() {
     override fun validate(): ActionRequestValidationException? {
         return null

@@ -9,7 +9,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.action.DocWriteResponse
 import org.opensearch.action.admin.cluster.settings.ClusterUpdateSettingsRequest
@@ -26,13 +25,15 @@ import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.Template
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.io.stream.BytesStreamOutput
-import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
-import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.common.io.stream.StreamInput
+import org.opensearch.core.rest.RestStatus
+import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.model.ISMTemplate
@@ -43,7 +44,6 @@ import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.util.OpenForTesting
-import org.opensearch.core.rest.RestStatus
 import java.time.Instant
 
 @OpenForTesting
@@ -52,14 +52,16 @@ class ISMTemplateService(
     private val client: Client,
     private val clusterService: ClusterService,
     private val xContentRegistry: NamedXContentRegistry,
-    private val imIndices: IndexManagementIndices
+    private val imIndices: IndexManagementIndices,
 ) {
 
     private val logger = LogManager.getLogger(javaClass)
 
     @Volatile final var finishFlag = false
         private set
-    fun reenableTemplateMigration() { finishFlag = false }
+    fun reenableTemplateMigration() {
+        finishFlag = false
+    }
 
     @Volatile var runTimeCounter = 0
 
@@ -279,7 +281,7 @@ class ISMTemplateService(
                             xContentRegistry,
                             LoggingDeprecationHandler.INSTANCE,
                             response.sourceAsBytesRef,
-                            XContentType.JSON
+                            XContentType.JSON,
                         ).use { xcp ->
                             xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, Policy.Companion::parse)
                         }
@@ -308,8 +310,9 @@ class ISMTemplateService(
         var requests = mutableListOf<UpdateRequest>()
         policiesToUpdate.forEach { policyID, (seqNo, priTerm) ->
             val ismTemplates = ismTemplateMap[policyID]
-            if (ismTemplates != null)
+            if (ismTemplates != null) {
                 requests.add(updateISMTemplateRequest(policyID, ismTemplates, seqNo, priTerm))
+            }
         }
 
         retryPolicy.retry(logger, listOf(RestStatus.TOO_MANY_REQUESTS)) {
@@ -354,7 +357,7 @@ class ISMTemplateService(
 data class V1TemplateCache(
     val patterns: List<String>,
     val order: Int,
-    val policyID: String
+    val policyID: String,
 )
 
 typealias policyID = String

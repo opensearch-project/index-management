@@ -10,13 +10,13 @@ import org.opensearch.action.delete.DeleteResponse
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.delete.TransportDeleteSMPolicyAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.ExplainSMPolicyResponse
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.TransportExplainSMAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMPoliciesResponse
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.GetSMPolicyResponse
+import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.TransportGetSMPoliciesAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.TransportGetSMPolicyAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.IndexSMPolicyResponse
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.index.TransportIndexSMPolicyAction
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.get.TransportGetSMPoliciesAction
-import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.TransportExplainSMAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.start.TransportStartSMAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.stop.TransportStopSMAction
 

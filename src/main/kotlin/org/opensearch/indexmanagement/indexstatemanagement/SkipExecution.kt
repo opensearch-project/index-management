@@ -6,19 +6,19 @@
 package org.opensearch.indexmanagement.indexstatemanagement
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.admin.cluster.node.info.NodesInfoAction
 import org.opensearch.action.admin.cluster.node.info.NodesInfoRequest
 import org.opensearch.action.admin.cluster.node.info.NodesInfoResponse
 import org.opensearch.action.admin.cluster.node.info.PluginsAndModules
 import org.opensearch.client.Client
+import org.opensearch.core.action.ActionListener
 import org.opensearch.indexmanagement.util.OpenForTesting
 
 // TODO this can be moved to job scheduler, so that all extended plugin
 //  can avoid running jobs in an upgrading cluster
 @OpenForTesting
 class SkipExecution(
-    private val client: Client
+    private val client: Client,
 ) {
     private val logger = LogManager.getLogger(javaClass)
 
@@ -61,19 +61,23 @@ class SkipExecution(
                     if ((versionSet.size + legacyVersionSet.size) > 1) {
                         flag = true
                         logger.info("There are multiple versions of Index Management plugins in the cluster: [$versionSet, $legacyVersionSet]")
-                    } else flag = false
+                    } else {
+                        flag = false
+                    }
 
                     if (versionSet.isNotEmpty() && legacyVersionSet.isNotEmpty()) {
                         hasLegacyPlugin = true
                         logger.info("Found legacy plugin versions [$legacyVersionSet] and opensearch plugins versions [$versionSet] in the cluster")
-                    } else hasLegacyPlugin = false
+                    } else {
+                        hasLegacyPlugin = false
+                    }
                 }
 
                 override fun onFailure(e: Exception) {
                     logger.error("Failed sweeping nodes for ISM plugin versions: $e")
                     flag = false
                 }
-            }
+            },
         )
     }
 }

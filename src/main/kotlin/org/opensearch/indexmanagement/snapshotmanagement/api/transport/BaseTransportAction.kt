@@ -10,20 +10,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.core.action.ActionListener
 import org.opensearch.action.ActionRequest
-import org.opensearch.core.action.ActionResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.client.Client
-import org.opensearch.core.common.io.stream.Writeable
 import org.opensearch.common.util.concurrent.ThreadContext.StoredContext
 import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.action.ActionResponse
+import org.opensearch.core.common.io.stream.Writeable
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.SecurityUtils
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
@@ -34,7 +34,7 @@ abstract class BaseTransportAction<Request : ActionRequest, Response : ActionRes
     actionFilters: ActionFilters,
     requestReader: Writeable.Reader<Request>,
 ) : HandledTransportAction<Request, Response>(
-    name, transportService, actionFilters, requestReader
+    name, transportService, actionFilters, requestReader,
 ) {
 
     private val log = LogManager.getLogger(javaClass)
@@ -43,11 +43,11 @@ abstract class BaseTransportAction<Request : ActionRequest, Response : ActionRes
     override fun doExecute(
         task: Task,
         request: Request,
-        listener: ActionListener<Response>
+        listener: ActionListener<Response>,
     ) {
         log.debug(
             "user and roles string from thread context: " +
-                client.threadPool().threadContext.getTransient<String>(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT)
+                client.threadPool().threadContext.getTransient<String>(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT),
         )
         val user: User? = SecurityUtils.buildUser(client.threadPool().threadContext)
         coroutineScope.launch {

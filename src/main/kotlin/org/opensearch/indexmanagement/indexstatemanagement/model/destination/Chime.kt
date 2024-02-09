@@ -33,7 +33,7 @@ data class Chime(val url: String) : ToXContent, Writeable {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-        sin.readString()
+        sin.readString(),
     )
 
     @Throws(IOException::class)

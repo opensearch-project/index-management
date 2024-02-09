@@ -16,7 +16,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 
 class AliasAction(
     val actions: List<IndicesAliasesRequest.AliasActions>,
-    index: Int
+    index: Int,
 ) : Action(name, index) {
 
     /**
@@ -28,10 +28,10 @@ class AliasAction(
         val allowedActionTypes = listOf(IndicesAliasesRequest.AliasActions.Type.ADD, IndicesAliasesRequest.AliasActions.Type.REMOVE)
         require(actions.all { it.actionType() in allowedActionTypes }) { "Only ADD and REMOVE actions are allowed." }
         require(
-            actions.all { it.indices().isNullOrEmpty() }
+            actions.all { it.indices().isNullOrEmpty() },
         ) { "Alias action can only work on its applied index so don't accept index/indices parameter." }
         require(
-            actions.all { it.aliases().isNotEmpty() }
+            actions.all { it.aliases().isNotEmpty() },
         ) { "At least one alias needs to be specified." }
     }
 

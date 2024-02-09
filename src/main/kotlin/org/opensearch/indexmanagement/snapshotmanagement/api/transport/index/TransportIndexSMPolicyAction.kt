@@ -13,9 +13,9 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.util.concurrent.ThreadContext
-import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.commons.authuser.User
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -34,7 +34,7 @@ class TransportIndexSMPolicyAction @Inject constructor(
     val clusterService: ClusterService,
     val settings: Settings,
 ) : BaseTransportAction<IndexSMPolicyRequest, IndexSMPolicyResponse>(
-    INDEX_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::IndexSMPolicyRequest
+    INDEX_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::IndexSMPolicyRequest,
 ) {
 
     private val log = LogManager.getLogger(javaClass)
@@ -50,7 +50,7 @@ class TransportIndexSMPolicyAction @Inject constructor(
     override suspend fun executeRequest(
         request: IndexSMPolicyRequest,
         user: User?,
-        threadContext: ThreadContext.StoredContext
+        threadContext: ThreadContext.StoredContext,
     ): IndexSMPolicyResponse {
         // If filterBy is enabled and security is disabled or if filter by is enabled and backend role are empty an exception will be thrown
         SecurityUtils.validateUserConfiguration(user, filterByEnabled)

@@ -15,6 +15,7 @@ import org.junit.After
 import org.junit.Before
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.rollup.model.Rollup
@@ -27,7 +28,6 @@ import org.opensearch.indexmanagement.rollup.model.metric.Sum
 import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
-import org.opensearch.core.rest.RestStatus
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -53,7 +53,7 @@ class RollupSecurityBehaviorIT : SecurityRestTestCase() {
             GET_ROLLUP,
             EXPLAIN_ROLLUP,
             UPDATE_ROLLUP,
-            DELETE_ROLLUP
+            DELETE_ROLLUP,
 
         )
 
@@ -64,7 +64,7 @@ class RollupSecurityBehaviorIT : SecurityRestTestCase() {
             BULK_WRITE_INDEX,
             GET_INDEX_MAPPING,
             SEARCH_INDEX,
-            PUT_INDEX_MAPPING
+            PUT_INDEX_MAPPING,
         )
         // In this test suite case john is a "super-user" which has all relevant privileges
         createUser(superRollupUser, password, listOf(HELPDESK))
@@ -232,9 +232,9 @@ class RollupSecurityBehaviorIT : SecurityRestTestCase() {
             RollupMetrics(
                 sourceField = "passenger_count",
                 targetField = "passenger_count",
-                metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average())
-            )
-        )
+                metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+            ),
+        ),
     )
 
     private fun createTestUserWithRole(clusterPermissions: List<String>, indexPermissions: List<String>) {

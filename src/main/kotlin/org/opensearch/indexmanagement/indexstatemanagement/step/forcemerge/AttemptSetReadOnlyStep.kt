@@ -82,7 +82,7 @@ class AttemptSetReadOnlyStep(private val action: ForceMergeAction) : Step(name) 
         currentMetadata.copy(
             stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
             transitionTo = null,
-            info = info
+            info = info,
         )
 
     override fun isIdempotent() = true
