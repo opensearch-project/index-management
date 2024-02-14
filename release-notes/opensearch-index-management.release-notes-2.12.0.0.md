@@ -6,7 +6,7 @@ Compatible with OpenSearch 2.12.0
 
 * Increment version to 2.12.0-SNAPSHOT ([#996](https://github.com/opensearch-project/index-management/pull/996))
 * Update to Gradle 8.5 ([#1069](https://github.com/opensearch-project/index-management/pull/1069))
-* Support switch aliases in shrink action. ([#987](https://github.com/opensearch-project/index-management/pull/987))
+* Upgrade ktlint to mitigate CVE-2023-6378 ([#1095](https://github.com/opensearch-project/index-management/pull/1095))
 
 ### Enhancements
 
@@ -14,7 +14,7 @@ Compatible with OpenSearch 2.12.0
 * Add more error notification at fail points ([#1000](https://github.com/opensearch-project/index-management/pull/1000))
 * \[Feature] Support Transform as an ISM action ([#760](https://github.com/opensearch-project/index-management/pull/760))
 * Set the rollover action to idempotent ([#986](https://github.com/opensearch-project/index-management/pull/986))
-
+* Support switch aliases in shrink action. ([#987](https://github.com/opensearch-project/index-management/pull/987))
 
 ### Bug fixes
 
@@ -30,6 +30,8 @@ Compatible with OpenSearch 2.12.0
 * Update admin credential in integration test ([#1084](https://github.com/opensearch-project/index-management/pull/1084))
 * Onboard jenkins prod docker images to github actions ([#1025](https://github.com/opensearch-project/index-management/pull/1025))
 * Improve security plugin enabling check ([#1017](https://github.com/opensearch-project/index-management/pull/1017))
+* Fixes password assignment for integTest when using remote cluster ([#1091](https://github.com/opensearch-project/index-management/pull/1091))
+* Accepts https as a property to set securityEnabled flag ([#1100](https://github.com/opensearch-project/index-management/pull/1100))
 
 ### Documentation
 
