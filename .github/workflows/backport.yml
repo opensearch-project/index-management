@@ -1,4 +1,3 @@
-
 name: Backport
 on:
   pull_request_target:
@@ -8,15 +7,26 @@ on:
 
 jobs:
   backport:
+    name: Backport
     runs-on: ubuntu-latest
+    # Only react to merged PRs for security reasons.
+    # See https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request_target.
+    if: >
+      github.event.pull_request.merged
+      && (
+        github.event.action == 'closed'
+        || (
+          github.event.action == 'labeled'
+          && contains(github.event.label.name, 'backport')
+        )
+      )
     permissions:
       contents: write
       pull-requests: write
-    name: Backport
     steps:
       - name: GitHub App token
         id: github_app_token
-        uses: tibdex/github-app-token@v1.5.0
+        uses: tibdex/github-app-token@v2.1.0
         with:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
@@ -26,6 +36,5 @@ jobs:
         uses: VachaShah/backport@v2.2.0
         with:
           github_token: ${{ steps.github_app_token.outputs.token }}
-          branch_name: backport/backport-${{ github.event.number }}
-          labels_template: "<%= JSON.stringify([...labels, 'autocut']) %>"
-          failure_labels: "failed backport"
+          head_template: backport/backport-<%= number %>-to-<%= base %>
+          failure_labels: backport-failed
