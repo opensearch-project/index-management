@@ -175,6 +175,10 @@ dependencies {
             attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
         }
     }
+    configurations.ktlint {
+        resolutionStrategy.force "ch.qos.logback:logback-core:1.2.13"
+        resolutionStrategy.force "ch.qos.logback:logback-classic:1.2.13"
+    }
 }
 
 repositories {
