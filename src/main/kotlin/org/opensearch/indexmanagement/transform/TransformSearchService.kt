@@ -151,12 +151,17 @@ class TransformSearchService(
                             return@suspendUntil
                         }
                         val request = getShardLevelBucketsSearchRequest(transform, afterKey, pageSize, currentShard, searchRequestTimeoutInSeconds)
+                        logger.debug("Transform job {} is starting its search request {} for Shard {} from checkpoint: {} and to checkpoint: {}", transform.id, currentShard.shardId, request.source(), currentShard.from, currentShard.to)
                         search(request, listener)
+                        logger.debug("Transform job {} has completed search request for Shard {} from checkpoint: {} and to checkpoint: {}", transform.id, currentShard.shardId, currentShard.from, currentShard.to)
                     }
                 }
             // If the request was successful, update page size
             transformContext.lastSuccessfulPageSize = pageSize
+            logger.debug("Transform job {} updated page size {} for Shard {} from checkpoint: {} and to checkpoint: {}", transform.id, pageSize, currentShard.shardId, currentShard.from, currentShard.to)
             transformContext.renewLockForLongSearch(Instant.now().epochSecond - searchStart)
+            logger.debug("Transform job {} is renewing lock for long search for Shard {} from checkpoint: {} and to checkpoint: {}. Time for search {}", transform.id, currentShard.shardId, currentShard.from, currentShard.to, searchResponse.took.millis())
+            logger.trace("Transform job {} search response {} for Shard {} from checkpoint: {} and to checkpoint: {}. Time for search {}", transform.id, searchResponse, currentShard.shardId, currentShard.from, currentShard.to, searchResponse.took.millis())
             return convertBucketSearchResponse(transform, searchResponse)
         } catch (e: TransformSearchServiceException) {
             throw e
