@@ -153,7 +153,7 @@ object TransformRunner :
                                 logger.debug(
                                     "Transform job {} fetched global checkpoints {}.",
                                     transform.id,
-                                    newGlobalCheckpoints
+                                    newGlobalCheckpoints,
                                 )
                             }
                             // If there are shards to search do it here
@@ -173,7 +173,7 @@ object TransformRunner :
                                     "Transform job {} recompute to start with modified buckets {}. Processing shard {}.",
                                     transform.id,
                                     modifiedBuckets.size,
-                                    bucketsToTransform.currentShard
+                                    bucketsToTransform.currentShard,
                                 )
                                 // Recompute modified buckets and update them in targetIndex
                                 currentMetadata = recomputeModifiedBuckets(transform, currentMetadata, modifiedBuckets, transformContext)
@@ -243,7 +243,10 @@ object TransformRunner :
                     )
                 }
             currentBucketsToTransform.modifiedBuckets.addAll(shardLevelModifiedBuckets.modifiedBuckets)
-            logger.debug("Transform job {} has current buckets {} to transform. Processing Shard {} with checkpoints from {} to {}.", transform.id,currentBucketsToTransform.modifiedBuckets.size, currentShard.shardId ,currentShard.from, currentShard.to)
+            logger.debug(
+                "Transform job {} has current buckets {} to transform. Processing Shard {} with checkpoints from {} to {}.",
+                transform.id, currentBucketsToTransform.modifiedBuckets.size, currentShard.shardId, currentShard.from, currentShard.to,
+            )
             val mergedSearchTime =
                 currentBucketsToTransform.metadata.stats.searchTimeInMillis +
                     shardLevelModifiedBuckets.searchTimeInMillis
@@ -340,7 +343,10 @@ object TransformRunner :
                     }
                 val indexTimeInMillis =
                     withTransformSecurityContext(transform) {
-                        logger.debug("Transform job {} starting to index for target index: {} with documents {}.", transform.id,transform.targetIndex, transformSearchResult.docsToIndex.size)
+                        logger.debug(
+                            "Transform job {} starting to index for target index: {} with documents {}.",
+                            transform.id, transform.targetIndex, transformSearchResult.docsToIndex.size,
+                        )
                         transformIndexer.index(transform.targetIndex, transformSearchResult.docsToIndex, transformContext)
                         logger.debug("Transform job {} completed to index for target index: {}.", transform.id, transform.targetIndex)
                     }
