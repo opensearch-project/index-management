@@ -343,6 +343,7 @@ data class Rollup(
                     schedule = IntervalSchedule(schedule.startTime ?: Instant.now(), schedule.interval, schedule.unit, schedule.delay ?: 0)
                 }
             }
+
             return Rollup(
                 id = id,
                 seqNo = seqNo,
