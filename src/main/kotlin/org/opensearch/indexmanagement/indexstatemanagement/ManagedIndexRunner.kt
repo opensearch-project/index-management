@@ -332,17 +332,17 @@ object ManagedIndexRunner :
             val info = mapOf("message" to "Action timed out")
             logger.error("Action=${action.type} has timed out")
 
-            val updatedMetaData = managedIndexMetaData.copy(
+            val updatedIndexMetaData = managedIndexMetaData.copy(
                 actionMetaData = currentActionMetaData?.copy(failed = true),
                 stepMetaData = step?.let { StepMetaData(it.name, System.currentTimeMillis(), Step.StepStatus.TIMED_OUT) },
                 info = info,
             )
 
-            val updated = updateManagedIndexMetaData(updatedMetaData)
+            val updated = updateManagedIndexMetaData(updatedIndexMetaData)
 
             if (updated.metadataSaved) {
                 disableManagedIndexConfig(managedIndexConfig)
-                publishErrorNotification(policy, updatedMetaData)
+                publishErrorNotification(policy, updatedIndexMetaData)
             }
             return
         }
