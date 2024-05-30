@@ -93,6 +93,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.LockModel
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
@@ -339,13 +340,18 @@ object ManagedIndexRunner :
         if (action?.hasTimedOut(currentActionMetaData) == true) {
             val info = mapOf("message" to "Action timed out")
             logger.error("Action=${action.type} has timed out")
-            val updated = updateManagedIndexMetaData(
-                managedIndexMetaData
-                    .copy(actionMetaData = currentActionMetaData?.copy(failed = true), info = info),
+
+            val updatedIndexMetaData = managedIndexMetaData.copy(
+                actionMetaData = currentActionMetaData?.copy(failed = true),
+                stepMetaData = step?.let { StepMetaData(it.name, System.currentTimeMillis(), Step.StepStatus.TIMED_OUT) },
+                info = info,
             )
+
+            val updated = updateManagedIndexMetaData(updatedIndexMetaData)
+
             if (updated.metadataSaved) {
                 disableManagedIndexConfig(managedIndexConfig)
-                publishErrorNotification(policy, managedIndexMetaData)
+                publishErrorNotification(policy, updatedIndexMetaData)
             }
             return
         }
