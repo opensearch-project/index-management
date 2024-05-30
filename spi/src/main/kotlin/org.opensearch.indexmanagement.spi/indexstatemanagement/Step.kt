@@ -56,6 +56,7 @@ abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
         CONDITION_NOT_MET("condition_not_met"),
         FAILED("failed"),
         COMPLETED("completed"),
+        TIMED_OUT("timed_out"),
         ;
 
         override fun toString(): String {

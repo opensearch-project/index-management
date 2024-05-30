@@ -8,8 +8,10 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.step.open.AttemptOpenStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
 import java.util.Locale
@@ -22,9 +24,9 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_testPolicyName_1"
         val testPolicy =
             """
-            {"policy":{"description":"Default policy","default_state":"rolloverstate","states":[
-            {"name":"rolloverstate","actions":[{"timeout":"1s","rollover":{"min_doc_count":100}}],
-            "transitions":[]}]}}
+        {"policy":{"description":"Default policy","default_state":"rolloverstate","states":[
+        {"name":"rolloverstate","actions":[{"timeout":"1s","rollover":{"min_doc_count":100}}],
+        "transitions":[]}]}}
             """.trimIndent()
 
         createPolicyJson(testPolicy, policyID)
@@ -60,10 +62,23 @@ class ActionTimeoutIT : IndexStateManagementRestTestCase() {
                                 fun(actionMetaDataMap: Any?): Boolean =
                                     assertActionEquals(
                                         ActionMetaData(
-                                            name = RolloverAction.name, startTime = Instant.now().toEpochMilli(), index = 0,
-                                            failed = true, consumedRetries = 0, lastRetryTime = null, actionProperties = null,
+                                            name = RolloverAction.name,
+                                            startTime = Instant.now().toEpochMilli(),
+                                            index = 0,
+                                            failed = true,
+                                            consumedRetries = 0,
+                                            lastRetryTime = null,
+                                            actionProperties = null,
                                         ),
                                         actionMetaDataMap,
+                                    ),
+                            StepMetaData.STEP to
+                                fun(stepMetaDataMap: Any?): Boolean =
+                                    assertStepEquals(
+                                        StepMetaData(
+                                            "attempt_rollover", Instant.now().toEpochMilli(), Step.StepStatus.TIMED_OUT,
+                                        ),
+                                        stepMetaDataMap,
                                     ),
                         ),
                 ),
