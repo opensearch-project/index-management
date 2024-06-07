@@ -28,7 +28,7 @@ Content-Type: application/json
   "error_notification": {
     "destination": {
       "chime": {
-        "url": "https://hooks.chime.aws/incomingwebhooks/90edf596-a8f0-4451-9003-97a44e6c6105?token=WXRzWm1VVWt8MXxwMzJjUENNWVpJTXZXTXg5NUdDYWdtaUY4ZHlvTzR6bW5rS0ZJLWxQX2dN"
+        "url": "<>"
       }
     },
     "message_template": {
