@@ -41,15 +41,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.filter.IndexOpe
 import org.opensearch.indexmanagement.controlcenter.notification.resthandler.RestDeleteLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.resthandler.RestGetLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.resthandler.RestIndexLRONConfigAction
-import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
-import org.opensearch.indexmanagement.indexstatemanagement.ExtensionStatusChecker
-import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
-import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
-import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementHistory
-import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
-import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
-import org.opensearch.indexmanagement.indexstatemanagement.PluginVersionSweepCoordinator
-import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
+import org.opensearch.indexmanagement.indexstatemanagement.*
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestAddPolicyAction
@@ -179,15 +171,13 @@ import org.opensearch.jobscheduler.spi.JobSchedulerExtension
 import org.opensearch.jobscheduler.spi.ScheduledJobParser
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.monitor.jvm.JvmService
-import org.opensearch.plugins.ActionPlugin
-import org.opensearch.plugins.ExtensiblePlugin
-import org.opensearch.plugins.NetworkPlugin
-import org.opensearch.plugins.Plugin
-import org.opensearch.plugins.SystemIndexPlugin
+import org.opensearch.plugins.*
 import org.opensearch.repositories.RepositoriesService
 import org.opensearch.rest.RestController
 import org.opensearch.rest.RestHandler
 import org.opensearch.script.ScriptService
+import org.opensearch.telemetry.metrics.MetricsRegistry
+import org.opensearch.telemetry.tracing.Tracer
 import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.RemoteClusterService
 import org.opensearch.transport.TransportInterceptor
@@ -196,7 +186,8 @@ import org.opensearch.watcher.ResourceWatcherService
 import java.util.function.Supplier
 
 @Suppress("TooManyFunctions")
-class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin, ExtensiblePlugin, SystemIndexPlugin, Plugin() {
+class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin, ExtensiblePlugin, SystemIndexPlugin,
+    TelemetryAwarePlugin, Plugin() {
     private val logger = LogManager.getLogger(javaClass)
     lateinit var indexManagementIndices: IndexManagementIndices
     lateinit var actionValidation: ActionValidation
@@ -210,6 +201,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     private val extensions = mutableSetOf<String>()
     private val extensionCheckerMap = mutableMapOf<String, StatusChecker>()
     lateinit var indexOperationActionFilter: IndexOperationActionFilter
+    private lateinit var metricsRegistry: MetricsRegistry
 
     companion object {
         const val PLUGINS_BASE_URI = "/_plugins"
@@ -374,8 +366,11 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         namedWriteableRegistry: NamedWriteableRegistry,
         indexNameExpressionResolver: IndexNameExpressionResolver,
         repositoriesServiceSupplier: Supplier<RepositoriesService>,
+        tracer: Tracer,
+        metricsRegistry: MetricsRegistry,
     ): Collection<Any> {
         val settings = environment.settings()
+        this.metricsRegistry = metricsRegistry
         this.clusterService = clusterService
         QueryShardContextFactory.init(
             client,
@@ -385,6 +380,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             namedWriteableRegistry,
             environment,
         )
+
+        IndexManagementActionsMetrics.instance.initialize(metricsRegistry)
         rollupInterceptor = RollupInterceptor(clusterService, settings, indexNameExpressionResolver)
         val jvmService = JvmService(environment.settings())
         val transformRunner =
@@ -453,6 +450,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
                 .registerThreadPool(threadPool)
                 .registerExtensionChecker(extensionChecker)
                 .registerIndexMetadataProvider(indexMetadataProvider)
+                .registerIndexManagementActionMetrics(IndexManagementActionsMetrics.instance)
 
         val managedIndexCoordinator =
             ManagedIndexCoordinator(
