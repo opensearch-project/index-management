@@ -1,6 +1,6 @@
-package org.opensearch.indexmanagement.indexstatemanagement
+package org.opensearch.indexmanagement.spi.indexstatemanagement.metrics
 
-import org.opensearch.indexmanagement.indexstatemanagement.actionmetrics.RolloverActionMetrics
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.RolloverActionMetrics
 import org.opensearch.telemetry.metrics.MetricsRegistry
 
 abstract class ActionMetrics {
@@ -13,8 +13,11 @@ class IndexManagementActionsMetrics private constructor() {
 
     fun initialize(metricsRegistry: MetricsRegistry) {
         this.metricsRegistry = metricsRegistry
+
+        RolloverActionMetrics.instance.initializeCounters(metricsRegistry, "rollover")
+
         actionMetricsMap = mapOf(
-            "rollover" to RolloverActionMetrics(metricsRegistry),
+            "rollover" to RolloverActionMetrics.instance,
             // Add other action metrics here
         )
     }
