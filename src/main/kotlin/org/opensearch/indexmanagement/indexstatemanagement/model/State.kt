@@ -24,10 +24,10 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import java.io.IOException
 
 data class State(
-        val name: String,
-        val allowRedCluster: Boolean,
-        val actions: List<Action>,
-        val transitions: List<Transition>,
+    val name: String,
+    val allowRedCluster: Boolean,
+    val actions: List<Action>,
+    val transitions: List<Transition>,
 ) : ToXContentObject, Writeable {
     init {
         require(name.isNotBlank()) { "State must contain a valid name" }
@@ -44,35 +44,36 @@ data class State(
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder
-                .startObject()
-                .field(NAME_FIELD, name)
-                .field(ALLOW_RED_CLUSTER, allowRedCluster)
-                .startArray(ACTIONS_FIELD)
-                .also { actions.forEach { action -> action.toXContent(it, params) } }
-                .endArray()
-                .field(TRANSITIONS_FIELD, transitions.toTypedArray())
-                .endObject()
+            .startObject()
+            .field(NAME_FIELD, name)
+            .field(ALLOW_RED_CLUSTER, allowRedCluster)
+            .startArray(ACTIONS_FIELD)
+            .also { actions.forEach { action -> action.toXContent(it, params) } }
+            .endArray()
+            .field(TRANSITIONS_FIELD, transitions.toTypedArray())
+            .endObject()
         return builder
     }
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
-            sin.readString(),
-            sin.readBoolean(),
-            sin.readList { ISMActionsParser.instance.fromStreamInput(it) },
-            sin.readList(::Transition),
+        sin.readString(),
+        sin.readBoolean(),
+        sin.readList { ISMActionsParser.instance.fromStreamInput(it) },
+        sin.readList(::Transition),
     )
 
     @Throws(IOException::class)
     override fun writeTo(out: StreamOutput) {
         out.writeString(name)
+        out.writeBoolean(allowRedCluster)
         out.writeList(actions)
         out.writeList(transitions)
     }
 
     fun getActionToExecute(
-            managedIndexMetaData: ManagedIndexMetaData,
-            indexMetadataProvider: IndexMetadataProvider,
+        managedIndexMetaData: ManagedIndexMetaData,
+        indexMetadataProvider: IndexMetadataProvider,
     ): Action? {
         var actionConfig: Action?
         val actionMetaData = managedIndexMetaData.actionMetaData
@@ -86,9 +87,9 @@ data class State(
         } else {
             // Get the current actionConfig that is in the ManagedIndexMetaData
             actionConfig =
-                    this.actions.filterIndexed { index, config ->
-                        index == actionMetaData.index && config.type == actionMetaData.name
-                    }.firstOrNull()
+                this.actions.filterIndexed { index, config ->
+                    index == actionMetaData.index && config.type == actionMetaData.name
+                }.firstOrNull()
             if (actionConfig == null) return null
 
             val stepMetaData = managedIndexMetaData.stepMetaData
@@ -144,10 +145,10 @@ data class State(
             }
 
             return State(
-                    name = requireNotNull(name) { "State name is null" },
-                    allowRedCluster = allowRedCluster,
-                    actions = actions.toList(),
-                    transitions = transitions.toList(),
+                name = requireNotNull(name) { "State name is null" },
+                allowRedCluster = allowRedCluster,
+                actions = actions.toList(),
+                transitions = transitions.toList(),
             )
         }
     }
