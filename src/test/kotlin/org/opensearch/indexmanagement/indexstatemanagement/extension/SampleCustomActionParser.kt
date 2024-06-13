@@ -14,6 +14,7 @@ import org.opensearch.core.xcontent.XContentParserUtils
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
@@ -73,7 +74,7 @@ class SampleCustomActionParser : ActionParser() {
     class SampleCustomStep : Step(name) {
         private var stepStatus = StepStatus.STARTING
 
-        override suspend fun execute(): Step {
+        override suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): Step {
             stepStatus = StepStatus.COMPLETED
             return this
         }

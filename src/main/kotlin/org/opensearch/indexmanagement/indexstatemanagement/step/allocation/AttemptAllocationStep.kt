@@ -12,6 +12,7 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 
@@ -20,7 +21,7 @@ class AttemptAllocationStep(private val action: AllocationAction) : Step(name) {
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
 
-    override suspend fun execute(): Step {
+    override suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         try {

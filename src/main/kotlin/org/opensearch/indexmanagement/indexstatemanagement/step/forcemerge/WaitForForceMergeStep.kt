@@ -13,6 +13,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeActi
 import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
@@ -26,7 +27,7 @@ class WaitForForceMergeStep(private val action: ForceMergeAction) : Step(name, f
     private var info: Map<String, Any>? = null
 
     @Suppress("TooGenericExceptionCaught", "ReturnCount")
-    override suspend fun execute(): WaitForForceMergeStep {
+    override suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): WaitForForceMergeStep {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         // Retrieve maxNumSegments value from ActionProperties. If ActionProperties is null, update failed info and return early.

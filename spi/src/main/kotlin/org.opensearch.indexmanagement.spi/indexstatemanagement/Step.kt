@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Logger
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
@@ -25,7 +26,7 @@ abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
         return this
     }
 
-    abstract suspend fun execute(): Step
+    abstract suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): Step
 
     fun postExecute(logger: Logger): Step {
         logger.info("Finished executing $name for ${context?.metadata?.index}")

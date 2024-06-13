@@ -18,6 +18,7 @@ import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.action.ActionListener
+import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.step.delete.AttemptDeleteStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
@@ -41,7 +42,7 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val attemptDeleteStep = AttemptDeleteStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptDeleteStep.preExecute(logger, context).execute()
+            attemptDeleteStep.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
             val updatedManagedIndexMetaData = attemptDeleteStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not COMPLETED", Step.StepStatus.COMPLETED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
         }
@@ -55,7 +56,7 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val attemptDeleteStep = AttemptDeleteStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptDeleteStep.preExecute(logger, context).execute()
+            attemptDeleteStep.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
             val updatedManagedIndexMetaData = attemptDeleteStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
         }
@@ -69,7 +70,7 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val attemptDeleteStep = AttemptDeleteStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptDeleteStep.preExecute(logger, context).execute()
+            attemptDeleteStep.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
             val updatedManagedIndexMetaData = attemptDeleteStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             logger.info(updatedManagedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
@@ -84,7 +85,7 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val attemptDeleteStep = AttemptDeleteStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptDeleteStep.preExecute(logger, context).execute()
+            attemptDeleteStep.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
             val updatedManagedIndexMetaData = attemptDeleteStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not CONDITION_NOT_MET", Step.StepStatus.CONDITION_NOT_MET, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
         }

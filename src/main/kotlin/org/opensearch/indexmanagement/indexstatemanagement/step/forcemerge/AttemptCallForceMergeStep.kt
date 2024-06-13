@@ -19,6 +19,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeActi
 import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
@@ -31,7 +32,7 @@ class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(nam
     private var info: Map<String, Any>? = null
 
     @Suppress("TooGenericExceptionCaught", "ComplexMethod")
-    override suspend fun execute(): AttemptCallForceMergeStep {
+    override suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): AttemptCallForceMergeStep {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         try {

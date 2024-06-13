@@ -18,6 +18,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.renewShrinkLock
 import org.opensearch.indexmanagement.indexstatemanagement.util.resetReadOnlyAndRouting
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.transport.RemoteTransportException
@@ -34,7 +35,7 @@ abstract class ShrinkStep(
     protected var shrinkActionProperties: ShrinkActionProperties? = null
 
     @Suppress("ReturnCount")
-    override suspend fun execute(): Step {
+    override suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): Step {
         val context = this.context ?: return this
         try {
             wrappedExecute(context)

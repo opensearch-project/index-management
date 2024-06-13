@@ -15,6 +15,7 @@ import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransformAction
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
@@ -35,7 +36,7 @@ class AttemptCreateTransformJobStep(
     private var info: Map<String, Any>? = null
     private var transformId: String? = null
 
-    override suspend fun execute(): Step {
+    override suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         val managedIndexMetadata = context.metadata
