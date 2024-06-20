@@ -1,8 +1,3 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
-
 package org.opensearch.indexmanagement.indexstatemanagement.step.delete
 
 import org.apache.logging.log4j.LogManager
@@ -12,19 +7,26 @@ import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.DeleteActionMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.snapshots.SnapshotInProgressException
+import org.opensearch.telemetry.metrics.tags.Tags
 import org.opensearch.transport.RemoteTransportException
 
 class AttemptDeleteStep : Step(name) {
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
+    private lateinit var indexManagementActionsMetrics: IndexManagementActionsMetrics
+    private lateinit var actionMetrics: DeleteActionMetrics
 
     override suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index
+        this.indexManagementActionsMetrics = indexManagementActionMetrics
+        this.actionMetrics = indexManagementActionMetrics.getActionMetrics(IndexManagementActionsMetrics.DELETE) as DeleteActionMetrics
+
         try {
             val response: AcknowledgedResponse =
                 context.client.admin().indices()
@@ -33,11 +35,21 @@ class AttemptDeleteStep : Step(name) {
             if (response.isAcknowledged) {
                 stepStatus = StepStatus.COMPLETED
                 info = mapOf("message" to getSuccessMessage(indexName))
+                actionMetrics.successes.add(
+                    1.0,
+                    Tags.create().addTag("index_name", context.metadata.index)
+                        .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
+                )
             } else {
                 val message = getFailedMessage(indexName)
                 logger.warn(message)
                 stepStatus = StepStatus.FAILED
                 info = mapOf("message" to message)
+                actionMetrics.failures.add(
+                    1.0,
+                    Tags.create().addTag("index_name", context.metadata.index)
+                        .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
+                )
             }
         } catch (e: RemoteTransportException) {
             val cause = ExceptionsHelper.unwrapCause(e)
@@ -66,6 +78,11 @@ class AttemptDeleteStep : Step(name) {
         val message = getFailedMessage(indexName)
         logger.error(message, e)
         stepStatus = StepStatus.FAILED
+        actionMetrics.failures.add(
+            1.0,
+            Tags.create().addTag("index_name", context?.metadata?.index)
+                .addTag("policy_id", context?.metadata?.policyID).addTag("node_id", context?.clusterService?.nodeName),
+        )
         val mutableInfo = mutableMapOf("message" to message)
         val errorMessage = e.message
         if (errorMessage != null) mutableInfo["cause"] = errorMessage

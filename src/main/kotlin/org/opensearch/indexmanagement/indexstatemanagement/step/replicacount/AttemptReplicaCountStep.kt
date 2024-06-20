@@ -15,8 +15,10 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountAc
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.ReplicaCountActionMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
+import org.opensearch.telemetry.metrics.tags.Tags
 import org.opensearch.transport.RemoteTransportException
 
 class AttemptReplicaCountStep(private val action: ReplicaCountAction) : Step(name) {
@@ -24,10 +26,14 @@ class AttemptReplicaCountStep(private val action: ReplicaCountAction) : Step(nam
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
     private val numOfReplicas = action.numOfReplicas
+    private lateinit var indexManagementActionsMetrics: IndexManagementActionsMetrics
+    private lateinit var actionMetrics: ReplicaCountActionMetrics
 
     override suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index
+        this.indexManagementActionsMetrics = indexManagementActionMetrics
+        this.actionMetrics = indexManagementActionMetrics.getActionMetrics(IndexManagementActionsMetrics.REPLICA_COUNT) as ReplicaCountActionMetrics
         try {
             val updateSettingsRequest =
                 UpdateSettingsRequest()
@@ -40,11 +46,21 @@ class AttemptReplicaCountStep(private val action: ReplicaCountAction) : Step(nam
             if (response.isAcknowledged) {
                 stepStatus = StepStatus.COMPLETED
                 info = mapOf("message" to getSuccessMessage(indexName, numOfReplicas))
+                actionMetrics.successes.add(
+                    1.0,
+                    Tags.create().addTag("index_name", context.metadata.index)
+                        .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
+                )
             } else {
                 val message = getFailedMessage(indexName, numOfReplicas)
                 logger.warn(message)
                 stepStatus = StepStatus.FAILED
                 info = mapOf("message" to message)
+                actionMetrics.failures.add(
+                    1.0,
+                    Tags.create().addTag("index_name", context.metadata.index)
+                        .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
+                )
             }
         } catch (e: RemoteTransportException) {
             handleException(indexName, numOfReplicas, ExceptionsHelper.unwrapCause(e) as Exception)
@@ -59,6 +75,11 @@ class AttemptReplicaCountStep(private val action: ReplicaCountAction) : Step(nam
         val message = getFailedMessage(indexName, numOfReplicas)
         logger.error(message, e)
         stepStatus = StepStatus.FAILED
+        actionMetrics.failures.add(
+            1.0,
+            Tags.create().addTag("index_name", context?.metadata?.index)
+                .addTag("policy_id", context?.metadata?.policyID).addTag("node_id", context?.clusterService?.nodeName),
+        )
         val mutableInfo = mutableMapOf("message" to message)
         val errorMessage = e.message
         if (errorMessage != null) mutableInfo["cause"] = errorMessage

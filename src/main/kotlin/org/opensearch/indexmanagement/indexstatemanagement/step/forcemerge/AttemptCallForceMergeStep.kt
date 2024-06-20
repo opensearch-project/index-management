@@ -20,9 +20,11 @@ import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.ForceMergeActionMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
+import org.opensearch.telemetry.metrics.tags.Tags
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 
@@ -30,11 +32,15 @@ class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(nam
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
+    private lateinit var indexManagementActionsMetrics: IndexManagementActionsMetrics
+    private lateinit var actionMetrics: ForceMergeActionMetrics
 
     @Suppress("TooGenericExceptionCaught", "ComplexMethod")
     override suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): AttemptCallForceMergeStep {
         val context = this.context ?: return this
         val indexName = context.metadata.index
+        this.indexManagementActionsMetrics = indexManagementActionMetrics
+        this.actionMetrics = indexManagementActionMetrics.getActionMetrics(IndexManagementActionsMetrics.FORCE_MERGE) as ForceMergeActionMetrics
         try {
             val startTime = Instant.now().toEpochMilli()
             val request = ForceMergeRequest(indexName).maxNumSegments(action.maxNumSegments)
@@ -62,6 +68,11 @@ class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(nam
             if (shadowedResponse?.let { it.status == RestStatus.OK } != false) {
                 stepStatus = StepStatus.COMPLETED
                 info = mapOf("message" to if (shadowedResponse == null) getSuccessfulCallMessage(indexName) else getSuccessMessage(indexName))
+                actionMetrics.successes.add(
+                    1.0,
+                    Tags.create().addTag("index_name", context.metadata.index)
+                        .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
+                )
             } else {
                 // Otherwise the request to force merge encountered some problem
                 stepStatus = StepStatus.FAILED
@@ -71,6 +82,11 @@ class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(nam
                         "status" to shadowedResponse.status,
                         "shard_failures" to shadowedResponse.shardFailures.map { it.getUsefulCauseString() },
                     )
+                actionMetrics.failures.add( // Changed from actionMetrics to indexManagementActionMetrics
+                    1.0,
+                    Tags.create().addTag("index_name", context.metadata.index)
+                        .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
+                )
             }
         } catch (e: RemoteTransportException) {
             handleException(indexName, ExceptionsHelper.unwrapCause(e) as Exception)
@@ -85,6 +101,11 @@ class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(nam
         val message = getFailedMessage(indexName)
         logger.error(message, e)
         stepStatus = StepStatus.FAILED
+        actionMetrics.failures.add(
+            1.0,
+            Tags.create().addTag("index_name", context?.metadata?.index)
+                .addTag("policy_id", context?.metadata?.policyID).addTag("node_id", context?.clusterService?.nodeName),
+        )
         val mutableInfo = mutableMapOf("message" to message)
         val errorMessage = e.message
         if (errorMessage != null) mutableInfo["cause"] = errorMessage

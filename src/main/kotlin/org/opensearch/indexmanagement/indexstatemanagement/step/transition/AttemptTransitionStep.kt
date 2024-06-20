@@ -22,8 +22,10 @@ import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.TransitionActionMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
+import org.opensearch.telemetry.metrics.tags.Tags
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 
@@ -33,6 +35,8 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
     private var stepStatus = StepStatus.STARTING
     private var policyCompleted: Boolean = false
     private var info: Map<String, Any>? = null
+    private lateinit var indexManagementActionsMetrics: IndexManagementActionsMetrics
+    private lateinit var actionMetrics: TransitionActionMetrics
 
     @Suppress("ReturnCount", "ComplexMethod", "LongMethod", "NestedBlockDepth")
     override suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): Step {
@@ -41,11 +45,19 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
         val clusterService = context.clusterService
         val transitions = action.transitions
         val indexMetadataProvider = action.indexMetadataProvider
+        this.indexManagementActionsMetrics = indexManagementActionMetrics
+        this.actionMetrics = indexManagementActionMetrics.getActionMetrics(IndexManagementActionsMetrics.TRANSITION) as TransitionActionMetrics
+
         try {
             if (transitions.isEmpty()) {
                 logger.info("$indexName transitions are empty, completing policy")
                 policyCompleted = true
                 stepStatus = StepStatus.COMPLETED
+                actionMetrics.successes.add(
+                    1.0,
+                    Tags.create().addTag("index_name", context.metadata.index)
+                        .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
+                )
                 return this
             }
 
@@ -70,6 +82,11 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
                     logger.warn(message)
                     stepStatus = StepStatus.FAILED
                     info = mapOf("message" to message)
+                    actionMetrics.failures.add(
+                        1.0,
+                        Tags.create().addTag("index_name", context.metadata.index)
+                            .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
+                    )
                     return this
                 }
             }
@@ -91,6 +108,11 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
                                 "message" to message,
                                 "shard_failures" to statsResponse.shardFailures.map { it.getUsefulCauseString() },
                             )
+                        actionMetrics.failures.add(
+                            1.0,
+                            Tags.create().addTag("index_name", context.metadata.index)
+                                .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
+                        )
                         return this
                     }
                     numDocs = statsResponse.primaries.getDocs()?.count ?: 0
@@ -114,9 +136,19 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
                 )
                 stepStatus = StepStatus.COMPLETED
                 message = getSuccessMessage(indexName, stateName)
+                actionMetrics.successes.add(
+                    1.0,
+                    Tags.create().addTag("index_name", context.metadata.index)
+                        .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
+                )
             } else {
                 stepStatus = StepStatus.CONDITION_NOT_MET
                 message = getEvaluatingMessage(indexName)
+                actionMetrics.failures.add(
+                    1.0,
+                    Tags.create().addTag("index_name", context.metadata.index)
+                        .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
+                )
             }
             info = mapOf("message" to message)
         } catch (e: RemoteTransportException) {
@@ -132,6 +164,11 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
         val message = getFailedMessage(indexName)
         logger.error(message, e)
         stepStatus = StepStatus.FAILED
+        actionMetrics.failures.add(
+            1.0,
+            Tags.create().addTag("index_name", context?.metadata?.index)
+                .addTag("policy_id", context?.metadata?.policyID).addTag("node_id", context?.clusterService?.nodeName),
+        )
         val mutableInfo = mutableMapOf("message" to message)
         val errorMessage = e.message
         if (errorMessage != null) mutableInfo["cause"] = errorMessage

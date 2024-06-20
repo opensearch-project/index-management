@@ -46,13 +46,13 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
     private lateinit var actionMetrics: RolloverActionMetrics
 
     @Suppress("ComplexMethod", "LongMethod")
-    override suspend fun execute(indexManagementActionsMetrics: IndexManagementActionsMetrics): Step {
+    override suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         val clusterService = context.clusterService
         val skipRollover = clusterService.state().metadata.index(indexName).getRolloverSkip()
-        this.indexManagementActionsMetrics = indexManagementActionsMetrics
-        this.actionMetrics = indexManagementActionsMetrics.getActionMetrics("rollover") as RolloverActionMetrics
+        this.indexManagementActionsMetrics = indexManagementActionMetrics
+        this.actionMetrics = indexManagementActionMetrics.getActionMetrics(IndexManagementActionsMetrics.ROLLOVER) as RolloverActionMetrics
         if (skipRollover) {
             stepStatus = StepStatus.COMPLETED
             info = mapOf("message" to getSkipRolloverMessage(indexName))
@@ -142,6 +142,11 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             )
             executeRollover(context, rolloverTarget, isDataStream, conditions)
             copyAlias(clusterService, indexName, context.client, rolloverTarget, context.metadata)
+            actionMetrics.successes.add(
+                1.0,
+                Tags.create().addTag("index_name", context.metadata.index)
+                    .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
+            )
         } else {
             stepStatus = StepStatus.CONDITION_NOT_MET
             info = mapOf("message" to getPendingMessage(indexName), "conditions" to conditions)
@@ -276,6 +281,11 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                         "message" to message,
                         if (conditions.isEmpty()) null else "conditions" to conditions, // don't show empty conditions object if no conditions specified
                     ).toMap()
+                actionMetrics.successes.add(
+                    1.0,
+                    Tags.create().addTag("index_name", context.metadata.index)
+                        .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
+                )
             } else {
                 val message =
                     when {
@@ -291,6 +301,11 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                         "message" to message,
                         if (conditions.isEmpty()) null else "conditions" to conditions, // don't show empty conditions object if no conditions specified
                     ).toMap()
+                actionMetrics.failures.add(
+                    1.0,
+                    Tags.create().addTag("index_name", context.metadata.index)
+                        .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
+                )
             }
         } catch (e: RemoteTransportException) {
             handleException(indexName, ExceptionsHelper.unwrapCause(e) as Exception)
@@ -395,6 +410,11 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                     "message" to getCopyAliasIndexNotFoundMessage(rolledOverIndexName),
                     if (conditions != null) "conditions" to conditions else null,
                 ).toMap()
+            actionMetrics.failures.add(
+                1.0,
+                Tags.create().addTag("index_name", context?.metadata?.index)
+                    .addTag("policy_id", context?.metadata?.policyID).addTag("node_id", context?.clusterService?.nodeName),
+            )
         } catch (e: Exception) {
             handleException(indexName, e, getFailedCopyAliasMessage(indexName, rolledOverIndexName), conditions)
         }
@@ -413,6 +433,11 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
     private fun handleException(indexName: String, e: Exception, message: String = getFailedMessage(indexName), conditions: Any? = null) {
         logger.error(message, e)
         stepStatus = StepStatus.FAILED
+        actionMetrics.failures.add(
+            1.0,
+            Tags.create().addTag("index_name", context?.metadata?.index)
+                .addTag("policy_id", context?.metadata?.policyID).addTag("node_id", context?.clusterService?.nodeName),
+        )
         val mutableInfo: MutableMap<String, Any> = mutableMapOf("message" to message)
         val errorMessage = e.message
         if (errorMessage != null) mutableInfo["cause"] = errorMessage
