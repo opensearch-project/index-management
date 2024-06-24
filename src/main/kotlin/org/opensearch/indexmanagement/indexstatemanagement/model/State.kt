@@ -29,6 +29,13 @@ data class State(
     val actions: List<Action>,
     val transitions: List<Transition>,
 ) : ToXContentObject, Writeable {
+
+    constructor(
+            name: String,
+            actions: List<Action>,
+            transitions: List<Transition>,
+    ) : this(name, false, actions, transitions
+
     init {
         require(name.isNotBlank()) { "State must contain a valid name" }
         var hasDelete = false
