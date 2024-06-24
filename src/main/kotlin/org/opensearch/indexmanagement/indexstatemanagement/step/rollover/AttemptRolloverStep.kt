@@ -331,22 +331,18 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         rolloverTarget: String,
         metadata: ManagedIndexMetaData,
     ) {
-        if (!action.copyAlias) return
-
-        // Try to preserve the rollover conditions
+        if (!action.copyAlias) return // Try to preserve the rollover conditions
         val conditions = info?.get("conditions") ?: context?.metadata?.info?.get("conditions")
 
         val rolledOverIndexName = newIndex ?: metadata.rolledOverIndexName
-        if (rolledOverIndexName == null) {
-            // Only in rare case when the program shut down unexpectedly before rolledOverIndexName is set or metadata corrupted
+        if (rolledOverIndexName == null) { // Only in rare case when the program shut down unexpectedly before rolledOverIndexName is set or metadata corrupted
             // ISM cannot auto recover from this case, so the status is COMPLETED
             logger.error("$indexName rolled over but cannot find the rolledOverIndexName to copy aliases to")
             stepStatus = StepStatus.COMPLETED
-            info =
-                listOfNotNull(
-                    "message" to getCopyAliasRolledOverIndexNotFoundMessage(indexName),
-                    if (conditions != null) "conditions" to conditions else null,
-                ).toMap()
+            info = listOfNotNull(
+                "message" to getCopyAliasRolledOverIndexNotFoundMessage(indexName),
+                if (conditions != null) "conditions" to conditions else null,
+            ).toMap()
             actionMetrics.successes.add(
                 1.0,
                 Tags.create().addTag("index_name", context?.metadata?.index)
