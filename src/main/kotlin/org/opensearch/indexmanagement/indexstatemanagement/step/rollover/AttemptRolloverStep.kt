@@ -333,7 +333,6 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
     ) {
         if (!action.copyAlias) return // Try to preserve the rollover conditions
         val conditions = info?.get("conditions") ?: context?.metadata?.info?.get("conditions")
-
         val rolledOverIndexName = newIndex ?: metadata.rolledOverIndexName
         if (rolledOverIndexName == null) { // Only in rare case when the program shut down unexpectedly before rolledOverIndexName is set or metadata corrupted
             // ISM cannot auto recover from this case, so the status is COMPLETED
