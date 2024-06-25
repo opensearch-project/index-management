@@ -140,6 +140,9 @@
             "name": {
               "type": "keyword"
             },
+            "allow_red_cluster": {
+              "type": "boolean"
+            },
             "actions": {
               "type": "nested",
               "properties": {

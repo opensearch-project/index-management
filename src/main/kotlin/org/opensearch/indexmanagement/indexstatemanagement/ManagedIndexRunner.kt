@@ -250,11 +250,6 @@ object ManagedIndexRunner :
     @Suppress("ReturnCount", "ComplexMethod", "LongMethod", "ComplexCondition", "NestedBlockDepth")
     private suspend fun runManagedIndexConfig(managedIndexConfig: ManagedIndexConfig, jobContext: JobExecutionContext) {
         logger.debug("Run job for index ${managedIndexConfig.index}")
-        // doing a check of local cluster health as we do not want to overload cluster manager node with potentially a lot of calls
-        if (clusterIsRed()) {
-            logger.debug("Skipping current execution of ${managedIndexConfig.index} because of red cluster health")
-            return
-        }
 
         val (managedIndexMetaData, getMetadataSuccess) = client.getManagedIndexMetadata(managedIndexConfig.indexUuid)
         if (!getMetadataSuccess) {
@@ -314,6 +309,15 @@ object ManagedIndexRunner :
 
         val state = policy.getStateToExecute(managedIndexMetaData)
         val action: Action? = state?.getActionToExecute(managedIndexMetaData, indexMetadataProvider)
+        val allowRedCluster = state?.allowRedCluster
+        // doing a check of local cluster health as we do not want to overload cluster manager node with potentially a lot of calls
+        if (clusterIsRed()) {
+            if (allowRedCluster == false) {
+                logger.debug("Skipping current execution of ${managedIndexConfig.index} because of red cluster health")
+                return
+            }
+            logger.warn("Warning: ISM is running on a red cluster")
+        }
         val stepContext =
             StepContext(
                 managedIndexMetaData, clusterService, client, threadPool.threadContext, policy.user, scriptService, settings, jobContext.lockService,
