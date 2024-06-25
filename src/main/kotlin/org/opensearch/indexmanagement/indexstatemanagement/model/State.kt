@@ -31,10 +31,10 @@ data class State(
 ) : ToXContentObject, Writeable {
 
     constructor(
-            name: String,
-            actions: List<Action>,
-            transitions: List<Transition>,
-    ) : this(name, false, actions, transitions
+        name: String,
+        actions: List<Action>,
+        transitions: List<Transition>,
+    ) : this(name, false, actions, transitions)
 
     init {
         require(name.isNotBlank()) { "State must contain a valid name" }
