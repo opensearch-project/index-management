@@ -24,7 +24,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmet
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
-import org.opensearch.telemetry.metrics.tags.Tags
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 
@@ -70,8 +69,7 @@ class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(nam
                 info = mapOf("message" to if (shadowedResponse == null) getSuccessfulCallMessage(indexName) else getSuccessMessage(indexName))
                 actionMetrics.successes.add(
                     1.0,
-                    Tags.create().addTag("index_name", context.metadata.index)
-                        .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
+                    actionMetrics.createTags(context),
                 )
             } else {
                 // Otherwise the request to force merge encountered some problem
@@ -82,10 +80,9 @@ class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(nam
                         "status" to shadowedResponse.status,
                         "shard_failures" to shadowedResponse.shardFailures.map { it.getUsefulCauseString() },
                     )
-                actionMetrics.failures.add( // Changed from actionMetrics to indexManagementActionMetrics
+                actionMetrics.failures.add(
                     1.0,
-                    Tags.create().addTag("index_name", context.metadata.index)
-                        .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
+                    actionMetrics.createTags(context),
                 )
             }
         } catch (e: RemoteTransportException) {
@@ -103,8 +100,7 @@ class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(nam
         stepStatus = StepStatus.FAILED
         actionMetrics.failures.add(
             1.0,
-            Tags.create().addTag("index_name", context?.metadata?.index)
-                .addTag("policy_id", context?.metadata?.policyID).addTag("node_id", context?.clusterService?.nodeName),
+            context?.let { actionMetrics.createTags(it) },
         )
         val mutableInfo = mutableMapOf("message" to message)
         val errorMessage = e.message

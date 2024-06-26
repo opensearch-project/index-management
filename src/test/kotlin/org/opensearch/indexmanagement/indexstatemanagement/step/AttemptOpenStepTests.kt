@@ -11,6 +11,8 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
+import org.junit.Before
+import org.mockito.ArgumentMatchers.anyString
 import org.opensearch.action.admin.indices.open.OpenIndexResponse
 import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
@@ -21,10 +23,13 @@ import org.opensearch.core.action.ActionListener
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.step.open.AttemptOpenStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.ScriptService
+import org.opensearch.telemetry.metrics.Counter
+import org.opensearch.telemetry.metrics.MetricsRegistry
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
 
@@ -33,7 +38,17 @@ class AttemptOpenStepTests : OpenSearchTestCase() {
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
     private val lockService: LockService = LockService(mock(), clusterService)
+    private lateinit var metricsRegistry: MetricsRegistry
 
+    @Before
+    fun setup() {
+        metricsRegistry = mock()
+        whenever(metricsRegistry.createCounter(anyString(), anyString(), anyString())).thenAnswer {
+            mock<Counter>()
+        }
+        IndexManagementActionsMetrics.instance.initialize(metricsRegistry)
+        ManagedIndexRunner.registerIndexManagementActionMetrics(IndexManagementActionsMetrics.instance)
+    }
     fun `test open step sets step status to failed when not acknowledged`() {
         val openIndexResponse = OpenIndexResponse(false, false)
         val client = getClient(getAdminClient(getIndicesAdminClient(openIndexResponse, null)))

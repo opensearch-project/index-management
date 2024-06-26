@@ -14,10 +14,12 @@ class ReplicaCountActionMetrics private constructor() : ActionMetrics() {
     override val actionName: String = IndexManagementActionsMetrics.REPLICA_COUNT
     lateinit var successes: Counter
     lateinit var failures: Counter
+    lateinit var cumulativeLatency: Counter
 
     fun initializeCounters(metricsRegistry: MetricsRegistry) {
         successes = metricsRegistry.createCounter("${actionName}_successes", "Replica Action Successes", "count")
         failures = metricsRegistry.createCounter("${actionName}_failures", "Replica Action Failures", "count")
+        cumulativeLatency = metricsRegistry.createCounter("${actionName}_cumulative_latency", "Cumulative Latency of Replica Count Action", "milliseconds")
     }
 
     companion object {

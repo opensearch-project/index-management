@@ -32,7 +32,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmet
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
-import org.opensearch.telemetry.metrics.tags.Tags
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
 
@@ -53,15 +52,22 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         val skipRollover = clusterService.state().metadata.index(indexName).getRolloverSkip()
         this.indexManagementActionsMetrics = indexManagementActionMetrics
         this.actionMetrics = indexManagementActionMetrics.getActionMetrics(IndexManagementActionsMetrics.ROLLOVER) as RolloverActionMetrics
+        val startTime = System.currentTimeMillis()
+
         if (skipRollover) {
             stepStatus = StepStatus.COMPLETED
             info = mapOf("message" to getSkipRolloverMessage(indexName))
+            emitRolloverMetrics(startTime)
             return this
         }
 
         val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo(context)
         // If the rolloverTarget is null, we would've already updated the failed info from getRolloverTargetOrUpdateInfo and can return early
-        rolloverTarget ?: return this
+
+        if (rolloverTarget == null) {
+            emitRolloverMetrics(startTime)
+            return this
+        }
 
         if (clusterService.state().metadata.index(indexName).rolloverInfos.containsKey(rolloverTarget)) {
             stepStatus = StepStatus.COMPLETED
@@ -69,23 +75,23 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
 
             // If already rolled over, alias may not get copied over yet
             copyAlias(clusterService, indexName, context.client, rolloverTarget, context.metadata)
+            emitRolloverMetrics(startTime)
             return this
         }
 
         if (!isDataStream && !preCheckIndexAlias(context, rolloverTarget)) {
             stepStatus = StepStatus.FAILED
             info = mapOf("message" to getFailedPreCheckMessage(indexName))
-            actionMetrics.failures.add(
-                1.0,
-                Tags.create().addTag("index_name", context.metadata.index)
-                    .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
-            )
+            emitRolloverMetrics(startTime)
             return this
         }
 
         val statsResponse = getIndexStatsOrUpdateInfo(context)
         // If statsResponse is null we already updated failed info from getIndexStatsOrUpdateInfo and can return early
-        statsResponse ?: return this
+        if (statsResponse == null) {
+            emitRolloverMetrics(startTime)
+            return this
+        }
 
         val indexCreationDate = clusterService.state().metadata().index(indexName).creationDate
         val indexAgeTimeValue =
@@ -142,16 +148,11 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             )
             executeRollover(context, rolloverTarget, isDataStream, conditions)
             copyAlias(clusterService, indexName, context.client, rolloverTarget, context.metadata)
-            actionMetrics.successes.add(
-                1.0,
-                Tags.create().addTag("index_name", context.metadata.index)
-                    .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
-            )
         } else {
             stepStatus = StepStatus.CONDITION_NOT_MET
             info = mapOf("message" to getPendingMessage(indexName), "conditions" to conditions)
         }
-
+        emitRolloverMetrics(startTime)
         return this
     }
 
@@ -172,11 +173,6 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             logger.warn(message)
             stepStatus = StepStatus.FAILED
             info = mapOf("message" to message)
-            actionMetrics.failures.add(
-                1.0,
-                Tags.create().addTag("index_name", context.metadata.index)
-                    .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
-            )
         }
 
         return rolloverTarget to isDataStreamIndex
@@ -233,11 +229,6 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                     "message" to message,
                     "shard_failures" to statsResponse.shardFailures.map { it.getUsefulCauseString() },
                 )
-            actionMetrics.failures.add(
-                1.0,
-                Tags.create().addTag("index_name", context.metadata.index)
-                    .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
-            )
         } catch (e: RemoteTransportException) {
             handleException(indexName, ExceptionsHelper.unwrapCause(e) as Exception)
         } catch (e: Exception) {
@@ -281,11 +272,6 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                         "message" to message,
                         if (conditions.isEmpty()) null else "conditions" to conditions, // don't show empty conditions object if no conditions specified
                     ).toMap()
-                actionMetrics.successes.add(
-                    1.0,
-                    Tags.create().addTag("index_name", context.metadata.index)
-                        .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
-                )
             } else {
                 val message =
                     when {
@@ -301,11 +287,6 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                         "message" to message,
                         if (conditions.isEmpty()) null else "conditions" to conditions, // don't show empty conditions object if no conditions specified
                     ).toMap()
-                actionMetrics.failures.add(
-                    1.0,
-                    Tags.create().addTag("index_name", context.metadata.index)
-                        .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
-                )
             }
         } catch (e: RemoteTransportException) {
             handleException(indexName, ExceptionsHelper.unwrapCause(e) as Exception)
@@ -342,11 +323,6 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                 "message" to getCopyAliasRolledOverIndexNotFoundMessage(indexName),
                 if (conditions != null) "conditions" to conditions else null,
             ).toMap()
-            actionMetrics.successes.add(
-                1.0,
-                Tags.create().addTag("index_name", context?.metadata?.index)
-                    .addTag("policy_id", context?.metadata?.policyID).addTag("node_id", context?.clusterService?.nodeName),
-            )
             return
         }
 
@@ -374,11 +350,6 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             val aliasRes: AcknowledgedResponse = client.admin().indices().suspendUntil { aliases(aliasReq, it) }
             if (aliasRes.isAcknowledged) {
                 stepStatus = StepStatus.COMPLETED
-                actionMetrics.successes.add(
-                    1.0,
-                    Tags.create().addTag("index_name", context?.metadata?.index)
-                        .addTag("policy_id", context?.metadata?.policyID).addTag("node_id", context?.clusterService?.nodeName),
-                )
                 info =
                     listOfNotNull(
                         "message" to getSuccessCopyAliasMessage(indexName, rolledOverIndexName),
@@ -386,11 +357,6 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                     ).toMap()
             } else {
                 stepStatus = StepStatus.FAILED
-                actionMetrics.failures.add(
-                    1.0,
-                    Tags.create().addTag("index_name", context?.metadata?.index)
-                        .addTag("policy_id", context?.metadata?.policyID).addTag("node_id", context?.clusterService?.nodeName),
-                )
                 info =
                     listOfNotNull(
                         "message" to getCopyAliasNotAckMessage(indexName, rolledOverIndexName),
@@ -405,11 +371,6 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                     "message" to getCopyAliasIndexNotFoundMessage(rolledOverIndexName),
                     if (conditions != null) "conditions" to conditions else null,
                 ).toMap()
-            actionMetrics.failures.add(
-                1.0,
-                Tags.create().addTag("index_name", context?.metadata?.index)
-                    .addTag("policy_id", context?.metadata?.policyID).addTag("node_id", context?.clusterService?.nodeName),
-            )
         } catch (e: Exception) {
             handleException(indexName, e, getFailedCopyAliasMessage(indexName, rolledOverIndexName), conditions)
         }
@@ -428,16 +389,23 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
     private fun handleException(indexName: String, e: Exception, message: String = getFailedMessage(indexName), conditions: Any? = null) {
         logger.error(message, e)
         stepStatus = StepStatus.FAILED
-        actionMetrics.failures.add(
-            1.0,
-            Tags.create().addTag("index_name", context?.metadata?.index)
-                .addTag("policy_id", context?.metadata?.policyID).addTag("node_id", context?.clusterService?.nodeName),
-        )
         val mutableInfo: MutableMap<String, Any> = mutableMapOf("message" to message)
         val errorMessage = e.message
         if (errorMessage != null) mutableInfo["cause"] = errorMessage
         if (conditions != null) mutableInfo["conditions"] = conditions
         info = mutableInfo.toMap()
+    }
+
+    private fun emitRolloverMetrics(startTime: Long) {
+        if (stepStatus == StepStatus.COMPLETED) {
+            actionMetrics.successes.add(1.0, context?.let { actionMetrics.createTags(it) })
+        }
+        if (stepStatus == StepStatus.FAILED) {
+            actionMetrics.failures.add(1.0, context?.let { actionMetrics.createTags(it) })
+        }
+        val endTime = System.currentTimeMillis()
+        val latency = endTime - startTime
+        actionMetrics.cumulativeLatency.add(latency.toDouble(), context?.let { actionMetrics.createTags(it) })
     }
 
     override fun isIdempotent(): Boolean = true

@@ -14,10 +14,12 @@ class DeleteActionMetrics private constructor() : ActionMetrics() {
     override val actionName: String = IndexManagementActionsMetrics.DELETE
     lateinit var successes: Counter
     lateinit var failures: Counter
+    lateinit var cumulativeLatency: Counter
 
     fun initializeCounters(metricsRegistry: MetricsRegistry) {
         successes = metricsRegistry.createCounter("${actionName}_successes", "Delete Action Successes", "count")
         failures = metricsRegistry.createCounter("${actionName}_failures", "Delete Action Failures", "count")
+        cumulativeLatency = metricsRegistry.createCounter("${actionName}_cumulative_latency", "Cumulative Latency of Delete Action", "milliseconds")
     }
 
     companion object {

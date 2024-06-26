@@ -16,7 +16,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmet
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.snapshots.SnapshotInProgressException
-import org.opensearch.telemetry.metrics.tags.Tags
 import org.opensearch.transport.RemoteTransportException
 
 class AttemptDeleteStep : Step(name) {
@@ -31,6 +30,7 @@ class AttemptDeleteStep : Step(name) {
         val indexName = context.metadata.index
         this.indexManagementActionsMetrics = indexManagementActionMetrics
         this.actionMetrics = indexManagementActionMetrics.getActionMetrics(IndexManagementActionsMetrics.DELETE) as DeleteActionMetrics
+        val startTime = System.currentTimeMillis()
 
         try {
             val response: AcknowledgedResponse =
@@ -40,21 +40,11 @@ class AttemptDeleteStep : Step(name) {
             if (response.isAcknowledged) {
                 stepStatus = StepStatus.COMPLETED
                 info = mapOf("message" to getSuccessMessage(indexName))
-                actionMetrics.successes.add(
-                    1.0,
-                    Tags.create().addTag("index_name", context.metadata.index)
-                        .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
-                )
             } else {
                 val message = getFailedMessage(indexName)
                 logger.warn(message)
                 stepStatus = StepStatus.FAILED
                 info = mapOf("message" to message)
-                actionMetrics.failures.add(
-                    1.0,
-                    Tags.create().addTag("index_name", context.metadata.index)
-                        .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
-                )
             }
         } catch (e: RemoteTransportException) {
             val cause = ExceptionsHelper.unwrapCause(e)
@@ -68,7 +58,7 @@ class AttemptDeleteStep : Step(name) {
         } catch (e: Exception) {
             handleException(indexName, e)
         }
-
+        emitDeleteActionMetrics(startTime)
         return this
     }
 
@@ -83,11 +73,6 @@ class AttemptDeleteStep : Step(name) {
         val message = getFailedMessage(indexName)
         logger.error(message, e)
         stepStatus = StepStatus.FAILED
-        actionMetrics.failures.add(
-            1.0,
-            Tags.create().addTag("index_name", context?.metadata?.index)
-                .addTag("policy_id", context?.metadata?.policyID).addTag("node_id", context?.clusterService?.nodeName),
-        )
         val mutableInfo = mutableMapOf("message" to message)
         val errorMessage = e.message
         if (errorMessage != null) mutableInfo["cause"] = errorMessage
@@ -100,6 +85,21 @@ class AttemptDeleteStep : Step(name) {
             transitionTo = null,
             info = info,
         )
+    }
+
+    private fun emitDeleteActionMetrics(startTime: Long) {
+        if (stepStatus == StepStatus.COMPLETED) {
+            actionMetrics.successes.add(1.0, context?.let { actionMetrics.createTags(it) })
+        }
+        if (stepStatus == StepStatus.FAILED) {
+            actionMetrics.failures.add(1.0, context?.let { actionMetrics.createTags(it) })
+        }
+        addLatency(startTime)
+    }
+    private fun addLatency(startTime: Long) {
+        val endTime = System.currentTimeMillis()
+        val latency = endTime - startTime
+        actionMetrics.cumulativeLatency.add(latency.toDouble(), context?.let { actionMetrics.createTags(it) })
     }
 
     override fun isIdempotent() = true

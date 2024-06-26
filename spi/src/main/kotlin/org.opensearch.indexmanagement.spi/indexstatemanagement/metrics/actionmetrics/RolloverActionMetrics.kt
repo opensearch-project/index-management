@@ -14,10 +14,12 @@ class RolloverActionMetrics private constructor() : ActionMetrics() {
     override val actionName: String = IndexManagementActionsMetrics.ROLLOVER
     lateinit var successes: Counter
     lateinit var failures: Counter
+    lateinit var cumulativeLatency: Counter
 
     fun initializeCounters(metricsRegistry: MetricsRegistry) {
         successes = metricsRegistry.createCounter("${actionName}_successes", "Rollover Action Successes", "count")
         failures = metricsRegistry.createCounter("${actionName}_failures", "Rollover Action Failures", "count")
+        cumulativeLatency = metricsRegistry.createCounter("${actionName}_cumulative_latency", "Cumulative Latency of Rollover Actions", "milliseconds")
     }
 
     companion object {

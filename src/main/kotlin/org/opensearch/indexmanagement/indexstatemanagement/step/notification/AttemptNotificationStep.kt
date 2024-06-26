@@ -18,7 +18,6 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaDat
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
-import org.opensearch.telemetry.metrics.tags.Tags
 
 class AttemptNotificationStep(private val action: NotificationAction) : Step(name) {
     private val logger = LogManager.getLogger(javaClass)
@@ -43,8 +42,7 @@ class AttemptNotificationStep(private val action: NotificationAction) : Step(nam
             info = mapOf("message" to getSuccessMessage(indexName))
             actionMetrics.successes.add(
                 1.0,
-                Tags.create().addTag("index_name", context.metadata.index)
-                    .addTag("policy_id", context.metadata.policyID).addTag("node_id", context.clusterService.nodeName),
+                actionMetrics.createTags(context),
             )
         } catch (e: Exception) {
             handleException(indexName, e)
@@ -63,8 +61,7 @@ class AttemptNotificationStep(private val action: NotificationAction) : Step(nam
         info = mutableInfo.toMap()
         actionMetrics.failures.add(
             1.0,
-            Tags.create().addTag("index_name", context?.metadata?.index)
-                .addTag("policy_id", context?.metadata?.policyID).addTag("node_id", context?.clusterService?.nodeName),
+            context?.let { actionMetrics.createTags(it) },
         )
     }
 

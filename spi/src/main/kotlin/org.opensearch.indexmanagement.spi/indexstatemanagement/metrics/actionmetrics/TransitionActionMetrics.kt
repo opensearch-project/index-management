@@ -14,10 +14,12 @@ class TransitionActionMetrics private constructor() : ActionMetrics() {
     override val actionName: String = IndexManagementActionsMetrics.TRANSITION
     lateinit var successes: Counter
     lateinit var failures: Counter
+    lateinit var cumulativeLatency: Counter
 
     fun initializeCounters(metricsRegistry: MetricsRegistry) {
         successes = metricsRegistry.createCounter("${actionName}_successes", "Transition Action Successes", "count")
         failures = metricsRegistry.createCounter("${actionName}_failures", "Transition Action Failures", "count")
+        cumulativeLatency = metricsRegistry.createCounter("${actionName}_cumulative_latency", "Cumulative Latency of Transition Actions", "milliseconds")
     }
 
     companion object {

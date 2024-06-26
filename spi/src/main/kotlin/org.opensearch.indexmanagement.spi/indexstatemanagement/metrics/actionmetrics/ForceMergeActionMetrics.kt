@@ -14,11 +14,12 @@ class ForceMergeActionMetrics private constructor() : ActionMetrics() {
     override val actionName: String = IndexManagementActionsMetrics.FORCE_MERGE
     lateinit var successes: Counter
     lateinit var failures: Counter
+    lateinit var cumulativeLatency: Counter
 
     fun initializeCounters(metricsRegistry: MetricsRegistry) {
-        successes =
-            metricsRegistry.createCounter("${actionName}_successes", "Force Merge Action Successes", "count")
+        successes = metricsRegistry.createCounter("${actionName}_successes", "Force Merge Action Successes", "count")
         failures = metricsRegistry.createCounter("${actionName}_failures", "Force Merge Action Failures", "count")
+        cumulativeLatency = metricsRegistry.createCounter("${actionName}_cumulative_latency", "Cumulative Latency of Force Merge Action", "milliseconds")
     }
 
     companion object {

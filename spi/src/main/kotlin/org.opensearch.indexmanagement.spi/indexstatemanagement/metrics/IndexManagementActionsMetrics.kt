@@ -11,10 +11,20 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmet
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.ReplicaCountActionMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.RolloverActionMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.TransitionActionMetrics
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.telemetry.metrics.MetricsRegistry
+import org.opensearch.telemetry.metrics.tags.Tags
 
 abstract class ActionMetrics {
     abstract val actionName: String
+
+    fun createTags(context: StepContext): Tags {
+        val tags = Tags.create()
+            .addTag("index_name", context.metadata.index)
+            .addTag("policy_id", context.metadata.policyID)
+            .addTag("node_id", context.clusterService.nodeName ?: "")
+        return tags
+    }
 }
 
 class IndexManagementActionsMetrics private constructor() {

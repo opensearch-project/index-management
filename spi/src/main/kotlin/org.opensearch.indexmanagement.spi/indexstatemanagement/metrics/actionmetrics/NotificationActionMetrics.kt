@@ -14,10 +14,12 @@ class NotificationActionMetrics private constructor() : ActionMetrics() {
     override val actionName: String = IndexManagementActionsMetrics.NOTIFICATION
     lateinit var successes: Counter
     lateinit var failures: Counter
+    lateinit var cumulativeLatency: Counter
 
     fun initializeCounters(metricsRegistry: MetricsRegistry) {
         successes = metricsRegistry.createCounter("${actionName}_successes", "Notification Action Successes", "count")
         failures = metricsRegistry.createCounter("${actionName}_failures", "Notification Action Failures", "count")
+        cumulativeLatency = metricsRegistry.createCounter("${actionName}_cumulative_latency", "Cumulative Latency of Notification Action", "milliseconds")
     }
 
     companion object {
