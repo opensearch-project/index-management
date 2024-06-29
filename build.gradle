@@ -66,6 +66,9 @@ buildscript {
         kotlin_version = System.getProperty("kotlin.version", "1.8.21")
 
         security_plugin_version = System.getProperty("security.version", opensearch_build)
+        ccr_version = System.getProperty("ccr.version", opensearch_build)
+        ccr_build_download = 'http://localhost:8000/opensearch-cross-cluster-replication-3.0.0.0-SNAPSHOT.zip'
+        ccr_resource_folder = "src/test/resources/replication"
     }
 
     repositories {
@@ -205,7 +208,8 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.9'
     implementation "org.jetbrains:annotations:13.0"
     implementation project(path: ":${rootProject.name}-spi", configuration: 'shadow')
-    implementation "org.opensearch:common-utils:${common_utils_version}"
+    // implementation "org.opensearch:common-utils:${common_utils_version}"
+    implementation(files("libs/common-utils-3.0.0.0-SNAPSHOT.jar"))
     implementation "com.github.seancfoley:ipaddress:5.4.1"
     implementation "commons-codec:commons-codec:${versions.commonscodec}"
     implementation "org.apache.httpcomponents:httpclient:${versions.httpclient}"
@@ -215,6 +219,7 @@ dependencies {
     testImplementation "org.jetbrains.kotlin:kotlin-test:${kotlin_version}"
     testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
     testImplementation "org.mockito:mockito-core:${versions.mockito}"
+    testImplementation "org.mockito:mockito-inline:4.11.0"
 
     add("ktlint", "com.pinterest.ktlint:ktlint-cli:1.1.0") {
         attributes {
@@ -311,6 +316,7 @@ def jobSchedulerFile = resolvePluginFile("opensearch-job-scheduler")
 def notificationsCoreFile = resolvePluginFile("opensearch-notifications-core")
 def notificationsFile = resolvePluginFile("notifications")
 def securityPluginFile = resolvePluginFile("opensearch-security")
+def ccrFile = resolvePluginFile("opensearch-cross-cluster-replication")
 
 ext.getPluginResource = { download_to_folder, download_from_src ->
     def src_split = download_from_src.split("/")
@@ -391,6 +397,25 @@ testClusters.integTest {
     if (securityEnabled) {
         plugin(provider(securityPluginFile))
     }
+    plugin(provider(ccrFile))
+    /*plugin(provider(new Callable<RegularFile>(){
+        @Override
+        RegularFile call() throws Exception {
+            return new RegularFile() {
+                @Override
+                File getAsFile() {
+                    if (new File("$project.rootDir/$ccr_resource_folder").exists()) {
+                        project.delete(files("$project.rootDir/$ccr_resource_folder"))
+                    }
+                    project.mkdir ccr_resource_folder
+                    ant.get(src: ccr_build_download,
+                            dest: ccr_resource_folder,
+                            httpusecaches: false)
+                    return fileTree(ccr_resource_folder).getSingleFile()
+                }
+            }
+        }
+    }))*/
     setting 'path.repo', repo.absolutePath
 }
 

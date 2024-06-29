@@ -29,6 +29,7 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.commons.InjectSecurity
 import org.opensearch.commons.authuser.User
 import org.opensearch.commons.notifications.NotificationsPluginInterface
+import org.opensearch.commons.replication.ReplicationPluginInterface
 import org.opensearch.core.action.ActionListener
 import org.opensearch.core.action.support.DefaultShardOperationFailedException
 import org.opensearch.core.common.bytes.BytesReference
@@ -249,6 +250,17 @@ suspend fun <T> LockService.suspendUntil(block: LockService.(ActionListener<T>) 
  * @param block - a block of code that is passed an [ActionListener] that should be passed to the NotificationsPluginInterface API.
  */
 suspend fun <T> NotificationsPluginInterface.suspendUntil(block: NotificationsPluginInterface.(ActionListener<T>) -> Unit): T =
+    suspendCoroutine { cont ->
+        block(
+            object : ActionListener<T> {
+                override fun onResponse(response: T) = cont.resume(response)
+
+                override fun onFailure(e: Exception) = cont.resumeWithException(e)
+            },
+        )
+    }
+
+suspend fun <T> ReplicationPluginInterface.suspendUntil(block: ReplicationPluginInterface.(ActionListener<T>) -> Unit): T =
     suspendCoroutine { cont ->
         block(
             object : ActionListener<T> {
