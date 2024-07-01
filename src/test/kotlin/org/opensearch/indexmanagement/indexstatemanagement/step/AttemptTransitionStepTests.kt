@@ -9,9 +9,12 @@ import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
+import org.mockito.ArgumentMatchers.anyString
+import org.mockito.ArgumentMatchers.eq
 import org.opensearch.action.admin.indices.rollover.RolloverInfo
 import org.opensearch.action.admin.indices.stats.CommonStats
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
@@ -28,17 +31,23 @@ import org.opensearch.core.action.ActionListener
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.shard.DocsStats
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
+import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
 import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.transition.AttemptTransitionStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.TransitionActionMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.ScriptService
+import org.opensearch.telemetry.metrics.Counter
+import org.opensearch.telemetry.metrics.MetricsRegistry
+import org.opensearch.telemetry.metrics.tags.Tags
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
 import java.time.Instant
@@ -46,6 +55,8 @@ import java.time.Instant
 class AttemptTransitionStepTests : OpenSearchTestCase() {
     private val indexName: String = "test"
     private val indexUUID: String = "indexUuid"
+    private lateinit var metricsRegistry: MetricsRegistry
+    private lateinit var transitionActionMetrics: TransitionActionMetrics
 
     @Suppress("UNCHECKED_CAST")
     private val indexMetadata: IndexMetadata =
@@ -70,6 +81,13 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
 
     @Before
     fun `setup settings`() {
+        metricsRegistry = mock()
+        whenever(metricsRegistry.createCounter(anyString(), anyString(), anyString())).thenAnswer {
+            mock<Counter>()
+        }
+        IndexManagementActionsMetrics.instance.initialize(metricsRegistry)
+        ManagedIndexRunner.registerIndexManagementActionMetrics(IndexManagementActionsMetrics.instance)
+        transitionActionMetrics = IndexManagementActionsMetrics.instance.getActionMetrics(IndexManagementActionsMetrics.TRANSITION) as TransitionActionMetrics
         whenever(clusterService.clusterSettings).doReturn(ClusterSettings(Settings.EMPTY, setOf(ManagedIndexSettings.RESTRICTED_INDEX_PATTERN)))
     }
 
@@ -87,10 +105,11 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
             val transitionsAction = TransitionsAction(listOf(Transition("some_state", Conditions(docCount = 5L))), indexMetadataProvider)
             val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
             val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptTransitionStep.preExecute(logger, context).execute()
+            attemptTransitionStep.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
             val updatedManagedIndexMetaData = attemptTransitionStep.getUpdatedManagedIndexMetadata(managedIndexMetadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("Did not get correct failed message", AttemptTransitionStep.getFailedStatsMessage(indexName), updatedManagedIndexMetaData.info!!["message"])
+            verify(transitionActionMetrics.failures).add(eq(1.0), any<Tags>())
         }
     }
 
@@ -105,10 +124,11 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
             val transitionsAction = TransitionsAction(listOf(Transition("some_state", Conditions(docCount = 5L))), indexMetadataProvider)
             val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
             val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptTransitionStep.preExecute(logger, context).execute()
+            attemptTransitionStep.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
             val updatedManagedIndexMetaData = attemptTransitionStep.getUpdatedManagedIndexMetadata(managedIndexMetadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("Did not get cause from nested exception", "example", updatedManagedIndexMetaData.info!!["cause"])
+            verify(transitionActionMetrics.failures).add(eq(1.0), any<Tags>())
         }
     }
 
@@ -123,10 +143,11 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
             val transitionsAction = TransitionsAction(listOf(Transition("some_state", Conditions(docCount = 5L))), indexMetadataProvider)
             val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
             val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptTransitionStep.preExecute(logger, context).execute()
+            attemptTransitionStep.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
             val updatedManagedIndexMetaData = attemptTransitionStep.getUpdatedManagedIndexMetadata(managedIndexMetadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("Did not get cause from nested exception", "nested", updatedManagedIndexMetaData.info!!["cause"])
+            verify(transitionActionMetrics.failures).add(eq(1.0), any<Tags>())
         }
     }
 

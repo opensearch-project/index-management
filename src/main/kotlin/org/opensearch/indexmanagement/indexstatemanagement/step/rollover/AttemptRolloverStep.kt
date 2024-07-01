@@ -46,6 +46,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         val indexName = context.metadata.index
         val clusterService = context.clusterService
         val skipRollover = clusterService.state().metadata.index(indexName).getRolloverSkip()
+
         if (skipRollover) {
             stepStatus = StepStatus.COMPLETED
             info = mapOf("message" to getSkipRolloverMessage(indexName))
@@ -54,7 +55,10 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
 
         val (rolloverTarget, isDataStream) = getRolloverTargetOrUpdateInfo(context)
         // If the rolloverTarget is null, we would've already updated the failed info from getRolloverTargetOrUpdateInfo and can return early
-        rolloverTarget ?: return this
+
+        if (rolloverTarget == null) {
+            return this
+        }
 
         if (clusterService.state().metadata.index(indexName).rolloverInfos.containsKey(rolloverTarget)) {
             stepStatus = StepStatus.COMPLETED
@@ -71,9 +75,8 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             return this
         }
 
-        val statsResponse = getIndexStatsOrUpdateInfo(context)
+        val statsResponse = getIndexStatsOrUpdateInfo(context) ?: return this
         // If statsResponse is null we already updated failed info from getIndexStatsOrUpdateInfo and can return early
-        statsResponse ?: return this
 
         val indexCreationDate = clusterService.state().metadata().index(indexName).creationDate
         val indexAgeTimeValue =
@@ -134,7 +137,6 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             stepStatus = StepStatus.CONDITION_NOT_MET
             info = mapOf("message" to getPendingMessage(indexName), "conditions" to conditions)
         }
-
         return this
     }
 
@@ -294,22 +296,17 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         rolloverTarget: String,
         metadata: ManagedIndexMetaData,
     ) {
-        if (!action.copyAlias) return
-
-        // Try to preserve the rollover conditions
+        if (!action.copyAlias) return // Try to preserve the rollover conditions
         val conditions = info?.get("conditions") ?: context?.metadata?.info?.get("conditions")
-
         val rolledOverIndexName = newIndex ?: metadata.rolledOverIndexName
-        if (rolledOverIndexName == null) {
-            // Only in rare case when the program shut down unexpectedly before rolledOverIndexName is set or metadata corrupted
+        if (rolledOverIndexName == null) { // Only in rare case when the program shut down unexpectedly before rolledOverIndexName is set or metadata corrupted
             // ISM cannot auto recover from this case, so the status is COMPLETED
             logger.error("$indexName rolled over but cannot find the rolledOverIndexName to copy aliases to")
             stepStatus = StepStatus.COMPLETED
-            info =
-                listOfNotNull(
-                    "message" to getCopyAliasRolledOverIndexNotFoundMessage(indexName),
-                    if (conditions != null) "conditions" to conditions else null,
-                ).toMap()
+            info = listOfNotNull(
+                "message" to getCopyAliasRolledOverIndexNotFoundMessage(indexName),
+                if (conditions != null) "conditions" to conditions else null,
+            ).toMap()
             return
         }
 

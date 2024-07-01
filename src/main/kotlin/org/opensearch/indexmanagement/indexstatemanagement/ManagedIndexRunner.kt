@@ -86,6 +86,7 @@ import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
@@ -121,6 +122,7 @@ object ManagedIndexRunner :
     private lateinit var skipExecFlag: SkipExecution
     private lateinit var threadPool: ThreadPool
     private lateinit var extensionStatusChecker: ExtensionStatusChecker
+    lateinit var indexManagementActionMetrics: IndexManagementActionsMetrics
     private lateinit var indexMetadataProvider: IndexMetadataProvider
     private var indexStateManagementEnabled: Boolean = DEFAULT_ISM_ENABLED
     private var validationServiceEnabled: Boolean = DEFAULT_ACTION_VALIDATION_ENABLED
@@ -218,6 +220,11 @@ object ManagedIndexRunner :
 
     fun registerExtensionChecker(extensionStatusChecker: ExtensionStatusChecker): ManagedIndexRunner {
         this.extensionStatusChecker = extensionStatusChecker
+        return this
+    }
+
+    fun registerIndexManagementActionMetrics(indexManagementActionsMetrics: IndexManagementActionsMetrics): Any {
+        this.indexManagementActionMetrics = indexManagementActionsMetrics
         return this
     }
 
@@ -446,7 +453,8 @@ object ManagedIndexRunner :
                     managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user,
                 ),
             ) {
-                step.preExecute(logger, stepContext.getUpdatedContext(startingManagedIndexMetaData)).execute().postExecute(logger)
+                step.preExecute(logger, stepContext.getUpdatedContext(startingManagedIndexMetaData)).execute()
+                    .postExecute(logger, indexManagementActionMetrics, step, startingManagedIndexMetaData)
             }
             var executedManagedIndexMetaData = startingManagedIndexMetaData.getCompletedManagedIndexMetaData(action, step)
 

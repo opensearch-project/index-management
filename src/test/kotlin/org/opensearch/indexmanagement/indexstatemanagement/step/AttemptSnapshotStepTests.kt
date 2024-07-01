@@ -22,6 +22,7 @@ import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.action.ActionListener
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.randomSnapshotActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SNAPSHOT_DENY_LIST
 import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.AttemptSnapshotStep
@@ -60,7 +61,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
             val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
-            step.preExecute(logger, context).execute()
+            step.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not COMPLETED", Step.StepStatus.COMPLETED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
         }
@@ -69,7 +70,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
             val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
-            step.preExecute(logger, context).execute()
+            step.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not COMPLETED", Step.StepStatus.COMPLETED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
         }
@@ -78,7 +79,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
             val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
-            step.preExecute(logger, context).execute()
+            step.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
         }
@@ -90,7 +91,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
             val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
-            step.preExecute(logger, context).execute()
+            step.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("Did not get cause from nested exception", "example", updatedManagedIndexMetaData.info!!["cause"])
@@ -103,7 +104,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
             val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
-            step.preExecute(logger, context).execute()
+            step.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not CONDITION_NOT_MET", Step.StepStatus.CONDITION_NOT_MET, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("Did not get failed concurrent message", AttemptSnapshotStep.getFailedConcurrentSnapshotMessage("test"), updatedManagedIndexMetaData.info!!["message"])
@@ -116,7 +117,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
             val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
-            step.preExecute(logger, context).execute()
+            step.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not CONDITION_NOT_MET", Step.StepStatus.CONDITION_NOT_MET, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("Did not get failed concurrent message", AttemptSnapshotStep.getFailedConcurrentSnapshotMessage("test"), updatedManagedIndexMetaData.info!!["message"])
@@ -129,7 +130,7 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
             val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
-            step.preExecute(logger, context).execute()
+            step.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("Did not get cause from nested exception", "some error", updatedManagedIndexMetaData.info!!["cause"])

@@ -123,7 +123,6 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
         } catch (e: Exception) {
             handleException(indexName, e)
         }
-
         return this
     }
 

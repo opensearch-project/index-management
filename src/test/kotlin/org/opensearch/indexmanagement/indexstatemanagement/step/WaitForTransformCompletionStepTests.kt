@@ -10,6 +10,7 @@ import kotlinx.coroutines.runBlocking
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.step.transform.AttemptCreateTransformJobStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.transform.WaitForTransformCompletionStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
@@ -71,7 +72,7 @@ class WaitForTransformCompletionStepTests : OpenSearchTestCase() {
         val step = WaitForTransformCompletionStep()
 
         runBlocking {
-            step.preExecute(logger, context).execute()
+            step.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
         }
 
         val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)

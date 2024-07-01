@@ -50,7 +50,6 @@ class AttemptReplicaCountStep(private val action: ReplicaCountAction) : Step(nam
         } catch (e: Exception) {
             handleException(indexName, numOfReplicas, e)
         }
-
         return this
     }
 
