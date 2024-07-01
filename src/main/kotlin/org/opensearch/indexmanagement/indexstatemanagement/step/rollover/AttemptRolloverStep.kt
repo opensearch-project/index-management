@@ -27,8 +27,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.evaluateConditio
 import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
-import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
-import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.RolloverActionMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
@@ -41,23 +39,17 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
     private var newIndex: String? = null // this variable holds the new index name if rollover is successful in this run
-    private lateinit var indexManagementActionsMetrics: IndexManagementActionsMetrics
-    private lateinit var actionMetrics: RolloverActionMetrics
 
     @Suppress("ComplexMethod", "LongMethod")
-    override suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): Step {
+    override suspend fun execute(): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         val clusterService = context.clusterService
         val skipRollover = clusterService.state().metadata.index(indexName).getRolloverSkip()
-        this.indexManagementActionsMetrics = indexManagementActionMetrics
-        this.actionMetrics = indexManagementActionMetrics.getActionMetrics(IndexManagementActionsMetrics.ROLLOVER) as RolloverActionMetrics
-        val startTime = System.currentTimeMillis()
 
         if (skipRollover) {
             stepStatus = StepStatus.COMPLETED
             info = mapOf("message" to getSkipRolloverMessage(indexName))
-            emitRolloverMetrics(startTime)
             return this
         }
 
@@ -65,7 +57,6 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         // If the rolloverTarget is null, we would've already updated the failed info from getRolloverTargetOrUpdateInfo and can return early
 
         if (rolloverTarget == null) {
-            emitRolloverMetrics(startTime)
             return this
         }
 
@@ -75,23 +66,17 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
 
             // If already rolled over, alias may not get copied over yet
             copyAlias(clusterService, indexName, context.client, rolloverTarget, context.metadata)
-            emitRolloverMetrics(startTime)
             return this
         }
 
         if (!isDataStream && !preCheckIndexAlias(context, rolloverTarget)) {
             stepStatus = StepStatus.FAILED
             info = mapOf("message" to getFailedPreCheckMessage(indexName))
-            emitRolloverMetrics(startTime)
             return this
         }
 
-        val statsResponse = getIndexStatsOrUpdateInfo(context)
+        val statsResponse = getIndexStatsOrUpdateInfo(context) ?: return this
         // If statsResponse is null we already updated failed info from getIndexStatsOrUpdateInfo and can return early
-        if (statsResponse == null) {
-            emitRolloverMetrics(startTime)
-            return this
-        }
 
         val indexCreationDate = clusterService.state().metadata().index(indexName).creationDate
         val indexAgeTimeValue =
@@ -152,7 +137,6 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             stepStatus = StepStatus.CONDITION_NOT_MET
             info = mapOf("message" to getPendingMessage(indexName), "conditions" to conditions)
         }
-        emitRolloverMetrics(startTime)
         return this
     }
 
@@ -394,18 +378,6 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         if (errorMessage != null) mutableInfo["cause"] = errorMessage
         if (conditions != null) mutableInfo["conditions"] = conditions
         info = mutableInfo.toMap()
-    }
-
-    private fun emitRolloverMetrics(startTime: Long) {
-        if (stepStatus == StepStatus.COMPLETED) {
-            actionMetrics.successes.add(1.0, context?.let { actionMetrics.createTags(it) })
-        }
-        if (stepStatus == StepStatus.FAILED) {
-            actionMetrics.failures.add(1.0, context?.let { actionMetrics.createTags(it) })
-        }
-        val endTime = System.currentTimeMillis()
-        val latency = endTime - startTime
-        actionMetrics.cumulativeLatency.add(latency.toDouble(), context?.let { actionMetrics.createTags(it) })
     }
 
     override fun isIdempotent(): Boolean = true

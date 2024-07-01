@@ -21,8 +21,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.hasStatsConditio
 import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
-import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
-import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.TransitionActionMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.transport.RemoteTransportException
@@ -34,25 +32,19 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
     private var stepStatus = StepStatus.STARTING
     private var policyCompleted: Boolean = false
     private var info: Map<String, Any>? = null
-    private lateinit var indexManagementActionsMetrics: IndexManagementActionsMetrics
-    private lateinit var actionMetrics: TransitionActionMetrics
 
     @Suppress("ReturnCount", "ComplexMethod", "LongMethod", "NestedBlockDepth")
-    override suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): Step {
+    override suspend fun execute(): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         val clusterService = context.clusterService
         val transitions = action.transitions
         val indexMetadataProvider = action.indexMetadataProvider
-        this.indexManagementActionsMetrics = indexManagementActionMetrics
-        this.actionMetrics = indexManagementActionMetrics.getActionMetrics(IndexManagementActionsMetrics.TRANSITION) as TransitionActionMetrics
-        val startTime = System.currentTimeMillis()
         try {
             if (transitions.isEmpty()) {
                 logger.info("$indexName transitions are empty, completing policy")
                 policyCompleted = true
                 stepStatus = StepStatus.COMPLETED
-                emitTransitionMetrics(startTime)
                 return this
             }
 
@@ -77,7 +69,6 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
                     logger.warn(message)
                     stepStatus = StepStatus.FAILED
                     info = mapOf("message" to message)
-                    emitTransitionMetrics(startTime)
                     return this
                 }
             }
@@ -99,7 +90,6 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
                                 "message" to message,
                                 "shard_failures" to statsResponse.shardFailures.map { it.getUsefulCauseString() },
                             )
-                        emitTransitionMetrics(startTime)
                         return this
                     }
                     numDocs = statsResponse.primaries.getDocs()?.count ?: 0
@@ -133,7 +123,6 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
         } catch (e: Exception) {
             handleException(indexName, e)
         }
-        emitTransitionMetrics(startTime)
         return this
     }
 
@@ -187,21 +176,6 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
         }
         // -1L index age is ignored during condition checks
         return -1L
-    }
-
-    private fun emitTransitionMetrics(startTime: Long) {
-        if (stepStatus == StepStatus.COMPLETED) {
-            actionMetrics.successes.add(1.0, context?.let { actionMetrics.createTags(it) })
-        }
-        if (stepStatus == StepStatus.FAILED) {
-            actionMetrics.failures.add(1.0, context?.let { actionMetrics.createTags(it) })
-        }
-        addLatency(startTime)
-    }
-    private fun addLatency(startTime: Long) {
-        val endTime = System.currentTimeMillis()
-        val latency = endTime - startTime
-        actionMetrics.cumulativeLatency.add(latency.toDouble(), context?.let { actionMetrics.createTags(it) })
     }
 
     override fun isIdempotent() = true

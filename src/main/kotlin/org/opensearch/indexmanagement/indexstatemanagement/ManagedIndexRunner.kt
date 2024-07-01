@@ -453,7 +453,8 @@ object ManagedIndexRunner :
                     managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user,
                 ),
             ) {
-                step.preExecute(logger, stepContext.getUpdatedContext(startingManagedIndexMetaData)).execute(indexManagementActionMetrics).postExecute(logger)
+                step.preExecute(logger, stepContext.getUpdatedContext(startingManagedIndexMetaData)).execute()
+                    .postExecute(logger, indexManagementActionMetrics, step, startingManagedIndexMetaData)
             }
             var executedManagedIndexMetaData = startingManagedIndexMetaData.getCompletedManagedIndexMetaData(action, step)
 

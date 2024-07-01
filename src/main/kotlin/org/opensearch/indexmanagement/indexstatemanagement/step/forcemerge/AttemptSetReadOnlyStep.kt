@@ -14,7 +14,6 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeAction
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
-import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
@@ -26,7 +25,7 @@ class AttemptSetReadOnlyStep(private val action: ForceMergeAction) : Step(name) 
     private var info: Map<String, Any>? = null
 
     @Suppress("ReturnCount")
-    override suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): Step {
+    override suspend fun execute(): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         val indexSetToReadOnly = setIndexToReadOnly(indexName, context)

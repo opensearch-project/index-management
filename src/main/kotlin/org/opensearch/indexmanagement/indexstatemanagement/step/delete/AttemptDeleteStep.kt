@@ -11,8 +11,6 @@ import org.opensearch.action.admin.indices.delete.DeleteIndexRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
-import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
-import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.DeleteActionMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.snapshots.SnapshotInProgressException
@@ -22,16 +20,10 @@ class AttemptDeleteStep : Step(name) {
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
-    private lateinit var indexManagementActionsMetrics: IndexManagementActionsMetrics
-    private lateinit var actionMetrics: DeleteActionMetrics
 
-    override suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): Step {
+    override suspend fun execute(): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index
-        this.indexManagementActionsMetrics = indexManagementActionMetrics
-        this.actionMetrics = indexManagementActionMetrics.getActionMetrics(IndexManagementActionsMetrics.DELETE) as DeleteActionMetrics
-        val startTime = System.currentTimeMillis()
-
         try {
             val response: AcknowledgedResponse =
                 context.client.admin().indices()
@@ -58,7 +50,6 @@ class AttemptDeleteStep : Step(name) {
         } catch (e: Exception) {
             handleException(indexName, e)
         }
-        emitDeleteActionMetrics(startTime)
         return this
     }
 
@@ -85,21 +76,6 @@ class AttemptDeleteStep : Step(name) {
             transitionTo = null,
             info = info,
         )
-    }
-
-    private fun emitDeleteActionMetrics(startTime: Long) {
-        if (stepStatus == StepStatus.COMPLETED) {
-            actionMetrics.successes.add(1.0, context?.let { actionMetrics.createTags(it) })
-        }
-        if (stepStatus == StepStatus.FAILED) {
-            actionMetrics.failures.add(1.0, context?.let { actionMetrics.createTags(it) })
-        }
-        addLatency(startTime)
-    }
-    private fun addLatency(startTime: Long) {
-        val endTime = System.currentTimeMillis()
-        val latency = endTime - startTime
-        actionMetrics.cumulativeLatency.add(latency.toDouble(), context?.let { actionMetrics.createTags(it) })
     }
 
     override fun isIdempotent() = true

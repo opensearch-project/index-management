@@ -20,7 +20,6 @@ import org.opensearch.indexmanagement.rollup.action.index.IndexRollupResponse
 import org.opensearch.indexmanagement.rollup.action.start.StartRollupAction
 import org.opensearch.indexmanagement.rollup.action.start.StartRollupRequest
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
-import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
@@ -33,7 +32,7 @@ class AttemptCreateRollupJobStep(private val action: RollupAction) : Step(name) 
     private var info: Map<String, Any>? = null
     private var rollupId: String? = null
 
-    override suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): Step {
+    override suspend fun execute(): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         val managedIndexMetadata = context.metadata

@@ -26,10 +26,106 @@ abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
         return this
     }
 
-    abstract suspend fun execute(indexManagementActionMetrics: IndexManagementActionsMetrics): Step
+    abstract suspend fun execute(): Step
 
-    fun postExecute(logger: Logger): Step {
+    fun postExecute(
+        logger: Logger,
+        indexManagementActionMetrics: IndexManagementActionsMetrics,
+        step: Step,
+        startingManagedIndexMetaData: ManagedIndexMetaData,
+    ): Step {
         logger.info("Finished executing $name for ${context?.metadata?.index}")
+        val updatedStepMetaData = step.getUpdatedManagedIndexMetadata(startingManagedIndexMetaData)
+        when (context?.metadata?.actionMetaData?.name) {
+            IndexManagementActionsMetrics.ROLLOVER -> indexManagementActionMetrics.getActionMetrics(
+                IndexManagementActionsMetrics.ROLLOVER,
+            )
+                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+
+            IndexManagementActionsMetrics.FORCE_MERGE -> indexManagementActionMetrics.getActionMetrics(
+                IndexManagementActionsMetrics.FORCE_MERGE,
+            )
+                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+
+            IndexManagementActionsMetrics.DELETE -> indexManagementActionMetrics.getActionMetrics(
+                IndexManagementActionsMetrics.DELETE,
+            )
+                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+
+            IndexManagementActionsMetrics.REPLICA_COUNT -> indexManagementActionMetrics.getActionMetrics(
+                IndexManagementActionsMetrics.REPLICA_COUNT,
+            )
+                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+
+            IndexManagementActionsMetrics.TRANSITION -> indexManagementActionMetrics.getActionMetrics(
+                IndexManagementActionsMetrics.TRANSITION,
+            )
+                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+            IndexManagementActionsMetrics.NOTIFICATION -> indexManagementActionMetrics.getActionMetrics(
+                IndexManagementActionsMetrics.NOTIFICATION,
+            )
+                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+
+            IndexManagementActionsMetrics.CLOSE -> indexManagementActionMetrics.getActionMetrics(
+                IndexManagementActionsMetrics.CLOSE,
+            )
+                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+
+            IndexManagementActionsMetrics.SET_INDEX_PRIORITY -> indexManagementActionMetrics.getActionMetrics(
+                IndexManagementActionsMetrics.SET_INDEX_PRIORITY,
+            )
+                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+
+            IndexManagementActionsMetrics.OPEN -> indexManagementActionMetrics.getActionMetrics(
+                IndexManagementActionsMetrics.OPEN,
+            )
+                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+
+            IndexManagementActionsMetrics.CREATE_ROLLUP -> indexManagementActionMetrics.getActionMetrics(
+                IndexManagementActionsMetrics.CREATE_ROLLUP,
+            )
+                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+            IndexManagementActionsMetrics.CREATE_TRANSFORM -> indexManagementActionMetrics.getActionMetrics(
+                IndexManagementActionsMetrics.CREATE_TRANSFORM,
+            )
+                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+
+            IndexManagementActionsMetrics.MOVE_SHARD -> indexManagementActionMetrics.getActionMetrics(
+                IndexManagementActionsMetrics.MOVE_SHARD,
+            )
+                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+
+            IndexManagementActionsMetrics.SET_READ_ONLY -> indexManagementActionMetrics.getActionMetrics(
+                IndexManagementActionsMetrics.SET_READ_ONLY,
+            )
+                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+
+            IndexManagementActionsMetrics.SHRINK -> indexManagementActionMetrics.getActionMetrics(
+                IndexManagementActionsMetrics.SHRINK,
+            )
+                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+
+            IndexManagementActionsMetrics.SNAPSHOT -> indexManagementActionMetrics.getActionMetrics(
+                IndexManagementActionsMetrics.SNAPSHOT,
+            )
+                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+
+            IndexManagementActionsMetrics.ALIAS_ACTION -> indexManagementActionMetrics.getActionMetrics(
+                IndexManagementActionsMetrics.ALIAS_ACTION,
+            )
+                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+
+            IndexManagementActionsMetrics.ALLOCATION -> indexManagementActionMetrics.getActionMetrics(
+                IndexManagementActionsMetrics.ALLOCATION,
+            )
+                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+            else -> {
+                logger.info(
+                    "Action Metrics is not supported for this action [%s]",
+                    context?.metadata?.actionMetaData?.name,
+                )
+            }
+        }
         this.context = null
         return this
     }
@@ -50,7 +146,8 @@ abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
         }
     }
 
-    final fun getStartingStepMetaData(metadata: ManagedIndexMetaData): StepMetaData = StepMetaData(name, getStepStartTime(metadata).toEpochMilli(), StepStatus.STARTING)
+    final fun getStartingStepMetaData(metadata: ManagedIndexMetaData): StepMetaData =
+        StepMetaData(name, getStepStartTime(metadata).toEpochMilli(), StepStatus.STARTING)
 
     enum class StepStatus(val status: String) : Writeable {
         STARTING("starting"),
