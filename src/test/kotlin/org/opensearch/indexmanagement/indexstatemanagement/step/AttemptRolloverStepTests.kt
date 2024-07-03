@@ -34,6 +34,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.Attempt
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.RolloverActionMetrics
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.jobscheduler.spi.utils.LockService
@@ -42,6 +43,7 @@ import org.opensearch.telemetry.metrics.Counter
 import org.opensearch.telemetry.metrics.MetricsRegistry
 import org.opensearch.telemetry.metrics.tags.Tags
 import org.opensearch.test.OpenSearchTestCase
+import java.time.Instant
 
 class AttemptRolloverStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock()
@@ -98,12 +100,12 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
                     oldIndexName, "indexUuid", "policy_id",
                     null, null, null,
                     null, null, null,
-                    null, null, null,
+                    null, ActionMetaData("rollover", Instant.now().toEpochMilli(), 0, false, 1, null, null), null,
                     null, null, rolledOverIndexName = newIndexName,
                 )
             val attemptRolloverStep = AttemptRolloverStep(rolloverAction)
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptRolloverStep.preExecute(logger, context).execute()
+            attemptRolloverStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptRolloverStep, managedIndexMetaData)
             val updatedManagedIndexMetaData = attemptRolloverStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("message info is not matched", AttemptRolloverStep.getCopyAliasNotAckMessage(oldIndexName, newIndexName), updatedManagedIndexMetaData.info?.get("message"))
@@ -124,12 +126,12 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
                     oldIndexName, "indexUuid", "policy_id",
                     null, null, null,
                     null, null, null,
-                    null, null, null,
+                    null, ActionMetaData("rollover", Instant.now().toEpochMilli(), 0, false, 1, null, null), null,
                     null, null, rolledOverIndexName = newIndexName,
                 )
             val attemptRolloverStep = AttemptRolloverStep(rolloverAction)
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptRolloverStep.preExecute(logger, context).execute()
+            attemptRolloverStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptRolloverStep, managedIndexMetaData)
             val updatedManagedIndexMetaData = attemptRolloverStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("message info is not matched", AttemptRolloverStep.getFailedCopyAliasMessage(oldIndexName, newIndexName), updatedManagedIndexMetaData.info?.get("message"))
@@ -150,12 +152,12 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
                     oldIndexName, "indexUuid", "policy_id",
                     null, null, null,
                     null, null, null,
-                    null, null, null,
+                    null, ActionMetaData("rollover", Instant.now().toEpochMilli(), 0, false, 1, null, null), null,
                     null, null, rolledOverIndexName = newIndexName,
                 )
             val attemptRolloverStep = AttemptRolloverStep(rolloverAction)
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptRolloverStep.preExecute(logger, context).execute()
+            attemptRolloverStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptRolloverStep, managedIndexMetaData)
             val updatedManagedIndexMetaData = attemptRolloverStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("message info is not matched", AttemptRolloverStep.getCopyAliasIndexNotFoundMessage(newIndexName), updatedManagedIndexMetaData.info?.get("message"))
@@ -176,12 +178,12 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
                     oldIndexName, "indexUuid", "policy_id",
                     null, null, null,
                     null, null, null,
-                    null, null, null,
+                    null, ActionMetaData("rollover", Instant.now().toEpochMilli(), 0, false, 1, null, null), null,
                     null, null, rolledOverIndexName = null,
                 )
             val attemptRolloverStep = AttemptRolloverStep(rolloverAction)
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptRolloverStep.preExecute(logger, context).execute()
+            attemptRolloverStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptRolloverStep, managedIndexMetaData)
             val updatedManagedIndexMetaData = attemptRolloverStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not COMPLETED", Step.StepStatus.COMPLETED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("message info is not matched", AttemptRolloverStep.getCopyAliasRolledOverIndexNotFoundMessage(oldIndexName), updatedManagedIndexMetaData.info?.get("message"))

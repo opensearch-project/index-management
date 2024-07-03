@@ -51,6 +51,7 @@ class AttemptSetIndexPriorityStep(private val action: IndexPriorityAction) : Ste
         } catch (e: Exception) {
             handleException(indexName, e)
         }
+
         return this
     }
 

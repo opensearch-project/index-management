@@ -40,6 +40,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.step.transition.Attem
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.TransitionActionMetrics
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
@@ -101,11 +102,11 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
         val indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
 
         runBlocking {
-            val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, ActionMetaData("transition", Instant.now().toEpochMilli(), 0, false, 1, null, null), null, null, null)
             val transitionsAction = TransitionsAction(listOf(Transition("some_state", Conditions(docCount = 5L))), indexMetadataProvider)
             val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
             val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptTransitionStep.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
+            attemptTransitionStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptTransitionStep, managedIndexMetadata)
             val updatedManagedIndexMetaData = attemptTransitionStep.getUpdatedManagedIndexMetadata(managedIndexMetadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("Did not get correct failed message", AttemptTransitionStep.getFailedStatsMessage(indexName), updatedManagedIndexMetaData.info!!["message"])
@@ -120,11 +121,11 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
         val indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
 
         runBlocking {
-            val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, ActionMetaData("transition", Instant.now().toEpochMilli(), 0, false, 1, null, null), null, null, null)
             val transitionsAction = TransitionsAction(listOf(Transition("some_state", Conditions(docCount = 5L))), indexMetadataProvider)
             val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
             val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptTransitionStep.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
+            attemptTransitionStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptTransitionStep, managedIndexMetadata)
             val updatedManagedIndexMetaData = attemptTransitionStep.getUpdatedManagedIndexMetadata(managedIndexMetadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("Did not get cause from nested exception", "example", updatedManagedIndexMetaData.info!!["cause"])
@@ -139,11 +140,11 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
         val indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
 
         runBlocking {
-            val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, ActionMetaData("transition", Instant.now().toEpochMilli(), 0, false, 1, null, null), null, null, null)
             val transitionsAction = TransitionsAction(listOf(Transition("some_state", Conditions(docCount = 5L))), indexMetadataProvider)
             val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
             val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptTransitionStep.preExecute(logger, context).execute(ManagedIndexRunner.indexManagementActionMetrics)
+            attemptTransitionStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptTransitionStep, managedIndexMetadata)
             val updatedManagedIndexMetaData = attemptTransitionStep.getUpdatedManagedIndexMetadata(managedIndexMetadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("Did not get cause from nested exception", "nested", updatedManagedIndexMetaData.info!!["cause"])
@@ -155,7 +156,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
         val indexMetadataProvider = IndexMetadataProvider(settings, mock(), clusterService, mutableMapOf())
         runBlocking {
             val completedStartTime = Instant.now()
-            val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, null, StepMetaData("attempt_transition", completedStartTime.toEpochMilli(), Step.StepStatus.COMPLETED), null, null)
+            val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, ActionMetaData("transition", Instant.now().toEpochMilli(), 0, false, 1, null, null), StepMetaData("attempt_transition", completedStartTime.toEpochMilli(), Step.StepStatus.COMPLETED), null, null)
             val transitionsAction = TransitionsAction(listOf(Transition("some_state", null)), indexMetadataProvider)
             val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
             Thread.sleep(50) // Make sure we give enough time for the instants to be different

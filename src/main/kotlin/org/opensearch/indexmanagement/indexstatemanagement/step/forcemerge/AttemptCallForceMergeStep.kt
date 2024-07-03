@@ -34,8 +34,8 @@ class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(nam
     override suspend fun execute(): AttemptCallForceMergeStep {
         val context = this.context ?: return this
         val indexName = context.metadata.index
-        val startTime = Instant.now().toEpochMilli()
         try {
+            val startTime = Instant.now().toEpochMilli()
             val request = ForceMergeRequest(indexName).maxNumSegments(action.maxNumSegments)
             var response: ForceMergeResponse? = null
             var throwable: Throwable? = null
@@ -76,6 +76,7 @@ class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(nam
         } catch (e: Exception) {
             handleException(indexName, e)
         }
+
         return this
     }
 

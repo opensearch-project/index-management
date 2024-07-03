@@ -8,8 +8,6 @@ package org.opensearch.indexmanagement.spi.indexstatemanagement.metrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.AliasActionMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.AllocationActionMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.CloseActionMetrics
-import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.CreateRollupActionMetrics
-import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.CreateTransformActionMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.DeleteActionMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.ForceMergeActionMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.MoveShardActionMetrics
@@ -62,8 +60,6 @@ class IndexManagementActionsMetrics private constructor() {
         const val CLOSE = "close"
         const val SET_INDEX_PRIORITY = "set_index_priority"
         const val OPEN = "open"
-        const val CREATE_ROLLUP = "create_rollup"
-        const val CREATE_TRANSFORM = "create_transform"
         const val MOVE_SHARD = "move_shard"
         const val SET_READ_ONLY = "set_read_only"
         const val SHRINK = "shrink"
@@ -88,8 +84,6 @@ class IndexManagementActionsMetrics private constructor() {
         CloseActionMetrics.instance.initializeCounters(metricsRegistry)
         SetIndexPriorityActionMetrics.instance.initializeCounters(metricsRegistry)
         OpenActionMetrics.instance.initializeCounters(metricsRegistry)
-        CreateRollupActionMetrics.instance.initializeCounters(metricsRegistry)
-        CreateTransformActionMetrics.instance.initializeCounters(metricsRegistry)
         MoveShardActionMetrics.instance.initializeCounters(metricsRegistry)
         SetReadOnlyActionMetrics.instance.initializeCounters(metricsRegistry)
         ShrinkActionMetrics.instance.initializeCounters(metricsRegistry)
@@ -107,8 +101,6 @@ class IndexManagementActionsMetrics private constructor() {
             CLOSE to CloseActionMetrics.instance,
             SET_INDEX_PRIORITY to SetIndexPriorityActionMetrics.instance,
             OPEN to OpenActionMetrics.instance,
-            CREATE_ROLLUP to CreateRollupActionMetrics.instance,
-            CREATE_TRANSFORM to CreateTransformActionMetrics.instance,
             MOVE_SHARD to MoveShardActionMetrics.instance,
             SET_READ_ONLY to SetReadOnlyActionMetrics.instance,
             SHRINK to ShrinkActionMetrics.instance,

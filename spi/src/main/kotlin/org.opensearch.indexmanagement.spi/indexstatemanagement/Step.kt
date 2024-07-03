@@ -72,21 +72,12 @@ abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
                 ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
 
             IndexManagementActionsMetrics.SET_INDEX_PRIORITY -> indexManagementActionMetrics.getActionMetrics(
-                IndexManagementActionsMetrics.SET_INDEX_PRIORITY,
+                IndexManagementActionsMetrics.SET_INDEX_PRIORITY, // problem in test
             )
                 ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
 
             IndexManagementActionsMetrics.OPEN -> indexManagementActionMetrics.getActionMetrics(
                 IndexManagementActionsMetrics.OPEN,
-            )
-                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
-
-            IndexManagementActionsMetrics.CREATE_ROLLUP -> indexManagementActionMetrics.getActionMetrics(
-                IndexManagementActionsMetrics.CREATE_ROLLUP,
-            )
-                ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
-            IndexManagementActionsMetrics.CREATE_TRANSFORM -> indexManagementActionMetrics.getActionMetrics(
-                IndexManagementActionsMetrics.CREATE_TRANSFORM,
             )
                 ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
 

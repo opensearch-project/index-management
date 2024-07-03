@@ -54,6 +54,7 @@ class AttemptCloseStep : Step(name) {
         } catch (e: Exception) {
             handleException(indexName, e)
         }
+
         return this
     }
 

@@ -26,7 +26,6 @@ class AttemptNotificationStep(private val action: NotificationAction) : Step(nam
         val context = this.context ?: return this
         val indexName = context.metadata.index
         val scriptService = context.scriptService
-
         try {
             val compiledMessage = compileTemplate(scriptService, action.messageTemplate, context.metadata)
             action.destination?.buildLegacyBaseMessage(null, compiledMessage)?.publishLegacyNotification(context.client)

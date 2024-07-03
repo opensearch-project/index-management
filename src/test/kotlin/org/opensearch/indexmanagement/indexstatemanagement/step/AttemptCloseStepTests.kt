@@ -9,10 +9,12 @@ import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.mockito.ArgumentMatchers.anyString
+import org.mockito.ArgumentMatchers.eq
 import org.opensearch.action.admin.indices.close.CloseIndexResponse
 import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
@@ -24,6 +26,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.step.close.AttemptCloseStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.CloseActionMetrics
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.jobscheduler.spi.utils.LockService
@@ -31,8 +35,10 @@ import org.opensearch.script.ScriptService
 import org.opensearch.snapshots.SnapshotInProgressException
 import org.opensearch.telemetry.metrics.Counter
 import org.opensearch.telemetry.metrics.MetricsRegistry
+import org.opensearch.telemetry.metrics.tags.Tags
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
+import java.time.Instant
 import kotlin.IllegalArgumentException
 
 class AttemptCloseStepTests : OpenSearchTestCase() {
@@ -41,6 +47,7 @@ class AttemptCloseStepTests : OpenSearchTestCase() {
     private val settings: Settings = Settings.EMPTY
     private val lockService: LockService = LockService(mock(), clusterService)
     private lateinit var metricsRegistry: MetricsRegistry
+    private lateinit var closeActionMetrics: CloseActionMetrics
 
     @Before
     fun setup() {
@@ -50,6 +57,7 @@ class AttemptCloseStepTests : OpenSearchTestCase() {
         }
         IndexManagementActionsMetrics.instance.initialize(metricsRegistry)
         ManagedIndexRunner.registerIndexManagementActionMetrics(IndexManagementActionsMetrics.instance)
+        closeActionMetrics = IndexManagementActionsMetrics.instance.getActionMetrics(IndexManagementActionsMetrics.CLOSE) as CloseActionMetrics
     }
 
     fun `test close step sets step status to completed when successful`() {
@@ -57,12 +65,13 @@ class AttemptCloseStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(closeIndexResponse, null)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData("close", Instant.now().toEpochMilli(), 0, false, 1, null, null), null, null, null)
             val attemptCloseStep = AttemptCloseStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptCloseStep.preExecute(logger, context).execute()
+            attemptCloseStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptCloseStep, managedIndexMetaData)
             val updatedManagedIndexMetaData = attemptCloseStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not COMPLETED", Step.StepStatus.COMPLETED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
+            verify(closeActionMetrics.successes).add(eq(1.0), any<Tags>())
         }
     }
 
@@ -71,12 +80,13 @@ class AttemptCloseStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(closeIndexResponse, null)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData("close", Instant.now().toEpochMilli(), 0, false, 1, null, null), null, null, null)
             val attemptCloseStep = AttemptCloseStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptCloseStep.preExecute(logger, context).execute()
+            attemptCloseStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptCloseStep, managedIndexMetaData)
             val updatedManagedIndexMetaData = attemptCloseStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
+            verify(closeActionMetrics.failures).add(eq(1.0), any<Tags>())
         }
     }
 
@@ -85,12 +95,13 @@ class AttemptCloseStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData("close", Instant.now().toEpochMilli(), 0, false, 1, null, null), null, null, null)
             val attemptCloseStep = AttemptCloseStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptCloseStep.preExecute(logger, context).execute()
+            attemptCloseStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptCloseStep, managedIndexMetaData)
             val updatedManagedIndexMetaData = attemptCloseStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
+            verify(closeActionMetrics.failures).add(eq(1.0), any<Tags>())
         }
     }
 
@@ -102,7 +113,7 @@ class AttemptCloseStepTests : OpenSearchTestCase() {
             val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
             val attemptCloseStep = AttemptCloseStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptCloseStep.preExecute(logger, context).execute()
+            attemptCloseStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptCloseStep, managedIndexMetaData)
             val updatedManagedIndexMetaData = attemptCloseStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not CONDITION_NOT_MET", Step.StepStatus.CONDITION_NOT_MET, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
         }
@@ -127,13 +138,14 @@ class AttemptCloseStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
 
         runBlocking {
-            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, null, null, null, null)
+            val managedIndexMetaData = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData("close", Instant.now().toEpochMilli(), 0, false, 1, null, null), null, null, null)
             val attemptCloseStep = AttemptCloseStep()
             val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
-            attemptCloseStep.preExecute(logger, context).execute()
+            attemptCloseStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptCloseStep, managedIndexMetaData)
             val updatedManagedIndexMetaData = attemptCloseStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("Did not get cause from nested exception", "nested", updatedManagedIndexMetaData.info!!["cause"])
+            verify(closeActionMetrics.failures).add(eq(1.0), any<Tags>())
         }
     }
 
