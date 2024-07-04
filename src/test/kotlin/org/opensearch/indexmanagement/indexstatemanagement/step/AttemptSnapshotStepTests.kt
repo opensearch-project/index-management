@@ -10,9 +10,13 @@ import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
+import org.mockito.ArgumentMatchers
+import org.mockito.ArgumentMatchers.anyString
+import org.mockito.Mockito
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
 import org.opensearch.client.AdminClient
 import org.opensearch.client.Client
@@ -22,10 +26,13 @@ import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.action.ActionListener
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.randomSnapshotActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SNAPSHOT_DENY_LIST
 import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.AttemptSnapshotStep
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.SnapshotActionMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
@@ -35,6 +42,9 @@ import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
 import org.opensearch.snapshots.ConcurrentSnapshotExecutionException
+import org.opensearch.telemetry.metrics.Counter
+import org.opensearch.telemetry.metrics.MetricsRegistry
+import org.opensearch.telemetry.metrics.tags.Tags
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
 
@@ -44,13 +54,22 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
     private val snapshotAction = randomSnapshotActionConfig("repo", "snapshot-name")
-    private val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData(AttemptSnapshotStep.name, 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
+    private val metadata = ManagedIndexMetaData("test", "indexUuid", "policy_id", null, null, null, null, null, null, null, ActionMetaData("snapshot", 1, 0, false, 0, null, ActionProperties(snapshotName = "snapshot-name")), null, null, null)
     private val lockService: LockService = LockService(mock(), clusterService)
+    private lateinit var metricsRegistry: MetricsRegistry
+    private lateinit var snapshotActionMetrics: SnapshotActionMetrics
 
     @Before
     fun settings() {
         whenever(clusterService.clusterSettings).doReturn(ClusterSettings(Settings.EMPTY, setOf(SNAPSHOT_DENY_LIST)))
         whenever(scriptService.compile(any(), eq(TemplateScript.CONTEXT))).doReturn(MockTemplateScript.Factory("snapshot-name"))
+        metricsRegistry = mock()
+        whenever(metricsRegistry.createCounter(anyString(), anyString(), anyString())).thenAnswer {
+            mock<Counter>()
+        }
+        IndexManagementActionsMetrics.instance.initialize(metricsRegistry)
+        ManagedIndexRunner.registerIndexManagementActionMetrics(IndexManagementActionsMetrics.instance)
+        snapshotActionMetrics = IndexManagementActionsMetrics.instance.getActionMetrics(IndexManagementActionsMetrics.SNAPSHOT) as SnapshotActionMetrics
     }
 
     fun `test snapshot response when block`() {
@@ -61,27 +80,30 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
             val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
-            step.preExecute(logger, context).execute()
+            step.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, step, metadata)
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not COMPLETED", Step.StepStatus.COMPLETED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
+            verify(snapshotActionMetrics.successes).add(ArgumentMatchers.eq(1.0), any<Tags>())
         }
 
         whenever(response.status()).doReturn(RestStatus.OK)
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
             val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
-            step.preExecute(logger, context).execute()
+            step.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, step, metadata)
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not COMPLETED", Step.StepStatus.COMPLETED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
+            verify(snapshotActionMetrics.successes, Mockito.times(2)).add(ArgumentMatchers.eq(1.0), any<Tags>())
         }
 
         whenever(response.status()).doReturn(RestStatus.INTERNAL_SERVER_ERROR)
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
             val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
-            step.preExecute(logger, context).execute()
+            step.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, step, metadata)
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
+            verify(snapshotActionMetrics.failures).add(ArgumentMatchers.eq(1.0), any<Tags>())
         }
     }
 
@@ -91,10 +113,11 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
             val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
-            step.preExecute(logger, context).execute()
+            step.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, step, metadata)
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("Did not get cause from nested exception", "example", updatedManagedIndexMetaData.info!!["cause"])
+            verify(snapshotActionMetrics.failures).add(ArgumentMatchers.eq(1.0), any<Tags>())
         }
     }
 
@@ -130,10 +153,11 @@ class AttemptSnapshotStepTests : OpenSearchTestCase() {
         runBlocking {
             val step = AttemptSnapshotStep(snapshotAction)
             val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
-            step.preExecute(logger, context).execute()
+            step.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, step, metadata)
             val updatedManagedIndexMetaData = step.getUpdatedManagedIndexMetadata(metadata)
             assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals("Did not get cause from nested exception", "some error", updatedManagedIndexMetaData.info!!["cause"])
+            verify(snapshotActionMetrics.failures).add(ArgumentMatchers.eq(1.0), any<Tags>())
         }
     }
 
