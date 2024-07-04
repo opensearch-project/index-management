@@ -33,7 +33,7 @@ abstract class ActionMetrics {
             .addTag("index_name", context.metadata.index)
             .addTag("policy_id", context.metadata.policyID)
             .addTag("node_id", context.clusterService.nodeName ?: "")
-            .addTag("Index_uuid", context.metadata.indexUuid)
+            .addTag("index_uuid", context.metadata.indexUuid)
         return tags
     }
 

@@ -36,6 +36,16 @@ abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
     ): Step {
         logger.info("Finished executing $name for ${context?.metadata?.index}")
         val updatedStepMetaData = step.getUpdatedManagedIndexMetadata(startingManagedIndexMetaData)
+        emitTelemetry(indexManagementActionMetrics, updatedStepMetaData, logger)
+        this.context = null
+        return this
+    }
+
+    private fun emitTelemetry(
+        indexManagementActionMetrics: IndexManagementActionsMetrics,
+        updatedStepMetaData: ManagedIndexMetaData,
+        logger: Logger,
+    ) {
         when (context?.metadata?.actionMetaData?.name) {
             IndexManagementActionsMetrics.ROLLOVER -> indexManagementActionMetrics.getActionMetrics(
                 IndexManagementActionsMetrics.ROLLOVER,
@@ -61,6 +71,7 @@ abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
                 IndexManagementActionsMetrics.TRANSITION,
             )
                 ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+
             IndexManagementActionsMetrics.NOTIFICATION -> indexManagementActionMetrics.getActionMetrics(
                 IndexManagementActionsMetrics.NOTIFICATION,
             )
@@ -110,6 +121,7 @@ abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
                 IndexManagementActionsMetrics.ALLOCATION,
             )
                 ?.emitMetrics(context!!, indexManagementActionMetrics, updatedStepMetaData.stepMetaData)
+
             else -> {
                 logger.info(
                     "Action Metrics is not supported for this action [%s]",
@@ -117,8 +129,6 @@ abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
                 )
             }
         }
-        this.context = null
-        return this
     }
 
     abstract fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData
@@ -137,8 +147,7 @@ abstract class Step(val name: String, val isSafeToDisableOn: Boolean = true) {
         }
     }
 
-    final fun getStartingStepMetaData(metadata: ManagedIndexMetaData): StepMetaData =
-        StepMetaData(name, getStepStartTime(metadata).toEpochMilli(), StepStatus.STARTING)
+    final fun getStartingStepMetaData(metadata: ManagedIndexMetaData): StepMetaData = StepMetaData(name, getStepStartTime(metadata).toEpochMilli(), StepStatus.STARTING)
 
     enum class StepStatus(val status: String) : Writeable {
         STARTING("starting"),

@@ -305,12 +305,11 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
             // ISM cannot auto recover from this case, so the status is COMPLETED
             logger.error("$indexName rolled over but cannot find the rolledOverIndexName to copy aliases to")
             stepStatus = StepStatus.COMPLETED
-            info = listOfNotNull(
-
-                "message" to getCopyAliasRolledOverIndexNotFoundMessage(indexName),
-                if (conditions != null) "conditions" to conditions else null,
-
-            ).toMap()
+            info =
+                listOfNotNull(
+                    "message" to getCopyAliasRolledOverIndexNotFoundMessage(indexName),
+                    if (conditions != null) "conditions" to conditions else null,
+                ).toMap()
             return
         }
 
