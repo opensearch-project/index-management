@@ -5,6 +5,11 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.runner
 
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
+import org.opensearch.client.Request
+import org.opensearch.client.Response
+import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.action.OpenAction
@@ -223,5 +228,102 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
             val currJitter = getManagedIndexConfigByDocId(newManagedIndexConfig.id)?.jitter
             assertEquals("Failed to update ManagedIndexConfig jitter", newJitter, currJitter)
         }
+    }
+
+    fun `test runner on a red cluster with allow_red_cluster as false`() {
+        val indexName = "test-index-1"
+        val policyID = "test_red_cluster_policy"
+        val policy =
+            """
+            {"policy":{"description":"Close indices older than 5m","default_state":"active","states":[{"name":"active","allow_red_cluster":"false",
+            "actions":[],"transitions":[{"state_name":"inactivestate","conditions":{"min_index_age":"5s"}}]},{"name":"inactivestate","allow_red_cluster":"false"
+            ,"actions":[{"delete":{}}],"transitions":[]}],"ism_template":{"index_patterns":["test-index"]}}}
+            """.trimIndent()
+        createPolicyJson(policy, policyID)
+        createIndex(indexName, policyID)
+        waitFor { assertIndexExists(indexName) }
+
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+
+        val endpoint = "sim-red"
+        val jsonEntity = """{"settings":{"index.routing.allocation.require.size": "test"}}"""
+        val request = Request("PUT", endpoint)
+        request.entity = StringEntity(jsonEntity, ContentType.APPLICATION_JSON)
+        val response: Response = client().performRequest(request)
+        assertEquals("Failed to simulate red cluster", RestStatus.OK, response.restStatus())
+
+        // Change the start time so the job will trigger in 2 seconds.
+        // After the job, the index will be in "Active" State
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+
+        // Change the start time so the job will trigger in 2 seconds.
+        // Index Transitions to inactivestate state
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+
+        // Wait for the index to settle in "inactivestate".
+        Thread.sleep(8000L)
+
+        // Change the start time so the job will trigger in 2 seconds.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+
+        Thread.sleep(5000L)
+
+        waitFor { assertIndexExists(indexName) }
+
+        val deleteReq = Request("DELETE", endpoint)
+        val deleteRes: Response = client().performRequest(deleteReq)
+        assertEquals("Failed to delete Index $endpoint", RestStatus.OK, deleteRes.restStatus())
+        isClusterGreen("30s")
+    }
+
+    fun `test runner on a red cluster with allow_red_cluster as true`() {
+        val indexName = "test-index-2"
+        val policyID = "test_red_cluster_policy"
+        val policy =
+            """
+            {"policy":{"description":"Close indices older than 5m","default_state":"active","states":[{"name":"active","allow_red_cluster":"true",
+            "actions":[],"transitions":[{"state_name":"inactivestate","conditions":{"min_index_age":"5s"}}]},{"name":"inactivestate","allow_red_cluster":"true"
+            ,"actions":[{"delete":{}}],"transitions":[]}],"ism_template":{"index_patterns":["test-index"]}}}
+            """.trimIndent()
+        createPolicyJson(policy, policyID)
+        createIndex(indexName, policyID)
+        waitFor { assertIndexExists(indexName) }
+
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+
+        val endpoint = "sim-red"
+        val jsonEntity = """{"settings":{"index.routing.allocation.require.size": "test"}}"""
+        val request = Request("PUT", endpoint)
+        request.entity = StringEntity(jsonEntity, ContentType.APPLICATION_JSON)
+        val response: Response = client().performRequest(request)
+        assertEquals("Failed to simulate red cluster", RestStatus.OK, response.restStatus())
+
+        // Change the start time so the job will trigger in 2 seconds.
+        // After the job, the index will be in "Active" State
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+
+        // Change the start time so the job will trigger in 2 seconds.
+        // Index Transitions to inactivestate state
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+
+        // Wait for the index to settle in "inactivestate".
+        Thread.sleep(8000L)
+
+        // Change the start time so the job will trigger in 2 seconds.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+
+        // Wait for the index deletion by the ISM job.
+        Thread.sleep(5000L)
+
+        waitFor { assertIndexDoesNotExist(indexName) }
+
+        val deleteReq = Request("DELETE", endpoint)
+        val deleteRes: Response = client().performRequest(deleteReq)
+        assertEquals("Failed to delete Index $endpoint", RestStatus.OK, deleteRes.restStatus())
+        isClusterGreen("30s")
     }
 }
