@@ -128,8 +128,6 @@ publishing {
     publications {
         shadow(MavenPublication) {
             project.shadow.component(it)
-            groupId = 'org.opensearch.opensearch-index-management'
-            artifactId = 'opensearch-index-management-spi'
 
             artifact sourcesJar
             artifact javadocJar
