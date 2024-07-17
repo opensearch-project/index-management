@@ -16,6 +16,7 @@ apply plugin: 'kotlin'
 apply plugin: 'org.jetbrains.kotlin.jvm'
 apply plugin: 'org.jetbrains.kotlin.plugin.allopen'
 apply plugin: 'idea'
+apply plugin: 'maven-publish'
 
 ext {
     projectSubstitutions = [:]
@@ -83,6 +84,11 @@ tasks.register("sourcesJar", Jar) {
     from sourceSets.main.allSource
 }
 
+task javadocJar(type: Jar) {
+    archiveClassifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
 test {
     doFirst {
         test.classpath -= project.files(project.tasks.named('shadowJar'))
@@ -102,4 +108,58 @@ check.dependsOn integTest
 
 testClusters.javaRestTest {
     testDistribution = 'INTEG_TEST'
+}
+
+publishing {
+    repositories {
+        maven {
+            name = 'staging'
+            url = "${rootProject.buildDir}/local-staging-repo"
+        }
+        maven {
+            name = "Snapshots"
+            url = "https://aws.oss.sonatype.org/content/repositories/snapshots"
+            credentials {
+                username "$System.env.SONATYPE_USERNAME"
+                password "$System.env.SONATYPE_PASSWORD"
+            }
+        }
+    }
+    publications {
+        shadow(MavenPublication) {
+            project.shadow.component(it)
+            groupId = 'org.opensearch.opensearch-index-management'
+            artifactId = 'opensearch-index-management-spi'
+
+            artifact sourcesJar
+            artifact javadocJar
+
+            pom {
+                name = "OpenSearch Index Management SPI"
+                packaging = "jar"
+                url = "https://github.com/opensearch-project/index-management"
+                description = "OpenSearch Index Management SPI"
+                scm {
+                    connection = "scm:git@github.com:opensearch-project/index-management.git"
+                    developerConnection = "scm:git@github.com:opensearch-project/index-management.git"
+                    url = "git@github.com:opensearch-project/index-management.git"
+                }
+                licenses {
+                    license {
+                        name = "The Apache License, Version 2.0"
+                        url = "http://www.apache.org/licenses/LICENSE-2.0.txt"
+                    }
+                }
+                developers {
+                    developer {
+                        name = "OpenSearch"
+                        url = "https://github.com/opensearch-project/index-management"
+                    }
+                }
+            }
+        }
+    }
+
+    gradle.startParameter.setShowStacktrace(ShowStacktrace.ALWAYS)
+    gradle.startParameter.setLogLevel(LogLevel.DEBUG)
 }
