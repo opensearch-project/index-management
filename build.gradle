@@ -271,6 +271,8 @@ publishing {
     }
 }
 
+tasks.generatePomFileForPluginZipPublication.dependsOn publishNebulaPublicationToMavenLocal
+
 plugins.withId('java') {
     sourceCompatibility = targetCompatibility = JavaVersion.VERSION_11
 }
