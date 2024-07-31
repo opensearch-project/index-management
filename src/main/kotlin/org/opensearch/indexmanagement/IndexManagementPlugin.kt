@@ -411,7 +411,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         fieldCapsFilter = FieldCapsFilter(clusterService, settings, indexNameExpressionResolver)
         this.indexNameExpressionResolver = indexNameExpressionResolver
 
-        val skipFlag = SkipExecution(client)
+        val skipFlag = SkipExecution()
         RollupFieldValueExpressionResolver.registerServices(scriptService, clusterService)
         val rollupRunner =
             RollupRunner
