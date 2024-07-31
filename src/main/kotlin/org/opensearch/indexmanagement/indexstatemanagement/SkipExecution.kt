@@ -6,20 +6,14 @@
 package org.opensearch.indexmanagement.indexstatemanagement
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.action.admin.cluster.node.info.NodesInfoAction
-import org.opensearch.action.admin.cluster.node.info.NodesInfoRequest
-import org.opensearch.action.admin.cluster.node.info.NodesInfoResponse
-import org.opensearch.action.admin.cluster.node.info.PluginsAndModules
-import org.opensearch.client.Client
-import org.opensearch.core.action.ActionListener
+import org.opensearch.Version
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.indexmanagement.util.OpenForTesting
 
 // TODO this can be moved to job scheduler, so that all extended plugin
 //  can avoid running jobs in an upgrading cluster
 @OpenForTesting
-class SkipExecution(
-    private val client: Client,
-) {
+class SkipExecution {
     private val logger = LogManager.getLogger(javaClass)
 
     @Volatile
@@ -31,53 +25,27 @@ class SkipExecution(
     final var hasLegacyPlugin: Boolean = false
         private set
 
-    fun sweepISMPluginVersion() {
-        // if old version ISM plugin exists (2 versions ISM in one cluster), set skip flag to true
-        val request = NodesInfoRequest().clear().addMetric("plugins")
-        client.execute(
-            NodesInfoAction.INSTANCE, request,
-            object : ActionListener<NodesInfoResponse> {
-                override fun onResponse(response: NodesInfoResponse) {
-                    val versionSet = mutableSetOf<String>()
-                    val legacyVersionSet = mutableSetOf<String>()
+    fun sweepISMPluginVersion(clusterService: ClusterService) {
+        try {
+            // if old version ISM plugin exists (2 versions ISM in one cluster), set skip flag to true
+            val currentMinVersion = clusterService.state().nodes.minNodeVersion
+            val currentMaxVersion = clusterService.state().nodes.maxNodeVersion
 
-                    response.nodes.map { it.getInfo(PluginsAndModules::class.java).pluginInfos }
-                        .forEach {
-                            it.forEach { nodePlugin ->
-                                if (nodePlugin.name == "opensearch-index-management" ||
-                                    nodePlugin.name == "opensearch_index_management"
-                                ) {
-                                    versionSet.add(nodePlugin.version)
-                                }
+            if (currentMinVersion != null && !currentMinVersion.equals(currentMaxVersion)) {
+                flag = true
+                logger.info("There are multiple versions of Index Management plugins in the cluster: [$currentMaxVersion, $currentMinVersion]")
+            } else {
+                flag = false
+            }
 
-                                if (nodePlugin.name == "opendistro-index-management" ||
-                                    nodePlugin.name == "opendistro_index_management"
-                                ) {
-                                    legacyVersionSet.add(nodePlugin.version)
-                                }
-                            }
-                        }
-
-                    if ((versionSet.size + legacyVersionSet.size) > 1) {
-                        flag = true
-                        logger.info("There are multiple versions of Index Management plugins in the cluster: [$versionSet, $legacyVersionSet]")
-                    } else {
-                        flag = false
-                    }
-
-                    if (versionSet.isNotEmpty() && legacyVersionSet.isNotEmpty()) {
-                        hasLegacyPlugin = true
-                        logger.info("Found legacy plugin versions [$legacyVersionSet] and opensearch plugins versions [$versionSet] in the cluster")
-                    } else {
-                        hasLegacyPlugin = false
-                    }
-                }
-
-                override fun onFailure(e: Exception) {
-                    logger.error("Failed sweeping nodes for ISM plugin versions: $e")
-                    flag = false
-                }
-            },
-        )
+            if (currentMinVersion.major > Version.CURRENT.major && currentMinVersion != currentMaxVersion) {
+                hasLegacyPlugin = true
+                logger.info("Found legacy plugin versions [$currentMinVersion] and opensearch plugins versions [$currentMaxVersion] in the cluster")
+            } else {
+                hasLegacyPlugin = false
+            }
+        } catch (e: Exception) {
+            logger.error("Unable to fetch node versions from cluster service", e)
+        }
     }
 }
