@@ -610,18 +610,18 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         return listOf(fieldCapsFilter, indexOperationActionFilter)
     }
 
-    override fun getSystemIndexDescriptors(settings: Settings): Collection<SystemIndexDescriptor> {
-        return listOf(
-            SystemIndexDescriptor(
-                INDEX_MANAGEMENT_INDEX,
-                "Index for storing index management configuration and metadata.",
-            ),
-            SystemIndexDescriptor(
-                CONTROL_CENTER_INDEX,
-                "Index for storing notification policy of long running index operations.",
-            ),
-        )
-    }
+//    override fun getSystemIndexDescriptors(settings: Settings): Collection<SystemIndexDescriptor> {
+//        return listOf(
+//            SystemIndexDescriptor(
+//                INDEX_MANAGEMENT_INDEX,
+//                "Index for storing index management configuration and metadata.",
+//            ),
+//            SystemIndexDescriptor(
+//                CONTROL_CENTER_INDEX,
+//                "Index for storing notification policy of long running index operations.",
+//            ),
+//        )
+//    }
 }
 
 class GuiceHolder
