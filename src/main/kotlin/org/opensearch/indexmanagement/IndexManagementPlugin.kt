@@ -175,7 +175,6 @@ import org.opensearch.indexmanagement.transform.resthandler.RestPreviewTransform
 import org.opensearch.indexmanagement.transform.resthandler.RestStartTransformAction
 import org.opensearch.indexmanagement.transform.resthandler.RestStopTransformAction
 import org.opensearch.indexmanagement.transform.settings.TransformSettings
-import org.opensearch.indices.SystemIndexDescriptor
 import org.opensearch.jobscheduler.spi.JobSchedulerExtension
 import org.opensearch.jobscheduler.spi.ScheduledJobParser
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
@@ -621,19 +620,6 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     override fun getActionFilters(): List<ActionFilter> {
         return listOf(fieldCapsFilter, indexOperationActionFilter)
     }
-
-//    override fun getSystemIndexDescriptors(settings: Settings): Collection<SystemIndexDescriptor> {
-//        return listOf(
-//            SystemIndexDescriptor(
-//                INDEX_MANAGEMENT_INDEX,
-//                "Index for storing index management configuration and metadata.",
-//            ),
-//            SystemIndexDescriptor(
-//                CONTROL_CENTER_INDEX,
-//                "Index for storing notification policy of long running index operations.",
-//            ),
-//        )
-//    }
 }
 
 class GuiceHolder
