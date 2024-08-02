@@ -457,7 +457,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                 StringEntity(
                     "{\"doc\":{\"managed_index\":{\"schedule\":{\"interval\":{\"start_time\":" +
                         "\"$startTimeMillis\"}}}}}",
-                    ContentType.APPLICATION_JSON,
+                    APPLICATION_JSON,
                 ),
             )
 
