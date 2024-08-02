@@ -249,7 +249,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         val startTimeMillis = desiredStartTimeMillis ?: (Instant.now().toEpochMilli() - millis)
         val waitForActiveShards = if (isMultiNode) "all" else "1"
         val response =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
                 StringEntity(
                     "{\"doc\":{\"transform\":{\"schedule\":{\"interval\":{\"start_time\":" +
