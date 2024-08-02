@@ -401,7 +401,7 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
         closeIndex("source-index")
 
         // delete system index
-        client.makeRequest("DELETE", IndexManagementPlugin.CONTROL_CENTER_INDEX)
+        adminClient().makeRequest("DELETE", IndexManagementPlugin.CONTROL_CENTER_INDEX)
 
         val response =
             client.makeRequest(
