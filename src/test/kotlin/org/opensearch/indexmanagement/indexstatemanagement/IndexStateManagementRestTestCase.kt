@@ -469,7 +469,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         val waitForActiveShards = if (isMultiNode) "all" else "1"
         val endpoint = "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards;retry_on_conflict=$retryOnConflict"
         val response =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "POST", endpoint,
                 StringEntity(
                     "{\"doc\":{\"managed_index\":{\"schedule\":{\"interval\":{\"start_time\":" +

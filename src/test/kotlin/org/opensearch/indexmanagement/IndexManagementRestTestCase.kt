@@ -219,7 +219,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         // Since from the log, this happens very fast (within 0.1~0.2s), the above cluster explain may not have the granularity to catch this.
         logger.info("Update rollup start time to $startTimeMillis")
         val response =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_update/${update.id}?wait_for_active_shards=$waitForActiveShards&refresh=true",
                 StringEntity(
                     "{\"doc\":{\"rollup\":{\"schedule\":{\"interval\":{\"start_time\":" +
