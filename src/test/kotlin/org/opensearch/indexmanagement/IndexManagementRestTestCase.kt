@@ -219,14 +219,15 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         // During this period, this update got missed
         // Since from the log, this happens very fast (within 0.1~0.2s), the above cluster explain may not have the granularity to catch this.
         logger.info("Update rollup start time to $startTimeMillis")
-        val response = client().makeRequest(
-            "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_update/${update.id}?wait_for_active_shards=$waitForActiveShards&refresh=true",
-            StringEntity(
-                "{\"doc\":{\"rollup\":{\"schedule\":{\"interval\":{\"start_time\":" +
-                    "\"$startTimeMillis\"}}}}}",
-                ContentType.APPLICATION_JSON,
-            ),
-        )
+        val response =
+            adminClient().makeRequest(
+                "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_update/${update.id}?wait_for_active_shards=$waitForActiveShards&refresh=true",
+                StringEntity(
+                    "{\"doc\":{\"rollup\":{\"schedule\":{\"interval\":{\"start_time\":" +
+                        "\"$startTimeMillis\"}}}}}",
+                    ContentType.APPLICATION_JSON,
+                ),
+            )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
@@ -248,14 +249,15 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         val millis = Duration.of(intervalSchedule.interval.toLong(), intervalSchedule.unit).minusSeconds(2).toMillis()
         val startTimeMillis = desiredStartTimeMillis ?: (Instant.now().toEpochMilli() - millis)
         val waitForActiveShards = if (isMultiNode) "all" else "1"
-        val response = client().makeRequest(
-            "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
-            StringEntity(
-                "{\"doc\":{\"transform\":{\"schedule\":{\"interval\":{\"start_time\":" +
-                    "\"$startTimeMillis\"}}}}}",
-                ContentType.APPLICATION_JSON,
-            ),
-        )
+        val response =
+            adminClient().makeRequest(
+                "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
+                StringEntity(
+                    "{\"doc\":{\"transform\":{\"schedule\":{\"interval\":{\"start_time\":" +
+                        "\"$startTimeMillis\"}}}}}",
+                    ContentType.APPLICATION_JSON,
+                ),
+            )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }

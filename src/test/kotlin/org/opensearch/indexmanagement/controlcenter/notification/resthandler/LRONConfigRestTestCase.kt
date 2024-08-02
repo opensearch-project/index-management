@@ -31,7 +31,7 @@ abstract class LRONConfigRestTestCase : IndexManagementRestTestCase() {
     @After
     fun removeAllDocs() {
         try {
-            client().makeRequest(
+            adminClient().makeRequest(
                 "POST",
                 "${IndexManagementPlugin.CONTROL_CENTER_INDEX}/_delete_by_query",
                 mapOf("refresh" to "true"),
