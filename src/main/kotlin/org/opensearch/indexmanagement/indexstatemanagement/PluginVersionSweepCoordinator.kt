@@ -58,8 +58,10 @@ class PluginVersionSweepCoordinator(
 
     override fun clusterChanged(event: ClusterChangedEvent) {
         if (event.nodesChanged() || event.isNewCluster) {
-            skipExecution.sweepISMPluginVersion()
-            initBackgroundSweepISMPluginVersionExecution()
+            threadPool.generic().execute {
+                skipExecution.sweepISMPluginVersion()
+                initBackgroundSweepISMPluginVersionExecution()
+            }
         }
     }
 
@@ -85,7 +87,7 @@ class PluginVersionSweepCoordinator(
                 }
             }
         scheduledSkipExecution =
-            threadPool.scheduleWithFixedDelay(scheduledJob, sweepSkipPeriod, ThreadPool.Names.MANAGEMENT)
+            threadPool.scheduleWithFixedDelay(scheduledJob, sweepSkipPeriod, ThreadPool.Names.GENERIC)
     }
 
     private fun isIndexStateManagementEnabled(): Boolean = indexStateManagementEnabled == true
