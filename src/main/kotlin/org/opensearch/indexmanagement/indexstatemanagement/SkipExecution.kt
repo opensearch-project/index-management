@@ -32,7 +32,7 @@ class SkipExecution(
         private set
 
     fun sweepISMPluginVersion() {
-        // if old version ISM plugin exists (2 versions ISM in one cluster), set skip flag to true
+        // if old version ISM plugin exists (2 versions ISM in one cluster), set skip flag to truee
         val request = NodesInfoRequest().clear().addMetric("plugins")
         client.execute(
             NodesInfoAction.INSTANCE, request,
