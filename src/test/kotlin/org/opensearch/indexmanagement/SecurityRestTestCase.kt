@@ -486,7 +486,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
     }
 
     protected fun deleteIndexByName(index: String) {
-        executeRequest(request = Request(RestRequest.Method.DELETE.name, "/$index"), client = client())
+        executeRequest(request = Request(RestRequest.Method.DELETE.name, "/$index"), client = adminClient())
     }
 
     protected fun validateSourceIndex(indexName: String) {
