@@ -53,7 +53,7 @@ class MetadataServiceTests : OpenSearchTestCase() {
                 ),
             ),
         )
-        val skipFlag = SkipExecution(client)
+        val skipFlag = SkipExecution()
         val metadataService = MetadataService(client, clusterService, skipFlag, imIndices)
         metadataService.moveMetadata()
 
@@ -74,7 +74,7 @@ class MetadataServiceTests : OpenSearchTestCase() {
             ),
         )
 
-        val skipFlag = SkipExecution(client)
+        val skipFlag = SkipExecution()
         val metadataService = MetadataService(client, clusterService, skipFlag, imIndices)
         metadataService.moveMetadata()
         assertEquals(metadataService.runTimeCounter, 2)

@@ -25,7 +25,7 @@ class PluginVersionSweepCoordinator(
     private val skipExecution: SkipExecution,
     settings: Settings,
     private val threadPool: ThreadPool,
-    clusterService: ClusterService,
+    var clusterService: ClusterService,
 ) : CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ISMPluginSweepCoordinator")),
     LifecycleListener(),
     ClusterStateListener {
@@ -58,7 +58,7 @@ class PluginVersionSweepCoordinator(
 
     override fun clusterChanged(event: ClusterChangedEvent) {
         if (event.nodesChanged() || event.isNewCluster) {
-            skipExecution.sweepISMPluginVersion()
+            skipExecution.sweepISMPluginVersion(clusterService)
             initBackgroundSweepISMPluginVersionExecution()
         }
     }
@@ -76,7 +76,7 @@ class PluginVersionSweepCoordinator(
                         logger.info("Canceling sweep ism plugin version job")
                         scheduledSkipExecution?.cancel()
                     } else {
-                        skipExecution.sweepISMPluginVersion()
+                        skipExecution.sweepISMPluginVersion(clusterService)
                     }
                 } catch (e: Exception) {
                     logger.error("Failed to sweep ism plugin version", e)
