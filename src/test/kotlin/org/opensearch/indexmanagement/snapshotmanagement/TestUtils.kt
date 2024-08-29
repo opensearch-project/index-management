@@ -231,6 +231,7 @@ fun mockSnapshotInfo(
             false,
             mapOf("sm_policy" to policyName),
             remoteStoreIndexShallowCopy,
+            0,
         )
     return result
 }
