@@ -351,7 +351,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             }
             """.trimIndent()
         val res =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "PUT", "$index/_settings", emptyMap(),
                 StringEntity(body, ContentType.APPLICATION_JSON),
             )
