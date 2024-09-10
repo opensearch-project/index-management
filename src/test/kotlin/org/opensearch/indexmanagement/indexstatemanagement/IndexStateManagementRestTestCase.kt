@@ -483,7 +483,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun updateManagedIndexConfigPolicySeqNo(update: ManagedIndexConfig) {
         val response =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}",
                 StringEntity(
                     "{\"doc\":{\"managed_index\":{\"policy_seq_no\":\"${update.policySeqNo}\"}}}",
