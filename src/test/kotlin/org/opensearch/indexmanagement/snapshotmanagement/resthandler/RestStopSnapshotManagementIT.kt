@@ -5,9 +5,11 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
+import org.opensearch.client.Request
 import org.opensearch.client.ResponseException
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementRestTestCase
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
@@ -59,7 +61,8 @@ class RestStopSnapshotManagementIT : SnapshotManagementRestTestCase() {
 
     fun `test stopping a snapshot management policy with no config index fails`() {
         try {
-            deleteIndex(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
+            val deleteISMIndexRequest = Request("DELETE", "/$INDEX_MANAGEMENT_INDEX")
+            adminClient().performRequest(deleteISMIndexRequest)
             client().makeRequest("POST", "${IndexManagementPlugin.SM_POLICIES_URI}/nonexistent_foo/_stop")
             fail("expected response exception")
         } catch (e: ResponseException) {
