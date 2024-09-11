@@ -188,10 +188,10 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
                         }
                       }
                     }
-                """.trimIndent(),
-                APPLICATION_JSON,
-            ),
-        )
+                    """.trimIndent(),
+                    APPLICATION_JSON,
+                ),
+            )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
