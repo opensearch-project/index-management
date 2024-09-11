@@ -6,9 +6,10 @@
 package org.opensearch.indexmanagement.transform.resthandler
 
 import org.junit.Assert
+import org.opensearch.client.Request
 import org.opensearch.client.ResponseException
 import org.opensearch.core.rest.RestStatus
-import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.transform.TransformRestTestCase
@@ -158,7 +159,8 @@ class RestExplainTransformActionIT : TransformRestTestCase() {
 
     @Throws(Exception::class)
     fun `test explain transform when config doesnt exist`() {
-        deleteIndex(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
+        val deleteISMIndexRequest = Request("DELETE", "/$INDEX_MANAGEMENT_INDEX")
+        adminClient().performRequest(deleteISMIndexRequest)
         val responseExplicit = client().makeRequest("GET", "$TRANSFORM_BASE_URI/no_config_some_transform/_explain")
         val expectedResponse = mapOf("no_config_some_transform" to "Failed to search transform metadata")
         assertEquals("Non-existent transform didn't return null", expectedResponse, responseExplicit.asMap())

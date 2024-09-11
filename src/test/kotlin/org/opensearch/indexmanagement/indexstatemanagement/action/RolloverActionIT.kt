@@ -770,21 +770,22 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             assertEquals("Index did not rollover.", AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"])
         }
         // Manually produce transaction failure
-        val response = client().makeRequest(
-            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${managedIndexConfig.id}%23metadata",
-            StringEntity(
-                "{\n" +
-                    "    \"script\": {\n" +
-                    "        \"source\": \"ctx._source.managed_index_metadata.step.step_status = params.step_status\",\n" +
-                    "        \"lang\": \"painless\",\n" +
-                    "        \"params\": {\n" +
-                    "            \"step_status\": \"starting\"\n" +
-                    "    }\n" +
-                    "  }\n" +
-                    "}",
-                ContentType.APPLICATION_JSON,
-            ),
-        )
+        val response =
+            adminClient().makeRequest(
+                "POST", "$INDEX_MANAGEMENT_INDEX/_update/${managedIndexConfig.id}%23metadata",
+                StringEntity(
+                    "{\n" +
+                        "    \"script\": {\n" +
+                        "        \"source\": \"ctx._source.managed_index_metadata.step.step_status = params.step_status\",\n" +
+                        "        \"lang\": \"painless\",\n" +
+                        "        \"params\": {\n" +
+                        "            \"step_status\": \"starting\"\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}",
+                    ContentType.APPLICATION_JSON,
+                ),
+            )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
 
         // Execute again to see the transaction failure
