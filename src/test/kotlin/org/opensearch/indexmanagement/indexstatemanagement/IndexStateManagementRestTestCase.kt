@@ -338,7 +338,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             {
               "$key" : "$value"
             }
-            """.trimIndent()
+        """.trimIndent()
         val res =
             adminClient().makeRequest(
                 "PUT", "$index/_settings", emptyMap(),
