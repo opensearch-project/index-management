@@ -5,14 +5,9 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
-<<<<<<< HEAD
-import org.apache.http.HttpHeaders
-import org.apache.http.message.BasicHeader
-=======
 import org.apache.hc.core5.http.HttpHeaders
 import org.apache.hc.core5.http.message.BasicHeader
 import org.opensearch.client.Request
->>>>>>> 395317dc (Update CI check for integ-test-with-security to run all integ tests with security (#1243))
 import org.opensearch.client.ResponseException
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin
