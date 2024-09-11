@@ -5,11 +5,18 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
+<<<<<<< HEAD
 import org.apache.http.HttpHeaders
 import org.apache.http.message.BasicHeader
+=======
+import org.apache.hc.core5.http.HttpHeaders
+import org.apache.hc.core5.http.message.BasicHeader
+import org.opensearch.client.Request
+>>>>>>> 395317dc (Update CI check for integ-test-with-security to run all integ tests with security (#1243))
 import org.opensearch.client.ResponseException
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementRestTestCase
@@ -48,7 +55,8 @@ class RestGetSnapshotManagementIT : SnapshotManagementRestTestCase() {
     @Throws(Exception::class)
     fun `test getting a snapshot management policy that doesn't exist and config index doesnt exist`() {
         try {
-            deleteIndex(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
+            val deleteISMIndexRequest = Request("DELETE", "/$INDEX_MANAGEMENT_INDEX")
+            adminClient().performRequest(deleteISMIndexRequest)
             getSMPolicy(randomAlphaOfLength(20))
             fail("expected response exception")
         } catch (e: ResponseException) {

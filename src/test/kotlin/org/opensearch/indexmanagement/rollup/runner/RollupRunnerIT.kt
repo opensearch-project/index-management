@@ -1394,7 +1394,7 @@ class RollupRunnerIT : RollupRestTestCase() {
     // - Source index with pattern mapping to some closed indices
 
     private fun deleteRollupMetadata(metadataId: String) {
-        val response = client().makeRequest("DELETE", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_doc/$metadataId")
+        val response = adminClient().makeRequest("DELETE", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_doc/$metadataId")
         assertEquals("Unable to delete rollup metadata $metadataId", RestStatus.OK, response.restStatus())
     }
 }

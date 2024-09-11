@@ -116,9 +116,10 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
     }
 
     protected fun getTransformMetadata(metadataId: String): TransformMetadata {
-        val response = client().makeRequest(
-            "GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
-        )
+        val response =
+            adminClient().makeRequest(
+                "GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
+            )
         assertEquals("Unable to get transform metadata $metadataId", RestStatus.OK, response.restStatus())
 
         val parser = createParser(XContentType.JSON.xContent(), response.entity.content)
