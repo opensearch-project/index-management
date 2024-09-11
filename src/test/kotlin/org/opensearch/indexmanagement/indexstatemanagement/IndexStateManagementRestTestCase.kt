@@ -342,7 +342,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         val res =
             adminClient().makeRequest(
                 "PUT", "$index/_settings", emptyMap(),
-                StringEntity(body, ContentType.APPLICATION_JSON),
+                StringEntity(body, APPLICATION_JSON),
             )
         assertEquals("Update index setting failed", RestStatus.OK, res.restStatus())
     }
