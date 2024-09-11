@@ -338,11 +338,12 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             {
               "$key" : "$value"
             }
-        """.trimIndent()
-        val res = client().makeRequest(
-            "PUT", "$index/_settings", emptyMap(),
-            StringEntity(body, APPLICATION_JSON),
-        )
+            """.trimIndent()
+        val res =
+            adminClient().makeRequest(
+                "PUT", "$index/_settings", emptyMap(),
+                StringEntity(body, ContentType.APPLICATION_JSON),
+            )
         assertEquals("Update index setting failed", RestStatus.OK, res.restStatus())
     }
 
@@ -465,13 +466,14 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     protected fun updateManagedIndexConfigPolicySeqNo(update: ManagedIndexConfig) {
-        val response = client().makeRequest(
-            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}",
-            StringEntity(
-                "{\"doc\":{\"managed_index\":{\"policy_seq_no\":\"${update.policySeqNo}\"}}}",
-                APPLICATION_JSON,
-            ),
-        )
+        val response =
+            adminClient().makeRequest(
+                "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}",
+                StringEntity(
+                    "{\"doc\":{\"managed_index\":{\"policy_seq_no\":\"${update.policySeqNo}\"}}}",
+                    APPLICATION_JSON,
+                ),
+            )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
 

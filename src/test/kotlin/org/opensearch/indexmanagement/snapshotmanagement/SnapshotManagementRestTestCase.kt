@@ -138,13 +138,14 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         val millis = Duration.of(intervalSchedule.interval.toLong(), intervalSchedule.unit).minusSeconds(2).toMillis()
         val startTimeMillis = desiredStartTimeMillis ?: (now().toEpochMilli() - millis)
         val waitForActiveShards = if (isMultiNode) "all" else "1"
-        val response = client().makeRequest(
-            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
-            StringEntity(
-                "{\"doc\":{\"sm_policy\":{\"schedule\":{\"interval\":{\"start_time\":\"$startTimeMillis\"}}}}}",
-                APPLICATION_JSON,
-            ),
-        )
+        val response =
+            adminClient().makeRequest(
+                "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
+                StringEntity(
+                    "{\"doc\":{\"sm_policy\":{\"schedule\":{\"interval\":{\"start_time\":\"$startTimeMillis\"}}}}}",
+                    APPLICATION_JSON,
+                ),
+            )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
@@ -169,10 +170,11 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         val millis = Duration.of(intervalSchedule.interval.toLong(), intervalSchedule.unit).minusSeconds(2).toMillis()
         val startTimeMillis = desiredStartTimeMillis ?: (now().toEpochMilli() - millis)
         val waitForActiveShards = if (isMultiNode) "all" else "1"
-        val response = client().makeRequest(
-            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.metadataID}?wait_for_active_shards=$waitForActiveShards",
-            StringEntity(
-                """
+        val response =
+            adminClient().makeRequest(
+                "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.metadataID}?wait_for_active_shards=$waitForActiveShards",
+                StringEntity(
+                    """
                     {
                       "doc": {
                         "sm_metadata": {

@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.transform.resthandler
 
+import org.opensearch.client.Request
 import org.opensearch.client.ResponseException
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
@@ -75,7 +76,10 @@ class RestDeleteTransformActionIT : TransformRestTestCase() {
     @Throws(Exception::class)
     fun `test deleting a transform that doesn't exist and config index doesn't exist`() {
         try {
-            if (indexExists(INDEX_MANAGEMENT_INDEX)) deleteIndex(INDEX_MANAGEMENT_INDEX)
+            if (indexExists(INDEX_MANAGEMENT_INDEX)) {
+                val deleteISMIndexRequest = Request("DELETE", "/$INDEX_MANAGEMENT_INDEX")
+                adminClient().performRequest(deleteISMIndexRequest)
+            }
             val res = client().makeRequest("DELETE", "$TRANSFORM_BASE_URI/foobarbaz")
             fail("expected 404 ResponseException: ${res.asMap()}")
         } catch (e: ResponseException) {
