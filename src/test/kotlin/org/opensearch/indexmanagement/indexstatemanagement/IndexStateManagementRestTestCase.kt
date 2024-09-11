@@ -351,7 +351,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             }
             """.trimIndent()
         val res =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "PUT", "$index/_settings", emptyMap(),
                 StringEntity(body, ContentType.APPLICATION_JSON),
             )
@@ -483,7 +483,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun updateManagedIndexConfigPolicySeqNo(update: ManagedIndexConfig) {
         val response =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}",
                 StringEntity(
                     "{\"doc\":{\"managed_index\":{\"policy_seq_no\":\"${update.policySeqNo}\"}}}",
