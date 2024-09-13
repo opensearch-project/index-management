@@ -24,7 +24,7 @@ import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import java.util.*
+import java.util.Locale
 
 class RestStartRollupActionIT : RollupRestAPITestCase() {
     private val testName = javaClass.simpleName.lowercase(Locale.ROOT)
