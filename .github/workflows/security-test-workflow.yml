@@ -46,4 +46,5 @@ jobs:
         if: failure()
         with:
           name: logs
+          overwrite: 'true'
           path: build/testclusters/integTest-*/logs/*

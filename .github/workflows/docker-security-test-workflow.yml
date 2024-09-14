@@ -88,6 +88,7 @@ jobs:
         if: failure()
         with:
           name: logs
+          overwrite: 'true'
           path: build/testclusters/integTest-*/logs/*
       - name: Collect docker logs on failure
         uses: jwalton/gh-docker-logs@v2
@@ -100,4 +101,5 @@ jobs:
         if: failure()
         with:
           name: logs.tgz
+          overwrite: 'true'
           path: ./logs.tgz
