@@ -784,7 +784,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         }
         // Manually produce transaction failure
         val response =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "POST", "$INDEX_MANAGEMENT_INDEX/_update/${managedIndexConfig.id}%23metadata",
                 StringEntity(
                     "{\n" +
