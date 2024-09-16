@@ -56,10 +56,10 @@ jobs:
           chown -R 1000:1000 `pwd`
           su `id -un 1000` -c "./gradlew build ${{ env.TEST_FILTER }}"
       - name: Upload failed logs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
-          name: logs
+          name: logs-${{ matrix.java }}-${{ matrix.feature }}
           path: build/testclusters/integTest-*/logs/*
       - name: Create Artifact Path
         run: |
@@ -71,10 +71,12 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
       # This step uses the upload-artifact Github action: https://github.com/actions/upload-artifact
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v1
+        # v4 requires node.js 20 which is not supported
+        uses: actions/upload-artifact@v3
         with:
-          name: index-management-plugin-ubuntu-latest
+          name: index-management-plugin-ubuntu-latest-${{ matrix.java }}
           path: index-management-artifacts
+          overwrite: 'true'
 
   test-and-build-windows-macos:
     env:
@@ -126,7 +128,8 @@ jobs:
           cp ./build/distributions/*.zip index-management-artifacts
       # This step uses the upload-artifact Github action: https://github.com/actions/upload-artifact
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
-          name: index-management-plugin-${{ matrix.os }}
+          name: index-management-plugin-${{ matrix.os }}-${{ matrix.java }}
           path: index-management-artifacts
+          overwrite: 'true'
