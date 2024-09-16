@@ -71,7 +71,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
       # This step uses the upload-artifact Github action: https://github.com/actions/upload-artifact
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        # v4 requires node.js 20 which is not supported
+        uses: actions/upload-artifact@v3
         with:
           name: index-management-plugin-ubuntu-latest-${{ matrix.java }}
           path: index-management-artifacts
