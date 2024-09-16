@@ -36,7 +36,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaDa
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.rest.RestRequest
 import java.time.Instant
-import java.util.*
+import java.util.Locale
 
 class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
