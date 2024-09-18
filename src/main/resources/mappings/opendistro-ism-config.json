@@ -167,6 +167,9 @@
                     }
                   }
                 },
+                "unfollow": {
+                  "type": "object"
+                },
                 "delete": {
                   "type": "object"
                 },
