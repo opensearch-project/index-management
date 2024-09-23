@@ -9,7 +9,6 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 | Vikas Bansal          | [vikasvb90](https://github.com/vikasvb90)             | Amazon      |
 | Bowen Lan             | [bowenlan-amzn](https://github.com/bowenlan-amzn)     | Amazon      |
 | Hailong Cui           | [Hailong-am](https://github.com/Hailong-am)           | Amazon      |
-| Rohit Ashiwal         | [r1walz](https://github.com/r1walz)                   | Independent |
 
 ## Emeritus
 
@@ -25,3 +24,4 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 | Surya Sashank Nistala | [eirsep](https://github.com/eirsep)                   | Amazon      |
 | Thomas Hurney         | [AWSHurneyt](https://github.com/AWSHurneyt)           | Amazon      |
 | Xuesong Luo           | [xluo-aws](https://github.com/xluo-aws)               | Amazon      |
+| Rohit Ashiwal         | [r1walz](https://github.com/r1walz)                   | Independent |
