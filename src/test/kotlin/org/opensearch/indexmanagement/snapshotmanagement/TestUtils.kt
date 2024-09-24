@@ -37,6 +37,7 @@ import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.snapshots.Snapshot
 import org.opensearch.snapshots.SnapshotId
 import org.opensearch.snapshots.SnapshotInfo
+import org.opensearch.snapshots.SnapshotState
 import org.opensearch.test.OpenSearchTestCase.randomAlphaOfLength
 import org.opensearch.test.OpenSearchTestCase.randomBoolean
 import org.opensearch.test.OpenSearchTestCase.randomIntBetween
@@ -169,11 +170,14 @@ fun randomSMState(): SMState = SMState.values()[randomIntBetween(0, SMState.valu
 
 fun randomNotificationConfig(): NotificationConfig = NotificationConfig(randomChannel(), randomConditions())
 
-fun randomConditions(): NotificationConfig.Conditions = NotificationConfig.Conditions(randomBoolean(), randomBoolean(), randomBoolean(), randomBoolean())
+fun randomConditions(): NotificationConfig.Conditions =
+    NotificationConfig.Conditions(randomBoolean(), randomBoolean(), randomBoolean(), randomBoolean())
 
-fun ToXContent.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(XContentFactory.jsonBuilder(), params).string()
+fun ToXContent.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String =
+    this.toXContent(XContentFactory.jsonBuilder(), params).string()
 
-fun ToXContent.toMap(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): Map<String, Any> = this.toXContent(XContentFactory.jsonBuilder(), params).toMap()
+fun ToXContent.toMap(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): Map<String, Any> =
+    this.toXContent(XContentFactory.jsonBuilder(), params).toMap()
 
 fun mockIndexResponse(status: RestStatus = RestStatus.OK): IndexResponse {
     val indexResponse: IndexResponse = mock()
@@ -253,6 +257,18 @@ fun mockInProgressSnapshotInfo(
     return SnapshotInfo(entry)
 }
 
+fun mockSnapshotInfo(
+    name: String = randomAlphaOfLength(10),
+    snapshotState: SnapshotState,
+): SnapshotInfo {
+    return SnapshotInfo(
+        SnapshotId(name, UUIDs.randomBase64UUID()),
+        emptyList(),
+        emptyList(),
+        snapshotState,
+    )
+}
+
 fun mockGetSnapshotResponse(num: Int): GetSnapshotsResponse {
     val getSnapshotsRes: GetSnapshotsResponse = mock()
     whenever(getSnapshotsRes.snapshots).doReturn(mockSnapshotInfoList(num))
@@ -271,4 +287,5 @@ fun mockSnapshotInfoList(num: Int, namePrefix: String = randomAlphaOfLength(10))
     return result.toList()
 }
 
-fun String.parser(): XContentParser = XContentType.JSON.xContent().createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, this)
+fun String.parser(): XContentParser =
+    XContentType.JSON.xContent().createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, this)
