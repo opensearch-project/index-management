@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
+import org.opensearch.client.Request
 import org.opensearch.client.ResponseException
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin
@@ -39,7 +40,8 @@ class RestDeleteSnapshotManagementIT : SnapshotManagementRestTestCase() {
 
     fun `test deleting a snapshot management policy that doesn't exist and config index doesnt exist`() {
         try {
-            deleteIndex(INDEX_MANAGEMENT_INDEX)
+            val deleteISMIndexRequest = Request("DELETE", "/$INDEX_MANAGEMENT_INDEX")
+            adminClient().performRequest(deleteISMIndexRequest)
             client().makeRequest("DELETE", "${IndexManagementPlugin.SM_POLICIES_URI}/nonexistent_policy")
             fail("expected 404 ResponseException")
         } catch (e: ResponseException) {

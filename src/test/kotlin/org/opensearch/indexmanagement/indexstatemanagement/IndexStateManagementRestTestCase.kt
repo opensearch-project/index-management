@@ -339,10 +339,11 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
               "$key" : "$value"
             }
         """.trimIndent()
-        val res = client().makeRequest(
-            "PUT", "$index/_settings", emptyMap(),
-            StringEntity(body, APPLICATION_JSON),
-        )
+        val res =
+            adminClient().makeRequest(
+                "PUT", "$index/_settings", emptyMap(),
+                StringEntity(body, APPLICATION_JSON),
+            )
         assertEquals("Update index setting failed", RestStatus.OK, res.restStatus())
     }
 
@@ -451,26 +452,28 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         val startTimeMillis = desiredStartTimeMillis ?: Instant.now().toEpochMilli() - millis
         val waitForActiveShards = if (isMultiNode) "all" else "1"
         val endpoint = "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards;retry_on_conflict=$retryOnConflict"
-        val response = client().makeRequest(
-            "POST", endpoint,
-            StringEntity(
-                "{\"doc\":{\"managed_index\":{\"schedule\":{\"interval\":{\"start_time\":" +
-                    "\"$startTimeMillis\"}}}}}",
-                APPLICATION_JSON,
-            ),
-        )
+        val response =
+            adminClient().makeRequest(
+                "POST", endpoint,
+                StringEntity(
+                    "{\"doc\":{\"managed_index\":{\"schedule\":{\"interval\":{\"start_time\":" +
+                        "\"$startTimeMillis\"}}}}}",
+                    APPLICATION_JSON,
+                ),
+            )
 
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
 
     protected fun updateManagedIndexConfigPolicySeqNo(update: ManagedIndexConfig) {
-        val response = client().makeRequest(
-            "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}",
-            StringEntity(
-                "{\"doc\":{\"managed_index\":{\"policy_seq_no\":\"${update.policySeqNo}\"}}}",
-                APPLICATION_JSON,
-            ),
-        )
+        val response =
+            adminClient().makeRequest(
+                "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}",
+                StringEntity(
+                    "{\"doc\":{\"managed_index\":{\"policy_seq_no\":\"${update.policySeqNo}\"}}}",
+                    APPLICATION_JSON,
+                ),
+            )
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
 

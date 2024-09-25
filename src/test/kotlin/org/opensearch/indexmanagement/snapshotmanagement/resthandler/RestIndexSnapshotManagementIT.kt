@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
+import org.opensearch.client.Request
 import org.opensearch.client.ResponseException
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.rest.RestStatus
@@ -129,7 +130,8 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
     @Throws(Exception::class)
     @Suppress("UNCHECKED_CAST")
     fun `test mappings after sm policy creation`() {
-        deleteIndex(INDEX_MANAGEMENT_INDEX)
+        val deleteISMIndexRequest = Request("DELETE", "/$INDEX_MANAGEMENT_INDEX")
+        adminClient().performRequest(deleteISMIndexRequest)
         createSMPolicy(randomSMPolicy())
 
         val response = client().makeRequest("GET", "/$INDEX_MANAGEMENT_INDEX/_mapping")
