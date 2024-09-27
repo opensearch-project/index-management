@@ -63,12 +63,17 @@ class RollupInterceptor(
 
     @Volatile private var searchAllJobs = RollupSettings.ROLLUP_SEARCH_ALL_JOBS.get(settings)
 
+    @Volatile private var searchRawRollupIndices = RollupSettings.ROLLUP_SEARCH_SOURCE_INDICES.get(settings)
+
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(RollupSettings.ROLLUP_SEARCH_ENABLED) {
             searchEnabled = it
         }
         clusterService.clusterSettings.addSettingsUpdateConsumer(RollupSettings.ROLLUP_SEARCH_ALL_JOBS) {
             searchAllJobs = it
+        }
+        clusterService.clusterSettings.addSettingsUpdateConsumer(RollupSettings.ROLLUP_SEARCH_SOURCE_INDICES) {
+            searchRawRollupIndices = it
         }
     }
 
@@ -144,15 +149,16 @@ class RollupInterceptor(
     private fun validateIndicies(concreteIndices: Array<String>, fieldMappings: Set<RollupFieldMapping>): Map<Rollup, Set<RollupFieldMapping>> {
         var allMatchingRollupJobs: Map<Rollup, Set<RollupFieldMapping>> = mapOf()
         for (concreteIndex in concreteIndices) {
-            val rollupJobs =
-                clusterService.state().metadata.index(concreteIndex).getRollupJobs()
-                    ?: throw IllegalArgumentException("Not all indices have rollup job")
-
-            val (matchingRollupJobs, issues) = findMatchingRollupJobs(fieldMappings, rollupJobs)
-            if (issues.isNotEmpty() || matchingRollupJobs.isEmpty()) {
-                throw IllegalArgumentException("Could not find a rollup job that can answer this query because $issues")
+            val rollupJobs = clusterService.state().metadata.index(concreteIndex).getRollupJobs()
+            if (rollupJobs != null) {
+                val (matchingRollupJobs, issues) = findMatchingRollupJobs(fieldMappings, rollupJobs)
+                if (issues.isNotEmpty() || matchingRollupJobs.isEmpty()) {
+                    throw IllegalArgumentException("Could not find a rollup job that can answer this query because $issues")
+                }
+                allMatchingRollupJobs += matchingRollupJobs
+            } else if (!searchRawRollupIndices) {
+                throw IllegalArgumentException("Not all indices have rollup job")
             }
-            allMatchingRollupJobs += matchingRollupJobs
         }
         return allMatchingRollupJobs
     }
@@ -347,6 +353,9 @@ class RollupInterceptor(
         if (searchAllJobs) {
             request.source(request.source().rewriteSearchSourceBuilder(matchingRollupJobs.keys, fieldNameMappingTypeMap, concreteSourceIndex))
         } else {
+            if (matchingRollupJobs.keys.size > 1) {
+                logger.warn("Trying search with search across multiple rollup jobs disabled so will give result with largest rollup window")
+            }
             request.source(request.source().rewriteSearchSourceBuilder(matchedRollup, fieldNameMappingTypeMap, concreteSourceIndex))
         }
     }

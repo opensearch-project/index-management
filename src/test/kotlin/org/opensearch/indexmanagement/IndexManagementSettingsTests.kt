@@ -91,6 +91,7 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
                     RollupSettings.ROLLUP_ENABLED,
                     RollupSettings.ROLLUP_SEARCH_ENABLED,
                     RollupSettings.ROLLUP_SEARCH_ALL_JOBS,
+                    RollupSettings.ROLLUP_SEARCH_SOURCE_INDICES,
                     RollupSettings.ROLLUP_DASHBOARDS,
                     SnapshotManagementSettings.FILTER_BY_BACKEND_ROLES,
                 ),
@@ -176,6 +177,7 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
         assertEquals(RollupSettings.ROLLUP_ENABLED.get(settings), false)
         assertEquals(RollupSettings.ROLLUP_SEARCH_ENABLED.get(settings), false)
         assertEquals(RollupSettings.ROLLUP_SEARCH_ALL_JOBS.get(settings), false)
+        assertEquals(RollupSettings.ROLLUP_SEARCH_SOURCE_INDICES.get(settings), false)
         assertEquals(RollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS.get(settings), TimeValue.timeValueMillis(1))
         assertEquals(RollupSettings.ROLLUP_INGEST_BACKOFF_COUNT.get(settings), 1)
         assertEquals(RollupSettings.ROLLUP_SEARCH_BACKOFF_MILLIS.get(settings), TimeValue.timeValueMillis(1))
