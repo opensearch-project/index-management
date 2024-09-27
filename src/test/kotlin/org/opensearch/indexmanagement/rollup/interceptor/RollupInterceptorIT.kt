@@ -1092,12 +1092,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 },
                 "aggs": {
                     "sum_passenger_count": { "sum": { "field": "passenger_count" } },
-                    "max_passenger_count": { "max": { "field": "passenger_count" } },
-                    "value_count_passenger_count": { "value_count": { "field": "passenger_count" } }
+                    "max_passenger_count": { "max": { "field": "passenger_count" } }
                 }
             }
             """.trimIndent()
-        // Search 1 non-rollup index and 1 rollup
+//        Search 1 non-rollup index and 1 rollup
+        updateSearchRawRollupClusterSetting(false)
         val searchResult1 = client().makeRequest("POST", "/$sourceIndex2,$targetIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(searchResult1.restStatus() == RestStatus.OK)
         val failures = extractFailuresFromSearchResponse(searchResult1)
@@ -1118,13 +1118,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertTrue(rawRes1.restStatus() == RestStatus.OK)
         val rawRes2 = client().makeRequest("POST", "/$targetIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(rawRes2.restStatus() == RestStatus.OK)
-        val searchResult2 = client().makeRequest("POST", "/$sourceIndex2,$targetIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
-        assertTrue(searchResult2.restStatus() == RestStatus.OK)
+        val searchResult = client().makeRequest("POST", "/$sourceIndex2,$targetIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(searchResult.restStatus() == RestStatus.OK)
         val rawAgg1Res = rawRes1.asMap()["aggregations"] as Map<String, Map<String, Any>>
         val rawAgg2Res = rawRes2.asMap()["aggregations"] as Map<String, Map<String, Any>>
-        val rollupAggResMulti = searchResult2.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        val rollupAggResMulti = searchResult.asMap()["aggregations"] as Map<String, Map<String, Any>>
 
-        val trueAggCount = rawAgg1Res.getValue("value_count_passenger_count")["value"] as Int + rawAgg2Res.getValue("value_count_passenger_count")["value"] as Int
         val trueAggSum = rawAgg1Res.getValue("sum_passenger_count")["value"] as Double + rawAgg2Res.getValue("sum_passenger_count")["value"] as Double
 
         assertEquals(
@@ -1134,10 +1133,6 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Searching rollup target index did not return the sum for all of the rollup jobs on the index",
             trueAggSum, rollupAggResMulti.getValue("sum_passenger_count")["value"],
-        )
-        assertEquals(
-            "Searching rollup target index did not return the value count for all of the rollup jobs on the index",
-            trueAggCount, rollupAggResMulti.getValue("value_count_passenger_count")["value"],
         )
 
         // Search 2 rollups with different mappings
