@@ -1061,6 +1061,34 @@ class RollupInterceptorIT : RollupRestTestCase() {
             "Not all indices have rollup job", failures?.get(0)?.get("reason") ?: "Didn't find failure reason in search response",
         )
 
+        // Updating to allow searching on non-rollup and rolled-up index together
+        updateSearchRawRollupClusterSetting(true)
+        val rawRes1 = client().makeRequest("POST", "/$sourceIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes1.restStatus() == RestStatus.OK)
+        val rawRes2 = client().makeRequest("POST", "/$targetIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes2.restStatus() == RestStatus.OK)
+        val searchResult2 = client().makeRequest("POST", "/$sourceIndex2,$targetIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(searchResult2.restStatus() == RestStatus.OK)
+        val rawAgg1Res = rawRes1.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        val rawAgg2Res = rawRes2.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        val rollupAggResMulti = searchResult2.asMap()["aggregations"] as Map<String, Map<String, Any>>
+
+        val trueAggCount = rawAgg1Res.getValue("value_count_passenger_count")["value"] as Int + rawAgg2Res.getValue("value_count_passenger_count")["value"] as Int
+        val trueAggSum = rawAgg1Res.getValue("sum_passenger_count")["value"] as Double + rawAgg2Res.getValue("sum_passenger_count")["value"] as Double
+
+        assertEquals(
+            "Searching single raw source index and rollup target index did not return the same sum results",
+            rawAgg1Res.getValue("max_passenger_count")["value"], rollupAggResMulti.getValue("max_passenger_count")["value"],
+        )
+        assertEquals(
+            "Searching rollup target index did not return the sum for all of the rollup jobs on the index",
+            trueAggSum, rollupAggResMulti.getValue("sum_passenger_count")["value"],
+        )
+        assertEquals(
+            "Searching rollup target index did not return the value count for all of the rollup jobs on the index",
+            trueAggCount, rollupAggResMulti.getValue("value_count_passenger_count")["value"],
+        )
+
         // Search 2 rollups with different mappings
         try {
             client().makeRequest(
