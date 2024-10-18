@@ -350,7 +350,7 @@ class RollupInterceptor(
             request.source(request.source().rewriteSearchSourceBuilder(matchingRollupJobs.keys, fieldNameMappingTypeMap, concreteSourceIndex))
         } else {
             if (matchingRollupJobs.keys.size > 1) {
-                logger.warn("Trying search with search across multiple rollup jobs disabled so will give result with largest rollup window")
+                logger.trace("Trying search with search across multiple rollup jobs disabled so will give result with largest rollup window")
             }
             request.source(request.source().rewriteSearchSourceBuilder(matchedRollup, fieldNameMappingTypeMap, concreteSourceIndex))
         }
