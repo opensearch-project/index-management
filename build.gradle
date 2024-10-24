@@ -274,11 +274,11 @@ publishing {
 tasks.generatePomFileForPluginZipPublication.dependsOn publishNebulaPublicationToMavenLocal
 
 plugins.withId('java') {
-    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_21
 }
 
 plugins.withId('org.jetbrains.kotlin.jvm') {
-    compileKotlin.kotlinOptions.jvmTarget = compileTestKotlin.kotlinOptions.jvmTarget = JavaVersion.VERSION_11
+    compileKotlin.kotlinOptions.jvmTarget = compileTestKotlin.kotlinOptions.jvmTarget = JavaVersion.VERSION_21
     compileKotlin.dependsOn ktlint
 }
 

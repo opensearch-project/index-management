@@ -44,7 +44,7 @@ jobs:
         uses: actions/setup-java@v2
         with:
           distribution: temurin # Temurin is a distribution of adoptium
-          java-version: 17
+          java-version: 21
       # index-management
       - name: Checkout Branch
         uses: actions/checkout@v2

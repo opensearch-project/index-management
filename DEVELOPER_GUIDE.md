@@ -1,7 +1,7 @@
 - [Developer Guide](#developer-guide)
     - [Forking and Cloning](#forking-and-cloning)
     - [Install Prerequisites](#install-prerequisites)
-        - [JDK 11](#jdk-11)
+        - [JDK 21](#jdk-21)
     - [Setup](#setup)  
     - [Build](#build)
         - [Building from the command line](#building-from-the-command-line)
@@ -19,17 +19,17 @@ Fork this repository on GitHub, and clone locally with `git clone`.
 
 ### Install Prerequisites
 
-#### JDK 11
+#### JDK 21
 
-OpenSearch components build using Java 11 at a minimum. This means you must have a JDK 11 installed with the environment variable `JAVA_HOME` referencing the path to Java home for your JDK 11 installation, e.g. `JAVA_HOME=/usr/lib/jvm/jdk-11`.
+OpenSearch components build using Java 21 at a minimum. This means you must have a JDK 21 installed with the environment variable `JAVA_HOME` referencing the path to Java home for your JDK 21 installation, e.g. `JAVA_HOME=/usr/lib/jvm/jdk-21`.
 
-Download Java 11 from [here](https://adoptium.net/releases.html?variant=openjdk11).
+Download Java 21 from [here](https://adoptium.net/releases.html?variant=openjdk21).
 
 ## Setup
 
 1. Check out this package from version control.
 2. Launch Intellij IDEA, choose **Import Project**, and select the `settings.gradle` file in the root of this package.
-3. To build from the command line, set `JAVA_HOME` to point to a JDK >= 11 before running `./gradlew`.
+3. To build from the command line, set `JAVA_HOME` to point to a JDK >= 21 before running `./gradlew`.
 - Unix System
     1. `export JAVA_HOME=jdk-install-dir`: Replace `jdk-install-dir` with the JAVA_HOME directory of your system.
     2. `export PATH=$JAVA_HOME/bin:$PATH`
