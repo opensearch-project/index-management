@@ -79,7 +79,7 @@ buildscript {
         classpath "org.opensearch.gradle:build-tools:${opensearch_version}"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlin_version}"
         classpath "org.jetbrains.kotlin:kotlin-allopen:${kotlin_version}"
-        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.3"
+        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.6"
         classpath "org.jacoco:org.jacoco.agent:0.8.10"
     }
 }
@@ -105,6 +105,10 @@ configurations.all {
     resolutionStrategy {
         force "org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}"
         force "org.jetbrains.kotlin:kotlin-stdlib-common:${kotlin_version}"
+        force "org.jetbrains.kotlin:kotlin-reflect:${kotlin_version}"
+        force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlin_version}"
+        force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${kotlin_version}"
+        force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${kotlin_version}"
         force 'junit:junit:4.13.1'
         force 'commons-beanutils:commons-beanutils:1.9.4'
         force 'com.google.guava:guava:30.0-jre'
@@ -222,7 +226,7 @@ dependencies {
         }
     }
     configurations.ktlint {
-        resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22"
+        resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.10"
     }
 
     // https://aws.oss.sonatype.org/content/repositories/snapshots/org/opensearch/plugin/
