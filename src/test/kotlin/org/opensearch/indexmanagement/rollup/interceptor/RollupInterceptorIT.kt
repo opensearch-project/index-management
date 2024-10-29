@@ -1043,7 +1043,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     "max_passenger_count": { "max": { "field": "passenger_count" } }
                 }
             }
-            """.trimIndent()
+        """.trimIndent()
 //        Search 1 non-rollup index and 1 rollup
         updateSearchRawRollupClusterSetting(false)
         val searchResult1 = client().makeRequest("POST", "/$sourceIndex2,$targetIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))

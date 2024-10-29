@@ -276,7 +276,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         val res =
             client().makeRequest(
                 "PUT", "_cluster/settings", emptyMap(),
-                StringEntity(request, ContentType.APPLICATION_JSON),
+                StringEntity(request, APPLICATION_JSON),
             )
         assertEquals("Request failed", RestStatus.OK, res.restStatus())
     }
