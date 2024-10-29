@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement
 
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
@@ -254,6 +255,7 @@ object ManagedIndexRunner :
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     @Suppress("ReturnCount", "ComplexMethod", "LongMethod", "ComplexCondition", "NestedBlockDepth")
     private suspend fun runManagedIndexConfig(managedIndexConfig: ManagedIndexConfig, jobContext: JobExecutionContext) {
         logger.debug("Run job for index ${managedIndexConfig.index}")
@@ -640,6 +642,7 @@ object ManagedIndexRunner :
      * update metadata in config index, and save metadata in history after update
      * this can be called 2 times in one job run, so need to save seqNo & primeTerm
      */
+    @OptIn(DelicateCoroutinesApi::class)
     private suspend fun updateManagedIndexMetaData(
         managedIndexMetaData: ManagedIndexMetaData,
         lastUpdateResult: UpdateMetadataResult? = null,
