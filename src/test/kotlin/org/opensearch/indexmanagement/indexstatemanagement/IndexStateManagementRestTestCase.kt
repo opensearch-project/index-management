@@ -365,7 +365,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
                 }
             }
         """.trimIndent()
-        val response = client().makeRequest(
+        val response = adminClient().makeRequest(
             "POST", "$INDEX_MANAGEMENT_INDEX/_search", emptyMap(),
             StringEntity(request, APPLICATION_JSON),
         )
@@ -380,7 +380,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     protected fun getManagedIndexConfigByDocId(id: String): ManagedIndexConfig? {
-        val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$id")
+        val response = adminClient().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$id")
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
         val getResponse = GetResponse.fromXContent(createParser(jsonXContent, response.entity.content))
         assertTrue("Did not find managed index config", getResponse.isExists)
@@ -832,7 +832,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         metadataId: String,
         header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): RollupMetadata {
-        val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, header)
+        val response = adminClient().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, header)
         assertEquals("Unable to get rollup metadata $metadataId", RestStatus.OK, response.restStatus())
 
         val parser = createParser(XContentType.JSON.xContent(), response.entity.content)
@@ -889,7 +889,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         metadataId: String,
         header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): TransformMetadata {
-        val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, header)
+        val response = adminClient().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, header)
         assertEquals("Unable to get transform metadata $metadataId", RestStatus.OK, response.restStatus())
 
         val parser = createParser(XContentType.JSON.xContent(), response.entity.content)
