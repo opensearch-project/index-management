@@ -20,7 +20,7 @@ jobs:
           java-version: 21
       # index-management
       - name: Checkout Branch
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Run IM Backwards Compatibility Tests
         run: |
           echo "Running backwards compatibility tests..."
