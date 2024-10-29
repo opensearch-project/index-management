@@ -24,7 +24,7 @@ jobs:
       fail-fast: false
       # This starts three jobs, setting these environment variables uniquely for the different jobs
       matrix:
-        java: [11, 17, 21]
+        java: [21]
         feature: [ism, non-ism]
         include:
           - feature: ism
@@ -88,7 +88,7 @@ jobs:
       fail-fast: false
       # This starts three jobs, setting these environment variables uniquely for the different jobs
       matrix:
-        java: [11, 17, 21]
+        java: [21]
         os: [windows-latest, macos-latest]
         feature: [ism, non-ism]
         include:

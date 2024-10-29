@@ -15,6 +15,10 @@ style:
     excludes: ['**/test/**']
   FunctionOnlyReturningConstant:
     active: false
+  UseRequire:
+    active: false
+  UnusedPrivateProperty:
+    active: false
 
 complexity:
   LargeClass:
