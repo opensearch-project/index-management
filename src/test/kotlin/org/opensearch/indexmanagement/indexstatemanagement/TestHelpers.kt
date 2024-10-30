@@ -17,6 +17,7 @@ import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.action.AliasAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.CloseAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityAction
@@ -278,6 +279,10 @@ fun randomTemplateScript(
 
 fun randomSnapshotActionConfig(repository: String = "repo", snapshot: String = "sp"): SnapshotAction {
     return SnapshotAction(repository, snapshot, index = 0)
+}
+
+fun randomRestoreActionConfig(repository: String = "repo"): ConvertIndexToRemoteAction {
+    return ConvertIndexToRemoteAction(repository, index = 0)
 }
 
 /**
