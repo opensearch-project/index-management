@@ -14,6 +14,7 @@ class RollupSettings {
     companion object {
         const val DEFAULT_ROLLUP_ENABLED = true
         const val DEFAULT_SEARCH_ALL_JOBS = false
+        const val DEFAULT_SEARCH_SOURCE_INDICES = false
         const val DEFAULT_ACQUIRE_LOCK_RETRY_COUNT = 3
         const val DEFAULT_ACQUIRE_LOCK_RETRY_DELAY = 1000L
         const val DEFAULT_RENEW_LOCK_RETRY_COUNT = 3
@@ -78,11 +79,20 @@ class RollupSettings {
             Setting.Property.Dynamic,
         )
 
-        val ROLLUP_DASHBOARDS: Setting<Boolean> = Setting.boolSetting(
-            "plugins.rollup.dashboards.enabled",
-            LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS,
-            Setting.Property.NodeScope,
-            Setting.Property.Dynamic,
-        )
+        val ROLLUP_SEARCH_SOURCE_INDICES: Setting<Boolean> =
+            Setting.boolSetting(
+                "plugins.rollup.search.search_source_indices",
+                DEFAULT_SEARCH_SOURCE_INDICES,
+                Setting.Property.NodeScope,
+                Setting.Property.Dynamic,
+            )
+
+        val ROLLUP_DASHBOARDS: Setting<Boolean> =
+            Setting.boolSetting(
+                "plugins.rollup.dashboards.enabled",
+                LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS,
+                Setting.Property.NodeScope,
+                Setting.Property.Dynamic,
+            )
     }
 }
