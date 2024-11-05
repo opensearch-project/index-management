@@ -198,11 +198,9 @@ ext {
             dest local
             overwrite false
         }
-    }
-
-    processTestResources {
-        from(getLayout().getBuildDirectory().file('sample.pem').get().getAsFile())
-        from(getLayout().getBuildDirectory().file('test-kirk.jks').get().getAsFile())
+        processTestResources {
+            from(getLayout().getBuildDirectory().file(file).get().getAsFile())
+        }
     }
 }
 
