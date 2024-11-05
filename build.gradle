@@ -200,7 +200,7 @@ ext {
         }
     }
 
-    processResources {
+    processTestResources {
         from(getLayout().getBuildDirectory().file('sample.pem').get().getAsFile())
         from(getLayout().getBuildDirectory().file('test-kirk.jks').get().getAsFile())
     }
