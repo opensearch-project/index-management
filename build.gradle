@@ -189,6 +189,20 @@ tasks.named('forbiddenApisTest').configure {
 
 ext {
     projectSubstitutions = [:]
+
+    ['esnode.pem', 'esnode-key.pem', 'kirk.pem', 'kirk-key.pem', 'root-ca.pem', 'sample.pem', 'test-kirk.jks'].forEach { file ->
+        File local = getLayout().getBuildDirectory().file(file).get().getAsFile()
+        download.run {
+            src "https://raw.githubusercontent.com/opensearch-project/security/refs/heads/main/bwc-test/src/test/resources/security/" + file
+            dest local
+            overwrite false
+        }
+    }
+
+    processResources {
+        from(getLayout().getBuildDirectory().file('sample.pem').get().getAsFile())
+        from(getLayout().getBuildDirectory().file('test-kirk.jks').get().getAsFile())
+    }
 }
 
 allprojects {
