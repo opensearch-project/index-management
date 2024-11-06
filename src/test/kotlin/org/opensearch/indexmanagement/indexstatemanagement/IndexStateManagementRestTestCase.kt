@@ -941,6 +941,12 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         assertEquals("Unable to delete snapshot", RestStatus.OK, response.restStatus())
     }
 
+    protected fun isClusterGreen(timeout: String) {
+        val endpoint = "_cluster/health?wait_for_status=yellow&timeout=$timeout"
+        val response = client().makeRequest("GET", endpoint)
+        assertEquals("Cluster status check timed out", RestStatus.OK, response.restStatus())
+    }
+
     @Suppress("UNCHECKED_CAST")
     protected fun assertSnapshotExists(
         repository: String,
