@@ -198,8 +198,8 @@ ext {
             dest local
             overwrite false
         }
-        processTestResources {
-            from(getLayout().getBuildDirectory().file(file).get().getAsFile())
+        processResources {
+            from(local)
         }
     }
 }
@@ -355,11 +355,11 @@ afterEvaluate {
         plugins.add(firstPlugin)
 
         if (securityEnabled) {
-            node.extraConfigFile("kirk.pem", file("kirk.pem"))
-            node.extraConfigFile("kirk-key.pem", file("kirk-key.pem"))
-            node.extraConfigFile("esnode.pem", file("esnode.pem"))
-            node.extraConfigFile("esnode-key.pem", file("esnode-key.pem"))
-            node.extraConfigFile("root-ca.pem", file("root-ca.pem"))
+            node.extraConfigFile("kirk.pem", file("build/resources/main/kirk.pem"))
+            node.extraConfigFile("kirk-key.pem", file("build/resources/main/kirk-key.pem"))
+            node.extraConfigFile("esnode.pem", file("build/resources/main/esnode.pem"))
+            node.extraConfigFile("esnode-key.pem", file("build/resources/main/esnode-key.pem"))
+            node.extraConfigFile("root-ca.pem", file("build/resources/main/root-ca.pem"))
             node.setting("plugins.security.ssl.transport.pemcert_filepath", "esnode.pem")
             node.setting("plugins.security.ssl.transport.pemkey_filepath", "esnode-key.pem")
             node.setting("plugins.security.ssl.transport.pemtrustedcas_filepath", "root-ca.pem")
