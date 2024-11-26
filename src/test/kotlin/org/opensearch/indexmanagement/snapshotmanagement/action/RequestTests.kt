@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.action
 
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.support.WriteRequest
+import org.opensearch.action.update.UpdateRequest
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.index.seqno.SequenceNumbers
@@ -82,22 +83,22 @@ class RequestTests : OpenSearchTestCase() {
 
     fun `test start sm policy request`() {
         val id = "some_id"
-        val req = StartSMRequest(id).index(INDEX_MANAGEMENT_INDEX)
+        val req = UpdateRequest(INDEX_MANAGEMENT_INDEX, id)
 
         val out = BytesStreamOutput().apply { req.writeTo(this) }
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
         val streamedReq = StartSMRequest(sin)
-        assertEquals(id, streamedReq.id())
+        assertEquals(id, streamedReq.id)
     }
 
     fun `test stop sm policy request`() {
         val id = "some_id"
-        val req = StopSMRequest(id).index(INDEX_MANAGEMENT_INDEX)
+        val req = UpdateRequest(INDEX_MANAGEMENT_INDEX, id)
 
         val out = BytesStreamOutput().apply { req.writeTo(this) }
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
         val streamedReq = StopSMRequest(sin)
-        assertEquals(id, streamedReq.id())
+        assertEquals(id, streamedReq.id)
     }
 
     fun `test explain sm policy request`() {
