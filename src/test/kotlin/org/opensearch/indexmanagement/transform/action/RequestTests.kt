@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.transform.action
 
 import org.opensearch.action.DocWriteRequest
 import org.opensearch.action.support.WriteRequest
+import org.opensearch.action.update.UpdateRequest
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
@@ -161,11 +162,11 @@ class RequestTests : OpenSearchTestCase() {
 
     fun `test stop transform request`() {
         val id = "some_id"
-        val req = StopTransformRequest(id).index(INDEX_MANAGEMENT_INDEX)
+        val req = UpdateRequest(INDEX_MANAGEMENT_INDEX, id)
 
         val out = BytesStreamOutput().apply { req.writeTo(this) }
         val streamedReq = StopTransformRequest(buildStreamInputForTransforms(out))
 
-        assertEquals(id, streamedReq.id())
+        assertEquals(id, streamedReq.id)
     }
 }
