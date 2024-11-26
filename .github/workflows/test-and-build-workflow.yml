@@ -57,7 +57,7 @@ jobs:
       - name: Get more space
         run: |
           df . -h
-          sudo rm -rf ${GITHUB_WORKSPACE}/.git
+          rm -rf ${GITHUB_WORKSPACE}/.git
           df . -h
       # This is a hack, but this step creates a link to the X: mounted drive, which makes the path
       # short enough to work on Windows
