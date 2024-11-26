@@ -5,24 +5,30 @@
 
 package org.opensearch.indexmanagement.rollup.action.stop
 
+import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionRequestValidationException
 import org.opensearch.action.ValidateActions.addValidationError
-import org.opensearch.action.update.UpdateRequest
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import java.io.IOException
 
-class StopRollupRequest : UpdateRequest {
+class StopRollupRequest : ActionRequest {
+
+    val id: String
+        get() = field
+
     @Throws(IOException::class)
-    constructor(sin: StreamInput) : super(sin)
+    constructor(sin: StreamInput) : super(sin) {
+        this.id = sin.readString()
+    }
 
     constructor(id: String) {
-        super.id(id)
+        this.id = id
     }
 
     override fun validate(): ActionRequestValidationException? {
         var validationException: ActionRequestValidationException? = null
-        if (super.id().isEmpty()) {
+        if (this.id.isEmpty()) {
             validationException = addValidationError("id is missing", validationException)
         }
         return validationException
