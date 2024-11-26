@@ -37,5 +37,6 @@ class StartSMRequest : ActionRequest {
     @Throws(IOException::class)
     override fun writeTo(out: StreamOutput) {
         super.writeTo(out)
+        out.writeString(id)
     }
 }
