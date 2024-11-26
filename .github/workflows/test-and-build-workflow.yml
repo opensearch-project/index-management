@@ -37,10 +37,6 @@ jobs:
       options: ${{ needs.Get-CI-Image-Tag.outputs.ci-image-start-options }}
 
     steps:
-      - name: Remove unnecessary files
-        run: |
-          rm -rf /usr/share/dotnet
-          rm -rf "$AGENT_TOOLSDIRECTORY"
       - name: Run start commands
         run: ${{ needs.Get-CI-Image-Tag.outputs.ci-image-start-command }}
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
@@ -52,13 +48,6 @@ jobs:
       # build index management
       - name: Checkout Branch
         uses: actions/checkout@v4
-      - name: Check working space directory
-        run: du ${GITHUB_WORKSPACE} -h -d 1
-      - name: Get more space
-        run: |
-          df . -h
-          rm -rf ${GITHUB_WORKSPACE}/.git
-          df . -h
       # This is a hack, but this step creates a link to the X: mounted drive, which makes the path
       # short enough to work on Windows
       - name: Build with Gradle

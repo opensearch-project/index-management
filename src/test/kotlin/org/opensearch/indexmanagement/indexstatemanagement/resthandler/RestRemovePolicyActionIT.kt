@@ -15,6 +15,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
 import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
+import org.opensearch.rest.RestRequest.Method.DELETE
 import org.opensearch.rest.RestRequest.Method.POST
 
 class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
@@ -230,5 +231,9 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
 
         // otherwise, test cleanup cannot delete this index
         updateIndexSetting(index1, IndexMetadata.SETTING_READ_ONLY, "false")
+        adminClient().makeRequest(
+            DELETE.toString(),
+            "/$index1",
+        )
     }
 }
