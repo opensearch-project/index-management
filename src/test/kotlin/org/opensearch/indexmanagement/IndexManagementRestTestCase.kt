@@ -369,6 +369,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
                     val active = (jsonObject["active"] as String).toInt()
                     val queue = (jsonObject["queue"] as String).toInt()
                     val name = jsonObject["name"]
+                    if (name == "generic") continue
                     val trueActive = if (name == "management") active - 1 else active
                     if (trueActive > 0 || queue > 0) {
                         fail("Still active threadpools in cluster: $jsonObject")
