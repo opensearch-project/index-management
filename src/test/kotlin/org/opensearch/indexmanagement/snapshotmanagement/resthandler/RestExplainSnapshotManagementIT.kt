@@ -6,7 +6,9 @@
 package org.opensearch.indexmanagement.snapshotmanagement.resthandler
 
 import org.opensearch.client.Request
+import org.opensearch.client.RequestOptions
 import org.opensearch.client.ResponseException
+import org.opensearch.client.WarningsHandler
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
@@ -143,6 +145,9 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
     fun `test explain sm policy when config index doesn't exist`() {
         try {
             val deleteISMIndexRequest = Request("DELETE", "/$INDEX_MANAGEMENT_INDEX")
+            val options = RequestOptions.DEFAULT.toBuilder()
+            options.setWarningsHandler(WarningsHandler.PERMISSIVE)
+            deleteISMIndexRequest.options = options.build()
             adminClient().performRequest(deleteISMIndexRequest)
             explainSMPolicy(randomAlphaOfLength(10))
             fail("expected response exception")

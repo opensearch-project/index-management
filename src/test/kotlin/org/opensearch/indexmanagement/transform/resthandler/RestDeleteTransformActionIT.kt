@@ -6,7 +6,9 @@
 package org.opensearch.indexmanagement.transform.resthandler
 
 import org.opensearch.client.Request
+import org.opensearch.client.RequestOptions
 import org.opensearch.client.ResponseException
+import org.opensearch.client.WarningsHandler
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
@@ -79,6 +81,9 @@ class RestDeleteTransformActionIT : TransformRestTestCase() {
         try {
             if (indexExists(INDEX_MANAGEMENT_INDEX)) {
                 val deleteISMIndexRequest = Request("DELETE", "/$INDEX_MANAGEMENT_INDEX")
+                val options = RequestOptions.DEFAULT.toBuilder()
+                options.setWarningsHandler(WarningsHandler.PERMISSIVE)
+                deleteISMIndexRequest.options = options.build()
                 adminClient().performRequest(deleteISMIndexRequest)
             }
             val res = client().makeRequest("DELETE", "$TRANSFORM_BASE_URI/foobarbaz")
