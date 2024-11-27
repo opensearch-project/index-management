@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
+import org.junit.AfterClass
 import org.opensearch.client.ResponseException
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.core.rest.RestStatus
@@ -19,6 +20,13 @@ import org.opensearch.rest.RestRequest.Method.DELETE
 import org.opensearch.rest.RestRequest.Method.POST
 
 class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
+    companion object {
+        @AfterClass
+        @JvmStatic fun clearIndicesAfterClass() {
+            wipeAllIndices()
+        }
+    }
+
     fun `test missing indices`() {
         try {
             client().makeRequest(POST.toString(), RestRemovePolicyAction.REMOVE_POLICY_BASE_URI)
