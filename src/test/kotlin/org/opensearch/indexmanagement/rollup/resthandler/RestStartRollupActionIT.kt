@@ -6,9 +6,7 @@
 package org.opensearch.indexmanagement.rollup.resthandler
 
 import org.opensearch.client.Request
-import org.opensearch.client.RequestOptions
 import org.opensearch.client.ResponseException
-import org.opensearch.client.WarningsHandler
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementIndices
@@ -205,9 +203,6 @@ class RestStartRollupActionIT : RollupRestAPITestCase() {
     fun `test start rollup when multiple shards configured for IM config index`() {
         // setup ism-config index with multiple primary shards
         val deleteISMIndexRequest = Request("DELETE", "/$INDEX_MANAGEMENT_INDEX")
-        val options = RequestOptions.DEFAULT.toBuilder()
-        options.setWarningsHandler(WarningsHandler.PERMISSIVE)
-        deleteISMIndexRequest.options = options.build()
         adminClient().performRequest(deleteISMIndexRequest)
         val mapping = IndexManagementIndices.indexManagementMappings.trim().trimStart('{').trimEnd('}')
         val settings =
