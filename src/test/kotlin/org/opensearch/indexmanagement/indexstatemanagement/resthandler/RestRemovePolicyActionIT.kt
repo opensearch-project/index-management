@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
-import org.junit.AfterClass
 import org.opensearch.client.ResponseException
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.core.rest.RestStatus
@@ -16,17 +15,9 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.FAILURES
 import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.rest.RestRequest.Method.DELETE
 import org.opensearch.rest.RestRequest.Method.POST
 
 class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
-    companion object {
-        @AfterClass
-        @JvmStatic fun clearIndicesAfterClass() {
-            wipeAllIndices()
-        }
-    }
-
     fun `test missing indices`() {
         try {
             client().makeRequest(POST.toString(), RestRemovePolicyAction.REMOVE_POLICY_BASE_URI)
@@ -235,13 +226,9 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
             assertEquals("auto manage setting not false after removing policy for index $index4", false, getIndexAutoManageSetting(index3))
             assertEquals("read only setting changed after removing policy for index $index4", null, getIndexReadOnlySetting(index3))
             assertEquals("read only allow delete setting changed after removing policy for index $index4", null, getIndexReadOnlyAllowDeleteSetting(index3))
-        }
 
-        // otherwise, test cleanup cannot delete this index
-        updateIndexSetting(index1, IndexMetadata.SETTING_READ_ONLY, "false")
-        adminClient().makeRequest(
-            DELETE.toString(),
-            "/$index1",
-        )
+            // otherwise, test cleanup cannot delete this index
+            updateIndexSetting(index1, IndexMetadata.SETTING_READ_ONLY, "false")
+        }
     }
 }
