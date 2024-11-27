@@ -226,9 +226,9 @@ class RestRemovePolicyActionIT : IndexStateManagementRestTestCase() {
             assertEquals("auto manage setting not false after removing policy for index $index4", false, getIndexAutoManageSetting(index3))
             assertEquals("read only setting changed after removing policy for index $index4", null, getIndexReadOnlySetting(index3))
             assertEquals("read only allow delete setting changed after removing policy for index $index4", null, getIndexReadOnlyAllowDeleteSetting(index3))
-
-            // otherwise, test cleanup cannot delete this index
-            updateIndexSetting(index1, IndexMetadata.SETTING_READ_ONLY, "false")
         }
+
+        // otherwise, test cleanup cannot delete this index
+        updateIndexSetting(index1, IndexMetadata.SETTING_READ_ONLY, "false")
     }
 }
