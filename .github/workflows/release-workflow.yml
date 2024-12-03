@@ -115,7 +115,7 @@ jobs:
           asset_content_type: application/zip
 
       - name: Upload Workflow Artifacts
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: index-management-plugin
           path: index-management-artifacts
