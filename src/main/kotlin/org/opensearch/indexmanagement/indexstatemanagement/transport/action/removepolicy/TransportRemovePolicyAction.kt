@@ -268,8 +268,13 @@ constructor(
                 updateSettingReqsList.add(
                     UpdateSettingsRequest().indices(*readOnlyIndices.map { indices[it] }.toTypedArray())
                         .settings(
-                            Settings.builder().put(ManagedIndexSettings.AUTO_MANAGE.key, false)
-                                .put(INDEX_READ_ONLY_SETTING.key, true),
+                            Settings.builder().put(INDEX_READ_ONLY_SETTING.key, false),
+                        ),
+                )
+                updateSettingReqsList.add(
+                    UpdateSettingsRequest().indices(*readOnlyIndices.map { indices[it] }.toTypedArray())
+                        .settings(
+                            Settings.builder().put(ManagedIndexSettings.AUTO_MANAGE.key, false).put(INDEX_READ_ONLY_SETTING.key, true),
                         ),
                 )
             }
@@ -277,8 +282,13 @@ constructor(
                 updateSettingReqsList.add(
                     UpdateSettingsRequest().indices(*readOnlyAllowDeleteIndices.map { indices[it] }.toTypedArray())
                         .settings(
-                            Settings.builder().put(ManagedIndexSettings.AUTO_MANAGE.key, false)
-                                .put(INDEX_BLOCKS_READ_ONLY_ALLOW_DELETE_SETTING.key, true),
+                            Settings.builder().put(INDEX_BLOCKS_READ_ONLY_ALLOW_DELETE_SETTING.key, false),
+                        ),
+                )
+                updateSettingReqsList.add(
+                    UpdateSettingsRequest().indices(*readOnlyAllowDeleteIndices.map { indices[it] }.toTypedArray())
+                        .settings(
+                            Settings.builder().put(ManagedIndexSettings.AUTO_MANAGE.key, false).put(INDEX_BLOCKS_READ_ONLY_ALLOW_DELETE_SETTING.key, true),
                         ),
                 )
             }
