@@ -151,21 +151,21 @@ class RequestTests : OpenSearchTestCase() {
 
     fun `test start transform request`() {
         val id = "some_id"
-        val req = StartTransformRequest(id).index(INDEX_MANAGEMENT_INDEX)
+        val req = StartTransformRequest(id)
 
         val out = BytesStreamOutput().apply { req.writeTo(this) }
         val streamedReq = StartTransformRequest(buildStreamInputForTransforms(out))
 
-        assertEquals(id, streamedReq.id())
+        assertEquals(id, streamedReq.id)
     }
 
     fun `test stop transform request`() {
         val id = "some_id"
-        val req = StopTransformRequest(id).index(INDEX_MANAGEMENT_INDEX)
+        val req = StopTransformRequest(id)
 
         val out = BytesStreamOutput().apply { req.writeTo(this) }
         val streamedReq = StopTransformRequest(buildStreamInputForTransforms(out))
 
-        assertEquals(id, streamedReq.id())
+        assertEquals(id, streamedReq.id)
     }
 }

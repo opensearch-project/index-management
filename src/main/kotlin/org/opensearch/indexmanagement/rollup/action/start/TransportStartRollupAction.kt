@@ -28,6 +28,7 @@ import org.opensearch.commons.authuser.User
 import org.opensearch.core.action.ActionListener
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.rollup.model.Rollup
@@ -70,7 +71,7 @@ constructor(
                 ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
             )}",
         )
-        val getReq = GetRequest(INDEX_MANAGEMENT_INDEX, request.id())
+        val getReq = GetRequest(INDEX_MANAGEMENT_INDEX, request.id)
         val user: User? = buildUser(client.threadPool().threadContext)
         client.threadPool().threadContext.stashContext().use {
             client.get(
@@ -115,7 +116,8 @@ constructor(
     // TODO: Should create a transport action to update metadata
     private fun updateRollupJob(rollup: Rollup, request: StartRollupRequest, actionListener: ActionListener<AcknowledgedResponse>) {
         val now = Instant.now().toEpochMilli()
-        request.index(INDEX_MANAGEMENT_INDEX).doc(
+        val updateReq = UpdateRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.id)
+        updateReq.doc(
             mapOf(
                 Rollup.ROLLUP_TYPE to
                     mapOf(
@@ -125,7 +127,7 @@ constructor(
             ),
         )
         client.update(
-            request,
+            updateReq,
             object : ActionListener<UpdateResponse> {
                 override fun onResponse(response: UpdateResponse) {
                     if (response.result == DocWriteResponse.Result.UPDATED) {

@@ -6,8 +6,6 @@ on:
   push:
     branches:
       - "**"
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
 jobs:
   Get-CI-Image-Tag:
@@ -36,19 +34,20 @@ jobs:
       # using the same image which is used by opensearch-build team to build the OpenSearch Distribution
       # this image tag is subject to change as more dependencies and updates will arrive over time
       image: ${{ needs.Get-CI-Image-Tag.outputs.ci-image-version-linux }}
-      # need to switch to root so that github actions can install runner binary on container without permission issues.
-      options: --user root
+      options: ${{ needs.Get-CI-Image-Tag.outputs.ci-image-start-options }}
 
     steps:
+      - name: Run start commands
+        run: ${{ needs.Get-CI-Image-Tag.outputs.ci-image-start-command }}
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
       - name: Set Up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
           distribution: temurin # Temurin is a distribution of adoptium
           java-version: ${{ matrix.java }}
       # build index management
       - name: Checkout Branch
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       # This is a hack, but this step creates a link to the X: mounted drive, which makes the path
       # short enough to work on Windows
       - name: Build with Gradle
@@ -66,13 +65,13 @@ jobs:
           mkdir -p index-management-artifacts
           cp ./build/distributions/*.zip index-management-artifacts
       - name: Uploads coverage
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
       # This step uses the upload-artifact Github action: https://github.com/actions/upload-artifact
       - name: Upload Artifacts
         # v4 requires node.js 20 which is not supported
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: index-management-plugin-ubuntu-latest-${{ matrix.java }}
           path: index-management-artifacts
@@ -106,13 +105,13 @@ jobs:
     steps:
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
       - name: Set Up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
           distribution: temurin # Temurin is a distribution of adoptium
           java-version: ${{ matrix.java }}
       # build index management
       - name: Checkout Branch
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       # This is a hack, but this step creates a link to the X: mounted drive, which makes the path
       # short enough to work on Windows
       - name: Shorten Path
