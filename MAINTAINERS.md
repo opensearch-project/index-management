@@ -9,9 +9,6 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 | Vikas Bansal          | [vikasvb90](https://github.com/vikasvb90)             | Amazon      |
 | Bowen Lan             | [bowenlan-amzn](https://github.com/bowenlan-amzn)     | Amazon      |
 | Hailong Cui           | [Hailong-am](https://github.com/Hailong-am)           | Amazon      |
-| Kshitij Tandon        | [tandonks](https://github.com/tandonks)               | Amazon      |
-| Shivansh Arora        | [shiv0408](https://github.com/shiv0408)               | Amazon      |
-| Sooraj Sinha          | [soosinha](https://github.com/soosinha)               | Amazon      |
 
 ## Emeritus
 
