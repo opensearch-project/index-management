@@ -60,6 +60,7 @@ jobs:
         with:
           name: logs-${{ matrix.java }}-${{ matrix.feature }}
           path: build/testclusters/integTest-*/logs/*
+          overwrite: 'true'
       - name: Create Artifact Path
         run: |
           mkdir -p index-management-artifacts
