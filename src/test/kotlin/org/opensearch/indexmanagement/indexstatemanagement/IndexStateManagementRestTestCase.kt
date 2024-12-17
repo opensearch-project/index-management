@@ -101,7 +101,6 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     protected open fun enableValidationService() {
         updateValidationServiceSetting(true)
     }
-
     protected fun createPolicy(
         policy: Policy,
         policyId: String = OpenSearchTestCase.randomAlphaOfLength(10),
@@ -337,6 +336,42 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun updateValidationServiceSetting(value: Boolean) {
         updateClusterSetting(ManagedIndexSettings.ACTION_VALIDATION_ENABLED.key, value.toString(), false)
+    }
+
+    protected fun isIndexRemote(indexName: String): Boolean {
+        val response = client().makeRequest("GET", "/$indexName/_settings")
+        assertEquals("Unable to get index settings", RestStatus.OK, response.restStatus())
+        val settingsMap = response.asMap()
+        val indexSettings = (settingsMap[indexName] as Map<*, *>)["settings"] as Map<*, *>
+        val remoteSetting = ((indexSettings["index"] as Map<*, *>)["store"] as Map<*, *>)["type"]?.equals("remote_snapshot")
+        return remoteSetting ?: false
+    }
+
+    protected fun getDoc(indexName: String, docId: String): Map<*, *>? {
+        try {
+            val response = client().makeRequest("GET", "/$indexName/_doc/$docId")
+            if (response.restStatus() == RestStatus.OK) {
+                val responseMap = response.asMap()
+                val source = responseMap["_source"] as Map<*, *>
+                return source
+            }
+        } catch (e: ResponseException) {
+            if (e.response.restStatus() != RestStatus.NOT_FOUND) {
+                throw e
+            }
+        }
+        return null
+    }
+
+    protected fun indexDoc(index: String, id: String? = null, source: String) {
+        val endpoint = if (id != null) "/$index/_doc/$id" else "/$index/_doc"
+        val response = client().makeRequest(
+            "POST",
+            endpoint,
+            emptyMap(),
+            StringEntity(source, ContentType.APPLICATION_JSON),
+        )
+        assertEquals("Failed to index document", RestStatus.CREATED, response.restStatus())
     }
 
     protected fun updateIndexSetting(
