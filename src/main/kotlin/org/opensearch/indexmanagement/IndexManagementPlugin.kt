@@ -527,6 +527,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             RollupSettings.ROLLUP_SEARCH_ENABLED,
             RollupSettings.ROLLUP_DASHBOARDS,
             RollupSettings.ROLLUP_SEARCH_ALL_JOBS,
+            RollupSettings.ROLLUP_SEARCH_SOURCE_INDICES,
             TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_COUNT,
             TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_MILLIS,
             TransformSettings.TRANSFORM_JOB_SEARCH_BACKOFF_COUNT,

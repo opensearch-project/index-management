@@ -263,6 +263,24 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         assertEquals("Request failed", RestStatus.OK, res.restStatus())
     }
 
+    protected fun updateSearchRawRollupClusterSetting(value: Boolean) {
+        val formattedValue = "\"${value}\""
+        val request =
+            """
+            {
+                "persistent": {
+                    "${RollupSettings.ROLLUP_SEARCH_SOURCE_INDICES.key}": $formattedValue
+                }
+            }
+            """.trimIndent()
+        val res =
+            client().makeRequest(
+                "PUT", "_cluster/settings", emptyMap(),
+                StringEntity(request, APPLICATION_JSON),
+            )
+        assertEquals("Request failed", RestStatus.OK, res.restStatus())
+    }
+
     protected fun createSampleIndexForQSQTest(index: String) {
         val mapping = """
             "properties": {
