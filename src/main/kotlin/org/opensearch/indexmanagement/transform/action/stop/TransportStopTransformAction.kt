@@ -76,13 +76,13 @@ constructor(
     private val log = LogManager.getLogger(javaClass)
 
     override fun doExecute(task: Task, request: StopTransformRequest, actionListener: ActionListener<AcknowledgedResponse>) {
-        log.debug("Executing StopTransformAction on ${request.id()}")
+        log.debug("Executing StopTransformAction on ${request.id}")
         log.debug(
             "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
                 ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
             )}",
         )
-        val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id())
+        val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id)
         val user = buildUser(client.threadPool().threadContext)
         client.threadPool().threadContext.stashContext().use {
             client.get(
@@ -212,7 +212,8 @@ constructor(
 
     private fun updateTransformJob(transform: Transform, request: StopTransformRequest, actionListener: ActionListener<AcknowledgedResponse>) {
         val now = Instant.now().toEpochMilli()
-        request.index(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX).setIfSeqNo(transform.seqNo).setIfPrimaryTerm(transform.primaryTerm)
+        val updateReq = UpdateRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.id)
+        updateReq.setIfSeqNo(transform.seqNo).setIfPrimaryTerm(transform.primaryTerm)
             .doc(
                 mapOf(
                     Transform.TRANSFORM_TYPE to
@@ -223,7 +224,7 @@ constructor(
                 ),
             )
         client.update(
-            request,
+            updateReq,
             object : ActionListener<UpdateResponse> {
                 override fun onResponse(response: UpdateResponse) {
                     actionListener.onResponse(AcknowledgedResponse(response.result == DocWriteResponse.Result.UPDATED))

@@ -68,7 +68,7 @@ constructor(
                 ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
             )}",
         )
-        val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id())
+        val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id)
         val user = buildUser(client.threadPool().threadContext)
         client.threadPool().threadContext.stashContext().use {
             client.get(
@@ -117,7 +117,8 @@ constructor(
         actionListener: ActionListener<AcknowledgedResponse>,
     ) {
         val now = Instant.now().toEpochMilli()
-        request.index(INDEX_MANAGEMENT_INDEX).doc(
+        val updateReq = UpdateRequest(INDEX_MANAGEMENT_INDEX, request.id)
+        updateReq.doc(
             mapOf(
                 Transform.TRANSFORM_TYPE to
                     mapOf(
@@ -127,7 +128,7 @@ constructor(
             ),
         )
         client.update(
-            request,
+            updateReq,
             object : ActionListener<UpdateResponse> {
                 override fun onResponse(response: UpdateResponse) {
                     if (response.result == DocWriteResponse.Result.UPDATED) {

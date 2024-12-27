@@ -134,21 +134,21 @@ class RequestTests : OpenSearchTestCase() {
 
     fun `test start rollup request`() {
         val id = "some_id"
-        val req = StartRollupRequest(id).index(INDEX_MANAGEMENT_INDEX)
+        val req = StartRollupRequest(id)
 
         val out = BytesStreamOutput().apply { req.writeTo(this) }
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
         val streamedReq = StartRollupRequest(sin)
-        assertEquals(id, streamedReq.id())
+        assertEquals(id, streamedReq.id)
     }
 
     fun `test stop rollup request`() {
         val id = "some_id"
-        val req = StopRollupRequest(id).index(INDEX_MANAGEMENT_INDEX)
+        val req = StopRollupRequest(id)
 
         val out = BytesStreamOutput().apply { req.writeTo(this) }
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
         val streamedReq = StopRollupRequest(sin)
-        assertEquals(id, streamedReq.id())
+        assertEquals(id, streamedReq.id)
     }
 }
