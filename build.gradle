@@ -209,7 +209,7 @@ dependencies {
     implementation "org.jetbrains:annotations:13.0"
     implementation project(path: ":${rootProject.name}-spi", configuration: 'shadow')
     implementation "org.opensearch:common-utils:${common_utils_version}"
-    implementation "com.github.seancfoley:ipaddress:5.4.1"
+    implementation "com.github.seancfoley:ipaddress:5.5.1"
     implementation "commons-codec:commons-codec:${versions.commonscodec}"
     implementation "org.apache.httpcomponents:httpclient:${versions.httpclient}"
     implementation "org.apache.httpcomponents:httpcore:${versions.httpcore}"
