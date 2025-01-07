@@ -77,7 +77,7 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
 
             // Proceed with the restore operation
             val restoreSnapshotRequest = RestoreSnapshotRequest(repository, snapshotName)
-                .indices("*")
+                .indices(indexName)
                 .storageType(RestoreSnapshotRequest.StorageType.REMOTE_SNAPSHOT)
                 .renamePattern("^(.*)\$")
                 .renameReplacement("$1_remote")

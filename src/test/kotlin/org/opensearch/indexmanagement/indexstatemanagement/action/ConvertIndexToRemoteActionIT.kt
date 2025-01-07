@@ -8,35 +8,52 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
+import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.step.restore.AttemptRestoreStep
-import org.opensearch.indexmanagement.indexstatemanagement.step.restore.WaitForRestoreStep
+import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.AttemptSnapshotStep
+import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.WaitForSnapshotStep
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.test.OpenSearchTestCase
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class ConvertIndexToRemoteActionIT : IndexStateManagementRestTestCase() {
+
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
-    fun `test basic conversion to remote index`() {
-        val indexName = "${testIndexName}_index_basic"
-        val policyID = "${testIndexName}_policy_basic"
+    fun `test snapshot then convert to remote index`() {
+        val indexName = "${testIndexName}_index_snapshot_and_convert"
+        val policyID = "${testIndexName}_policy_snapshot_and_convert"
         val repository = "repository"
 
-        // Step 1: Create an index and index some data
         createIndex(indexName, null)
         indexDoc(indexName, "1", """{"field": "value1"}""")
 
-        // Step 2: Create a snapshot repository and take a snapshot of the index
         createRepository(repository)
-        val snapshotName = "$indexName-${OpenSearchTestCase.randomAlphaOfLength(10).lowercase()}"
-        createSnapshot(repository, snapshotName, true)
 
-        // Step 3: Assign a policy with ConvertIndexToRemoteAction to the index
-        val actionConfig = ConvertIndexToRemoteAction(repository, 0)
-        val states = listOf(State("ConvertToRemote", listOf(actionConfig), listOf()))
+        val snapshotAction = SnapshotAction(
+            repository = repository,
+            snapshot = indexName,
+            index = 0,
+        )
+
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = repository,
+            0,
+        )
+
+        val snapshotState = State(
+            name = "snapshotState",
+            actions = listOf(snapshotAction),
+            transitions = listOf(Transition(stateName = "convertToRemoteState", conditions = null)),
+        )
+
+        val convertToRemoteState = State(
+            name = "convertToRemoteState",
+            actions = listOf(convertAction),
+            transitions = listOf(),
+        )
 
         val policy = Policy(
             id = policyID,
@@ -44,8 +61,8 @@ class ConvertIndexToRemoteActionIT : IndexStateManagementRestTestCase() {
             schemaVersion = 1L,
             lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             errorNotification = randomErrorNotification(),
-            defaultState = states[0].name,
-            states = states,
+            defaultState = snapshotState.name,
+            states = listOf(snapshotState, convertToRemoteState),
         )
 
         createPolicy(policy, policyID)
@@ -53,29 +70,51 @@ class ConvertIndexToRemoteActionIT : IndexStateManagementRestTestCase() {
 
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
 
-        // Step 4: Trigger the action
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
-
-        // Trigger AttemptRestoreStep
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             val explainMetaData = getExplainManagedIndexMetaData(indexName)
-            assertEquals(AttemptRestoreStep.getSuccessMessage(indexName), explainMetaData.info?.get("message"))
+            assertEquals(
+                "Successfully initialized policy: convertindextoremoteactionit_policy_snapshot_and_convert",
+                explainMetaData.info?.get("message"),
+            )
         }
-
-        // Trigger WaitForRestoreStep
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             val explainMetaData = getExplainManagedIndexMetaData(indexName)
-            assertEquals(WaitForRestoreStep.getSuccessMessage(indexName), explainMetaData.info?.get("message"))
+            assertEquals(
+                AttemptSnapshotStep.getSuccessMessage(indexName),
+                explainMetaData.info?.get("message"),
+            )
+        }
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val explainMetaData = getExplainManagedIndexMetaData(indexName)
+            assertEquals(
+                WaitForSnapshotStep.getSuccessMessage(indexName),
+                explainMetaData.info?.get("message"),
+            )
         }
 
-        // Step 5: Verify that the remote index exists and contains the expected data
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val explainMetaData = getExplainManagedIndexMetaData(indexName)
+            assertEquals(
+                "Transitioning to convertToRemoteState [index=convertindextoremoteactionit_index_snapshot_and_convert]",
+                explainMetaData.info?.get("message"),
+            )
+        }
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val explainMetaData = getExplainManagedIndexMetaData(indexName)
+            assertEquals(
+                AttemptRestoreStep.getSuccessMessage(indexName),
+                explainMetaData.info?.get("message"),
+            )
+        }
+
         val remoteIndexName = "${indexName}_remote"
         waitFor { assertIndexExists(remoteIndexName) }
 
-        // Verify that the restored index is a remote index
         val isRemote = isIndexRemote(remoteIndexName)
         assertTrue("Index $remoteIndexName is not a remote index", isRemote)
     }
