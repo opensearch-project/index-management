@@ -281,8 +281,8 @@ fun randomSnapshotActionConfig(repository: String = "repo", snapshot: String = "
     return SnapshotAction(repository, snapshot, index = 0)
 }
 
-fun randomRestoreActionConfig(repository: String = "repo"): ConvertIndexToRemoteAction {
-    return ConvertIndexToRemoteAction(repository, index = 0)
+fun randomRestoreActionConfig(repository: String = "repo", snapshot: String = "sp"): ConvertIndexToRemoteAction {
+    return ConvertIndexToRemoteAction(repository, snapshot, index = 0)
 }
 
 /**
