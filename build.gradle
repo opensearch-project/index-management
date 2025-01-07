@@ -79,13 +79,14 @@ buildscript {
         classpath "org.opensearch.gradle:build-tools:${opensearch_version}"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlin_version}"
         classpath "org.jetbrains.kotlin:kotlin-allopen:${kotlin_version}"
-        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.6"
+        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.7"
         classpath "org.jacoco:org.jacoco.agent:0.8.10"
     }
 }
 
 plugins {
-    id "com.netflix.nebula.ospackage" version "11.5.0"
+    id "de.undercouch.download" version "5.3.0"
+    id "com.netflix.nebula.ospackage" version "11.10.1"
     id "com.dorongold.task-tree" version "2.1.1"
 }
 
@@ -189,6 +190,18 @@ tasks.named('forbiddenApisTest').configure {
 
 ext {
     projectSubstitutions = [:]
+
+    ['esnode.pem', 'esnode-key.pem', 'kirk.pem', 'kirk-key.pem', 'root-ca.pem', 'sample.pem', 'test-kirk.jks'].forEach { file ->
+        File local = getLayout().getBuildDirectory().file(file).get().getAsFile()
+        download.run {
+            src "https://raw.githubusercontent.com/opensearch-project/security/refs/heads/main/bwc-test/src/test/resources/security/" + file
+            dest local
+            overwrite false
+        }
+        processResources {
+            from(local)
+        }
+    }
 }
 
 allprojects {
@@ -209,7 +222,7 @@ dependencies {
     implementation "org.jetbrains:annotations:13.0"
     implementation project(path: ":${rootProject.name}-spi", configuration: 'shadow')
     implementation "org.opensearch:common-utils:${common_utils_version}"
-    implementation "com.github.seancfoley:ipaddress:5.4.1"
+    implementation "com.github.seancfoley:ipaddress:5.5.1"
     implementation "commons-codec:commons-codec:${versions.commonscodec}"
     implementation "org.apache.httpcomponents:httpclient:${versions.httpclient}"
     implementation "org.apache.httpcomponents:httpcore:${versions.httpcore}"
@@ -342,11 +355,11 @@ afterEvaluate {
         plugins.add(firstPlugin)
 
         if (securityEnabled) {
-            node.extraConfigFile("kirk.pem", file("src/test/resources/security/kirk.pem"))
-            node.extraConfigFile("kirk-key.pem", file("src/test/resources/security/kirk-key.pem"))
-            node.extraConfigFile("esnode.pem", file("src/test/resources/security/esnode.pem"))
-            node.extraConfigFile("esnode-key.pem", file("src/test/resources/security/esnode-key.pem"))
-            node.extraConfigFile("root-ca.pem", file("src/test/resources/security/root-ca.pem"))
+            node.extraConfigFile("kirk.pem", file("build/resources/main/kirk.pem"))
+            node.extraConfigFile("kirk-key.pem", file("build/resources/main/kirk-key.pem"))
+            node.extraConfigFile("esnode.pem", file("build/resources/main/esnode.pem"))
+            node.extraConfigFile("esnode-key.pem", file("build/resources/main/esnode-key.pem"))
+            node.extraConfigFile("root-ca.pem", file("build/resources/main/root-ca.pem"))
             node.setting("plugins.security.ssl.transport.pemcert_filepath", "esnode.pem")
             node.setting("plugins.security.ssl.transport.pemkey_filepath", "esnode-key.pem")
             node.setting("plugins.security.ssl.transport.pemtrustedcas_filepath", "root-ca.pem")

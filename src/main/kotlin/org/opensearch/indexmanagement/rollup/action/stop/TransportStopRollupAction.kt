@@ -77,13 +77,13 @@ constructor(
 
     @Suppress("ReturnCount")
     override fun doExecute(task: Task, request: StopRollupRequest, actionListener: ActionListener<AcknowledgedResponse>) {
-        log.debug("Executing StopRollupAction on ${request.id()}")
+        log.debug("Executing StopRollupAction on ${request.id}")
         log.debug(
             "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
                 ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
             )}",
         )
-        val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.id())
+        val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.id)
         val user = buildUser(client.threadPool().threadContext)
         client.threadPool().threadContext.stashContext().use {
             client.get(
@@ -214,7 +214,8 @@ constructor(
 
     private fun updateRollupJob(rollup: Rollup, request: StopRollupRequest, actionListener: ActionListener<AcknowledgedResponse>) {
         val now = Instant.now().toEpochMilli()
-        request.index(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX).setIfSeqNo(rollup.seqNo).setIfPrimaryTerm(rollup.primaryTerm)
+        val updateReq = UpdateRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.id)
+        updateReq.setIfSeqNo(rollup.seqNo).setIfPrimaryTerm(rollup.primaryTerm)
             .doc(
                 mapOf(
                     Rollup.ROLLUP_TYPE to
@@ -226,7 +227,7 @@ constructor(
             )
             .routing(rollup.id)
         client.update(
-            request,
+            updateReq,
             object : ActionListener<UpdateResponse> {
                 override fun onResponse(response: UpdateResponse) {
                     actionListener.onResponse(AcknowledgedResponse(response.result == DocWriteResponse.Result.UPDATED))
