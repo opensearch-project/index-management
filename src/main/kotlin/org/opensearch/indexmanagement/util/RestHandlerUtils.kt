@@ -4,6 +4,7 @@
  */
 
 @file:Suppress("TopLevelPropertyNaming", "MatchingDeclarationName")
+@file:Suppress("ktlint:standard:backing-property-naming")
 
 package org.opensearch.indexmanagement.util
 

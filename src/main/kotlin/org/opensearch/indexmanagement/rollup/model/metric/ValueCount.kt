@@ -17,9 +17,7 @@ class ValueCount() : Metric(Type.VALUE_COUNT) {
     @Suppress("UNUSED_PARAMETER")
     constructor(sin: StreamInput) : this()
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject().startObject(Type.VALUE_COUNT.type).endObject().endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject().startObject(Type.VALUE_COUNT.type).endObject().endObject()
 
     override fun writeTo(out: StreamOutput) { /* nothing to write */ }
 

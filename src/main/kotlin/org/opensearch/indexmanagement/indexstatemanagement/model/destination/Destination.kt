@@ -32,7 +32,8 @@ data class Destination(
     val chime: Chime?,
     val slack: Slack?,
     val customWebhook: CustomWebhook?,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
             .field(type.value, constructResponseForDestinationType(type))
@@ -143,15 +144,13 @@ data class Destination(
         return content
     }
 
-    private fun getLegacyCustomWebhookMessageURL(customWebhook: CustomWebhook?, compiledMessage: String): String {
-        return LegacyCustomWebhookMessage.Builder("custom_webhook")
-            .withUrl(customWebhook?.url)
-            .withScheme(customWebhook?.scheme)
-            .withHost(customWebhook?.host)
-            .withPort(customWebhook?.port)
-            .withPath(customWebhook?.path)
-            .withQueryParams(customWebhook?.queryParams)
-            .withMessage(compiledMessage)
-            .build().uri.toString()
-    }
+    private fun getLegacyCustomWebhookMessageURL(customWebhook: CustomWebhook?, compiledMessage: String): String = LegacyCustomWebhookMessage.Builder("custom_webhook")
+        .withUrl(customWebhook?.url)
+        .withScheme(customWebhook?.scheme)
+        .withHost(customWebhook?.host)
+        .withPort(customWebhook?.port)
+        .withPath(customWebhook?.path)
+        .withQueryParams(customWebhook?.queryParams)
+        .withMessage(compiledMessage)
+        .build().uri.toString()
 }

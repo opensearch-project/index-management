@@ -25,17 +25,16 @@ import java.nio.charset.StandardCharsets
 data class StateMetaData(
     val name: String,
     val startTime: Long,
-) : Writeable, ToXContentFragment {
+) : Writeable,
+    ToXContentFragment {
     override fun writeTo(out: StreamOutput) {
         out.writeString(name)
         out.writeLong(startTime)
     }
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder
-            .field(NAME, name)
-            .field(START_TIME, startTime)
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder
+        .field(NAME, name)
+        .field(START_TIME, startTime)
 
     fun getMapValueString(): String = Strings.toString(XContentType.JSON, this)
 

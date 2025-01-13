@@ -21,18 +21,14 @@ import org.opensearch.rest.action.RestToXContentListener
 import java.io.IOException
 
 class RestDeleteRollupAction : BaseRestHandler() {
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                DELETE, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
-                DELETE, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            DELETE, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
+            DELETE, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
+        ),
+    )
 
     override fun getName(): String = "opendistro_delete_rollup_action"
 

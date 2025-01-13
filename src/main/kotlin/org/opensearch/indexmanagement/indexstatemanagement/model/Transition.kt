@@ -23,7 +23,8 @@ import java.io.IOException
 data class Transition(
     val stateName: String,
     val conditions: Conditions?,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
             .field(STATE_NAME_FIELD, stateName)
@@ -79,7 +80,8 @@ data class Conditions(
     val size: ByteSizeValue? = null,
     val cron: CronSchedule? = null,
     val rolloverAge: TimeValue? = null,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
     init {
         val conditionsList = listOf(indexAge, docCount, size, cron, rolloverAge)
         require(conditionsList.filterNotNull().size == 1) { "Cannot provide more than one Transition condition" }

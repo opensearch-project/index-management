@@ -11,9 +11,7 @@ interface StatusChecker {
     /**
      * checks and returns the status of the extension
      */
-    fun check(clusterState: ClusterState): Status {
-        return Status.ENABLED
-    }
+    fun check(clusterState: ClusterState): Status = Status.ENABLED
 }
 
 enum class Status(private val value: String) {
@@ -21,9 +19,7 @@ enum class Status(private val value: String) {
     DISABLED("disabled"),
     ;
 
-    override fun toString(): String {
-        return value
-    }
+    override fun toString(): String = value
 }
 
 class DefaultStatusChecker : StatusChecker

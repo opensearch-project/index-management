@@ -108,8 +108,9 @@ constructor(
                                             val metadata =
                                                 contentParser(it.sourceRef)
                                                     .parseWithType(it.id, it.seqNo, it.primaryTerm, RollupMetadata.Companion::parse)
-                                            idsToExplain.computeIfPresent(metadata.rollupID) { _,
-                                                                                               explainRollup,
+                                            idsToExplain.computeIfPresent(metadata.rollupID) {
+                                                    _,
+                                                    explainRollup,
                                                 ->
                                                 explainRollup.copy(metadata = metadata)
                                             }

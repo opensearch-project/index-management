@@ -17,9 +17,7 @@ class Max() : Metric(Type.MAX) {
     @Suppress("UNUSED_PARAMETER")
     constructor(sin: StreamInput) : this()
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject().startObject(Type.MAX.type).endObject().endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject().startObject(Type.MAX.type).endObject().endObject()
 
     override fun writeTo(out: StreamOutput) { /* nothing to write */ }
 

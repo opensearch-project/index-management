@@ -21,7 +21,8 @@ import org.opensearch.indexmanagement.util._SEQ_NO
 class GetSMPoliciesResponse(
     val policies: List<SMPolicy>,
     val totalPolicies: Long,
-) : ActionResponse(), ToXContentObject {
+) : ActionResponse(),
+    ToXContentObject {
     constructor(sin: StreamInput) : this(
         policies = sin.readList(::SMPolicy),
         totalPolicies = sin.readLong(),
@@ -32,21 +33,19 @@ class GetSMPoliciesResponse(
         out.writeLong(totalPolicies)
     }
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .startArray("policies")
-            .apply {
-                for (policy in policies) {
-                    this.startObject()
-                        .field(_ID, policy.id)
-                        .field(_SEQ_NO, policy.seqNo)
-                        .field(_PRIMARY_TERM, policy.primaryTerm)
-                        .field(SMPolicy.SM_TYPE, policy, XCONTENT_WITHOUT_TYPE_AND_USER)
-                        .endObject()
-                }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .startArray("policies")
+        .apply {
+            for (policy in policies) {
+                this.startObject()
+                    .field(_ID, policy.id)
+                    .field(_SEQ_NO, policy.seqNo)
+                    .field(_PRIMARY_TERM, policy.primaryTerm)
+                    .field(SMPolicy.SM_TYPE, policy, XCONTENT_WITHOUT_TYPE_AND_USER)
+                    .endObject()
             }
-            .endArray()
-            .field("total_policies", totalPolicies)
-            .endObject()
-    }
+        }
+        .endArray()
+        .field("total_policies", totalPolicies)
+        .endObject()
 }

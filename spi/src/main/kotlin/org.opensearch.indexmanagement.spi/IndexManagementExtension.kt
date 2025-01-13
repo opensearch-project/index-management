@@ -26,9 +26,7 @@ interface IndexManagementExtension {
      * should represent if the extension is enabled or disabled, and should not represent extension health or the availability of some extension
      * dependency.
      */
-    fun statusChecker(): StatusChecker {
-        return DefaultStatusChecker()
-    }
+    fun statusChecker(): StatusChecker = DefaultStatusChecker()
 
     /**
      * Name of the extension
@@ -40,9 +38,7 @@ interface IndexManagementExtension {
      * indices provide the metadata service that can provide the index metadata for these indices. An extension need to label the metadata service
      * with a type string which is used to distinguish indices in IndexManagement plugin
      */
-    fun getIndexMetadataService(): Map<String, IndexMetadataService> {
-        return mapOf()
-    }
+    fun getIndexMetadataService(): Map<String, IndexMetadataService> = mapOf()
 
     /**
      * Caution: Experimental and can be removed in future
@@ -50,7 +46,5 @@ interface IndexManagementExtension {
      * If extension wants IndexManagement to determine cluster state indices UUID based on custom index setting if
      * present of cluster state override this method.
      */
-    fun overrideClusterStateIndexUuidSetting(): String? {
-        return null
-    }
+    fun overrideClusterStateIndexUuidSetting(): String? = null
 }

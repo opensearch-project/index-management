@@ -83,43 +83,41 @@ class RollupInterceptor(
         executor: String,
         forceExecution: Boolean,
         actualHandler: TransportRequestHandler<T>,
-    ): TransportRequestHandler<T> {
-        return object : TransportRequestHandler<T> {
-            override fun messageReceived(request: T, channel: TransportChannel, task: Task) {
-                if (searchEnabled && request is ShardSearchRequest) {
-                    val index = request.shardId().indexName
-                    val isRollupIndex = isRollupIndex(index, clusterService.state())
-                    if (isRollupIndex) {
-                        if (request.source().size() != 0) {
-                            throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
-                        }
+    ): TransportRequestHandler<T> = object : TransportRequestHandler<T> {
+        override fun messageReceived(request: T, channel: TransportChannel, task: Task) {
+            if (searchEnabled && request is ShardSearchRequest) {
+                val index = request.shardId().indexName
+                val isRollupIndex = isRollupIndex(index, clusterService.state())
+                if (isRollupIndex) {
+                    if (request.source().size() != 0) {
+                        throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
+                    }
 
-                        val indices = request.indices().map { it.toString() }.toTypedArray()
-                        val concreteIndices =
-                            indexNameExpressionResolver
-                                .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
-                        // To extract fields from QueryStringQueryBuilder we need concrete source index name.
-                        val rollupJob =
-                            clusterService.state().metadata.index(index).getRollupJobs()?.get(0)
-                                ?: throw IllegalArgumentException("No rollup job associated with target_index")
-                        val queryFieldMappings =
-                            getQueryMetadata(
-                                request.source().query(),
-                                getConcreteSourceIndex(rollupJob.sourceIndex, indexNameExpressionResolver, clusterService.state()),
-                            )
-                        val aggregationFieldMappings = getAggregationMetadata(request.source().aggregations()?.aggregatorFactories)
-                        val fieldMappings = queryFieldMappings + aggregationFieldMappings
+                    val indices = request.indices().map { it.toString() }.toTypedArray()
+                    val concreteIndices =
+                        indexNameExpressionResolver
+                            .concreteIndexNames(clusterService.state(), request.indicesOptions(), *indices)
+                    // To extract fields from QueryStringQueryBuilder we need concrete source index name.
+                    val rollupJob =
+                        clusterService.state().metadata.index(index).getRollupJobs()?.get(0)
+                            ?: throw IllegalArgumentException("No rollup job associated with target_index")
+                    val queryFieldMappings =
+                        getQueryMetadata(
+                            request.source().query(),
+                            getConcreteSourceIndex(rollupJob.sourceIndex, indexNameExpressionResolver, clusterService.state()),
+                        )
+                    val aggregationFieldMappings = getAggregationMetadata(request.source().aggregations()?.aggregatorFactories)
+                    val fieldMappings = queryFieldMappings + aggregationFieldMappings
 
-                        val allMatchingRollupJobs = validateIndicies(concreteIndices, fieldMappings)
+                    val allMatchingRollupJobs = validateIndicies(concreteIndices, fieldMappings)
 
-                        // only rebuild if there is necessity to rebuild
-                        if (fieldMappings.isNotEmpty()) {
-                            rewriteShardSearchForRollupJobs(request, allMatchingRollupJobs)
-                        }
+                    // only rebuild if there is necessity to rebuild
+                    if (fieldMappings.isNotEmpty()) {
+                        rewriteShardSearchForRollupJobs(request, allMatchingRollupJobs)
                     }
                 }
-                actualHandler.messageReceived(request, channel, task)
             }
+            actualHandler.messageReceived(request, channel, task)
         }
     }
 
@@ -242,7 +240,8 @@ class RollupInterceptor(
                 query.innerQueries().forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
             }
             is MatchPhraseQueryBuilder -> {
-                if (!query.analyzer().isNullOrEmpty() || query.slop() != MatchQuery.DEFAULT_PHRASE_SLOP ||
+                if (!query.analyzer().isNullOrEmpty() ||
+                    query.slop() != MatchQuery.DEFAULT_PHRASE_SLOP ||
                     query.zeroTermsQuery() != MatchQuery.DEFAULT_ZERO_TERMS_QUERY
                 ) {
                     throw IllegalArgumentException(
@@ -338,12 +337,10 @@ class RollupInterceptor(
         }
     }
 
-    private fun getEstimateRollupInterval(rollup: Rollup): Long {
-        return if (rollup.getDateHistogram().calendarInterval != null) {
-            DateHistogramInterval(rollup.getDateHistogram().calendarInterval).estimateMillis()
-        } else {
-            DateHistogramInterval(rollup.getDateHistogram().fixedInterval).estimateMillis()
-        }
+    private fun getEstimateRollupInterval(rollup: Rollup): Long = if (rollup.getDateHistogram().calendarInterval != null) {
+        DateHistogramInterval(rollup.getDateHistogram().calendarInterval).estimateMillis()
+    } else {
+        DateHistogramInterval(rollup.getDateHistogram().fixedInterval).estimateMillis()
     }
 
     private fun rewriteShardSearchForRollupJobs(request: ShardSearchRequest, matchingRollupJobs: Map<Rollup, Set<RollupFieldMapping>>) {

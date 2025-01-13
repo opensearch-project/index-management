@@ -35,14 +35,12 @@ data class Terms(
         targetField = sin.readString(),
     )
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .startObject(type.type)
-            .field(DIMENSION_SOURCE_FIELD_FIELD, sourceField)
-            .field(DIMENSION_TARGET_FIELD_FIELD, targetField)
-            .endObject()
-            .endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .startObject(type.type)
+        .field(DIMENSION_SOURCE_FIELD_FIELD, sourceField)
+        .field(DIMENSION_TARGET_FIELD_FIELD, targetField)
+        .endObject()
+        .endObject()
 
     override fun writeTo(out: StreamOutput) {
         out.writeString(sourceField)
@@ -56,9 +54,7 @@ data class Terms(
             .field(this.sourceField)
     }
 
-    override fun toBucketQuery(bucketKey: Any): AbstractQueryBuilder<*> {
-        return TermsQueryBuilder(sourceField, bucketKey)
-    }
+    override fun toBucketQuery(bucketKey: Any): AbstractQueryBuilder<*> = TermsQueryBuilder(sourceField, bucketKey)
 
     override fun canBeRealizedInMappings(mappings: Map<String, Any>): Boolean {
         val fieldType = getFieldFromMappings(sourceField, mappings)?.get("type") ?: return false

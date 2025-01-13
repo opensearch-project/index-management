@@ -27,30 +27,24 @@ import org.opensearch.rest.action.RestToXContentListener
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 
 class RestGetRollupAction : BaseRestHandler() {
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                GET, ROLLUP_JOBS_BASE_URI,
-                GET, LEGACY_ROLLUP_JOBS_BASE_URI,
-            ),
-            ReplacedRoute(
-                GET, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
-                GET, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
-            ),
-            ReplacedRoute(
-                HEAD, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
-                HEAD, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            GET, ROLLUP_JOBS_BASE_URI,
+            GET, LEGACY_ROLLUP_JOBS_BASE_URI,
+        ),
+        ReplacedRoute(
+            GET, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
+            GET, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
+        ),
+        ReplacedRoute(
+            HEAD, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
+            HEAD, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
+        ),
+    )
 
-    override fun getName(): String {
-        return "opendistro_get_rollup_action"
-    }
+    override fun getName(): String = "opendistro_get_rollup_action"
 
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
         val rollupID = request.param("rollupID")

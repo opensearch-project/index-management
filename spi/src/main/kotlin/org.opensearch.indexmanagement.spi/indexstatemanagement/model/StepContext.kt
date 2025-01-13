@@ -23,7 +23,5 @@ class StepContext(
     val settings: Settings,
     val lockService: LockService,
 ) {
-    fun getUpdatedContext(metadata: ManagedIndexMetaData): StepContext {
-        return StepContext(metadata, this.clusterService, this.client, this.threadContext, this.user, this.scriptService, this.settings, this.lockService)
-    }
+    fun getUpdatedContext(metadata: ManagedIndexMetaData): StepContext = StepContext(metadata, this.clusterService, this.client, this.threadContext, this.user, this.scriptService, this.settings, this.lockService)
 }

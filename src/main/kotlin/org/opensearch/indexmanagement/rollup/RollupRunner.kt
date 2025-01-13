@@ -127,9 +127,7 @@ object RollupRunner :
         return this
     }
 
-    fun registerConsumers(): RollupRunner {
-        return this
-    }
+    fun registerConsumers(): RollupRunner = this
 
     @Suppress("ComplexMethod")
     override fun runJob(job: ScheduledJobParameter, context: JobExecutionContext) {

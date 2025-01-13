@@ -15,10 +15,10 @@ import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.core.xcontent.XContentParser
 import java.io.IOException
 
-data class ActionTimeout(val timeout: TimeValue) : ToXContentFragment, Writeable {
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.field(TIMEOUT_FIELD, timeout.stringRep)
-    }
+data class ActionTimeout(val timeout: TimeValue) :
+    ToXContentFragment,
+    Writeable {
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.field(TIMEOUT_FIELD, timeout.stringRep)
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(

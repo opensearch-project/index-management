@@ -28,7 +28,8 @@ data class StepMetaData(
     val name: String,
     val startTime: Long,
     val stepStatus: Step.StepStatus,
-) : Writeable, ToXContentFragment {
+) : Writeable,
+    ToXContentFragment {
     override fun writeTo(out: StreamOutput) {
         out.writeString(name)
         out.writeLong(startTime)
@@ -44,9 +45,7 @@ data class StepMetaData(
         return builder
     }
 
-    fun getMapValueString(): String {
-        return Strings.toString(XContentType.JSON, this)
-    }
+    fun getMapValueString(): String = Strings.toString(XContentType.JSON, this)
 
     companion object {
         const val STEP = "step"

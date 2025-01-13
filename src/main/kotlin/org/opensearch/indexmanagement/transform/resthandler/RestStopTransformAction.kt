@@ -19,15 +19,11 @@ import org.opensearch.rest.action.RestToXContentListener
 import java.io.IOException
 
 class RestStopTransformAction : BaseRestHandler() {
-    override fun routes(): List<Route> {
-        return listOf(
-            Route(POST, "$TRANSFORM_BASE_URI/{transformID}/_stop"),
-        )
-    }
+    override fun routes(): List<Route> = listOf(
+        Route(POST, "$TRANSFORM_BASE_URI/{transformID}/_stop"),
+    )
 
-    override fun getName(): String {
-        return "opendistro_stop_transform_action"
-    }
+    override fun getName(): String = "opendistro_stop_transform_action"
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {

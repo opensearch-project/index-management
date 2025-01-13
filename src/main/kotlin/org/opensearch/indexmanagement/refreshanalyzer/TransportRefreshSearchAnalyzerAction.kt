@@ -59,9 +59,7 @@ class TransportRefreshSearchAnalyzerAction :
     private val analysisRegistry: AnalysisRegistry
 
     @Throws(IOException::class)
-    override fun readShardResult(si: StreamInput): RefreshSearchAnalyzerShardResponse? {
-        return RefreshSearchAnalyzerShardResponse(si)
-    }
+    override fun readShardResult(si: StreamInput): RefreshSearchAnalyzerShardResponse? = RefreshSearchAnalyzerShardResponse(si)
 
     override fun newResponse(
         request: RefreshSearchAnalyzerRequest,
@@ -71,14 +69,10 @@ class TransportRefreshSearchAnalyzerAction :
         shardResponses: List<RefreshSearchAnalyzerShardResponse>,
         shardFailures: List<DefaultShardOperationFailedException>,
         clusterState: ClusterState,
-    ): RefreshSearchAnalyzerResponse {
-        return RefreshSearchAnalyzerResponse(totalShards, successfulShards, failedShards, shardFailures, shardResponses)
-    }
+    ): RefreshSearchAnalyzerResponse = RefreshSearchAnalyzerResponse(totalShards, successfulShards, failedShards, shardFailures, shardResponses)
 
     @Throws(IOException::class)
-    override fun readRequestFrom(si: StreamInput): RefreshSearchAnalyzerRequest {
-        return RefreshSearchAnalyzerRequest(si)
-    }
+    override fun readRequestFrom(si: StreamInput): RefreshSearchAnalyzerRequest = RefreshSearchAnalyzerRequest(si)
 
     @Throws(IOException::class)
     override fun shardOperation(request: RefreshSearchAnalyzerRequest, shardRouting: ShardRouting): RefreshSearchAnalyzerShardResponse {
@@ -94,15 +88,9 @@ class TransportRefreshSearchAnalyzerAction :
     /**
      * The refresh request works against *all* shards.
      */
-    override fun shards(clusterState: ClusterState, request: RefreshSearchAnalyzerRequest?, concreteIndices: Array<String?>?): ShardsIterator? {
-        return clusterState.routingTable().allShards(concreteIndices)
-    }
+    override fun shards(clusterState: ClusterState, request: RefreshSearchAnalyzerRequest?, concreteIndices: Array<String?>?): ShardsIterator? = clusterState.routingTable().allShards(concreteIndices)
 
-    override fun checkGlobalBlock(state: ClusterState, request: RefreshSearchAnalyzerRequest?): ClusterBlockException? {
-        return state.blocks().globalBlockedException(ClusterBlockLevel.METADATA_WRITE)
-    }
+    override fun checkGlobalBlock(state: ClusterState, request: RefreshSearchAnalyzerRequest?): ClusterBlockException? = state.blocks().globalBlockedException(ClusterBlockLevel.METADATA_WRITE)
 
-    override fun checkRequestBlock(state: ClusterState, request: RefreshSearchAnalyzerRequest?, concreteIndices: Array<String?>?): ClusterBlockException? {
-        return state.blocks().indicesBlockedException(ClusterBlockLevel.METADATA_WRITE, concreteIndices)
-    }
+    override fun checkRequestBlock(state: ClusterState, request: RefreshSearchAnalyzerRequest?, concreteIndices: Array<String?>?): ClusterBlockException? = state.blocks().indicesBlockedException(ClusterBlockLevel.METADATA_WRITE, concreteIndices)
 }

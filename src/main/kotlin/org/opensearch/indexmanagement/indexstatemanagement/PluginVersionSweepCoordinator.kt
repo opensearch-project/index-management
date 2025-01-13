@@ -26,8 +26,8 @@ class PluginVersionSweepCoordinator(
     settings: Settings,
     private val threadPool: ThreadPool,
     var clusterService: ClusterService,
-) : CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ISMPluginSweepCoordinator")),
-    LifecycleListener(),
+) : LifecycleListener(),
+    CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ISMPluginSweepCoordinator")),
     ClusterStateListener {
     private val logger = LogManager.getLogger(javaClass)
 

@@ -822,16 +822,14 @@ object ManagedIndexRunner :
         }
     }
 
-    private fun compileTemplate(template: Script, managedIndexMetaData: ManagedIndexMetaData): String {
-        return try {
-            scriptService.compile(template, TemplateScript.CONTEXT)
-                .newInstance(template.params + mapOf("ctx" to managedIndexMetaData.convertToMap()))
-                .execute()
-        } catch (e: Exception) {
-            val message = "There was an error compiling mustache template"
-            logger.error(message, e)
-            e.message ?: message
-        }
+    private fun compileTemplate(template: Script, managedIndexMetaData: ManagedIndexMetaData): String = try {
+        scriptService.compile(template, TemplateScript.CONTEXT)
+            .newInstance(template.params + mapOf("ctx" to managedIndexMetaData.convertToMap()))
+            .execute()
+    } catch (e: Exception) {
+        val message = "There was an error compiling mustache template"
+        logger.error(message, e)
+        e.message ?: message
     }
 
     private fun clusterIsRed(): Boolean = ClusterStateHealth(clusterService.state()).status == ClusterHealthStatus.RED
@@ -860,23 +858,21 @@ object ManagedIndexRunner :
     // TODO: This is a hacky solution to get the current start time off the job interval as job-scheduler currently does not
     //  make this public, long term solution is to make the changes in job-scheduler, cherry-pick back into ISM supported versions and
     //  republish job-scheduler spi to maven, in the interim we will parse the current interval start time
-    private suspend fun getIntervalStartTime(managedIndexConfig: ManagedIndexConfig): Instant {
-        return withContext(Dispatchers.IO) {
-            val intervalJsonString = managedIndexConfig.schedule.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string()
-            val xcp = XContentType.JSON.xContent().createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, intervalJsonString)
-            ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp) // start of schedule block
-            ensureExpectedToken(Token.FIELD_NAME, xcp.nextToken(), xcp) // "interval"
-            ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp) // start of interval block
-            var startTime: Long? = null
-            while (xcp.nextToken() != Token.END_OBJECT) {
-                val fieldName = xcp.currentName()
-                xcp.nextToken()
-                when (fieldName) {
-                    "start_time" -> startTime = xcp.longValue()
-                }
+    private suspend fun getIntervalStartTime(managedIndexConfig: ManagedIndexConfig): Instant = withContext(Dispatchers.IO) {
+        val intervalJsonString = managedIndexConfig.schedule.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string()
+        val xcp = XContentType.JSON.xContent().createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, intervalJsonString)
+        ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp) // start of schedule block
+        ensureExpectedToken(Token.FIELD_NAME, xcp.nextToken(), xcp) // "interval"
+        ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp) // start of interval block
+        var startTime: Long? = null
+        while (xcp.nextToken() != Token.END_OBJECT) {
+            val fieldName = xcp.currentName()
+            xcp.nextToken()
+            when (fieldName) {
+                "start_time" -> startTime = xcp.longValue()
             }
-            Instant.ofEpochMilli(requireNotNull(startTime))
         }
+        Instant.ofEpochMilli(requireNotNull(startTime))
     }
 
     /**
