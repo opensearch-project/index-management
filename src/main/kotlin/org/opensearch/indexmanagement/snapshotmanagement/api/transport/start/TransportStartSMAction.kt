@@ -11,6 +11,7 @@ import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.DocWriteResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.update.UpdateRequest
 import org.opensearch.action.update.UpdateResponse
 import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
@@ -57,7 +58,7 @@ constructor(
         user: User?,
         threadContext: ThreadContext.StoredContext,
     ): AcknowledgedResponse {
-        val smPolicy = client.getSMPolicy(request.id())
+        val smPolicy = client.getSMPolicy(request.id)
 
         // Check if the requested user has permission on the resource, throwing an exception if the user does not
         verifyUserHasPermissionForResource(user, smPolicy.user, filterByEnabled, "snapshot management policy", smPolicy.policyName)
@@ -71,7 +72,8 @@ constructor(
 
     private suspend fun enableSMPolicy(updateRequest: StartSMRequest): Boolean {
         val now = Instant.now().toEpochMilli()
-        updateRequest.index(INDEX_MANAGEMENT_INDEX).doc(
+        val updateReq = UpdateRequest(INDEX_MANAGEMENT_INDEX, updateRequest.id)
+        updateReq.doc(
             mapOf(
                 SMPolicy.SM_TYPE to
                     mapOf(
@@ -83,12 +85,12 @@ constructor(
         )
         val updateResponse: UpdateResponse =
             try {
-                client.suspendUntil { update(updateRequest, it) }
+                client.suspendUntil { update(updateReq, it) }
             } catch (e: VersionConflictEngineException) {
-                log.error("VersionConflictEngineException while trying to enable snapshot management policy id [${updateRequest.id()}]: $e")
+                log.error("VersionConflictEngineException while trying to enable snapshot management policy id [${updateRequest.id}]: $e")
                 throw OpenSearchStatusException(conflictExceptionMessage, RestStatus.INTERNAL_SERVER_ERROR)
             } catch (e: Exception) {
-                log.error("Failed trying to enable snapshot management policy id [${updateRequest.id()}]: $e")
+                log.error("Failed trying to enable snapshot management policy id [${updateRequest.id}]: $e")
                 throw OpenSearchStatusException("Failed while trying to enable SM Policy", RestStatus.INTERNAL_SERVER_ERROR)
             }
         return updateResponse.result == DocWriteResponse.Result.UPDATED
