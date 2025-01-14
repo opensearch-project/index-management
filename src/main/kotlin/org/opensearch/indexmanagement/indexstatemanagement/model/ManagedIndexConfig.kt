@@ -60,9 +60,7 @@ data class ManagedIndexConfig(
 
     override fun getLockDurationSeconds(): Long = 3600L // 1 hour
 
-    override fun getJitter(): Double? {
-        return jobJitter
-    }
+    override fun getJitter(): Double? = jobJitter
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder

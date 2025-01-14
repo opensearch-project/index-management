@@ -95,13 +95,9 @@ class TransportUpdateManagedIndexMetaDataAction @Inject constructor(
         )
     }
 
-    override fun read(si: StreamInput): AcknowledgedResponse {
-        return AcknowledgedResponse(si)
-    }
+    override fun read(si: StreamInput): AcknowledgedResponse = AcknowledgedResponse(si)
 
-    override fun executor(): String {
-        return ThreadPool.Names.SAME
-    }
+    override fun executor(): String = ThreadPool.Names.SAME
 
     inner class ManagedIndexMetaDataExecutor : ClusterStateTaskExecutor<ManagedIndexMetaDataTask> {
 

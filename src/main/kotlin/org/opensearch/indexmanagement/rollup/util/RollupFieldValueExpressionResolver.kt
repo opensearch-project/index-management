@@ -64,16 +64,11 @@ object RollupFieldValueExpressionResolver {
             return false
         }
 
-        open fun isAlias(index: String): Boolean {
-            return this.clusterService.state().metadata().indicesLookup?.get(index) is IndexAbstraction.Alias
-        }
+        open fun isAlias(index: String): Boolean = this.clusterService.state().metadata().indicesLookup?.get(index) is IndexAbstraction.Alias
 
-        open fun getWriteIndexNameForAlias(alias: String): String? {
-            return this.clusterService.state().metadata().indicesLookup?.get(alias)?.writeIndex?.index?.name
-        }
+        open fun getWriteIndexNameForAlias(alias: String): String? = this.clusterService.state().metadata().indicesLookup?.get(alias)?.writeIndex?.index?.name
 
-        open fun getBackingIndicesForAlias(alias: String): MutableList<IndexMetadata>? {
-            return this.clusterService.state().metadata().indicesLookup?.get(alias)?.indices
-        }
+        open fun getBackingIndicesForAlias(alias: String): MutableList<IndexMetadata>? = 
+            this.clusterService.state().metadata().indicesLookup?.get(alias)?.indices
     }
 }

@@ -36,7 +36,8 @@ data class ChangePolicy(
     val include: List<StateFilter>,
     val isSafe: Boolean,
     val user: User? = null,
-) : Writeable, ToXContentObject {
+) : Writeable,
+    ToXContentObject {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(

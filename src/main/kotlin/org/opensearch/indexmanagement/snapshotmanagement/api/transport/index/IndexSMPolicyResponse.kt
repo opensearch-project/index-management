@@ -27,7 +27,8 @@ class IndexSMPolicyResponse(
     val primaryTerm: Long,
     val policy: SMPolicy,
     val status: RestStatus,
-) : ActionResponse(), ToXContentObject {
+) : ActionResponse(),
+    ToXContentObject {
 
     constructor(sin: StreamInput) : this(
         id = sin.readString(),
@@ -47,13 +48,11 @@ class IndexSMPolicyResponse(
         out.writeEnum(status)
     }
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .field(_ID, id)
-            .field(_VERSION, version)
-            .field(_SEQ_NO, seqNo)
-            .field(_PRIMARY_TERM, primaryTerm)
-            .field(SM_TYPE, policy, XCONTENT_WITHOUT_TYPE_AND_USER)
-            .endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .field(_ID, id)
+        .field(_VERSION, version)
+        .field(_SEQ_NO, seqNo)
+        .field(_PRIMARY_TERM, primaryTerm)
+        .field(SM_TYPE, policy, XCONTENT_WITHOUT_TYPE_AND_USER)
+        .endObject()
 }

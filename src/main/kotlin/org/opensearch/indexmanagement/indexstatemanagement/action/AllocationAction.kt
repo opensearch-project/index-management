@@ -29,9 +29,7 @@ class AllocationAction(
 
     private val steps = listOf(attemptAllocationStep)
 
-    override fun getStepToExecute(context: StepContext): Step {
-        return attemptAllocationStep
-    }
+    override fun getStepToExecute(context: StepContext): Step = attemptAllocationStep
 
     override fun getSteps(): List<Step> = steps
 

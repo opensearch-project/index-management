@@ -32,7 +32,8 @@ data class ISMRollup(
     val pageSize: Int,
     val dimensions: List<Dimension>,
     val metrics: List<RollupMetrics>,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
 
     // TODO: This can be moved to a common place, since this is shared between Rollup and ISMRollup
     init {

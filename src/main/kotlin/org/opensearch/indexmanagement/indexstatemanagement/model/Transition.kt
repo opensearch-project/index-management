@@ -23,7 +23,8 @@ import java.io.IOException
 data class Transition(
     val stateName: String,
     val conditions: Conditions?,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
@@ -80,7 +81,8 @@ data class Conditions(
     val size: ByteSizeValue? = null,
     val cron: CronSchedule? = null,
     val rolloverAge: TimeValue? = null,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
 
     init {
         val conditionsList = listOf(indexAge, docCount, size, cron, rolloverAge)

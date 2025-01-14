@@ -23,22 +23,18 @@ import java.io.IOException
 
 class RestRemovePolicyAction : BaseRestHandler() {
 
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                POST, REMOVE_POLICY_BASE_URI,
-                POST, LEGACY_REMOVE_POLICY_BASE_URI,
-            ),
-            ReplacedRoute(
-                POST, "$REMOVE_POLICY_BASE_URI/{index}",
-                POST, "$LEGACY_REMOVE_POLICY_BASE_URI/{index}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            POST, REMOVE_POLICY_BASE_URI,
+            POST, LEGACY_REMOVE_POLICY_BASE_URI,
+        ),
+        ReplacedRoute(
+            POST, "$REMOVE_POLICY_BASE_URI/{index}",
+            POST, "$LEGACY_REMOVE_POLICY_BASE_URI/{index}",
+        ),
+    )
 
     override fun getName(): String = "remove_policy_action"
 

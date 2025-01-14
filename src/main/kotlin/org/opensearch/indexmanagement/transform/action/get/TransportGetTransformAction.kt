@@ -36,7 +36,7 @@ class TransportGetTransformAction @Inject constructor(
     val clusterService: ClusterService,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
-) : HandledTransportAction<GetTransformRequest, GetTransformResponse> (
+) : HandledTransportAction<GetTransformRequest, GetTransformResponse>(
     GetTransformAction.NAME, transportService, actionFilters, ::GetTransformRequest,
 ) {
 

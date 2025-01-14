@@ -91,14 +91,12 @@ fun managedIndexConfigIndexRequest(
         .source(managedIndexConfig.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
 }
 
-fun managedIndexConfigIndexRequest(managedIndexConfig: ManagedIndexConfig): IndexRequest {
-    return IndexRequest(INDEX_MANAGEMENT_INDEX)
-        .id(managedIndexConfig.indexUuid)
-        .setIfPrimaryTerm(managedIndexConfig.primaryTerm)
-        .setIfSeqNo(managedIndexConfig.seqNo)
-        .routing(managedIndexConfig.indexUuid) // we want job doc and its metadata doc be routed to same shard
-        .source(managedIndexConfig.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
-}
+fun managedIndexConfigIndexRequest(managedIndexConfig: ManagedIndexConfig): IndexRequest = IndexRequest(INDEX_MANAGEMENT_INDEX)
+    .id(managedIndexConfig.indexUuid)
+    .setIfPrimaryTerm(managedIndexConfig.primaryTerm)
+    .setIfSeqNo(managedIndexConfig.seqNo)
+    .routing(managedIndexConfig.indexUuid) // we want job doc and its metadata doc be routed to same shard
+    .source(managedIndexConfig.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
 
 const val METADATA_POST_FIX = "#metadata"
 
@@ -148,28 +146,20 @@ fun updateISMTemplateRequest(policyID: String, ismTemplates: List<ISMTemplate>, 
         .setIfSeqNo(seqNo).setIfPrimaryTerm(primaryTerm)
 }
 
-fun updateDisableManagedIndexRequest(uuid: String): UpdateRequest {
-    return updateEnabledField(uuid, false, null)
-}
+fun updateDisableManagedIndexRequest(uuid: String): UpdateRequest = updateEnabledField(uuid, false, null)
 
-fun updateEnableManagedIndexRequest(uuid: String): UpdateRequest {
-    return updateEnabledField(uuid, true, Instant.now().toEpochMilli())
-}
+fun updateEnableManagedIndexRequest(uuid: String): UpdateRequest = updateEnabledField(uuid, true, Instant.now().toEpochMilli())
 
-fun deleteManagedIndexRequest(uuid: String): DeleteRequest {
-    return DeleteRequest(INDEX_MANAGEMENT_INDEX, uuid)
-}
+fun deleteManagedIndexRequest(uuid: String): DeleteRequest = DeleteRequest(INDEX_MANAGEMENT_INDEX, uuid)
 
-fun deleteManagedIndexMetadataRequest(uuid: String): DeleteRequest {
-    return DeleteRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(uuid)).routing(uuid)
-}
+fun deleteManagedIndexMetadataRequest(uuid: String): DeleteRequest = DeleteRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(uuid)).routing(uuid)
 
-fun updateManagedIndexRequest(sweptManagedIndexConfig: SweptManagedIndexConfig): UpdateRequest {
-    return UpdateRequest(INDEX_MANAGEMENT_INDEX, sweptManagedIndexConfig.uuid)
-        .setIfPrimaryTerm(sweptManagedIndexConfig.primaryTerm)
-        .setIfSeqNo(sweptManagedIndexConfig.seqNo)
-        .doc(getPartialChangePolicyBuilder(sweptManagedIndexConfig.changePolicy))
-}
+fun updateManagedIndexRequest(
+    sweptManagedIndexConfig: SweptManagedIndexConfig
+): UpdateRequest = UpdateRequest(INDEX_MANAGEMENT_INDEX, sweptManagedIndexConfig.uuid)
+    .setIfPrimaryTerm(sweptManagedIndexConfig.primaryTerm)
+    .setIfSeqNo(sweptManagedIndexConfig.seqNo)
+    .doc(getPartialChangePolicyBuilder(sweptManagedIndexConfig.changePolicy))
 
 /**
  * Finds ManagedIndices that exist in [INDEX_MANAGEMENT_INDEX] that do not exist in the cluster state
@@ -182,10 +172,8 @@ fun updateManagedIndexRequest(sweptManagedIndexConfig: SweptManagedIndexConfig):
 fun getManagedIndicesToDelete(
     currentIndexUuids: List<String>,
     currentManagedIndexUuids: List<String>,
-): List<String> {
-    return currentManagedIndexUuids.filter { currentManagedIndex ->
-        !currentIndexUuids.contains(currentManagedIndex)
-    }
+): List<String> = currentManagedIndexUuids.filter { currentManagedIndex ->
+    !currentIndexUuids.contains(currentManagedIndex)
 }
 
 fun getSweptManagedIndexSearchRequest(scroll: Boolean = false, size: Int = ManagedIndexCoordinator.MAX_HITS): SearchRequest {
@@ -293,9 +281,8 @@ fun State.getUpdatedStateMetaData(managedIndexMetaData: ManagedIndexMetaData): S
     }
 }
 
-fun Action.shouldBackoff(actionMetaData: ActionMetaData?, actionRetry: ActionRetry?): Pair<Boolean, Long?>? {
-    return this.configRetry?.backoff?.shouldBackoff(actionMetaData, actionRetry)
-}
+fun Action.shouldBackoff(actionMetaData: ActionMetaData?, actionRetry: ActionRetry?): Pair<Boolean, Long?>? =
+    this.configRetry?.backoff?.shouldBackoff(actionMetaData, actionRetry)
 
 @Suppress("ReturnCount")
 fun Action.hasTimedOut(actionMetaData: ActionMetaData?): Boolean {

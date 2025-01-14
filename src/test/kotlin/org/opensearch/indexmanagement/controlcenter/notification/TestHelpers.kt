@@ -62,20 +62,14 @@ fun randomLRONConfig(
 fun randomLRONCondition(
     success: Boolean = randomBoolean(),
     failure: Boolean = randomBoolean(),
-): LRONCondition {
-    return LRONCondition(success, failure)
-}
+): LRONCondition = LRONCondition(success, failure)
 
 fun randomTaskId(
     nodeId: String = UUIDs.randomBase64UUID(),
     id: Long = randomLong(),
-): TaskId {
-    return TaskId(nodeId, id)
-}
+): TaskId = TaskId(nodeId, id)
 
-fun randomActionName(): String {
-    return supportedActions.random()
-}
+fun randomActionName(): String = supportedActions.random()
 
 fun randomLRONConfigResponse(
     lronConfig: LRONConfig = randomLRONConfig(),
@@ -89,17 +83,13 @@ fun randomLRONConfigResponse(
 
 fun randomGetLRONConfigResponse(
     size: Int = 10,
-): GetLRONConfigResponse {
-    return GetLRONConfigResponse(
-        lronConfigResponses = List(size) { randomLRONConfigResponse() },
-        size,
-    )
-}
+): GetLRONConfigResponse = GetLRONConfigResponse(
+    lronConfigResponses = List(size) { randomLRONConfigResponse() },
+    size,
+)
 
 fun LRONConfig.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(
     XContentFactory.jsonBuilder(), params,
 ).string()
 
-fun getResourceURI(taskId: TaskId?, actionName: String?): String {
-    return "${IndexManagementPlugin.LRON_BASE_URI}/${getDocID(taskId, actionName)}"
-}
+fun getResourceURI(taskId: TaskId?, actionName: String?): String = "${IndexManagementPlugin.LRON_BASE_URI}/${getDocID(taskId, actionName)}"

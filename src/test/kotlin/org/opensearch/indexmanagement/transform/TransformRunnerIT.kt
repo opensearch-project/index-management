@@ -1429,16 +1429,14 @@ class TransformRunnerIT : TransformRestTestCase() {
         disableTransform(transform.id)
     }
 
-    private fun getStrictMappings(): String {
-        return """
+    private fun getStrictMappings(): String = """
             "dynamic": "strict",
             "properties": {
                 "some-column": {
                     "type": "keyword"
                 }
             }
-        """.trimIndent()
-    }
+    """.trimIndent()
 
     private fun validateSourceIndex(indexName: String) {
         if (!indexExists(indexName)) {

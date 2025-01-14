@@ -38,9 +38,7 @@ class RolloverAction(
     private val attemptRolloverStep = AttemptRolloverStep(this)
     private val steps = listOf(attemptRolloverStep)
 
-    override fun getStepToExecute(context: StepContext): Step {
-        return attemptRolloverStep
-    }
+    override fun getStepToExecute(context: StepContext): Step = attemptRolloverStep
 
     override fun getSteps(): List<Step> = steps
 

@@ -118,19 +118,15 @@ fun randomRollup(): Rollup {
     )
 }
 
-fun randomRollupStats(): RollupStats {
-    return RollupStats(
-        pagesProcessed = OpenSearchRestTestCase.randomNonNegativeLong(),
-        documentsProcessed = OpenSearchRestTestCase.randomNonNegativeLong(),
-        rollupsIndexed = OpenSearchRestTestCase.randomNonNegativeLong(),
-        indexTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong(),
-        searchTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong(),
-    )
-}
+fun randomRollupStats(): RollupStats = RollupStats(
+    pagesProcessed = OpenSearchRestTestCase.randomNonNegativeLong(),
+    documentsProcessed = OpenSearchRestTestCase.randomNonNegativeLong(),
+    rollupsIndexed = OpenSearchRestTestCase.randomNonNegativeLong(),
+    indexTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong(),
+    searchTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong(),
+)
 
-fun randomRollupMetadataStatus(): RollupMetadata.Status {
-    return OpenSearchRestTestCase.randomFrom(RollupMetadata.Status.values().toList())
-}
+fun randomRollupMetadataStatus(): RollupMetadata.Status = OpenSearchRestTestCase.randomFrom(RollupMetadata.Status.values().toList())
 
 fun randomContinuousMetadata(): ContinuousMetadata {
     val one = randomInstant()
@@ -141,12 +137,10 @@ fun randomContinuousMetadata(): ContinuousMetadata {
     )
 }
 
-fun randomAfterKey(): Map<String, Any>? {
-    return if (OpenSearchRestTestCase.randomBoolean()) {
-        null
-    } else {
-        mapOf("test" to 17)
-    }
+fun randomAfterKey(): Map<String, Any>? = if (OpenSearchRestTestCase.randomBoolean()) {
+    null
+} else {
+    mapOf("test" to 17)
 }
 
 fun randomRollupMetadata(): RollupMetadata {
@@ -170,63 +164,51 @@ fun randomExplainRollup(): ExplainRollup {
     return ExplainRollup(metadataID = metadata.id, metadata = metadata)
 }
 
-fun randomISMRollup(): ISMRollup {
-    return ISMRollup(
-        description = OpenSearchRestTestCase.randomAlphaOfLength(10),
-        targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
-        pageSize = OpenSearchRestTestCase.randomIntBetween(1, 10000),
-        dimensions = randomRollupDimensions(),
-        metrics = OpenSearchRestTestCase.randomList(20, ::randomRollupMetrics).distinctBy { it.targetField },
-    )
-}
+fun randomISMRollup(): ISMRollup = ISMRollup(
+    description = OpenSearchRestTestCase.randomAlphaOfLength(10),
+    targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
+    pageSize = OpenSearchRestTestCase.randomIntBetween(1, 10000),
+    dimensions = randomRollupDimensions(),
+    metrics = OpenSearchRestTestCase.randomList(20, ::randomRollupMetrics).distinctBy { it.targetField },
+)
 
-fun randomISMFieldCapabilities(): ISMFieldCapabilities {
-    return ISMFieldCapabilities(
-        name = OpenSearchRestTestCase.randomAlphaOfLength(10),
-        type = OpenSearchRestTestCase.randomAlphaOfLength(10),
-        isSearchable = OpenSearchRestTestCase.randomBoolean(),
-        isAggregatable = OpenSearchRestTestCase.randomBoolean(),
-        indices = OpenSearchRestTestCase.generateRandomStringArray(10, 10, true, true),
-        nonSearchableIndices = OpenSearchRestTestCase.generateRandomStringArray(10, 10, true, true),
-        nonAggregatableIndices = OpenSearchRestTestCase.generateRandomStringArray(10, 10, true, true),
-        meta = mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to setOf(OpenSearchRestTestCase.randomAlphaOfLength(10))),
-    )
-}
+fun randomISMFieldCapabilities(): ISMFieldCapabilities = ISMFieldCapabilities(
+    name = OpenSearchRestTestCase.randomAlphaOfLength(10),
+    type = OpenSearchRestTestCase.randomAlphaOfLength(10),
+    isSearchable = OpenSearchRestTestCase.randomBoolean(),
+    isAggregatable = OpenSearchRestTestCase.randomBoolean(),
+    indices = OpenSearchRestTestCase.generateRandomStringArray(10, 10, true, true),
+    nonSearchableIndices = OpenSearchRestTestCase.generateRandomStringArray(10, 10, true, true),
+    nonAggregatableIndices = OpenSearchRestTestCase.generateRandomStringArray(10, 10, true, true),
+    meta = mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to setOf(OpenSearchRestTestCase.randomAlphaOfLength(10))),
+)
 
-fun randomISMIndexFieldCapabilities(): ISMIndexFieldCapabilities {
-    return ISMIndexFieldCapabilities(
-        name = OpenSearchRestTestCase.randomAlphaOfLength(10),
-        type = OpenSearchRestTestCase.randomAlphaOfLength(10),
-        isSearchable = OpenSearchRestTestCase.randomBoolean(),
-        isAggregatable = OpenSearchRestTestCase.randomBoolean(),
-        meta = mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to OpenSearchRestTestCase.randomAlphaOfLength(10)),
-    )
-}
+fun randomISMIndexFieldCapabilities(): ISMIndexFieldCapabilities = ISMIndexFieldCapabilities(
+    name = OpenSearchRestTestCase.randomAlphaOfLength(10),
+    type = OpenSearchRestTestCase.randomAlphaOfLength(10),
+    isSearchable = OpenSearchRestTestCase.randomBoolean(),
+    isAggregatable = OpenSearchRestTestCase.randomBoolean(),
+    meta = mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to OpenSearchRestTestCase.randomAlphaOfLength(10)),
+)
 
-fun randomISMFieldCapabilitiesIndexResponse(): ISMFieldCapabilitiesIndexResponse {
-    return ISMFieldCapabilitiesIndexResponse(
-        indexName = OpenSearchRestTestCase.randomAlphaOfLength(10),
-        responseMap = mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to randomISMIndexFieldCapabilities()),
-        canMatch = OpenSearchRestTestCase.randomBoolean(),
-    )
-}
+fun randomISMFieldCapabilitiesIndexResponse(): ISMFieldCapabilitiesIndexResponse = ISMFieldCapabilitiesIndexResponse(
+    indexName = OpenSearchRestTestCase.randomAlphaOfLength(10),
+    responseMap = mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to randomISMIndexFieldCapabilities()),
+    canMatch = OpenSearchRestTestCase.randomBoolean(),
+)
 
-fun randomISMFieldCaps(): ISMFieldCapabilitiesResponse {
-    return ISMFieldCapabilitiesResponse(
-        indices = OpenSearchRestTestCase.generateRandomStringArray(10, 10, false),
-        responseMap = mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to randomISMFieldCapabilities())),
-        indexResponses = OpenSearchRestTestCase.randomList(4, ::randomISMFieldCapabilitiesIndexResponse),
-    )
-}
+fun randomISMFieldCaps(): ISMFieldCapabilitiesResponse = ISMFieldCapabilitiesResponse(
+    indices = OpenSearchRestTestCase.generateRandomStringArray(10, 10, false),
+    responseMap = mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to mapOf(OpenSearchRestTestCase.randomAlphaOfLength(10) to randomISMFieldCapabilities())),
+    indexResponses = OpenSearchRestTestCase.randomList(4, ::randomISMFieldCapabilitiesIndexResponse),
+)
 
 fun randomDimension(): Dimension {
     val dimensions = listOf(randomTerms(), randomHistogram(), randomDateHistogram())
     return OpenSearchRestTestCase.randomSubsetOf(1, dimensions).first()
 }
 
-fun randomTermQuery(): TermQueryBuilder {
-    return TermQueryBuilder(OpenSearchRestTestCase.randomAlphaOfLength(5), OpenSearchRestTestCase.randomAlphaOfLength(5))
-}
+fun randomTermQuery(): TermQueryBuilder = TermQueryBuilder(OpenSearchRestTestCase.randomAlphaOfLength(5), OpenSearchRestTestCase.randomAlphaOfLength(5))
 
 fun DateHistogram.toJsonString(): String = this.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string()
 

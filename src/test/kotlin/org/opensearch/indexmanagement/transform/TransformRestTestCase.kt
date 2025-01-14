@@ -220,7 +220,5 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
 
     protected fun Transform.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), ContentType.APPLICATION_JSON)
 
-    override fun xContentRegistry(): NamedXContentRegistry {
-        return NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents)
-    }
+    override fun xContentRegistry(): NamedXContentRegistry = NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents)
 }

@@ -27,22 +27,18 @@ class RestAddPolicyAction : BaseRestHandler() {
 
     override fun getName(): String = "add_policy_action"
 
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                POST, ADD_POLICY_BASE_URI,
-                POST, LEGACY_ADD_POLICY_BASE_URI,
-            ),
-            ReplacedRoute(
-                POST, "$ADD_POLICY_BASE_URI/{index}",
-                POST, "$LEGACY_ADD_POLICY_BASE_URI/{index}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            POST, ADD_POLICY_BASE_URI,
+            POST, LEGACY_ADD_POLICY_BASE_URI,
+        ),
+        ReplacedRoute(
+            POST, "$ADD_POLICY_BASE_URI/{index}",
+            POST, "$LEGACY_ADD_POLICY_BASE_URI/{index}",
+        ),
+    )
 
     @Throws(IOException::class)
     @Suppress("SpreadOperator") // There is no way around dealing with java vararg without spread operator.

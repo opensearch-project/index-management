@@ -41,7 +41,7 @@ class TransportGetTransformsAction @Inject constructor(
     val clusterService: ClusterService,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
-) : HandledTransportAction<GetTransformsRequest, GetTransformsResponse> (
+) : HandledTransportAction<GetTransformsRequest, GetTransformsResponse>(
     GetTransformsAction.NAME, transportService, actionFilters, ::GetTransformsRequest,
 ) {
 
@@ -87,10 +87,8 @@ class TransportGetTransformsAction @Inject constructor(
         }
     }
 
-    private fun contentParser(bytesReference: BytesReference): XContentParser {
-        return XContentHelper.createParser(
-            xContentRegistry,
-            LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON,
-        )
-    }
+    private fun contentParser(bytesReference: BytesReference): XContentParser = XContentHelper.createParser(
+        xContentRegistry,
+        LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON,
+    )
 }

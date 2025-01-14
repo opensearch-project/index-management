@@ -21,9 +21,7 @@ class CloseAction(
 
     private val steps = listOf(attemptCloseStep)
 
-    override fun getStepToExecute(context: StepContext): Step {
-        return attemptCloseStep
-    }
+    override fun getStepToExecute(context: StepContext): Step = attemptCloseStep
 
     override fun getSteps(): List<Step> = steps
 }

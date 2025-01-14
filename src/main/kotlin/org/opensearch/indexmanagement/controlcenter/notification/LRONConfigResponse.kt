@@ -21,7 +21,8 @@ import java.io.IOException
 class LRONConfigResponse(
     val id: String,
     val lronConfig: LRONConfig,
-) : ActionResponse(), ToXContentObject {
+) : ActionResponse(),
+    ToXContentObject {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         id = sin.readString(),

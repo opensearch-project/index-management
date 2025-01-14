@@ -11,9 +11,7 @@ import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 
 class DeleteSMPolicyRequest : DeleteRequest {
-    override fun validate(): ActionRequestValidationException? {
-        return null
-    }
+    override fun validate(): ActionRequestValidationException? = null
 
     constructor(sin: StreamInput) : super(sin)
 

@@ -46,7 +46,5 @@ class SnapshotActionParser : ActionParser() {
         )
     }
 
-    override fun getActionType(): String {
-        return SnapshotAction.name
-    }
+    override fun getActionType(): String = SnapshotAction.name
 }

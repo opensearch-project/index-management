@@ -32,9 +32,7 @@ class NotificationAction(
     private val attemptNotificationStep = AttemptNotificationStep(this)
     private val steps = listOf(attemptNotificationStep)
 
-    override fun getStepToExecute(context: StepContext): Step {
-        return attemptNotificationStep
-    }
+    override fun getStepToExecute(context: StepContext): Step = attemptNotificationStep
 
     override fun getSteps(): List<Step> = steps
 

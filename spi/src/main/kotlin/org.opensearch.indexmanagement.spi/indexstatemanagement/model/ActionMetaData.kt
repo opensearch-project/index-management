@@ -30,7 +30,8 @@ data class ActionMetaData(
     val consumedRetries: Int,
     val lastRetryTime: Long?,
     val actionProperties: ActionProperties?,
-) : Writeable, ToXContentFragment {
+) : Writeable,
+    ToXContentFragment {
 
     override fun writeTo(out: StreamOutput) {
         out.writeString(name)
@@ -61,9 +62,7 @@ data class ActionMetaData(
         return builder
     }
 
-    fun getMapValueString(): String {
-        return Strings.toString(XContentType.JSON, this)
-    }
+    fun getMapValueString(): String = Strings.toString(XContentType.JSON, this)
 
     companion object {
         const val ACTION = "action"

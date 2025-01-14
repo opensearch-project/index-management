@@ -24,7 +24,8 @@ data class ShrinkActionProperties(
     val lockDurationSecond: Long,
     // Used to store the original index allocation and write block setting to reapply after shrink
     val originalIndexSettings: Map<String, String>,
-) : Writeable, ToXContentFragment {
+) : Writeable,
+    ToXContentFragment {
 
     override fun writeTo(out: StreamOutput) {
         out.writeString(nodeName)

@@ -24,7 +24,5 @@ class OpenActionParser : ActionParser() {
         return OpenAction(index)
     }
 
-    override fun getActionType(): String {
-        return OpenAction.name
-    }
+    override fun getActionType(): String = OpenAction.name
 }

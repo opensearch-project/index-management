@@ -21,7 +21,9 @@ import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.util._VERSION
 import java.io.IOException
 
-class GetRollupResponse : ActionResponse, ToXContentObject {
+class GetRollupResponse :
+    ActionResponse,
+    ToXContentObject {
     var id: String
     var version: Long
     var seqNo: Long

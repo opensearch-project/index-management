@@ -55,7 +55,8 @@ data class Rollup(
     val dimensions: List<Dimension>,
     val metrics: List<RollupMetrics>,
     val user: User? = null,
-) : ScheduledJobParameter, Writeable {
+) : ScheduledJobParameter,
+    Writeable {
 
     init {
         if (enabled) {

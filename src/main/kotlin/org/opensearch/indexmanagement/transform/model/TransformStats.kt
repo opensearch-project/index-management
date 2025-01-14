@@ -21,7 +21,8 @@ data class TransformStats(
     val documentsIndexed: Long,
     val indexTimeInMillis: Long,
     val searchTimeInMillis: Long,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
@@ -32,15 +33,13 @@ data class TransformStats(
         searchTimeInMillis = sin.readLong(),
     )
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .field(PAGES_PROCESSED_FIELD, pagesProcessed)
-            .field(DOCUMENTS_PROCESSED_FIELD, documentsProcessed)
-            .field(DOCUMENTS_INDEXED_FIELD, documentsIndexed)
-            .field(INDEX_TIME_IN_MILLIS_FIELD, indexTimeInMillis)
-            .field(SEARCH_TIME_IN_MILLIS_FIELD, searchTimeInMillis)
-            .endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .field(PAGES_PROCESSED_FIELD, pagesProcessed)
+        .field(DOCUMENTS_PROCESSED_FIELD, documentsProcessed)
+        .field(DOCUMENTS_INDEXED_FIELD, documentsIndexed)
+        .field(INDEX_TIME_IN_MILLIS_FIELD, indexTimeInMillis)
+        .field(SEARCH_TIME_IN_MILLIS_FIELD, searchTimeInMillis)
+        .endObject()
 
     override fun writeTo(out: StreamOutput) {
         out.writeLong(pagesProcessed)

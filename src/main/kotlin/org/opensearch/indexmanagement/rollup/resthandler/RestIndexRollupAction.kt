@@ -36,26 +36,20 @@ import java.time.Instant
 
 class RestIndexRollupAction : BaseRestHandler() {
 
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                PUT, ROLLUP_JOBS_BASE_URI,
-                PUT, LEGACY_ROLLUP_JOBS_BASE_URI,
-            ),
-            ReplacedRoute(
-                PUT, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
-                PUT, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            PUT, ROLLUP_JOBS_BASE_URI,
+            PUT, LEGACY_ROLLUP_JOBS_BASE_URI,
+        ),
+        ReplacedRoute(
+            PUT, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
+            PUT, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
+        ),
+    )
 
-    override fun getName(): String {
-        return "opendistro_index_rollup_action"
-    }
+    override fun getName(): String = "opendistro_index_rollup_action"
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {

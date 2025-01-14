@@ -27,7 +27,8 @@ import java.util.Locale
 data class ContinuousMetadata(
     val nextWindowStartTime: Instant,
     val nextWindowEndTime: Instant,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
@@ -35,12 +36,10 @@ data class ContinuousMetadata(
         nextWindowEndTime = sin.readInstant(),
     )
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .timeField(NEXT_WINDOW_START_TIME_FIELD, NEXT_WINDOW_START_TIME_FIELD_IN_MILLIS, nextWindowStartTime.toEpochMilli())
-            .timeField(NEXT_WINDOW_END_TIME_FIELD, NEXT_WINDOW_END_TIME_FIELD_IN_MILLIS, nextWindowEndTime.toEpochMilli())
-            .endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .timeField(NEXT_WINDOW_START_TIME_FIELD, NEXT_WINDOW_START_TIME_FIELD_IN_MILLIS, nextWindowStartTime.toEpochMilli())
+        .timeField(NEXT_WINDOW_END_TIME_FIELD, NEXT_WINDOW_END_TIME_FIELD_IN_MILLIS, nextWindowEndTime.toEpochMilli())
+        .endObject()
 
     override fun writeTo(out: StreamOutput) {
         out.writeInstant(nextWindowStartTime)
@@ -85,7 +84,8 @@ data class RollupStats(
     val rollupsIndexed: Long,
     val indexTimeInMillis: Long,
     val searchTimeInMillis: Long,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
@@ -96,15 +96,13 @@ data class RollupStats(
         searchTimeInMillis = sin.readLong(),
     )
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .field(PAGES_PROCESSED_FIELD, pagesProcessed)
-            .field(DOCUMENTS_PROCESSED_FIELD, documentsProcessed)
-            .field(ROLLUPS_INDEXED_FIELD, rollupsIndexed)
-            .field(INDEX_TIME_IN_MILLIS_FIELD, indexTimeInMillis)
-            .field(SEARCH_TIME_IN_MILLIS_FIELD, searchTimeInMillis)
-            .endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .field(PAGES_PROCESSED_FIELD, pagesProcessed)
+        .field(DOCUMENTS_PROCESSED_FIELD, documentsProcessed)
+        .field(ROLLUPS_INDEXED_FIELD, rollupsIndexed)
+        .field(INDEX_TIME_IN_MILLIS_FIELD, indexTimeInMillis)
+        .field(SEARCH_TIME_IN_MILLIS_FIELD, searchTimeInMillis)
+        .endObject()
 
     override fun writeTo(out: StreamOutput) {
         out.writeLong(pagesProcessed)
@@ -167,7 +165,8 @@ data class RollupMetadata(
     val status: Status,
     val failureReason: String? = null,
     val stats: RollupStats,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
 
     enum class Status(val type: String) {
         INIT("init"),
@@ -178,9 +177,7 @@ data class RollupMetadata(
         RETRY("retry"),
         ;
 
-        override fun toString(): String {
-            return type
-        }
+        override fun toString(): String = type
     }
 
     @Throws(IOException::class)
@@ -292,25 +289,21 @@ data class RollupMetadata(
     }
 }
 
-fun RollupMetadata.incrementStats(response: SearchResponse, internalComposite: InternalComposite): RollupMetadata {
-    return this.copy(
-        stats = this.stats.copy(
-            pagesProcessed = stats.pagesProcessed + 1L,
-            documentsProcessed = stats.documentsProcessed +
-                internalComposite.buckets.fold(0L) { acc, internalBucket -> acc + internalBucket.docCount },
-            searchTimeInMillis = stats.searchTimeInMillis + response.took.millis,
-        ),
-    )
-}
+fun RollupMetadata.incrementStats(response: SearchResponse, internalComposite: InternalComposite): RollupMetadata = this.copy(
+    stats = this.stats.copy(
+        pagesProcessed = stats.pagesProcessed + 1L,
+        documentsProcessed = stats.documentsProcessed +
+            internalComposite.buckets.fold(0L) { acc, internalBucket -> acc + internalBucket.docCount },
+        searchTimeInMillis = stats.searchTimeInMillis + response.took.millis,
+    ),
+)
 
-fun RollupMetadata.mergeStats(stats: RollupStats): RollupMetadata {
-    return this.copy(
-        stats = this.stats.copy(
-            pagesProcessed = this.stats.pagesProcessed + stats.pagesProcessed,
-            documentsProcessed = this.stats.documentsProcessed + stats.documentsProcessed,
-            rollupsIndexed = this.stats.rollupsIndexed + stats.rollupsIndexed,
-            indexTimeInMillis = this.stats.indexTimeInMillis + stats.indexTimeInMillis,
-            searchTimeInMillis = this.stats.searchTimeInMillis + stats.searchTimeInMillis,
-        ),
-    )
-}
+fun RollupMetadata.mergeStats(stats: RollupStats): RollupMetadata = this.copy(
+    stats = this.stats.copy(
+        pagesProcessed = this.stats.pagesProcessed + stats.pagesProcessed,
+        documentsProcessed = this.stats.documentsProcessed + stats.documentsProcessed,
+        rollupsIndexed = this.stats.rollupsIndexed + stats.rollupsIndexed,
+        indexTimeInMillis = this.stats.indexTimeInMillis + stats.indexTimeInMillis,
+        searchTimeInMillis = this.stats.searchTimeInMillis + stats.searchTimeInMillis,
+    ),
+)

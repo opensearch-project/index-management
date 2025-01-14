@@ -35,11 +35,9 @@ import org.opensearch.jobscheduler.spi.utils.LockService
 import java.lang.Exception
 import java.time.Instant
 
-suspend fun issueUpdateSettingsRequest(client: Client, indexName: String, settings: Settings): AcknowledgedResponse {
-    return client.admin()
-        .indices()
-        .suspendUntil { updateSettings(UpdateSettingsRequest(settings, indexName), it) }
-}
+suspend fun issueUpdateSettingsRequest(client: Client, indexName: String, settings: Settings): AcknowledgedResponse = client.admin()
+    .indices()
+    .suspendUntil { updateSettings(UpdateSettingsRequest(settings, indexName), it) }
 
 suspend fun releaseShrinkLock(
     shrinkActionProperties: ShrinkActionProperties,
@@ -75,16 +73,14 @@ suspend fun renewShrinkLock(
 
 fun getShrinkLockModel(
     shrinkActionProperties: ShrinkActionProperties,
-): LockModel {
-    return getShrinkLockModel(
-        shrinkActionProperties.nodeName,
-        INDEX_MANAGEMENT_INDEX,
-        shrinkActionProperties.lockEpochSecond,
-        shrinkActionProperties.lockPrimaryTerm,
-        shrinkActionProperties.lockSeqNo,
-        shrinkActionProperties.lockDurationSecond,
-    )
-}
+): LockModel = getShrinkLockModel(
+    shrinkActionProperties.nodeName,
+    INDEX_MANAGEMENT_INDEX,
+    shrinkActionProperties.lockEpochSecond,
+    shrinkActionProperties.lockPrimaryTerm,
+    shrinkActionProperties.lockSeqNo,
+    shrinkActionProperties.lockDurationSecond,
+)
 
 @SuppressWarnings("LongParameterList")
 fun getShrinkLockModel(
@@ -109,18 +105,16 @@ fun getShrinkLockModel(
 }
 
 // Returns copied ShrinkActionProperties with the details of the provided lock added in
-fun getUpdatedShrinkActionProperties(shrinkActionProperties: ShrinkActionProperties, lock: LockModel): ShrinkActionProperties {
-    return ShrinkActionProperties(
-        shrinkActionProperties.nodeName,
-        shrinkActionProperties.targetIndexName,
-        shrinkActionProperties.targetNumShards,
-        lock.primaryTerm,
-        lock.seqNo,
-        lock.lockTime.epochSecond,
-        lock.lockDurationSeconds,
-        shrinkActionProperties.originalIndexSettings,
-    )
-}
+fun getUpdatedShrinkActionProperties(shrinkActionProperties: ShrinkActionProperties, lock: LockModel): ShrinkActionProperties = ShrinkActionProperties(
+    shrinkActionProperties.nodeName,
+    shrinkActionProperties.targetIndexName,
+    shrinkActionProperties.targetNumShards,
+    lock.primaryTerm,
+    lock.seqNo,
+    lock.lockTime.epochSecond,
+    lock.lockDurationSeconds,
+    shrinkActionProperties.originalIndexSettings,
+)
 
 fun getActionStartTime(managedIndexMetaData: ManagedIndexMetaData): Instant {
     val actionMetadata = managedIndexMetaData.actionMetaData
@@ -149,18 +143,16 @@ fun getFreeBytesThresholdHigh(clusterSettings: ClusterSettings, totalNodeBytes: 
     }
 }
 
-fun getDiskSettings(clusterSettings: ClusterSettings): Settings {
-    return Settings.builder().put(
-        CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING.key,
-        clusterSettings.get(CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING),
-    ).put(
-        CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING.key,
-        clusterSettings.get(CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING),
-    ).put(
-        CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING.key,
-        clusterSettings.get(CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING),
-    ).build()
-}
+fun getDiskSettings(clusterSettings: ClusterSettings): Settings = Settings.builder().put(
+    CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING.key,
+    clusterSettings.get(CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING),
+).put(
+    CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING.key,
+    clusterSettings.get(CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING),
+).put(
+    CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING.key,
+    clusterSettings.get(CLUSTER_ROUTING_ALLOCATION_LOW_DISK_WATERMARK_SETTING),
+).build()
 
 /*
  * Returns the amount of memory in the node which will be free below the high watermark level after adding 2*indexSizeInBytes, or -1
@@ -204,16 +196,12 @@ suspend fun resetReadOnlyAndRouting(index: String, client: Client, originalSetti
     return true
 }
 
-fun getShrinkLockID(nodeName: String): String {
-    return LockModel.generateLockId(
-        INDEX_MANAGEMENT_INDEX,
-        getShrinkJobID(nodeName),
-    )
-}
+fun getShrinkLockID(nodeName: String): String = LockModel.generateLockId(
+    INDEX_MANAGEMENT_INDEX,
+    getShrinkJobID(nodeName),
+)
 
-fun getShrinkJobID(nodeName: String): String {
-    return "$LOCK_SOURCE_JOB_ID-$nodeName"
-}
+fun getShrinkJobID(nodeName: String): String = "$LOCK_SOURCE_JOB_ID-$nodeName"
 
 // Creates a map of shardIds to the set of node names which the shard copies reside on. For example, with 2 replicas
 // each shardId would have a set containing 3 node names, for the nodes of the primary and two replicas.

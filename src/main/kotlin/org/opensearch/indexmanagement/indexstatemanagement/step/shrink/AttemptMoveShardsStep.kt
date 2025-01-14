@@ -348,7 +348,8 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
                 val shardId = shard.shardRouting.shardId()
                 val currentShardNode = stepContext.clusterService.state().nodes[shard.shardRouting.currentNodeId()]
                 // Don't attempt a dry run for shards which have a copy already on that node
-                if (shardIdToNodeList[shardId.id]?.contains(targetNodeName) == true || requestedShardIds.contains(
+                if (shardIdToNodeList[shardId.id]?.contains(targetNodeName) == true ||
+                    requestedShardIds.contains(
                         shardId.id,
                     )
                 ) {

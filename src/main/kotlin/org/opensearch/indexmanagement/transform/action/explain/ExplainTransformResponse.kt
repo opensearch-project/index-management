@@ -17,11 +17,10 @@ import java.io.IOException
 class ExplainTransformResponse(
     val idsToExplain: Map<String, ExplainTransform?>,
     private val failedToExplain: Map<String, String>,
-) : ActionResponse(), ToXContentObject {
+) : ActionResponse(),
+    ToXContentObject {
 
-    internal fun getIdsToExplain(): Map<String, ExplainTransform?> {
-        return this.idsToExplain
-    }
+    internal fun getIdsToExplain(): Map<String, ExplainTransform?> = this.idsToExplain
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(

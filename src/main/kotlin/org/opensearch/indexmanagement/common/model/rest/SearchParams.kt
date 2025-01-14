@@ -45,9 +45,7 @@ data class SearchParams(
         out.writeString(queryString)
     }
 
-    fun getSortBuilder(): FieldSortBuilder {
-        return SortBuilders
-            .fieldSort(this.sortField)
-            .order(SortOrder.fromString(this.sortOrder))
-    }
+    fun getSortBuilder(): FieldSortBuilder = SortBuilders
+        .fieldSort(this.sortField)
+        .order(SortOrder.fromString(this.sortOrder))
 }

@@ -28,9 +28,7 @@ class TransformProcessedBucketLog {
         processedBuckets.add(computeBucketHash(bucket))
     }
 
-    private fun isProcessed(bucket: Map<String, Any>): Boolean {
-        return processedBuckets.contains(computeBucketHash(bucket))
-    }
+    private fun isProcessed(bucket: Map<String, Any>): Boolean = processedBuckets.contains(computeBucketHash(bucket))
 
     fun isNotProcessed(bucket: Map<String, Any>) = !isProcessed(bucket)
 

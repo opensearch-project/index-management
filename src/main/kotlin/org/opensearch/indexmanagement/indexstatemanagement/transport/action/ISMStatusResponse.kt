@@ -16,7 +16,9 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.UPDATED_INDICES
 import org.opensearch.indexmanagement.indexstatemanagement.util.buildInvalidIndexResponse
 import java.io.IOException
 
-open class ISMStatusResponse : ActionResponse, ToXContentObject {
+open class ISMStatusResponse :
+    ActionResponse,
+    ToXContentObject {
 
     val updated: Int
     val failedIndices: List<FailedIndex>

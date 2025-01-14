@@ -246,32 +246,30 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
         return policy
     }
 
-    private fun createISMRollup(targetIdxRollup: String): ISMRollup {
-        return ISMRollup(
-            description = "basic search test",
-            targetIndex = targetIdxRollup,
-            pageSize = 100,
-            dimensions = listOf(
-                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
-                Terms("RatecodeID", "RatecodeID"),
-                Terms("PULocationID", "PULocationID"),
-            ),
-            metrics = listOf(
-                RollupMetrics(
-                    sourceField = "passenger_count", targetField = "passenger_count",
-                    metrics = listOf(
-                        Sum(), Min(), Max(),
-                        ValueCount(), Average(),
-                    ),
-                ),
-                RollupMetrics(
-                    sourceField = "total_amount",
-                    targetField = "total_amount",
-                    metrics = listOf(Max(), Min()),
+    private fun createISMRollup(targetIdxRollup: String): ISMRollup = ISMRollup(
+        description = "basic search test",
+        targetIndex = targetIdxRollup,
+        pageSize = 100,
+        dimensions = listOf(
+            DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+            Terms("RatecodeID", "RatecodeID"),
+            Terms("PULocationID", "PULocationID"),
+        ),
+        metrics = listOf(
+            RollupMetrics(
+                sourceField = "passenger_count", targetField = "passenger_count",
+                metrics = listOf(
+                    Sum(), Min(), Max(),
+                    ValueCount(), Average(),
                 ),
             ),
-        )
-    }
+            RollupMetrics(
+                sourceField = "total_amount",
+                targetField = "total_amount",
+                metrics = listOf(Max(), Min()),
+            ),
+        ),
+    )
 
     private fun assertIndexRolledUp(indexName: String, policyId: String, ismRollup: ISMRollup) {
         val rollup = ismRollup.toRollup(indexName)

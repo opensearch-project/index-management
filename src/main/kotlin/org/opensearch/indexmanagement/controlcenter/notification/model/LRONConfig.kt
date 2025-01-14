@@ -32,7 +32,8 @@ data class LRONConfig(
     val channels: List<Channel>?,
     val user: User?,
     val priority: Int?,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
     init {
         validateTaskIdAndActionName(taskId, actionName)
         if (lronCondition.isEnabled()) {
@@ -40,9 +41,7 @@ data class LRONConfig(
         }
     }
 
-    fun toXContent(builder: XContentBuilder): XContentBuilder {
-        return toXContent(builder, ToXContent.EMPTY_PARAMS)
-    }
+    fun toXContent(builder: XContentBuilder): XContentBuilder = toXContent(builder, ToXContent.EMPTY_PARAMS)
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
@@ -118,9 +117,7 @@ data class LRONConfig(
             id: String = NO_ID,
             seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
             primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
-        ): LRONConfig {
-            return parse(xcp)
-        }
+        ): LRONConfig = parse(xcp)
 
         @JvmStatic
         @Suppress("MaxLineLength", "ComplexMethod", "NestedBlockDepth")

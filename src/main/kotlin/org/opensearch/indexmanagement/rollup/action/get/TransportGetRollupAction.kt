@@ -36,7 +36,7 @@ class TransportGetRollupAction @Inject constructor(
     val settings: Settings,
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
-) : HandledTransportAction<GetRollupRequest, GetRollupResponse> (
+) : HandledTransportAction<GetRollupRequest, GetRollupResponse>(
     GetRollupAction.NAME, transportService, actionFilters, ::GetRollupRequest,
 ) {
 

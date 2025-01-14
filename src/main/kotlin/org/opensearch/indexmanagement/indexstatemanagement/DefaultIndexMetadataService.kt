@@ -52,17 +52,14 @@ class DefaultIndexMetadataService(val customUUIDSetting: String? = null) : Index
      * present of cluster state, the extension will override this customUUID setting. This allows an index to migrate off
      * cluster and back while using this persistent uuid.
      */
-    fun getCustomIndexUUID(indexMetadata: IndexMetadata): String {
-        return if (customUUIDSetting != null) {
-            indexMetadata.settings.get(customUUIDSetting, indexMetadata.indexUUID)
-        } else {
-            indexMetadata.indexUUID
-        }
+    fun getCustomIndexUUID(indexMetadata: IndexMetadata): String = if (customUUIDSetting != null) {
+        indexMetadata.settings.get(customUUIDSetting, indexMetadata.indexUUID)
+    } else {
+        indexMetadata.indexUUID
     }
 
-    override suspend fun getMetadataForAllIndices(client: Client, clusterService: ClusterService): Map<String, ISMIndexMetadata> {
-        return getMetadata(listOf("*"), client, clusterService)
-    }
+    override suspend fun getMetadataForAllIndices(client: Client, clusterService: ClusterService): Map<String, ISMIndexMetadata> =
+        getMetadata(listOf("*"), client, clusterService)
 
     companion object {
         const val DEFAULT_GET_METADATA_TIMEOUT_IN_MILLIS = 30000L

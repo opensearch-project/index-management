@@ -135,14 +135,12 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
         info = mutableInfo.toMap()
     }
 
-    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
-        return currentMetadata.copy(
-            policyCompleted = policyCompleted,
-            transitionTo = stateName,
-            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
-            info = info,
-        )
-    }
+    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData = currentMetadata.copy(
+        policyCompleted = policyCompleted,
+        transitionTo = stateName,
+        stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
+        info = info,
+    )
 
     @Suppress("ReturnCount")
     private suspend fun getIndexCreationDate(

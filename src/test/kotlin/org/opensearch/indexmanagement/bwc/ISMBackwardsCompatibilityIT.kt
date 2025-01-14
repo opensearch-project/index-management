@@ -26,29 +26,25 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
         ;
 
         companion object {
-            fun parse(value: String): ClusterType {
-                return when (value) {
-                    "old_cluster" -> OLD
-                    "mixed_cluster" -> MIXED
-                    "upgraded_cluster" -> UPGRADED
-                    else -> throw AssertionError("Unknown cluster type: $value")
-                }
+            fun parse(value: String): ClusterType = when (value) {
+                "old_cluster" -> OLD
+                "mixed_cluster" -> MIXED
+                "upgraded_cluster" -> UPGRADED
+                else -> throw AssertionError("Unknown cluster type: $value")
             }
         }
     }
 
-    private fun getPluginUri(): String {
-        return when (CLUSTER_TYPE) {
-            ClusterType.OLD -> "_nodes/$CLUSTER_NAME-0/plugins"
-            ClusterType.MIXED -> {
-                when (System.getProperty("tests.rest.bwcsuite_round")) {
-                    "second" -> "_nodes/$CLUSTER_NAME-1/plugins"
-                    "third" -> "_nodes/$CLUSTER_NAME-2/plugins"
-                    else -> "_nodes/$CLUSTER_NAME-0/plugins"
-                }
+    private fun getPluginUri(): String = when (CLUSTER_TYPE) {
+        ClusterType.OLD -> "_nodes/$CLUSTER_NAME-0/plugins"
+        ClusterType.MIXED -> {
+            when (System.getProperty("tests.rest.bwcsuite_round")) {
+                "second" -> "_nodes/$CLUSTER_NAME-1/plugins"
+                "third" -> "_nodes/$CLUSTER_NAME-2/plugins"
+                else -> "_nodes/$CLUSTER_NAME-0/plugins"
             }
-            ClusterType.UPGRADED -> "_nodes/plugins"
         }
+        ClusterType.UPGRADED -> "_nodes/plugins"
     }
 
     companion object {
@@ -62,15 +58,13 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
 
     override fun preserveTemplatesUponCompletion(): Boolean = true
 
-    override fun restClientSettings(): Settings {
-        return Settings.builder()
-            .put(super.restClientSettings())
-            // increase the timeout here to 90 seconds to handle long waits for a green
-            // cluster health. the waits for green need to be longer than a minute to
-            // account for delayed shards
-            .put(CLIENT_SOCKET_TIMEOUT, "90s")
-            .build()
-    }
+    override fun restClientSettings(): Settings = Settings.builder()
+        .put(super.restClientSettings())
+        // increase the timeout here to 90 seconds to handle long waits for a green
+        // cluster health. the waits for green need to be longer than a minute to
+        // account for delayed shards
+        .put(CLIENT_SOCKET_TIMEOUT, "90s")
+        .build()
 
     @Throws(Exception::class)
     @Suppress("UNCHECKED_CAST")

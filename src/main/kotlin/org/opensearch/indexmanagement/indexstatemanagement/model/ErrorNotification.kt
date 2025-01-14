@@ -23,7 +23,8 @@ data class ErrorNotification(
     val destination: Destination?,
     val channel: Channel?,
     val messageTemplate: Script,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
 
     init {
         require(destination != null || channel != null) { "ErrorNotification must contain a destination or channel" }

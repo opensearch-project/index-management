@@ -20,18 +20,15 @@ import java.io.IOException
 data class LRONCondition(
     val success: Boolean = DEFAULT_ENABLED,
     val failure: Boolean = DEFAULT_ENABLED,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
 
-    fun toXContent(builder: XContentBuilder): XContentBuilder {
-        return toXContent(builder, ToXContent.EMPTY_PARAMS)
-    }
+    fun toXContent(builder: XContentBuilder): XContentBuilder = toXContent(builder, ToXContent.EMPTY_PARAMS)
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .field(SUCCESS_FIELD, success)
-            .field(FAILURE_FIELD, failure)
-            .endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .field(SUCCESS_FIELD, success)
+        .field(FAILURE_FIELD, failure)
+        .endObject()
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
@@ -45,9 +42,7 @@ data class LRONCondition(
         out.writeBoolean(failure)
     }
 
-    fun isEnabled(): Boolean {
-        return success || failure
-    }
+    fun isEnabled(): Boolean = success || failure
 
     companion object {
         const val SUCCESS_FIELD = "success"
@@ -63,9 +58,7 @@ data class LRONCondition(
             id: String = NO_ID,
             seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
             primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
-        ): LRONCondition {
-            return parse(xcp)
-        }
+        ): LRONCondition = parse(xcp)
 
         @JvmStatic
         @Suppress("MaxLineLength", "ComplexMethod", "NestedBlockDepth")

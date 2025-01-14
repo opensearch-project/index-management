@@ -19,7 +19,5 @@ class ValidateNothing(
 ) : Validate(settings, clusterService, jvmService) {
 
     // skips validation
-    override fun execute(indexName: String): Validate {
-        return this
-    }
+    override fun execute(indexName: String): Validate = this
 }
