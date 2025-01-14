@@ -69,6 +69,7 @@ object RollupFieldValueExpressionResolver {
 
         open fun getWriteIndexNameForAlias(alias: String): String? = this.clusterService.state().metadata().indicesLookup?.get(alias)?.writeIndex?.index?.name
 
-        open fun getBackingIndicesForAlias(alias: String): MutableList<IndexMetadata>? = this.clusterService.state().metadata().indicesLookup?.get(alias)?.indices
+        open fun getBackingIndicesForAlias(alias: String): MutableList<IndexMetadata>? =
+            this.clusterService.state().metadata().indicesLookup?.get(alias)?.indices
     }
 }

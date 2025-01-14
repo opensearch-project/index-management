@@ -56,7 +56,11 @@ class AttemptNotificationStep(private val action: NotificationAction) : Step(nam
         info = info,
     )
 
-    private fun compileTemplate(scriptService: ScriptService, template: Script, managedIndexMetaData: ManagedIndexMetaData): String = scriptService.compile(template, TemplateScript.CONTEXT)
+    private fun compileTemplate(
+        scriptService: ScriptService,
+        template: Script,
+        managedIndexMetaData: ManagedIndexMetaData,
+    ): String = scriptService.compile(template, TemplateScript.CONTEXT)
         .newInstance(template.params + mapOf("ctx" to managedIndexMetaData.convertToMap()))
         .execute()
 

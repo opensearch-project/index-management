@@ -613,7 +613,10 @@ class IndexManagementPlugin :
         ActionPlugin.ActionHandler(DeleteLRONConfigAction.INSTANCE, TransportDeleteLRONConfigAction::class.java),
     )
 
-    override fun getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry, threadContext: ThreadContext): List<TransportInterceptor> = listOf(rollupInterceptor)
+    override fun getTransportInterceptors(
+        namedWriteableRegistry: NamedWriteableRegistry,
+        threadContext: ThreadContext,
+    ): List<TransportInterceptor> = listOf(rollupInterceptor)
 
     override fun getActionFilters(): List<ActionFilter> = listOf(fieldCapsFilter, indexOperationActionFilter)
 

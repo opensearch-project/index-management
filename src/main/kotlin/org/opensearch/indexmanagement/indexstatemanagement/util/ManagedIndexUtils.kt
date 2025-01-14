@@ -143,7 +143,9 @@ fun deleteManagedIndexRequest(uuid: String): DeleteRequest = DeleteRequest(INDEX
 
 fun deleteManagedIndexMetadataRequest(uuid: String): DeleteRequest = DeleteRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(uuid)).routing(uuid)
 
-fun updateManagedIndexRequest(sweptManagedIndexConfig: SweptManagedIndexConfig): UpdateRequest = UpdateRequest(INDEX_MANAGEMENT_INDEX, sweptManagedIndexConfig.uuid)
+fun updateManagedIndexRequest(
+    sweptManagedIndexConfig: SweptManagedIndexConfig,
+): UpdateRequest = UpdateRequest(INDEX_MANAGEMENT_INDEX, sweptManagedIndexConfig.uuid)
     .setIfPrimaryTerm(sweptManagedIndexConfig.primaryTerm)
     .setIfSeqNo(sweptManagedIndexConfig.seqNo)
     .doc(getPartialChangePolicyBuilder(sweptManagedIndexConfig.changePolicy))
@@ -269,7 +271,8 @@ fun State.getUpdatedStateMetaData(managedIndexMetaData: ManagedIndexMetaData): S
     }
 }
 
-fun Action.shouldBackoff(actionMetaData: ActionMetaData?, actionRetry: ActionRetry?): Pair<Boolean, Long?>? = this.configRetry?.backoff?.shouldBackoff(actionMetaData, actionRetry)
+fun Action.shouldBackoff(actionMetaData: ActionMetaData?, actionRetry: ActionRetry?): Pair<Boolean, Long?>? =
+    this.configRetry?.backoff?.shouldBackoff(actionMetaData, actionRetry)
 
 @Suppress("ReturnCount")
 fun Action.hasTimedOut(actionMetaData: ActionMetaData?): Boolean {

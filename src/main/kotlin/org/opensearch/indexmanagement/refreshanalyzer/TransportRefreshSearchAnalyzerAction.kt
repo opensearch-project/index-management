@@ -88,9 +88,12 @@ class TransportRefreshSearchAnalyzerAction :
     /**
      * The refresh request works against *all* shards.
      */
-    override fun shards(clusterState: ClusterState, request: RefreshSearchAnalyzerRequest?, concreteIndices: Array<String?>?): ShardsIterator? = clusterState.routingTable().allShards(concreteIndices)
+    override fun shards(clusterState: ClusterState, request: RefreshSearchAnalyzerRequest?, concreteIndices: Array<String?>?): ShardsIterator? =
+        clusterState.routingTable().allShards(concreteIndices)
 
-    override fun checkGlobalBlock(state: ClusterState, request: RefreshSearchAnalyzerRequest?): ClusterBlockException? = state.blocks().globalBlockedException(ClusterBlockLevel.METADATA_WRITE)
+    override fun checkGlobalBlock(state: ClusterState, request: RefreshSearchAnalyzerRequest?): ClusterBlockException? =
+        state.blocks().globalBlockedException(ClusterBlockLevel.METADATA_WRITE)
 
-    override fun checkRequestBlock(state: ClusterState, request: RefreshSearchAnalyzerRequest?, concreteIndices: Array<String?>?): ClusterBlockException? = state.blocks().indicesBlockedException(ClusterBlockLevel.METADATA_WRITE, concreteIndices)
+    override fun checkRequestBlock(state: ClusterState, request: RefreshSearchAnalyzerRequest?, concreteIndices: Array<String?>?): ClusterBlockException? =
+        state.blocks().indicesBlockedException(ClusterBlockLevel.METADATA_WRITE, concreteIndices)
 }

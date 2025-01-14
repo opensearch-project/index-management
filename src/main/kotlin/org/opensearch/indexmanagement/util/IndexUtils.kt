@@ -26,8 +26,7 @@ import java.util.Base64
 @Suppress("UtilityClassWithPublicConstructor", "TooManyFunctions")
 class IndexUtils {
     companion object {
-        @Suppress("ObjectPropertyNaming")
-        @Suppress("ktlint:standard:backing-property-naming")
+        @Suppress("ObjectPropertyNaming", "ktlint:standard:backing-property-naming")
         const val _META = "_meta"
         const val PROPERTIES = "properties"
         const val FIELDS = "fields"

@@ -3,8 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-@file:Suppress("TopLevelPropertyNaming", "MatchingDeclarationName")
-@file:Suppress("ktlint:standard:backing-property-naming")
+@file:Suppress("TopLevelPropertyNaming", "MatchingDeclarationName", "ktlint:standard:backing-property-naming")
 
 package org.opensearch.indexmanagement.util
 

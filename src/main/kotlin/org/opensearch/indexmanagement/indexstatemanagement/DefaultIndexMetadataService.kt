@@ -57,7 +57,8 @@ class DefaultIndexMetadataService(private val customUUIDSetting: String? = null)
         indexMetadata.indexUUID
     }
 
-    override suspend fun getMetadataForAllIndices(client: Client, clusterService: ClusterService): Map<String, ISMIndexMetadata> = getMetadata(listOf("*"), client, clusterService)
+    override suspend fun getMetadataForAllIndices(client: Client, clusterService: ClusterService): Map<String, ISMIndexMetadata> =
+        getMetadata(listOf("*"), client, clusterService)
 
     companion object {
         const val DEFAULT_GET_METADATA_TIMEOUT_IN_MILLIS = 30000L

@@ -17,7 +17,8 @@ class Average() : Metric(Type.AVERAGE) {
     @Suppress("UNUSED_PARAMETER")
     constructor(sin: StreamInput) : this()
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject().startObject(Type.AVERAGE.type).endObject().endObject()
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder =
+        builder.startObject().startObject(Type.AVERAGE.type).endObject().endObject()
 
     override fun writeTo(out: StreamOutput) { /* nothing to write */ }
 
