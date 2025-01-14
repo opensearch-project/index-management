@@ -17,7 +17,7 @@ jobs:
         uses: actions/setup-java@v2
         with:
           distribution: temurin # Temurin is a distribution of adoptium
-          java-version: 17
+          java-version: 21
       # index-management
       - name: Checkout Branch
         uses: actions/checkout@v2
@@ -26,8 +26,9 @@ jobs:
           echo "Running backwards compatibility tests..."
           ./gradlew bwcTestSuite
       - name: Upload failed logs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: logs
+          overwrite: 'true'
           path: build/testclusters/indexmanagementBwcCluster*/logs/*

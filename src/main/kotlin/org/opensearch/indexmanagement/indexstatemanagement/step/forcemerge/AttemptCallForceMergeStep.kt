@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement.indexstatemanagement.step.forcemerge
 
 import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
@@ -30,6 +31,7 @@ class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(nam
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
 
+    @OptIn(DelicateCoroutinesApi::class)
     @Suppress("TooGenericExceptionCaught", "ComplexMethod")
     override suspend fun execute(): AttemptCallForceMergeStep {
         val context = this.context ?: return this

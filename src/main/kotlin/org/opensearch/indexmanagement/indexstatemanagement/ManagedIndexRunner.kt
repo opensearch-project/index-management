@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement
 
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
@@ -86,11 +87,13 @@ import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.LockModel
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
@@ -120,6 +123,7 @@ object ManagedIndexRunner :
     private lateinit var skipExecFlag: SkipExecution
     private lateinit var threadPool: ThreadPool
     private lateinit var extensionStatusChecker: ExtensionStatusChecker
+    lateinit var indexManagementActionMetrics: IndexManagementActionsMetrics
     private lateinit var indexMetadataProvider: IndexMetadataProvider
     private var indexStateManagementEnabled: Boolean = DEFAULT_ISM_ENABLED
     private var validationServiceEnabled: Boolean = DEFAULT_ACTION_VALIDATION_ENABLED
@@ -220,6 +224,11 @@ object ManagedIndexRunner :
         return this
     }
 
+    fun registerIndexManagementActionMetrics(indexManagementActionsMetrics: IndexManagementActionsMetrics): Any {
+        this.indexManagementActionMetrics = indexManagementActionsMetrics
+        return this
+    }
+
     override fun runJob(job: ScheduledJobParameter, context: JobExecutionContext) {
         if (job !is ManagedIndexConfig) {
             throw IllegalArgumentException("Invalid job type, found ${job.javaClass.simpleName} with id: ${context.jobId}")
@@ -246,6 +255,7 @@ object ManagedIndexRunner :
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     @Suppress("ReturnCount", "ComplexMethod", "LongMethod", "ComplexCondition", "NestedBlockDepth")
     private suspend fun runManagedIndexConfig(managedIndexConfig: ManagedIndexConfig, jobContext: JobExecutionContext) {
         logger.debug("Run job for index ${managedIndexConfig.index}")
@@ -330,14 +340,18 @@ object ManagedIndexRunner :
         if (action?.hasTimedOut(currentActionMetaData) == true) {
             val info = mapOf("message" to "Action timed out")
             logger.error("Action=${action.type} has timed out")
-            val updated =
-                updateManagedIndexMetaData(
-                    managedIndexMetaData
-                        .copy(actionMetaData = currentActionMetaData?.copy(failed = true), info = info),
-                )
+
+            val updatedIndexMetaData = managedIndexMetaData.copy(
+                actionMetaData = currentActionMetaData?.copy(failed = true),
+                stepMetaData = step?.let { StepMetaData(it.name, System.currentTimeMillis(), Step.StepStatus.TIMED_OUT) },
+                info = info,
+            )
+
+            val updated = updateManagedIndexMetaData(updatedIndexMetaData)
+
             if (updated.metadataSaved) {
                 disableManagedIndexConfig(managedIndexConfig)
-                publishErrorNotification(policy, managedIndexMetaData)
+                publishErrorNotification(policy, updatedIndexMetaData)
             }
             return
         }
@@ -441,7 +455,8 @@ object ManagedIndexRunner :
                     managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user,
                 ),
             ) {
-                step.preExecute(logger, stepContext.getUpdatedContext(startingManagedIndexMetaData)).execute().postExecute(logger)
+                step.preExecute(logger, stepContext.getUpdatedContext(startingManagedIndexMetaData)).execute()
+                    .postExecute(logger, indexManagementActionMetrics, step, startingManagedIndexMetaData)
             }
             var executedManagedIndexMetaData = startingManagedIndexMetaData.getCompletedManagedIndexMetaData(action, step)
 
@@ -627,6 +642,7 @@ object ManagedIndexRunner :
      * update metadata in config index, and save metadata in history after update
      * this can be called 2 times in one job run, so need to save seqNo & primeTerm
      */
+    @OptIn(DelicateCoroutinesApi::class)
     private suspend fun updateManagedIndexMetaData(
         managedIndexMetaData: ManagedIndexMetaData,
         lastUpdateResult: UpdateMetadataResult? = null,

@@ -139,7 +139,7 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         val startTimeMillis = desiredStartTimeMillis ?: (now().toEpochMilli() - millis)
         val waitForActiveShards = if (isMultiNode) "all" else "1"
         val response =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
                 StringEntity(
                     "{\"doc\":{\"sm_policy\":{\"schedule\":{\"interval\":{\"start_time\":\"$startTimeMillis\"}}}}}",
@@ -171,7 +171,7 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
         val startTimeMillis = desiredStartTimeMillis ?: (now().toEpochMilli() - millis)
         val waitForActiveShards = if (isMultiNode) "all" else "1"
         val response =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.metadataID}?wait_for_active_shards=$waitForActiveShards",
                 StringEntity(
                     """

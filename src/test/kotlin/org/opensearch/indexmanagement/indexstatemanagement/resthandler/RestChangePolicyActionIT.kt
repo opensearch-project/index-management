@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.junit.Before
+import org.opensearch.client.Request
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.rest.RestStatus
@@ -89,7 +90,10 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test nonexistent ism config index`() {
-        if (indexExists(INDEX_MANAGEMENT_INDEX)) deleteIndex(INDEX_MANAGEMENT_INDEX)
+        if (indexExists(INDEX_MANAGEMENT_INDEX)) {
+            val deleteISMIndexRequest = Request("DELETE", "/$INDEX_MANAGEMENT_INDEX")
+            adminClient().performRequest(deleteISMIndexRequest)
+        }
         try {
             val changePolicy = ChangePolicy("some_id", null, emptyList(), false)
             client().makeRequest(
