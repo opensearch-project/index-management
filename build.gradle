@@ -108,7 +108,7 @@ configurations.all {
         force 'junit:junit:4.13.1'
         force 'commons-beanutils:commons-beanutils:1.9.4'
         force 'com.google.guava:guava:30.0-jre'
-        force 'com.puppycrawl.tools:checkstyle:8.29'
+        force 'com.puppycrawl.tools:checkstyle:8.45.1'
         force 'commons-codec:commons-codec:1.17.2'
         force "com.fasterxml.jackson.core:jackson-databind:${versions.jackson_databind}"
         force "org.yaml:snakeyaml:${versions.snakeyaml}"
