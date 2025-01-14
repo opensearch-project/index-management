@@ -294,7 +294,7 @@ class IndexStateManagementHistory(
     }
 
     private fun shouldAddManagedIndexMetaDataToHistory(
-        managedIndexMetaData: ManagedIndexMetaData
+        managedIndexMetaData: ManagedIndexMetaData,
     ): Boolean = when (managedIndexMetaData.stepMetaData?.stepStatus) {
         Step.StepStatus.STARTING -> false
         Step.StepStatus.CONDITION_NOT_MET -> false

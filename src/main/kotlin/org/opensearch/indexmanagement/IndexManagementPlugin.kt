@@ -610,8 +610,8 @@ class IndexManagementPlugin :
     )
 
     override fun getTransportInterceptors(
-        namedWriteableRegistry: NamedWriteableRegistry, 
-        threadContext: ThreadContext
+        namedWriteableRegistry: NamedWriteableRegistry,
+        threadContext: ThreadContext,
     ): List<TransportInterceptor> = listOf(rollupInterceptor)
 
     override fun getActionFilters(): List<ActionFilter> = listOf(fieldCapsFilter, indexOperationActionFilter)

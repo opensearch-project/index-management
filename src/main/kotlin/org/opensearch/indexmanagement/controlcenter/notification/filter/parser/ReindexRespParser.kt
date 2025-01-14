@@ -118,6 +118,6 @@ class ReindexRespParser(
         return result.toString()
     }
 
-    override fun buildNotificationTitle(operationResult: OperationResult): String = 
+    override fun buildNotificationTitle(operationResult: OperationResult): String =
         "Reindex operation on $sourceIndex has ${getOperationResultTitleDesc(operationResult)}"
 }

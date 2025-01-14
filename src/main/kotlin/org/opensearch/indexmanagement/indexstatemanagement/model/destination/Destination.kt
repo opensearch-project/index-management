@@ -142,8 +142,8 @@ data class Destination(
     }
 
     private fun getLegacyCustomWebhookMessageURL(
-        customWebhook: CustomWebhook?, 
-        compiledMessage: String
+        customWebhook: CustomWebhook?,
+        compiledMessage: String,
     ): String = LegacyCustomWebhookMessage.Builder("custom_webhook")
         .withUrl(customWebhook?.url)
         .withScheme(customWebhook?.scheme)

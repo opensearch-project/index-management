@@ -155,7 +155,7 @@ fun deleteManagedIndexRequest(uuid: String): DeleteRequest = DeleteRequest(INDEX
 fun deleteManagedIndexMetadataRequest(uuid: String): DeleteRequest = DeleteRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(uuid)).routing(uuid)
 
 fun updateManagedIndexRequest(
-    sweptManagedIndexConfig: SweptManagedIndexConfig
+    sweptManagedIndexConfig: SweptManagedIndexConfig,
 ): UpdateRequest = UpdateRequest(INDEX_MANAGEMENT_INDEX, sweptManagedIndexConfig.uuid)
     .setIfPrimaryTerm(sweptManagedIndexConfig.primaryTerm)
     .setIfSeqNo(sweptManagedIndexConfig.seqNo)
