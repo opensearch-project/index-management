@@ -54,7 +54,5 @@ class NotificationActionParser : ActionParser() {
         )
     }
 
-    override fun getActionType(): String {
-        return NotificationAction.name
-    }
+    override fun getActionType(): String = NotificationAction.name
 }

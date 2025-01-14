@@ -20,15 +20,11 @@ import org.opensearch.rest.action.RestToXContentListener
 class RestExplainSMPolicyHandler : BaseRestHandler() {
     private val log = LogManager.getLogger(RestExplainSMPolicyHandler::class.java)
 
-    override fun getName(): String {
-        return "snapshot_management_explain_policy_rest_handler"
-    }
+    override fun getName(): String = "snapshot_management_explain_policy_rest_handler"
 
-    override fun routes(): List<Route> {
-        return listOf(
-            Route(GET, "$SM_POLICIES_URI/{policyName}/_explain"),
-        )
-    }
+    override fun routes(): List<Route> = listOf(
+        Route(GET, "$SM_POLICIES_URI/{policyName}/_explain"),
+    )
 
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
         var policyNames: Array<String> = Strings.splitStringByCommaToArray(request.param("policyName", ""))

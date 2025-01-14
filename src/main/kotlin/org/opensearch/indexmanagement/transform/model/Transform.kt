@@ -71,7 +71,8 @@ data class Transform(
     val aggregations: AggregatorFactories.Builder = AggregatorFactories.builder(),
     val continuous: Boolean = false,
     val user: User? = null,
-) : ScheduledJobParameter, Writeable {
+) : ScheduledJobParameter,
+    Writeable {
     init {
         aggregations.aggregatorFactories.forEach {
             require(supportedAggregations.contains(it.type)) { "Unsupported aggregation [${it.type}]" }
@@ -168,19 +169,17 @@ data class Transform(
         user?.writeTo(out)
     }
 
-    fun convertToDoc(docCount: Long, includeId: Boolean = true): MutableMap<String, Any?> {
-        return if (includeId) {
-            mutableMapOf(
-                TRANSFORM_DOC_ID_FIELD to this.id,
-                DOC_COUNT to docCount,
-                TRANSFORM_DOC_COUNT_FIELD to docCount,
-            )
-        } else {
-            mutableMapOf(
-                DOC_COUNT to docCount,
-                TRANSFORM_DOC_COUNT_FIELD to docCount,
-            )
-        }
+    fun convertToDoc(docCount: Long, includeId: Boolean = true): MutableMap<String, Any?> = if (includeId) {
+        mutableMapOf(
+            TRANSFORM_DOC_ID_FIELD to this.id,
+            DOC_COUNT to docCount,
+            TRANSFORM_DOC_COUNT_FIELD to docCount,
+        )
+    } else {
+        mutableMapOf(
+            DOC_COUNT to docCount,
+            TRANSFORM_DOC_COUNT_FIELD to docCount,
+        )
     }
 
     suspend fun getContinuousStats(client: Client, metadata: TransformMetadata): ContinuousTransformStats? {

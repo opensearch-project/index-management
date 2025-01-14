@@ -38,7 +38,7 @@ constructor(
     val settings: Settings,
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
-) : HandledTransportAction<GetRollupRequest, GetRollupResponse> (
+) : HandledTransportAction<GetRollupRequest, GetRollupResponse>(
     GetRollupAction.NAME, transportService, actionFilters, ::GetRollupRequest,
 ) {
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)

@@ -13,9 +13,7 @@ import org.opensearch.core.common.io.stream.StreamOutput
 class GetSMPolicyRequest(
     val policyID: String,
 ) : ActionRequest() {
-    override fun validate(): ActionRequestValidationException? {
-        return null
-    }
+    override fun validate(): ActionRequestValidationException? = null
 
     constructor(sin: StreamInput) : this(
         policyID = sin.readString(),

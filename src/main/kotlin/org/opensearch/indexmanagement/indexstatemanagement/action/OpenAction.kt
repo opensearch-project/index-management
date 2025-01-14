@@ -20,9 +20,7 @@ class OpenAction(
     private val attemptOpenStep = AttemptOpenStep()
     private val steps = listOf(attemptOpenStep)
 
-    override fun getStepToExecute(context: StepContext): Step {
-        return attemptOpenStep
-    }
+    override fun getStepToExecute(context: StepContext): Step = attemptOpenStep
 
     override fun getSteps(): List<Step> = steps
 }

@@ -57,12 +57,10 @@ interface ResponseParser<Response : ActionResponse> {
         }
     }
 
-    fun getOperationResultTitleDesc(result: OperationResult): String {
-        return when (result) {
-            OperationResult.COMPLETE -> "completed"
-            OperationResult.FAILED -> "failed"
-            OperationResult.TIMEOUT -> "timed out"
-            OperationResult.CANCELLED -> "been cancelled"
-        }
+    fun getOperationResultTitleDesc(result: OperationResult): String = when (result) {
+        OperationResult.COMPLETE -> "completed"
+        OperationResult.FAILED -> "failed"
+        OperationResult.TIMEOUT -> "timed out"
+        OperationResult.CANCELLED -> "been cancelled"
     }
 }

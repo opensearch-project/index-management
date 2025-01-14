@@ -20,7 +20,9 @@ import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 import java.io.IOException
 
-class GetPoliciesResponse : ActionResponse, ToXContentObject {
+class GetPoliciesResponse :
+    ActionResponse,
+    ToXContentObject {
     val policies: List<Policy>
     val totalPolicies: Int
 

@@ -43,7 +43,7 @@ constructor(
     val clusterService: ClusterService,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
-) : HandledTransportAction<GetTransformsRequest, GetTransformsResponse> (
+) : HandledTransportAction<GetTransformsRequest, GetTransformsResponse>(
     GetTransformsAction.NAME, transportService, actionFilters, ::GetTransformsRequest,
 ) {
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
@@ -89,10 +89,8 @@ constructor(
         }
     }
 
-    private fun contentParser(bytesReference: BytesReference): XContentParser {
-        return XContentHelper.createParser(
-            xContentRegistry,
-            LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON,
-        )
-    }
+    private fun contentParser(bytesReference: BytesReference): XContentParser = XContentHelper.createParser(
+        xContentRegistry,
+        LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON,
+    )
 }

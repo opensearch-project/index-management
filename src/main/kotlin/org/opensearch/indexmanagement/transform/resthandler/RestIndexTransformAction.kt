@@ -33,16 +33,12 @@ import java.io.IOException
 import java.time.Instant
 
 class RestIndexTransformAction : BaseRestHandler() {
-    override fun routes(): List<RestHandler.Route> {
-        return listOf(
-            RestHandler.Route(PUT, TRANSFORM_BASE_URI),
-            RestHandler.Route(PUT, "$TRANSFORM_BASE_URI/{transformID}"),
-        )
-    }
+    override fun routes(): List<RestHandler.Route> = listOf(
+        RestHandler.Route(PUT, TRANSFORM_BASE_URI),
+        RestHandler.Route(PUT, "$TRANSFORM_BASE_URI/{transformID}"),
+    )
 
-    override fun getName(): String {
-        return "opendistro_index_transform_action"
-    }
+    override fun getName(): String = "opendistro_index_transform_action"
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {

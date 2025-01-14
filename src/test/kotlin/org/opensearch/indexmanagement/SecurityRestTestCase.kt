@@ -95,13 +95,9 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
             shards: String? = null,
             mapping: String = "",
             settings: Settings? = null,
-        ): Pair<String, String?> {
-            return super.createIndex(index, policyID, alias, replicas, shards, mapping, settings)
-        }
+        ): Pair<String, String?> = super.createIndex(index, policyID, alias, replicas, shards, mapping, settings)
 
-        fun getExplainManagedIndexMetaDataExt(indexName: String, userClient: RestClient? = null): ManagedIndexMetaData {
-            return super.getExplainManagedIndexMetaData(indexName, userClient)
-        }
+        fun getExplainManagedIndexMetaDataExt(indexName: String, userClient: RestClient? = null): ManagedIndexMetaData = super.getExplainManagedIndexMetaData(indexName, userClient)
     }
 
     private object TransformRestTestCaseExt : TransformRestTestCase() {
@@ -142,9 +138,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
     protected fun createRollup(
         rollup: Rollup,
         client: RestClient,
-    ): Rollup {
-        return RollupRestTestCaseSecurityExtension.createRollupExt(rollup, rollup.id, true, client)
-    }
+    ): Rollup = RollupRestTestCaseSecurityExtension.createRollupExt(rollup, rollup.id, true, client)
 
     protected fun createRollupAndCheckStatus(
         rollup: Rollup,
@@ -160,16 +154,12 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         metadataId: String,
         refresh: Boolean = true,
         header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
-    ): RollupMetadata {
-        return RollupRestTestCaseSecurityExtension.getRollupMetadataExt(metadataId, refresh, header)
-    }
+    ): RollupMetadata = RollupRestTestCaseSecurityExtension.getRollupMetadataExt(metadataId, refresh, header)
 
     protected fun getRollup(
         rollupId: String,
         header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
-    ): Rollup {
-        return RollupRestTestCaseSecurityExtension.getRollupExt(rollupId, header)
-    }
+    ): Rollup = RollupRestTestCaseSecurityExtension.getRollupExt(rollupId, header)
 
     protected fun deleteRollup(rollupId: String, client: RestClient, expectedStatus: RestStatus) {
         val request = Request(RestRequest.Method.DELETE.name, "${IndexManagementPlugin.ROLLUP_JOBS_BASE_URI}/$rollupId")
@@ -184,22 +174,16 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         RollupRestTestCaseSecurityExtension.putDateDocumentInSourceIndexExt(rollup)
     }
 
-    private fun createRollupMappingString(rollup: Rollup): String {
-        return RollupRestTestCaseSecurityExtension.createRollupMappingStringExt(rollup)
-    }
+    private fun createRollupMappingString(rollup: Rollup): String = RollupRestTestCaseSecurityExtension.createRollupMappingStringExt(rollup)
 
-    protected fun updateManagedIndexConfigStartTime(update: ManagedIndexConfig, desiredStartTimeMillis: Long? = null, retryOnConflict: Int = 0) {
-        return IndexStateManagementRestTestCaseExt.updateManagedIndexConfigStartTimeExt(update, desiredStartTimeMillis, retryOnConflict)
-    }
+    protected fun updateManagedIndexConfigStartTime(update: ManagedIndexConfig, desiredStartTimeMillis: Long? = null, retryOnConflict: Int = 0) = IndexStateManagementRestTestCaseExt.updateManagedIndexConfigStartTimeExt(update, desiredStartTimeMillis, retryOnConflict)
 
     protected fun createPolicy(
         policy: Policy,
         policyId: String = OpenSearchTestCase.randomAlphaOfLength(10),
         refresh: Boolean = true,
         client: RestClient?,
-    ): Policy {
-        return IndexStateManagementRestTestCaseExt.createPolicyExt(policy, policyId, refresh, client)
-    }
+    ): Policy = IndexStateManagementRestTestCaseExt.createPolicyExt(policy, policyId, refresh, client)
 
     protected fun managedIndexExplainAllAsMap(
         client: RestClient?,
@@ -215,9 +199,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         policyId: String,
         refresh: Boolean = true,
         client: RestClient,
-    ): Response {
-        return IndexStateManagementRestTestCaseExt.createPolicyJsonExt(policyString, policyId, refresh, client)
-    }
+    ): Response = IndexStateManagementRestTestCaseExt.createPolicyJsonExt(policyString, policyId, refresh, client)
 
     protected fun deletePolicy(policyId: String, client: RestClient, expectedStatus: RestStatus) {
         val request = Request("DELETE", "${IndexManagementPlugin.POLICY_BASE_URI}/$policyId")
@@ -236,9 +218,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         executeRequest(request, expectedStatus, client)
     }
 
-    protected fun getExplainManagedIndexMetaData(indexName: String, userClient: RestClient? = null): ManagedIndexMetaData {
-        return IndexStateManagementRestTestCaseExt.getExplainManagedIndexMetaDataExt(indexName, userClient)
-    }
+    protected fun getExplainManagedIndexMetaData(indexName: String, userClient: RestClient? = null): ManagedIndexMetaData = IndexStateManagementRestTestCaseExt.getExplainManagedIndexMetaDataExt(indexName, userClient)
 
     protected fun createIndex(indexName: String, sourceIndexMappingString: String?, client: RestClient) {
         val waitForActiveShards = if (isMultiNode) "all" else "1"
@@ -269,9 +249,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         shards: String? = null,
         mapping: String = "",
         settings: Settings? = null,
-    ): Pair<String, String?> {
-        return IndexStateManagementRestTestCaseExt.createIndexExt(index, policyID, alias, replicas, shards, mapping, settings)
-    }
+    ): Pair<String, String?> = IndexStateManagementRestTestCaseExt.createIndexExt(index, policyID, alias, replicas, shards, mapping, settings)
 
     protected fun checkPolicies(
         userClient: RestClient,
@@ -502,8 +480,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         }
     }
 
-    protected fun createReplicaCountTestPolicyRequest(priority: Int, indexPattern: String?): String {
-        return """
+    protected fun createReplicaCountTestPolicyRequest(priority: Int, indexPattern: String?): String = """
             {
                 "policy": {
                     "description": "test policy",
@@ -527,8 +504,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
                     }
                 }
             }
-        """.trimIndent()
-    }
+    """.trimIndent()
 
     companion object {
         const val AIRLINE_POLICY = "airline-policy"

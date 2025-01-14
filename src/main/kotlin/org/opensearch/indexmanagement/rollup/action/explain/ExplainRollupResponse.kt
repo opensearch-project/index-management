@@ -14,16 +14,16 @@ import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.indexmanagement.rollup.model.ExplainRollup
 import java.io.IOException
 
-class ExplainRollupResponse : ActionResponse, ToXContentObject {
+class ExplainRollupResponse :
+    ActionResponse,
+    ToXContentObject {
     val idsToExplain: Map<String, ExplainRollup?>
 
     constructor(idsToExplain: Map<String, ExplainRollup?>) : super() {
         this.idsToExplain = idsToExplain
     }
 
-    internal fun getIdsToExplain(): Map<String, ExplainRollup?> {
-        return this.idsToExplain
-    }
+    internal fun getIdsToExplain(): Map<String, ExplainRollup?> = this.idsToExplain
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(

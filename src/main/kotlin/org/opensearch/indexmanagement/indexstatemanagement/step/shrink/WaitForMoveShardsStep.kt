@@ -96,20 +96,18 @@ class WaitForMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
 
     override fun getGenericFailureMessage(): String = FAILURE_MESSAGE
 
-    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
-        return currentMetadata.copy(
-            actionMetaData =
-            currentMetadata.actionMetaData?.copy(
-                actionProperties =
-                ActionProperties(
-                    shrinkActionProperties = shrinkActionProperties,
-                ),
+    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData = currentMetadata.copy(
+        actionMetaData =
+        currentMetadata.actionMetaData?.copy(
+            actionProperties =
+            ActionProperties(
+                shrinkActionProperties = shrinkActionProperties,
             ),
-            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
-            transitionTo = null,
-            info = info,
-        )
-    }
+        ),
+        stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
+        transitionTo = null,
+        info = info,
+    )
 
     private suspend fun checkTimeOut(
         stepContext: StepContext,

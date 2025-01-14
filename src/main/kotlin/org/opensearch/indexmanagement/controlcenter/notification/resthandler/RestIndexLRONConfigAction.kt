@@ -21,16 +21,12 @@ import org.opensearch.rest.action.RestToXContentListener
 import java.io.IOException
 
 class RestIndexLRONConfigAction : BaseRestHandler() {
-    override fun routes(): List<RestHandler.Route> {
-        return listOf(
-            RestHandler.Route(RestRequest.Method.POST, IndexManagementPlugin.LRON_BASE_URI),
-            RestHandler.Route(RestRequest.Method.PUT, "${IndexManagementPlugin.LRON_BASE_URI}/{id}"),
-        )
-    }
+    override fun routes(): List<RestHandler.Route> = listOf(
+        RestHandler.Route(RestRequest.Method.POST, IndexManagementPlugin.LRON_BASE_URI),
+        RestHandler.Route(RestRequest.Method.PUT, "${IndexManagementPlugin.LRON_BASE_URI}/{id}"),
+    )
 
-    override fun getName(): String {
-        return "create_lron_config_action"
-    }
+    override fun getName(): String = "create_lron_config_action"
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {

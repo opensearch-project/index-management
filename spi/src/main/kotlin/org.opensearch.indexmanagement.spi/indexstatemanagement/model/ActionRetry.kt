@@ -24,7 +24,8 @@ data class ActionRetry(
     val count: Long,
     val backoff: Backoff = Backoff.EXPONENTIAL,
     val delay: TimeValue = TimeValue.timeValueMinutes(1),
-) : ToXContentFragment, Writeable {
+) : ToXContentFragment,
+    Writeable {
     init {
         require(count >= 0) { "Count for ActionRetry must be a non-negative number" }
     }
@@ -109,9 +110,7 @@ data class ActionRetry(
 
         private val logger = LogManager.getLogger(javaClass)
 
-        override fun toString(): String {
-            return type
-        }
+        override fun toString(): String = type
 
         @Suppress("ReturnCount")
         fun shouldBackoff(actionMetaData: ActionMetaData?, actionRetry: ActionRetry?): Pair<Boolean, Long?> {

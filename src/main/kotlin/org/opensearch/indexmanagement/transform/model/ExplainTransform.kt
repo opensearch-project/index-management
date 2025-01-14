@@ -17,7 +17,8 @@ import java.io.IOException
 data class ExplainTransform(
     val metadataID: String? = null,
     val metadata: TransformMetadata? = null,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         metadataID = sin.readOptionalString(),
@@ -32,10 +33,8 @@ data class ExplainTransform(
     }
 
     @Throws(IOException::class)
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .field(Transform.METADATA_ID_FIELD, metadataID)
-            .field(TransformMetadata.TRANSFORM_METADATA_TYPE, metadata, XCONTENT_WITHOUT_TYPE)
-            .endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .field(Transform.METADATA_ID_FIELD, metadataID)
+        .field(TransformMetadata.TRANSFORM_METADATA_TYPE, metadata, XCONTENT_WITHOUT_TYPE)
+        .endObject()
 }

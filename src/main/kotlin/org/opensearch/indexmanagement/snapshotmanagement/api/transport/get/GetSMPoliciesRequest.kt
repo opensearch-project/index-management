@@ -23,7 +23,5 @@ class GetSMPoliciesRequest(val searchParams: SearchParams) : ActionRequest() {
         searchParams.writeTo(out)
     }
 
-    override fun validate(): ActionRequestValidationException? {
-        return null
-    }
+    override fun validate(): ActionRequestValidationException? = null
 }

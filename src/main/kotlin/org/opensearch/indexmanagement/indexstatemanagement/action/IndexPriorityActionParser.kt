@@ -39,7 +39,5 @@ class IndexPriorityActionParser : ActionParser() {
         )
     }
 
-    override fun getActionType(): String {
-        return IndexPriorityAction.name
-    }
+    override fun getActionType(): String = IndexPriorityAction.name
 }

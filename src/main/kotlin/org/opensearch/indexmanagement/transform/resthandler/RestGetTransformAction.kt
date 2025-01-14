@@ -26,17 +26,13 @@ import org.opensearch.rest.action.RestToXContentListener
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 
 class RestGetTransformAction : BaseRestHandler() {
-    override fun routes(): List<Route> {
-        return listOf(
-            Route(GET, TRANSFORM_BASE_URI),
-            Route(GET, "$TRANSFORM_BASE_URI/{transformID}"),
-            Route(HEAD, "$TRANSFORM_BASE_URI/{transformID}"),
-        )
-    }
+    override fun routes(): List<Route> = listOf(
+        Route(GET, TRANSFORM_BASE_URI),
+        Route(GET, "$TRANSFORM_BASE_URI/{transformID}"),
+        Route(HEAD, "$TRANSFORM_BASE_URI/{transformID}"),
+    )
 
-    override fun getName(): String {
-        return "opendistro_get_transform_action"
-    }
+    override fun getName(): String = "opendistro_get_transform_action"
 
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
         val transformID = request.param("transformID")
