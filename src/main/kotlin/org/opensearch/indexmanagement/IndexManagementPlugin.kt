@@ -149,6 +149,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManage
 import org.opensearch.indexmanagement.spi.IndexManagementExtension
 import org.opensearch.indexmanagement.spi.indexstatemanagement.IndexMetadataService
 import org.opensearch.indexmanagement.spi.indexstatemanagement.StatusChecker
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.transform.TargetIndexMappingService
 import org.opensearch.indexmanagement.transform.TransformRunner
@@ -188,10 +189,13 @@ import org.opensearch.plugins.ExtensiblePlugin
 import org.opensearch.plugins.NetworkPlugin
 import org.opensearch.plugins.Plugin
 import org.opensearch.plugins.SystemIndexPlugin
+import org.opensearch.plugins.TelemetryAwarePlugin
 import org.opensearch.repositories.RepositoriesService
 import org.opensearch.rest.RestController
 import org.opensearch.rest.RestHandler
 import org.opensearch.script.ScriptService
+import org.opensearch.telemetry.metrics.MetricsRegistry
+import org.opensearch.telemetry.tracing.Tracer
 import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.RemoteClusterService
 import org.opensearch.transport.TransportInterceptor
@@ -200,8 +204,8 @@ import org.opensearch.watcher.ResourceWatcherService
 import java.util.function.Supplier
 
 @Suppress("TooManyFunctions")
-class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin, ExtensiblePlugin, SystemIndexPlugin, Plugin() {
-
+class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin, ExtensiblePlugin, SystemIndexPlugin,
+    TelemetryAwarePlugin, Plugin() {
     private val logger = LogManager.getLogger(javaClass)
     lateinit var indexManagementIndices: IndexManagementIndices
     lateinit var actionValidation: ActionValidation
@@ -215,6 +219,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     private val extensions = mutableSetOf<String>()
     private val extensionCheckerMap = mutableMapOf<String, StatusChecker>()
     lateinit var indexOperationActionFilter: IndexOperationActionFilter
+    private lateinit var metricsRegistry: MetricsRegistry
 
     companion object {
         const val PLUGINS_BASE_URI = "/_plugins"
@@ -379,8 +384,11 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         namedWriteableRegistry: NamedWriteableRegistry,
         indexNameExpressionResolver: IndexNameExpressionResolver,
         repositoriesServiceSupplier: Supplier<RepositoriesService>,
+        tracer: Tracer,
+        metricsRegistry: MetricsRegistry,
     ): Collection<Any> {
         val settings = environment.settings()
+        this.metricsRegistry = metricsRegistry
         this.clusterService = clusterService
         QueryShardContextFactory.init(
             client,
@@ -390,6 +398,8 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
             namedWriteableRegistry,
             environment,
         )
+
+        IndexManagementActionsMetrics.instance.initialize(metricsRegistry)
         rollupInterceptor = RollupInterceptor(clusterService, settings, indexNameExpressionResolver)
         val jvmService = JvmService(environment.settings())
         val transformRunner = TransformRunner.initialize(
@@ -440,20 +450,22 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         indexMetadataServices.forEach { indexMetadataProvider.addMetadataServices(it) }
 
         val extensionChecker = ExtensionStatusChecker(extensionCheckerMap, clusterService)
-        val managedIndexRunner = ManagedIndexRunner
-            .registerClient(client)
-            .registerClusterService(clusterService)
-            .registerValidationService(actionValidation)
-            .registerNamedXContentRegistry(xContentRegistry)
-            .registerScriptService(scriptService)
-            .registerSettings(settings)
-            .registerConsumers() // registerConsumers must happen after registerSettings/clusterService
-            .registerIMIndex(indexManagementIndices)
-            .registerHistoryIndex(indexStateManagementHistory)
-            .registerSkipFlag(skipFlag)
-            .registerThreadPool(threadPool)
-            .registerExtensionChecker(extensionChecker)
-            .registerIndexMetadataProvider(indexMetadataProvider)
+        val managedIndexRunner =
+            ManagedIndexRunner
+                .registerClient(client)
+                .registerClusterService(clusterService)
+                .registerValidationService(actionValidation)
+                .registerNamedXContentRegistry(xContentRegistry)
+                .registerScriptService(scriptService)
+                .registerSettings(settings)
+                .registerConsumers() // registerConsumers must happen after registerSettings/clusterService
+                .registerIMIndex(indexManagementIndices)
+                .registerHistoryIndex(indexStateManagementHistory)
+                .registerSkipFlag(skipFlag)
+                .registerThreadPool(threadPool)
+                .registerExtensionChecker(extensionChecker)
+                .registerIndexMetadataProvider(indexMetadataProvider)
+                .registerIndexManagementActionMetrics(IndexManagementActionsMetrics.instance)
 
         val metadataService = MetadataService(client, clusterService, skipFlag, indexManagementIndices)
         val templateService = ISMTemplateService(client, clusterService, xContentRegistry, indexManagementIndices)
