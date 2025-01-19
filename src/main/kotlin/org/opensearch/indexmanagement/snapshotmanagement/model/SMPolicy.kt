@@ -52,7 +52,8 @@ data class SMPolicy(
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
     val notificationConfig: NotificationConfig? = null,
     val user: User? = null,
-) : ScheduledJobParameter, Writeable {
+) : ScheduledJobParameter,
+    Writeable {
 
     init {
         require(snapshotConfig["repository"] != null && snapshotConfig["repository"] != "") {
@@ -252,14 +253,13 @@ data class SMPolicy(
     data class Creation(
         val schedule: Schedule,
         val timeLimit: TimeValue? = null,
-    ) : Writeable, ToXContent {
+    ) : Writeable,
+        ToXContent {
 
-        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-            return builder.startObject()
-                .field(SCHEDULE_FIELD, schedule)
-                .optionalField(TIME_LIMIT_FIELD, timeLimit)
-                .endObject()
-        }
+        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+            .field(SCHEDULE_FIELD, schedule)
+            .optionalField(TIME_LIMIT_FIELD, timeLimit)
+            .endObject()
 
         companion object {
             const val SCHEDULE_FIELD = "schedule"
@@ -302,15 +302,14 @@ data class SMPolicy(
         val scheduleProvided: Boolean = true,
         val condition: DeleteCondition,
         val timeLimit: TimeValue? = null,
-    ) : Writeable, ToXContent {
+    ) : Writeable,
+        ToXContent {
 
-        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-            return builder.startObject()
-                .field(SCHEDULE_FIELD, schedule)
-                .field(CONDITION_FIELD, condition)
-                .optionalField(TIME_LIMIT_FIELD, timeLimit)
-                .endObject()
-        }
+        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+            .field(SCHEDULE_FIELD, schedule)
+            .field(CONDITION_FIELD, condition)
+            .optionalField(TIME_LIMIT_FIELD, timeLimit)
+            .endObject()
 
         companion object {
             const val SCHEDULE_FIELD = "schedule"
@@ -366,7 +365,8 @@ data class SMPolicy(
         val maxAge: TimeValue? = null,
         val minCount: Int,
         val maxCount: Int? = null,
-    ) : Writeable, ToXContent {
+    ) : Writeable,
+        ToXContent {
 
         init {
             require(!(maxAge == null && maxCount == null)) { "Please provide $MAX_AGE_FIELD or $MAX_COUNT_FIELD." }
@@ -374,13 +374,11 @@ data class SMPolicy(
             require(maxCount == null || maxCount - minCount > 0) { "$MAX_COUNT_FIELD should be bigger than $MIN_COUNT_FIELD." }
         }
 
-        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-            return builder.startObject()
-                .optionalField(MAX_AGE_FIELD, maxAge)
-                .field(MIN_COUNT_FIELD, minCount)
-                .optionalField(MAX_COUNT_FIELD, maxCount)
-                .endObject()
-        }
+        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+            .optionalField(MAX_AGE_FIELD, maxAge)
+            .field(MIN_COUNT_FIELD, minCount)
+            .optionalField(MAX_COUNT_FIELD, maxCount)
+            .endObject()
 
         companion object {
             const val MAX_COUNT_FIELD = "max_count"

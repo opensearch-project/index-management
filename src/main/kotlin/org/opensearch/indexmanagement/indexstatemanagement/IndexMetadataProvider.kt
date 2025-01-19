@@ -36,9 +36,7 @@ class IndexMetadataProvider(
         }
     }
 
-    fun isUnManageableIndex(index: String): Boolean {
-        return Regex(restrictedIndexPattern).matches(index)
-    }
+    fun isUnManageableIndex(index: String): Boolean = Regex(restrictedIndexPattern).matches(index)
 
     suspend fun getISMIndexMetadataByType(type: String = DEFAULT_INDEX_TYPE, indexNames: List<String>): Map<String, ISMIndexMetadata> {
         val service = services[type] ?: throw IllegalArgumentException(getTypeNotRecognizedMessage(type))
@@ -89,9 +87,7 @@ class IndexMetadataProvider(
         metadata
     }
 
-    fun getIndexMetadataWriteOverrideSettings(): List<String> {
-        return services.values.mapNotNull { it.getIndexMetadataWriteOverrideSetting() }
-    }
+    fun getIndexMetadataWriteOverrideSettings(): List<String> = services.values.mapNotNull { it.getIndexMetadataWriteOverrideSetting() }
 
     companion object {
         const val EVALUATION_FAILURE_MESSAGE = "Matches restricted index pattern defined in the cluster setting"

@@ -22,9 +22,7 @@ class UpdateRollupMappingRequest : AcknowledgedRequest<UpdateRollupMappingReques
         this.rollup = rollup
     }
 
-    override fun validate(): ActionRequestValidationException? {
-        return null
-    }
+    override fun validate(): ActionRequestValidationException? = null
 
     override fun writeTo(out: StreamOutput) {
         super.writeTo(out)

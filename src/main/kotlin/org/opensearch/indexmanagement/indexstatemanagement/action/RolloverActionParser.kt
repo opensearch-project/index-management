@@ -54,7 +54,5 @@ class RolloverActionParser : ActionParser() {
         return RolloverAction(minSize, minDocs, minAge, minPrimaryShardSize, copyAlias, index)
     }
 
-    override fun getActionType(): String {
-        return RolloverAction.name
-    }
+    override fun getActionType(): String = RolloverAction.name
 }

@@ -107,15 +107,13 @@ class TransportGetSMPoliciesAction @Inject constructor(
         return SearchRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX).source(searchSourceBuilder)
     }
 
-    private fun parseGetAllPoliciesResponse(searchResponse: SearchResponse): Pair<List<SMPolicy>, Long> {
-        return try {
-            val totalPolicies = searchResponse.hits.totalHits?.value ?: 0L
-            searchResponse.hits.hits.map {
-                contentParser(it.sourceRef).parseWithType(it.id, it.seqNo, it.primaryTerm, SMPolicy.Companion::parse)
-            } to totalPolicies
-        } catch (e: Exception) {
-            log.error("Failed to parse snapshot management policy in search response", e)
-            throw OpenSearchStatusException("Failed to parse snapshot management policy", RestStatus.NOT_FOUND)
-        }
+    private fun parseGetAllPoliciesResponse(searchResponse: SearchResponse): Pair<List<SMPolicy>, Long> = try {
+        val totalPolicies = searchResponse.hits.totalHits?.value ?: 0L
+        searchResponse.hits.hits.map {
+            contentParser(it.sourceRef).parseWithType(it.id, it.seqNo, it.primaryTerm, SMPolicy.Companion::parse)
+        } to totalPolicies
+    } catch (e: Exception) {
+        log.error("Failed to parse snapshot management policy in search response", e)
+        throw OpenSearchStatusException("Failed to parse snapshot management policy", RestStatus.NOT_FOUND)
     }
 }

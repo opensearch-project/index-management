@@ -93,9 +93,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
     protected val isDebuggingRemoteCluster = System.getProperty("cluster.debug", "false")!!.toBoolean()
 
     protected val isLocalTest = clusterName() == "integTest"
-    private fun clusterName(): String {
-        return System.getProperty("tests.clustername")
-    }
+    private fun clusterName(): String = System.getProperty("tests.clustername")
 
     fun Response.asMap(): Map<String, Any> = entityAsMap(this)
 

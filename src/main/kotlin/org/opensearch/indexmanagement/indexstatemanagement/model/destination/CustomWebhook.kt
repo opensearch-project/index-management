@@ -33,7 +33,8 @@ data class CustomWebhook(
     val headerParams: Map<String, String>,
     val username: String?,
     val password: String?,
-) : ToXContent, Writeable {
+) : ToXContent,
+    Writeable {
 
     init {
         require(!(Strings.isNullOrEmpty(url) && Strings.isNullOrEmpty(host))) {
@@ -41,19 +42,17 @@ data class CustomWebhook(
         }
     }
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject(TYPE)
-            .field(URL, url)
-            .field(SCHEME_FIELD, scheme)
-            .field(HOST_FIELD, host)
-            .field(PORT_FIELD, port)
-            .field(PATH_FIELD, path)
-            .field(QUERY_PARAMS_FIELD, queryParams)
-            .field(HEADER_PARAMS_FIELD, headerParams)
-            .field(USERNAME_FIELD, username)
-            .field(PASSWORD_FIELD, password)
-            .endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject(TYPE)
+        .field(URL, url)
+        .field(SCHEME_FIELD, scheme)
+        .field(HOST_FIELD, host)
+        .field(PORT_FIELD, port)
+        .field(PATH_FIELD, path)
+        .field(QUERY_PARAMS_FIELD, queryParams)
+        .field(HEADER_PARAMS_FIELD, headerParams)
+        .field(USERNAME_FIELD, username)
+        .field(PASSWORD_FIELD, password)
+        .endObject()
 
     constructor(sin: StreamInput) : this(
         sin.readOptionalString(),
@@ -128,8 +127,6 @@ data class CustomWebhook(
         }
 
         @Suppress("UNCHECKED_CAST")
-        fun suppressWarning(map: MutableMap<String?, Any?>?): MutableMap<String, String> {
-            return map as MutableMap<String, String>
-        }
+        fun suppressWarning(map: MutableMap<String?, Any?>?): MutableMap<String, String> = map as MutableMap<String, String>
     }
 }

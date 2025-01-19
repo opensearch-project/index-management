@@ -28,7 +28,8 @@ class GetTransformResponse(
     val primaryTerm: Long,
     val status: RestStatus,
     val transform: Transform?,
-) : ActionResponse(), ToXContentObject {
+) : ActionResponse(),
+    ToXContentObject {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(

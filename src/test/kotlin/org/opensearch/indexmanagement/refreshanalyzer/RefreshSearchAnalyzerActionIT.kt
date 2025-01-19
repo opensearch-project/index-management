@@ -207,8 +207,7 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
             client().performRequest(request)
         }
 
-        fun getSearchAnalyzerSettings(): String {
-            return """
+        fun getSearchAnalyzerSettings(): String = """
             {
                 "index" : {
                     "analysis" : {
@@ -228,11 +227,9 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
                     }
                 }
             }
-            """.trimIndent()
-        }
+        """.trimIndent()
 
-        fun getIndexAnalyzerSettings(): String {
-            return """
+        fun getIndexAnalyzerSettings(): String = """
             {
                 "index" : {
                     "analysis" : {
@@ -251,11 +248,9 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
                     }
                 }
             }
-            """.trimIndent()
-        }
+        """.trimIndent()
 
-        fun getAnalyzerMapping(): String {
-            return """
+        fun getAnalyzerMapping(): String = """
             "properties": {
                     "title": {
                         "type": "text",
@@ -263,7 +258,6 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
                         "search_analyzer": "my_synonyms"
                     }
                 }
-            """.trimIndent()
-        }
+        """.trimIndent()
     }
 }

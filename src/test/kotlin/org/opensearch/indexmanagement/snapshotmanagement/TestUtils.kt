@@ -59,30 +59,28 @@ fun randomSMMetadata(
     deletionLatestExecution: SMMetadata.LatestExecution? = null,
     creationRetryCount: Int? = null,
     deletionRetryCount: Int? = null,
-): SMMetadata {
-    return SMMetadata(
-        policySeqNo = policySeqNo,
-        policyPrimaryTerm = policyPrimaryTerm,
-        creation = SMMetadata.WorkflowMetadata(
-            currentState = creationCurrentState,
-            trigger = SMMetadata.Trigger(
-                time = nextCreationTime,
-            ),
-            started = if (startedCreation != null) listOf(startedCreation) else null,
-            latestExecution = creationLatestExecution,
-            retry = creationRetryCount?.let { SMMetadata.Retry(it) },
+): SMMetadata = SMMetadata(
+    policySeqNo = policySeqNo,
+    policyPrimaryTerm = policyPrimaryTerm,
+    creation = SMMetadata.WorkflowMetadata(
+        currentState = creationCurrentState,
+        trigger = SMMetadata.Trigger(
+            time = nextCreationTime,
         ),
-        deletion = SMMetadata.WorkflowMetadata(
-            currentState = deletionCurrentState,
-            trigger = SMMetadata.Trigger(
-                time = nextDeletionTime,
-            ),
-            started = startedDeletion,
-            latestExecution = deletionLatestExecution,
-            retry = deletionRetryCount?.let { SMMetadata.Retry(it) },
+        started = if (startedCreation != null) listOf(startedCreation) else null,
+        latestExecution = creationLatestExecution,
+        retry = creationRetryCount?.let { SMMetadata.Retry(it) },
+    ),
+    deletion = SMMetadata.WorkflowMetadata(
+        currentState = deletionCurrentState,
+        trigger = SMMetadata.Trigger(
+            time = nextDeletionTime,
         ),
-    )
-}
+        started = startedDeletion,
+        latestExecution = deletionLatestExecution,
+        retry = deletionRetryCount?.let { SMMetadata.Retry(it) },
+    ),
+)
 
 fun randomLatestExecution(
     status: SMMetadata.LatestExecution.Status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
@@ -260,14 +258,12 @@ fun mockInProgressSnapshotInfo(
 fun mockSnapshotInfo(
     name: String = randomAlphaOfLength(10),
     snapshotState: SnapshotState,
-): SnapshotInfo {
-    return SnapshotInfo(
-        SnapshotId(name, UUIDs.randomBase64UUID()),
-        emptyList(),
-        emptyList(),
-        snapshotState,
-    )
-}
+): SnapshotInfo = SnapshotInfo(
+    SnapshotId(name, UUIDs.randomBase64UUID()),
+    emptyList(),
+    emptyList(),
+    snapshotState,
+)
 
 fun mockGetSnapshotResponse(num: Int): GetSnapshotsResponse {
     val getSnapshotsRes: GetSnapshotsResponse = mock()

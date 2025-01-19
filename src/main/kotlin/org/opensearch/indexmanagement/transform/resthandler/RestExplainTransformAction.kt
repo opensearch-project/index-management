@@ -19,9 +19,7 @@ import org.opensearch.rest.action.RestToXContentListener
 
 class RestExplainTransformAction : BaseRestHandler() {
 
-    override fun routes(): List<Route> {
-        return listOf(Route(GET, "$TRANSFORM_BASE_URI/{transformID}/_explain"))
-    }
+    override fun routes(): List<Route> = listOf(Route(GET, "$TRANSFORM_BASE_URI/{transformID}/_explain"))
 
     override fun getName(): String = "opendistro_explain_transform_action"
 

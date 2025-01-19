@@ -24,17 +24,17 @@ import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.generateUserString
 import java.io.IOException
 
-data class Channel(val id: String) : ToXContent, Writeable {
+data class Channel(val id: String) :
+    ToXContent,
+    Writeable {
 
     init {
         require(id.isNotEmpty()) { "Channel ID cannot be empty" }
     }
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .field(ID, id)
-            .endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .field(ID, id)
+        .endObject()
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(

@@ -29,17 +29,15 @@ abstract class ODFERestTestCase : OpenSearchRestTestCase() {
     /**
      * Returns the REST client settings used for super-admin actions like cleaning up after the test has completed.
      */
-    override fun restAdminSettings(): Settings {
-        return Settings
-            .builder()
-            .put("http.port", 9200)
-            .put(OPENSEARCH_SECURITY_SSL_HTTP_ENABLED, isHttps())
-            .put(OPENSEARCH_SECURITY_SSL_HTTP_PEMCERT_FILEPATH, "sample.pem")
-            .put(OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_FILEPATH, "test-kirk.jks")
-            .put(OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_PASSWORD, "changeit")
-            .put(OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_KEYPASSWORD, "changeit")
-            .build()
-    }
+    override fun restAdminSettings(): Settings = Settings
+        .builder()
+        .put("http.port", 9200)
+        .put(OPENSEARCH_SECURITY_SSL_HTTP_ENABLED, isHttps())
+        .put(OPENSEARCH_SECURITY_SSL_HTTP_PEMCERT_FILEPATH, "sample.pem")
+        .put(OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_FILEPATH, "test-kirk.jks")
+        .put(OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_PASSWORD, "changeit")
+        .put(OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_KEYPASSWORD, "changeit")
+        .build()
 
     @Throws(IOException::class)
     override fun buildClient(settings: Settings, hosts: Array<HttpHost>): RestClient {

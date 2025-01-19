@@ -22,16 +22,12 @@ import org.opensearch.rest.action.RestToXContentListener
 
 class RestGetSMPolicyHandler : BaseRestHandler() {
 
-    override fun getName(): String {
-        return "snapshot_management_get_policy_rest_handler"
-    }
+    override fun getName(): String = "snapshot_management_get_policy_rest_handler"
 
-    override fun routes(): List<Route> {
-        return listOf(
-            Route(GET, "$SM_POLICIES_URI/{policyName}"),
-            Route(GET, "$SM_POLICIES_URI/"),
-        )
-    }
+    override fun routes(): List<Route> = listOf(
+        Route(GET, "$SM_POLICIES_URI/{policyName}"),
+        Route(GET, "$SM_POLICIES_URI/"),
+    )
 
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
         val policyName = request.param("policyName", "")
@@ -42,10 +38,8 @@ class RestGetSMPolicyHandler : BaseRestHandler() {
         }
     }
 
-    private fun getSMPolicyByName(client: NodeClient, policyName: String): RestChannelConsumer {
-        return RestChannelConsumer {
-            client.execute(GET_SM_POLICY_ACTION_TYPE, GetSMPolicyRequest(smPolicyNameToDocId(policyName)), RestToXContentListener(it))
-        }
+    private fun getSMPolicyByName(client: NodeClient, policyName: String): RestChannelConsumer = RestChannelConsumer {
+        client.execute(GET_SM_POLICY_ACTION_TYPE, GetSMPolicyRequest(smPolicyNameToDocId(policyName)), RestToXContentListener(it))
     }
 
     private fun getAllPolicies(request: RestRequest, client: NodeClient): RestChannelConsumer {

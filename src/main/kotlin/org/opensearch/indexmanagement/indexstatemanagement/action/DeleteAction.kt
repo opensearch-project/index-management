@@ -21,9 +21,7 @@ class DeleteAction(
     private val attemptDeleteStep = AttemptDeleteStep()
     private val steps = listOf(attemptDeleteStep)
 
-    override fun getStepToExecute(context: StepContext): Step {
-        return attemptDeleteStep
-    }
+    override fun getStepToExecute(context: StepContext): Step = attemptDeleteStep
 
     override fun getSteps(): List<Step> = steps
 }

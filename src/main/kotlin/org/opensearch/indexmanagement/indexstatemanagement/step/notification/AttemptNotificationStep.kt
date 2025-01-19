@@ -51,19 +51,19 @@ class AttemptNotificationStep(private val action: NotificationAction) : Step(nam
         info = mutableInfo.toMap()
     }
 
-    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
-        return currentMetadata.copy(
-            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
-            transitionTo = null,
-            info = info,
-        )
-    }
+    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData = currentMetadata.copy(
+        stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
+        transitionTo = null,
+        info = info,
+    )
 
-    private fun compileTemplate(scriptService: ScriptService, template: Script, managedIndexMetaData: ManagedIndexMetaData): String {
-        return scriptService.compile(template, TemplateScript.CONTEXT)
-            .newInstance(template.params + mapOf("ctx" to managedIndexMetaData.convertToMap()))
-            .execute()
-    }
+    private fun compileTemplate(
+        scriptService: ScriptService,
+        template: Script,
+        managedIndexMetaData: ManagedIndexMetaData,
+    ): String = scriptService.compile(template, TemplateScript.CONTEXT)
+        .newInstance(template.params + mapOf("ctx" to managedIndexMetaData.convertToMap()))
+        .execute()
 
     override fun isIdempotent(): Boolean = false
 

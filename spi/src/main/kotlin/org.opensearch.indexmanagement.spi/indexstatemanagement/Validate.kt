@@ -30,18 +30,14 @@ abstract class Validate(
         FAILED("failed"),
         ;
 
-        override fun toString(): String {
-            return status
-        }
+        override fun toString(): String = status
 
         override fun writeTo(out: StreamOutput) {
             out.writeString(status)
         }
 
         companion object {
-            fun read(streamInput: StreamInput): ValidationStatus {
-                return valueOf(streamInput.readString().uppercase(Locale.ROOT))
-            }
+            fun read(streamInput: StreamInput): ValidationStatus = valueOf(streamInput.readString().uppercase(Locale.ROOT))
         }
     }
 }

@@ -41,15 +41,13 @@ data class Histogram(
         interval = sin.readDouble(),
     )
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .startObject(type.type)
-            .field(DIMENSION_SOURCE_FIELD_FIELD, sourceField)
-            .field(DIMENSION_TARGET_FIELD_FIELD, targetField)
-            .field(HISTOGRAM_INTERVAL_FIELD, interval)
-            .endObject()
-            .endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .startObject(type.type)
+        .field(DIMENSION_SOURCE_FIELD_FIELD, sourceField)
+        .field(DIMENSION_TARGET_FIELD_FIELD, targetField)
+        .field(HISTOGRAM_INTERVAL_FIELD, interval)
+        .endObject()
+        .endObject()
 
     override fun writeTo(out: StreamOutput) {
         out.writeString(sourceField)

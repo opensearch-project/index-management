@@ -115,15 +115,13 @@ fun randomTransformMetadata(): TransformMetadata {
     )
 }
 
-fun randomTransformStats(): TransformStats {
-    return TransformStats(
-        pagesProcessed = OpenSearchRestTestCase.randomNonNegativeLong(),
-        documentsProcessed = OpenSearchRestTestCase.randomNonNegativeLong(),
-        documentsIndexed = OpenSearchRestTestCase.randomNonNegativeLong(),
-        indexTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong(),
-        searchTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong(),
-    )
-}
+fun randomTransformStats(): TransformStats = TransformStats(
+    pagesProcessed = OpenSearchRestTestCase.randomNonNegativeLong(),
+    documentsProcessed = OpenSearchRestTestCase.randomNonNegativeLong(),
+    documentsIndexed = OpenSearchRestTestCase.randomNonNegativeLong(),
+    indexTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong(),
+    searchTimeInMillis = OpenSearchRestTestCase.randomNonNegativeLong(),
+)
 
 fun randomShardIDToGlobalCheckpoint(): Map<ShardId, Long> {
     val numIndices = OpenSearchRestTestCase.randomIntBetween(1, 10)
@@ -139,12 +137,10 @@ fun randomShardID(): ShardId {
     return ShardId(testIndex, shardNumber)
 }
 
-fun randomContinuousStats(): ContinuousTransformStats {
-    return ContinuousTransformStats(
-        lastTimestamp = randomInstant(),
-        documentsBehind = randomDocumentsBehind(),
-    )
-}
+fun randomContinuousStats(): ContinuousTransformStats = ContinuousTransformStats(
+    lastTimestamp = randomInstant(),
+    documentsBehind = randomDocumentsBehind(),
+)
 
 fun randomDocumentsBehind(): Map<String, Long> {
     val numIndices = OpenSearchRestTestCase.randomIntBetween(1, 10)
@@ -152,25 +148,21 @@ fun randomDocumentsBehind(): Map<String, Long> {
     return randomIndices.associateWith { OpenSearchRestTestCase.randomNonNegativeLong() }
 }
 
-fun randomTransformMetadataStatus(): TransformMetadata.Status {
-    return OpenSearchRestTestCase.randomFrom(TransformMetadata.Status.values().toList())
-}
+fun randomTransformMetadataStatus(): TransformMetadata.Status = OpenSearchRestTestCase.randomFrom(TransformMetadata.Status.values().toList())
 
 fun randomExplainTransform(): ExplainTransform {
     val metadata = randomTransformMetadata()
     return ExplainTransform(metadataID = metadata.id, metadata = metadata)
 }
 
-fun randomISMTransform(): ISMTransform {
-    return ISMTransform(
-        description = OpenSearchRestTestCase.randomAlphaOfLength(10),
-        targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
-        pageSize = OpenSearchRestTestCase.randomIntBetween(1, 10000),
-        groups = randomGroups(),
-        dataSelectionQuery = randomTermQuery(),
-        aggregations = randomAggregationFactories(),
-    )
-}
+fun randomISMTransform(): ISMTransform = ISMTransform(
+    description = OpenSearchRestTestCase.randomAlphaOfLength(10),
+    targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
+    pageSize = OpenSearchRestTestCase.randomIntBetween(1, 10000),
+    groups = randomGroups(),
+    dataSelectionQuery = randomTermQuery(),
+    aggregations = randomAggregationFactories(),
+)
 
 fun Transform.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(XContentFactory.jsonBuilder(), params).string()
 

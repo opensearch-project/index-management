@@ -12,7 +12,9 @@ import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import java.io.IOException
 
-abstract class Metric(val type: Type) : ToXContentObject, Writeable {
+abstract class Metric(val type: Type) :
+    ToXContentObject,
+    Writeable {
 
     enum class Type(val type: String) {
         AVERAGE("avg"),
@@ -22,9 +24,7 @@ abstract class Metric(val type: Type) : ToXContentObject, Writeable {
         VALUE_COUNT("value_count"),
         ;
 
-        override fun toString(): String {
-            return type
-        }
+        override fun toString(): String = type
     }
 
     companion object {

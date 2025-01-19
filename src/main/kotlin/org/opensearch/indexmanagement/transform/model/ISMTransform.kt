@@ -43,7 +43,8 @@ data class ISMTransform(
     val dataSelectionQuery: QueryBuilder = MatchAllQueryBuilder(),
     val groups: List<Dimension>,
     val aggregations: AggregatorFactories.Builder = AggregatorFactories.builder(),
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
 
     init {
         require(pageSize in Transform.MINIMUM_PAGE_SIZE..Transform.MAXIMUM_PAGE_SIZE) {

@@ -26,26 +26,20 @@ import org.opensearch.rest.action.RestToXContentListener
 
 class RestRetryFailedManagedIndexAction : BaseRestHandler() {
 
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                POST, RETRY_BASE_URI,
-                POST, LEGACY_RETRY_BASE_URI,
-            ),
-            ReplacedRoute(
-                POST, "$RETRY_BASE_URI/{index}",
-                POST, "$LEGACY_RETRY_BASE_URI/{index}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            POST, RETRY_BASE_URI,
+            POST, LEGACY_RETRY_BASE_URI,
+        ),
+        ReplacedRoute(
+            POST, "$RETRY_BASE_URI/{index}",
+            POST, "$LEGACY_RETRY_BASE_URI/{index}",
+        ),
+    )
 
-    override fun getName(): String {
-        return "retry_failed_managed_index"
-    }
+    override fun getName(): String = "retry_failed_managed_index"
 
     @Suppress("SpreadOperator") // There is no way around dealing with java vararg without spread operator.
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {

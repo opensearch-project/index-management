@@ -19,15 +19,11 @@ import org.opensearch.rest.action.RestToXContentListener
 
 class RestDeleteSMPolicyHandler : BaseRestHandler() {
 
-    override fun getName(): String {
-        return "snapshot_management_delete_policy_rest_handler"
-    }
+    override fun getName(): String = "snapshot_management_delete_policy_rest_handler"
 
-    override fun routes(): List<Route> {
-        return listOf(
-            Route(RestRequest.Method.DELETE, "$SM_POLICIES_URI/{policyName}"),
-        )
-    }
+    override fun routes(): List<Route> = listOf(
+        Route(RestRequest.Method.DELETE, "$SM_POLICIES_URI/{policyName}"),
+    )
 
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
         val policyName = request.param("policyName", "")

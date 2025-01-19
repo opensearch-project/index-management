@@ -43,34 +43,28 @@ class RestExplainAction : BaseRestHandler() {
         const val LEGACY_EXPLAIN_BASE_URI = "$LEGACY_ISM_BASE_URI/explain"
     }
 
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                GET, EXPLAIN_BASE_URI,
-                GET, LEGACY_EXPLAIN_BASE_URI,
-            ),
-            ReplacedRoute(
-                GET, "$EXPLAIN_BASE_URI/{index}",
-                GET, "$LEGACY_EXPLAIN_BASE_URI/{index}",
-            ),
-            ReplacedRoute(
-                POST, EXPLAIN_BASE_URI,
-                POST, LEGACY_EXPLAIN_BASE_URI,
-            ),
-            ReplacedRoute(
-                POST, "$EXPLAIN_BASE_URI/{index}",
-                POST, "$LEGACY_EXPLAIN_BASE_URI/{index}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            GET, EXPLAIN_BASE_URI,
+            GET, LEGACY_EXPLAIN_BASE_URI,
+        ),
+        ReplacedRoute(
+            GET, "$EXPLAIN_BASE_URI/{index}",
+            GET, "$LEGACY_EXPLAIN_BASE_URI/{index}",
+        ),
+        ReplacedRoute(
+            POST, EXPLAIN_BASE_URI,
+            POST, LEGACY_EXPLAIN_BASE_URI,
+        ),
+        ReplacedRoute(
+            POST, "$EXPLAIN_BASE_URI/{index}",
+            POST, "$LEGACY_EXPLAIN_BASE_URI/{index}",
+        ),
+    )
 
-    override fun getName(): String {
-        return "ism_explain_action"
-    }
+    override fun getName(): String = "ism_explain_action"
 
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
         log.debug("${request.method()} ${request.path()}")

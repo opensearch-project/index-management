@@ -23,13 +23,13 @@ import java.io.IOException
  * Temporary import from alerting, this will be removed once we pull notifications out of
  * alerting so all plugins can consume and use.
  */
-data class Chime(val url: String) : ToXContent, Writeable {
+data class Chime(val url: String) :
+    ToXContent,
+    Writeable {
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject(TYPE)
-            .field(URL, url)
-            .endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject(TYPE)
+        .field(URL, url)
+        .endObject()
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
@@ -66,7 +66,5 @@ data class Chime(val url: String) : ToXContent, Writeable {
     }
 
     // Complete JSON structure is now constructed in the notification plugin
-    fun constructMessageContent(subject: String?, message: String): String {
-        return if (Strings.isNullOrEmpty(subject)) message else "$subject \n\n $message"
-    }
+    fun constructMessageContent(subject: String?, message: String): String = if (Strings.isNullOrEmpty(subject)) message else "$subject \n\n $message"
 }

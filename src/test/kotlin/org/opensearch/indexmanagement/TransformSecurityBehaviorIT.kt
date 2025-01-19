@@ -257,25 +257,23 @@ class TransformSecurityBehaviorIT : SecurityRestTestCase() {
     private fun createSimpleTransform(
         sourceIndex: String,
         targetIndex: String,
-    ): Transform {
-        return Transform(
-            id = "id_1",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform",
-            metadataId = null,
-            sourceIndex = sourceIndex,
-            targetIndex = targetIndex,
-            roles = emptyList(),
-            pageSize = 100,
-            groups = listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
-            ),
-        )
-    }
+    ): Transform = Transform(
+        id = "id_1",
+        schemaVersion = 1L,
+        enabled = true,
+        enabledAt = Instant.now(),
+        updatedAt = Instant.now(),
+        jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+        description = "test transform",
+        metadataId = null,
+        sourceIndex = sourceIndex,
+        targetIndex = targetIndex,
+        roles = emptyList(),
+        pageSize = 100,
+        groups = listOf(
+            Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+        ),
+    )
 
     private fun createTestUserWithRole(clusterPermissions: List<String>, indexPermissions: List<String>) {
         val testBackendRole = testRole + "_backend"

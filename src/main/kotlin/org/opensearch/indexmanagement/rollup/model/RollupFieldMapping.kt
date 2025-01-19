@@ -14,9 +14,7 @@ data class RollupFieldMapping(val fieldType: FieldType, val fieldName: String, v
         this.sourceType = type
     }
 
-    override fun toString(): String {
-        return "$fieldName.$mappingType"
-    }
+    override fun toString(): String = "$fieldName.$mappingType"
 
     fun toIssue(isFieldMissing: Boolean = false): String {
         return if (isFieldMissing || mappingType == UNKNOWN_MAPPING) {
@@ -36,9 +34,7 @@ data class RollupFieldMapping(val fieldType: FieldType, val fieldName: String, v
             METRIC(METRICS_FIELD),
             ;
 
-            override fun toString(): String {
-                return type
-            }
+            override fun toString(): String = type
         }
     }
 }

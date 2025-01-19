@@ -39,7 +39,5 @@ class ForceMergeActionParser : ActionParser() {
         )
     }
 
-    override fun getActionType(): String {
-        return ForceMergeAction.name
-    }
+    override fun getActionType(): String = ForceMergeAction.name
 }

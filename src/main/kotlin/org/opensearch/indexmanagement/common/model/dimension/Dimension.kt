@@ -18,16 +18,15 @@ abstract class Dimension(
     val type: Type,
     open val sourceField: String,
     open val targetField: String,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
     enum class Type(val type: String) {
         DATE_HISTOGRAM("date_histogram"),
         TERMS("terms"),
         HISTOGRAM("histogram"),
         ;
 
-        override fun toString(): String {
-            return type
-        }
+        override fun toString(): String = type
     }
 
     abstract fun toSourceBuilder(appendType: Boolean = false): CompositeValuesSourceBuilder<*>

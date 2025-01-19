@@ -15,9 +15,7 @@ import java.lang.IllegalArgumentException
 
 class IndexManagementException(message: String, val status: RestStatus, ex: Exception) : OpenSearchException(message, ex) {
 
-    override fun status(): RestStatus {
-        return status
-    }
+    override fun status(): RestStatus = status
 
     companion object {
         @JvmStatic

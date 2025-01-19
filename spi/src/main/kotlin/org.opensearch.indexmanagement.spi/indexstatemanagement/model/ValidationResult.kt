@@ -25,7 +25,8 @@ import java.util.Locale
 data class ValidationResult(
     val validationMessage: String,
     val validationStatus: Validate.ValidationStatus,
-) : Writeable, ToXContentFragment {
+) : Writeable,
+    ToXContentFragment {
 
     override fun writeTo(out: StreamOutput) {
         out.writeString(validationMessage)
@@ -39,9 +40,7 @@ data class ValidationResult(
         return builder
     }
 
-    fun getMapValueString(): String {
-        return Strings.toString(XContentType.JSON, this)
-    }
+    fun getMapValueString(): String = Strings.toString(XContentType.JSON, this)
 
     companion object {
         const val VALIDATE = "validate"

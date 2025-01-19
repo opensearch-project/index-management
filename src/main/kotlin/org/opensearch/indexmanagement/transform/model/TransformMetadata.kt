@@ -34,7 +34,8 @@ data class TransformMetadata(
     val stats: TransformStats,
     val shardIDToGlobalCheckpoint: Map<ShardId, Long>? = null,
     val continuousStats: ContinuousTransformStats? = null,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
 
     enum class Status(val type: String) {
         INIT("init"),
@@ -44,9 +45,7 @@ data class TransformMetadata(
         FAILED("failed"),
         ;
 
-        override fun toString(): String {
-            return type
-        }
+        override fun toString(): String = type
     }
 
     @Throws(IOException::class)
@@ -99,17 +98,15 @@ data class TransformMetadata(
         continuousStats?.let { it.writeTo(out) }
     }
 
-    fun mergeStats(stats: TransformStats): TransformMetadata {
-        return this.copy(
-            stats = this.stats.copy(
-                pagesProcessed = this.stats.pagesProcessed + stats.pagesProcessed,
-                documentsIndexed = this.stats.documentsIndexed + stats.documentsIndexed,
-                documentsProcessed = this.stats.documentsProcessed + stats.documentsProcessed,
-                indexTimeInMillis = this.stats.indexTimeInMillis + stats.indexTimeInMillis,
-                searchTimeInMillis = this.stats.searchTimeInMillis + stats.searchTimeInMillis,
-            ),
-        )
-    }
+    fun mergeStats(stats: TransformStats): TransformMetadata = this.copy(
+        stats = this.stats.copy(
+            pagesProcessed = this.stats.pagesProcessed + stats.pagesProcessed,
+            documentsIndexed = this.stats.documentsIndexed + stats.documentsIndexed,
+            documentsProcessed = this.stats.documentsProcessed + stats.documentsProcessed,
+            indexTimeInMillis = this.stats.indexTimeInMillis + stats.indexTimeInMillis,
+            searchTimeInMillis = this.stats.searchTimeInMillis + stats.searchTimeInMillis,
+        ),
+    )
 
     companion object {
         const val TRANSFORM_METADATA_TYPE = "transform_metadata"

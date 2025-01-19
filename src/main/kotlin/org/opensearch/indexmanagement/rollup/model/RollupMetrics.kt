@@ -26,7 +26,8 @@ data class RollupMetrics(
     val sourceField: String,
     val targetField: String,
     val metrics: List<Metric>,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
 
     init {
         require(metrics.size == metrics.distinctBy { it.type }.size) {
@@ -59,12 +60,10 @@ data class RollupMetrics(
         },
     )
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .field(SOURCE_FIELD_FIELD, sourceField)
-            .field(METRICS_FIELD, metrics.toTypedArray())
-            .endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .field(SOURCE_FIELD_FIELD, sourceField)
+        .field(METRICS_FIELD, metrics.toTypedArray())
+        .endObject()
 
     override fun writeTo(out: StreamOutput) {
         out.writeString(sourceField)
@@ -82,15 +81,13 @@ data class RollupMetrics(
         }
     }
 
-    fun targetFieldWithType(metric: Metric): String {
-        return when (metric) {
-            is Average -> "$targetField.avg"
-            is Sum -> "$targetField.sum"
-            is Max -> "$targetField.max"
-            is Min -> "$targetField.min"
-            is ValueCount -> "$targetField.value_count"
-            else -> throw IllegalArgumentException("Found unsupported metric aggregation ${metric.type.type}")
-        }
+    fun targetFieldWithType(metric: Metric): String = when (metric) {
+        is Average -> "$targetField.avg"
+        is Sum -> "$targetField.sum"
+        is Max -> "$targetField.max"
+        is Min -> "$targetField.min"
+        is ValueCount -> "$targetField.value_count"
+        else -> throw IllegalArgumentException("Found unsupported metric aggregation ${metric.type.type}")
     }
 
     companion object {

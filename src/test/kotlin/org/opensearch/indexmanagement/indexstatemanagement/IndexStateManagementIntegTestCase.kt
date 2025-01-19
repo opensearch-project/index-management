@@ -88,20 +88,18 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
         info = mapOf("message" to "Happy moving"),
     )
 
-    override fun nodePlugins(): Collection<Class<out Plugin>> {
-        return listOf(IndexManagementPlugin::class.java)
-    }
+    override fun nodePlugins(): Collection<Class<out Plugin>> = listOf(IndexManagementPlugin::class.java)
 
-    class TestPlugin : ActionPlugin, Plugin() {
-        override fun getActions(): List<ActionPlugin.ActionHandler<out ActionRequest, out ActionResponse>> {
-            return listOf(
-                ActionPlugin.ActionHandler(
-                    UpdateManagedIndexMetaDataAction.INSTANCE,
-                    TransportUpdateManagedIndexMetaDataAction::class.java,
-                ),
-                ActionPlugin.ActionHandler(ExplainAction.INSTANCE, TransportExplainAction::class.java),
-            )
-        }
+    class TestPlugin :
+        Plugin(),
+        ActionPlugin {
+        override fun getActions(): List<ActionPlugin.ActionHandler<out ActionRequest, out ActionResponse>> = listOf(
+            ActionPlugin.ActionHandler(
+                UpdateManagedIndexMetaDataAction.INSTANCE,
+                TransportUpdateManagedIndexMetaDataAction::class.java,
+            ),
+            ActionPlugin.ActionHandler(ExplainAction.INSTANCE, TransportExplainAction::class.java),
+        )
     }
 
     // TODO: ...convert into a test REST plugin that allows us to execute the transport action?
@@ -109,12 +107,10 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
 //        return listOf(TestPlugin::class.java)
 //    }
 
-    protected fun getIndexMetadata(indexName: String): IndexMetadata? {
-        return client().admin().cluster().prepareState()
-            .setIndices(indexName)
-            .setMetadata(true).get()
-            .state.metadata.indices[indexName]
-    }
+    protected fun getIndexMetadata(indexName: String): IndexMetadata? = client().admin().cluster().prepareState()
+        .setIndices(indexName)
+        .setMetadata(true).get()
+        .state.metadata.indices[indexName]
 
     // reuse utility fun from RestTestCase
     fun createPolicy(
@@ -171,12 +167,10 @@ abstract class IndexStateManagementIntegTestCase : OpenSearchIntegTestCase() {
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
     }
 
-    protected fun getExistingManagedIndexConfig(index: String): ManagedIndexConfig {
-        return waitFor {
-            val config = getManagedIndexConfig(index)
-            assertNotNull("ManagedIndexConfig is null", config)
-            config!!
-        }
+    protected fun getExistingManagedIndexConfig(index: String): ManagedIndexConfig = waitFor {
+        val config = getManagedIndexConfig(index)
+        assertNotNull("ManagedIndexConfig is null", config)
+        config!!
     }
 
     protected fun getManagedIndexConfig(index: String): ManagedIndexConfig? {

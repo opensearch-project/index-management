@@ -39,7 +39,8 @@ data class ManagedIndexMetaData(
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
     val rolledOverIndexName: String? = null,
-) : Writeable, ToXContentFragment {
+) : Writeable,
+    ToXContentFragment {
 
     @Suppress("ComplexMethod")
     fun toMap(): Map<String, String> {
@@ -324,24 +325,22 @@ data class ManagedIndexMetaData(
             return managedIndexMetaData
         }
 
-        fun fromMap(map: Map<String, String?>): ManagedIndexMetaData {
-            return ManagedIndexMetaData(
-                index = requireNotNull(map[INDEX]) { "$INDEX is null" },
-                indexUuid = requireNotNull(map[INDEX_UUID]) { "$INDEX_UUID is null" },
-                policyID = requireNotNull(map[POLICY_ID]) { "$POLICY_ID is null" },
-                policySeqNo = map[POLICY_SEQ_NO]?.toLong(),
-                policyPrimaryTerm = map[POLICY_PRIMARY_TERM]?.toLong(),
-                policyCompleted = map[POLICY_COMPLETED]?.toBoolean(),
-                rolledOver = map[ROLLED_OVER]?.toBoolean(),
-                rolledOverIndexName = map[ROLLED_OVER_INDEX_NAME],
-                indexCreationDate = map[INDEX_CREATION_DATE]?.toLong(),
-                transitionTo = map[TRANSITION_TO],
-                stateMetaData = StateMetaData.fromManagedIndexMetaDataMap(map),
-                actionMetaData = ActionMetaData.fromManagedIndexMetaDataMap(map),
-                stepMetaData = StepMetaData.fromManagedIndexMetaDataMap(map),
-                policyRetryInfo = PolicyRetryInfoMetaData.fromManagedIndexMetaDataMap(map),
-                info = map[INFO]?.let { XContentHelper.convertToMap(JsonXContent.jsonXContent, it, false) },
-            )
-        }
+        fun fromMap(map: Map<String, String?>): ManagedIndexMetaData = ManagedIndexMetaData(
+            index = requireNotNull(map[INDEX]) { "$INDEX is null" },
+            indexUuid = requireNotNull(map[INDEX_UUID]) { "$INDEX_UUID is null" },
+            policyID = requireNotNull(map[POLICY_ID]) { "$POLICY_ID is null" },
+            policySeqNo = map[POLICY_SEQ_NO]?.toLong(),
+            policyPrimaryTerm = map[POLICY_PRIMARY_TERM]?.toLong(),
+            policyCompleted = map[POLICY_COMPLETED]?.toBoolean(),
+            rolledOver = map[ROLLED_OVER]?.toBoolean(),
+            rolledOverIndexName = map[ROLLED_OVER_INDEX_NAME],
+            indexCreationDate = map[INDEX_CREATION_DATE]?.toLong(),
+            transitionTo = map[TRANSITION_TO],
+            stateMetaData = StateMetaData.fromManagedIndexMetaDataMap(map),
+            actionMetaData = ActionMetaData.fromManagedIndexMetaDataMap(map),
+            stepMetaData = StepMetaData.fromManagedIndexMetaDataMap(map),
+            policyRetryInfo = PolicyRetryInfoMetaData.fromManagedIndexMetaDataMap(map),
+            info = map[INFO]?.let { XContentHelper.convertToMap(JsonXContent.jsonXContent, it, false) },
+        )
     }
 }

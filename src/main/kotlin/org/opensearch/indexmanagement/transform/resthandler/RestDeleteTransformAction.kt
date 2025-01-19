@@ -21,11 +21,9 @@ import java.io.IOException
 
 class RestDeleteTransformAction : BaseRestHandler() {
 
-    override fun routes(): List<RestHandler.Route> {
-        return listOf(
-            Route(DELETE, "$TRANSFORM_BASE_URI/{transformID}"),
-        )
-    }
+    override fun routes(): List<RestHandler.Route> = listOf(
+        Route(DELETE, "$TRANSFORM_BASE_URI/{transformID}"),
+    )
 
     override fun getName(): String = "opendistro_delete_transform_action"
 

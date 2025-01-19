@@ -113,18 +113,16 @@ class ISMTemplateService(
         runTimeCounter = 0
     }
 
-    private fun updateSettingListener(): ActionListener<ClusterUpdateSettingsResponse> {
-        return object : ActionListener<ClusterUpdateSettingsResponse> {
-            override fun onFailure(e: Exception) {
-                logger.error("Failed to update template migration setting", e)
-            }
+    private fun updateSettingListener(): ActionListener<ClusterUpdateSettingsResponse> = object : ActionListener<ClusterUpdateSettingsResponse> {
+        override fun onFailure(e: Exception) {
+            logger.error("Failed to update template migration setting", e)
+        }
 
-            override fun onResponse(response: ClusterUpdateSettingsResponse) {
-                if (!response.isAcknowledged) {
-                    logger.error("Update template migration setting is not acknowledged")
-                } else {
-                    logger.info("Successfully update template migration setting")
-                }
+        override fun onResponse(response: ClusterUpdateSettingsResponse) {
+            if (!response.isAcknowledged) {
+                logger.error("Update template migration setting is not acknowledged")
+            } else {
+                logger.info("Successfully update template migration setting")
             }
         }
     }

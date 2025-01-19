@@ -22,9 +22,7 @@ class TransitionsAction(
 
     override fun getSteps(): List<Step> = steps
 
-    override fun getStepToExecute(context: StepContext): Step {
-        return attemptTransitionStep
-    }
+    override fun getStepToExecute(context: StepContext): Step = attemptTransitionStep
 
     companion object {
         const val name = "transition"

@@ -27,22 +27,18 @@ import java.io.IOException
 
 class RestChangePolicyAction : BaseRestHandler() {
 
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                POST, CHANGE_POLICY_BASE_URI,
-                POST, LEGACY_CHANGE_POLICY_BASE_URI,
-            ),
-            ReplacedRoute(
-                POST, "$CHANGE_POLICY_BASE_URI/{index}",
-                POST, "$LEGACY_CHANGE_POLICY_BASE_URI/{index}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            POST, CHANGE_POLICY_BASE_URI,
+            POST, LEGACY_CHANGE_POLICY_BASE_URI,
+        ),
+        ReplacedRoute(
+            POST, "$CHANGE_POLICY_BASE_URI/{index}",
+            POST, "$LEGACY_CHANGE_POLICY_BASE_URI/{index}",
+        ),
+    )
 
     override fun getName(): String = "change_policy_action"
 

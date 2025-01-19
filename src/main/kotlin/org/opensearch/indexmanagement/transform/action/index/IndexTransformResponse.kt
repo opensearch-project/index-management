@@ -28,7 +28,8 @@ class IndexTransformResponse(
     val primaryTerm: Long,
     val status: RestStatus,
     val transform: Transform,
-) : ActionResponse(), ToXContentObject {
+) : ActionResponse(),
+    ToXContentObject {
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
@@ -51,13 +52,11 @@ class IndexTransformResponse(
     }
 
     @Throws(IOException::class)
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .field(_ID, id)
-            .field(_VERSION, version)
-            .field(_SEQ_NO, seqNo)
-            .field(_PRIMARY_TERM, primaryTerm)
-            .field(TRANSFORM_TYPE, transform, XCONTENT_WITHOUT_TYPE_AND_USER)
-            .endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .field(_ID, id)
+        .field(_VERSION, version)
+        .field(_SEQ_NO, seqNo)
+        .field(_PRIMARY_TERM, primaryTerm)
+        .field(TRANSFORM_TYPE, transform, XCONTENT_WITHOUT_TYPE_AND_USER)
+        .endObject()
 }

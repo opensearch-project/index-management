@@ -194,22 +194,20 @@ class MetadataService(
         }
     }
 
-    private fun updateSettingListener(status: Int): ActionListener<ClusterUpdateSettingsResponse> {
-        return object : ActionListener<ClusterUpdateSettingsResponse> {
-            override fun onFailure(e: Exception) {
-                logger.error("Failed to update template migration setting to $status", e)
-                throw IndexManagementException.wrap(Exception("Failed to update template migration setting to $status"))
-            }
+    private fun updateSettingListener(status: Int): ActionListener<ClusterUpdateSettingsResponse> = object : ActionListener<ClusterUpdateSettingsResponse> {
+        override fun onFailure(e: Exception) {
+            logger.error("Failed to update template migration setting to $status", e)
+            throw IndexManagementException.wrap(Exception("Failed to update template migration setting to $status"))
+        }
 
-            override fun onResponse(response: ClusterUpdateSettingsResponse) {
-                if (!response.isAcknowledged) {
-                    logger.error("Update metadata migration setting to $status is not acknowledged")
-                    throw IndexManagementException.wrap(
-                        Exception("Update metadata migration setting to $status is not acknowledged"),
-                    )
-                } else {
-                    logger.info("Successfully metadata template migration setting to $status")
-                }
+        override fun onResponse(response: ClusterUpdateSettingsResponse) {
+            if (!response.isAcknowledged) {
+                logger.error("Update metadata migration setting to $status is not acknowledged")
+                throw IndexManagementException.wrap(
+                    Exception("Update metadata migration setting to $status is not acknowledged"),
+                )
+            } else {
+                logger.info("Successfully metadata template migration setting to $status")
             }
         }
     }

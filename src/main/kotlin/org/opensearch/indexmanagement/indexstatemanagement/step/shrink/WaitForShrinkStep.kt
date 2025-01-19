@@ -158,18 +158,16 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
         }
     }
 
-    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
-        return currentMetadata.copy(
-            actionMetaData = currentMetadata.actionMetaData?.copy(
-                actionProperties = ActionProperties(
-                    shrinkActionProperties = shrinkActionProperties,
-                ),
+    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData = currentMetadata.copy(
+        actionMetaData = currentMetadata.actionMetaData?.copy(
+            actionProperties = ActionProperties(
+                shrinkActionProperties = shrinkActionProperties,
             ),
-            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
-            transitionTo = null,
-            info = info,
-        )
-    }
+        ),
+        stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
+        transitionTo = null,
+        info = info,
+    )
 
     override fun isIdempotent() = true
 

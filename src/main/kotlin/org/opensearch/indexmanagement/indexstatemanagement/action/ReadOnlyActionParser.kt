@@ -24,7 +24,5 @@ class ReadOnlyActionParser : ActionParser() {
         return ReadOnlyAction(index)
     }
 
-    override fun getActionType(): String {
-        return ReadOnlyAction.name
-    }
+    override fun getActionType(): String = ReadOnlyAction.name
 }

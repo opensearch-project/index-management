@@ -24,7 +24,5 @@ class CloseActionParser : ActionParser() {
         return CloseAction(index)
     }
 
-    override fun getActionType(): String {
-        return CloseAction.name
-    }
+    override fun getActionType(): String = CloseAction.name
 }

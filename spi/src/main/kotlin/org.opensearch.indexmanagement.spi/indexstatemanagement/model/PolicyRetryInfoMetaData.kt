@@ -23,18 +23,17 @@ import java.nio.charset.StandardCharsets
 data class PolicyRetryInfoMetaData(
     val failed: Boolean,
     val consumedRetries: Int,
-) : Writeable, ToXContentFragment {
+) : Writeable,
+    ToXContentFragment {
 
     override fun writeTo(out: StreamOutput) {
         out.writeBoolean(failed)
         out.writeInt(consumedRetries)
     }
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder
-            .field(FAILED, failed)
-            .field(CONSUMED_RETRIES, consumedRetries)
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder
+        .field(FAILED, failed)
+        .field(CONSUMED_RETRIES, consumedRetries)
 
     fun getMapValueString(): String = Strings.toString(XContentType.JSON, this)
 

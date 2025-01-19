@@ -355,7 +355,5 @@ class FieldCapsFilter(
         return if (response.isEmpty()) null else response.toTypedArray()
     }
 
-    override fun order(): Int {
-        return Integer.MAX_VALUE
-    }
+    override fun order(): Int = Integer.MAX_VALUE
 }

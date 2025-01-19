@@ -21,7 +21,9 @@ import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.util._VERSION
 import java.io.IOException
 
-class IndexRollupResponse : ActionResponse, ToXContentObject {
+class IndexRollupResponse :
+    ActionResponse,
+    ToXContentObject {
     var id: String
     var version: Long
     var seqNo: Long
@@ -66,13 +68,11 @@ class IndexRollupResponse : ActionResponse, ToXContentObject {
     }
 
     @Throws(IOException::class)
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .field(_ID, id)
-            .field(_VERSION, version)
-            .field(_SEQ_NO, seqNo)
-            .field(_PRIMARY_TERM, primaryTerm)
-            .field(ROLLUP_TYPE, rollup, XCONTENT_WITHOUT_TYPE_AND_USER)
-            .endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .field(_ID, id)
+        .field(_VERSION, version)
+        .field(_SEQ_NO, seqNo)
+        .field(_PRIMARY_TERM, primaryTerm)
+        .field(ROLLUP_TYPE, rollup, XCONTENT_WITHOUT_TYPE_AND_USER)
+        .endObject()
 }
