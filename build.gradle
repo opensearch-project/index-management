@@ -238,7 +238,7 @@ dependencies {
         }
     }
     configurations.ktlint {
-        resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.10"
+        resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.25"
     }
 
     // https://aws.oss.sonatype.org/content/repositories/snapshots/org/opensearch/plugin/
