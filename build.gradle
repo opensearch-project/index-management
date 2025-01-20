@@ -109,7 +109,7 @@ configurations.all {
         force "org.jetbrains.kotlin:kotlin-reflect:${kotlin_version}"
         force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlin_version}"
         force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${kotlin_version}"
-        force 'junit:junit:4.13.1'
+        force 'junit:junit:4.13.2'
         force 'commons-beanutils:commons-beanutils:1.9.4'
         force 'com.google.guava:guava:30.0-jre'
         force 'com.puppycrawl.tools:checkstyle:8.45.1'
