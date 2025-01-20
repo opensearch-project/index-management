@@ -116,7 +116,7 @@ configurations.all {
         force 'commons-codec:commons-codec:1.17.2'
         force "com.fasterxml.jackson.core:jackson-databind:${versions.jackson_databind}"
         force "org.yaml:snakeyaml:${versions.snakeyaml}"
-        force 'org.codehaus.plexus:plexus-utils:3.0.24'
+        force 'org.codehaus.plexus:plexus-utils:3.6.0'
     }
 }
 
