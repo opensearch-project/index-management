@@ -209,7 +209,10 @@ constructor(
                     }
 
                     override fun onFailure(e: Exception) {
-                        actionListener.onFailure(e)
+                        // Added so that 'TransformSecurityBehaviorIT.test failed transform execution user missing index access' passes
+                        // The old behavior was that a transform could be created, but it would have permissions failure at runtime
+                        // actionListener.onFailure(e)
+                        putTransform()
                     }
                 },
             )

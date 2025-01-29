@@ -13,6 +13,7 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.action.support.WriteRequest.RefreshPolicy
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.action.update.UpdateResponse
@@ -192,6 +193,7 @@ constructor(
                     ),
                 )
                 .routing(transform.id)
+        updateRequest.refreshPolicy = RefreshPolicy.IMMEDIATE
         pluginClient.update(
             updateRequest,
             object : ActionListener<UpdateResponse> {
@@ -213,6 +215,7 @@ constructor(
     private fun updateTransformJob(transform: Transform, request: StopTransformRequest, actionListener: ActionListener<AcknowledgedResponse>) {
         val now = Instant.now().toEpochMilli()
         val updateReq = UpdateRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.id)
+        updateReq.refreshPolicy = RefreshPolicy.IMMEDIATE
         updateReq.setIfSeqNo(transform.seqNo).setIfPrimaryTerm(transform.primaryTerm)
             .doc(
                 mapOf(
