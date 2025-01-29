@@ -271,7 +271,7 @@ constructor(
                     .local(request.local)
                     .clusterManagerNodeTimeout(request.clusterManagerTimeout)
 
-                client.admin().cluster().state(
+                pluginClient.admin().cluster().state(
                     clusterStateRequest,
                     object : ActionListener<ClusterStateResponse> {
                         override fun onResponse(response: ClusterStateResponse) {
@@ -294,7 +294,7 @@ constructor(
             indexNamesToUUIDs.values.forEach { uuid ->
                 mgetMetadataReq.add(MultiGetRequest.Item(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(uuid)).routing(uuid))
             }
-            client.multiGet(
+            pluginClient.multiGet(
                 mgetMetadataReq,
                 object : ActionListener<MultiGetResponse> {
                     override fun onResponse(response: MultiGetResponse) {

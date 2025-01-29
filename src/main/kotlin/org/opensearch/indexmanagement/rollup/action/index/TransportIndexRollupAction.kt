@@ -113,7 +113,7 @@ constructor(
 
         private fun getRollup() {
             val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.rollup.id)
-            client.get(getRequest, ActionListener.wrap(::onGetRollup, actionListener::onFailure))
+            pluginClient.get(getRequest, ActionListener.wrap(::onGetRollup, actionListener::onFailure))
         }
 
         @Suppress("ReturnCount")
@@ -164,7 +164,7 @@ constructor(
                 .id(request.rollup.id)
                 .source(rollup.toXContent(jsonBuilder(), ToXContent.EMPTY_PARAMS))
                 .timeout(IndexRequest.DEFAULT_TIMEOUT)
-            client.index(
+            pluginClient.index(
                 request,
                 object : ActionListener<IndexResponse> {
                     override fun onResponse(response: IndexResponse) {

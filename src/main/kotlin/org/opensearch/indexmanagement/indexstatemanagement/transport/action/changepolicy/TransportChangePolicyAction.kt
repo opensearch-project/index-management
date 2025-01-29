@@ -182,7 +182,7 @@ constructor(
 
             IndexUtils.checkAndUpdateConfigIndexMapping(
                 clusterService.state(),
-                client.admin().indices(),
+                pluginClient.admin().indices(),
                 ActionListener.wrap(::onUpdateMapping, ::onFailure),
             )
         }

@@ -13,6 +13,7 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.action.update.UpdateResponse
@@ -126,7 +127,8 @@ constructor(
                     ),
             ),
         )
-        client.update(
+        updateReq.refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
+        pluginClient.update(
             updateReq,
             object : ActionListener<UpdateResponse> {
                 override fun onResponse(response: UpdateResponse) {

@@ -131,6 +131,7 @@ abstract class ShrinkStep(
         try {
             if (client != null) {
                 // Use plugin level permissions when deleting the failed target shrink index after a failure
+                // TODO should this use case be supported or is it ok to use user's privileges?
                 val deleteRequest = DeleteIndexRequest(targetIndexName)
                 val response: AcknowledgedResponse =
                     client.admin().indices().suspendUntil { delete(deleteRequest, it) }

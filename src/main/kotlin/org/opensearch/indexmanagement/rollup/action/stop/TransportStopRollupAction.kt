@@ -13,6 +13,7 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.action.update.UpdateResponse
@@ -122,7 +123,7 @@ constructor(
 
     private fun getRollupMetadata(rollup: Rollup, request: StopRollupRequest, actionListener: ActionListener<AcknowledgedResponse>) {
         val req = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, rollup.metadataID).routing(rollup.id)
-        client.get(
+        pluginClient.get(
             req,
             object : ActionListener<GetResponse> {
                 override fun onResponse(response: GetResponse) {
@@ -194,7 +195,8 @@ constructor(
                     ),
                 )
                 .routing(rollup.id)
-        client.update(
+        updateRequest.refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
+        pluginClient.update(
             updateRequest,
             object : ActionListener<UpdateResponse> {
                 override fun onResponse(response: UpdateResponse) {
@@ -226,7 +228,8 @@ constructor(
                 ),
             )
             .routing(rollup.id)
-        client.update(
+        updateReq.refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
+        pluginClient.update(
             updateReq,
             object : ActionListener<UpdateResponse> {
                 override fun onResponse(response: UpdateResponse) {

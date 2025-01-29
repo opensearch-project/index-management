@@ -100,7 +100,7 @@ constructor(
                     val metadataSearchRequest =
                         SearchRequest(INDEX_MANAGEMENT_INDEX)
                             .source(SearchSourceBuilder().size(MAX_HITS).query(IdsQueryBuilder().addIds(*metadataIds.toTypedArray())))
-                    client.search(
+                    pluginClient.search(
                         metadataSearchRequest,
                         object : ActionListener<SearchResponse> {
                             override fun onResponse(response: SearchResponse) {
