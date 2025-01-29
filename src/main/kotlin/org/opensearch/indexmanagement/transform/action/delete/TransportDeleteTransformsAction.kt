@@ -166,7 +166,7 @@ constructor(
                 bulkDeleteRequest.add(DeleteRequest(INDEX_MANAGEMENT_INDEX, id))
             }
 
-            client.bulk(
+            pluginClient.bulk(
                 bulkDeleteRequest,
                 object : ActionListener<BulkResponse> {
                     override fun onResponse(response: BulkResponse) {

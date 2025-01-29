@@ -38,6 +38,7 @@ import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.transform.TransformValidator
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.util.RunAsSubjectClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
@@ -56,6 +57,7 @@ constructor(
     val clusterService: ClusterService,
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
+    val pluginClient: RunAsSubjectClient,
 ) : HandledTransportAction<IndexTransformRequest, IndexTransformResponse>(
     IndexTransformAction.NAME, transportService, actionFilters, ::IndexTransformRequest,
 ) {
@@ -110,7 +112,7 @@ constructor(
 
         private fun updateTransform() {
             val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.transform.id)
-            client.get(getRequest, ActionListener.wrap(::onGetTransform, actionListener::onFailure))
+            pluginClient.get(getRequest, ActionListener.wrap(::onGetTransform, actionListener::onFailure))
         }
 
         @Suppress("ReturnCount")
@@ -154,7 +156,7 @@ constructor(
                 .id(request.transform.id)
                 .source(transform.toXContent(jsonBuilder(), ToXContent.EMPTY_PARAMS))
                 .timeout(IndexRequest.DEFAULT_TIMEOUT)
-            client.index(
+            pluginClient.index(
                 request,
                 object : ActionListener<IndexResponse> {
                     override fun onResponse(response: IndexResponse) {

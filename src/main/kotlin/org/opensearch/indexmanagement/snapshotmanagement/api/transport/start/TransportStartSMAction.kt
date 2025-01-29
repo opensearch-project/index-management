@@ -28,6 +28,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.getSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
+import org.opensearch.indexmanagement.util.RunAsSubjectClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.verifyUserHasPermissionForResource
 import org.opensearch.transport.TransportService
 import java.time.Instant
@@ -40,8 +41,9 @@ constructor(
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
+    pluginClient: RunAsSubjectClient,
 ) : BaseTransportAction<StartSMRequest, AcknowledgedResponse>(
-    SMActions.START_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::StartSMRequest,
+    SMActions.START_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::StartSMRequest, pluginClient,
 ) {
     private val log = LogManager.getLogger(javaClass)
 
@@ -58,7 +60,7 @@ constructor(
         user: User?,
         threadContext: ThreadContext.StoredContext,
     ): AcknowledgedResponse {
-        val smPolicy = client.getSMPolicy(request.id)
+        val smPolicy = pluginClient.getSMPolicy(request.id)
 
         // Check if the requested user has permission on the resource, throwing an exception if the user does not
         verifyUserHasPermissionForResource(user, smPolicy.user, filterByEnabled, "snapshot management policy", smPolicy.policyName)
@@ -85,7 +87,7 @@ constructor(
         )
         val updateResponse: UpdateResponse =
             try {
-                client.suspendUntil { update(updateReq, it) }
+                pluginClient.suspendUntil { update(updateReq, it) }
             } catch (e: VersionConflictEngineException) {
                 log.error("VersionConflictEngineException while trying to enable snapshot management policy id [${updateRequest.id}]: $e")
                 throw OpenSearchStatusException(conflictExceptionMessage, RestStatus.INTERNAL_SERVER_ERROR)

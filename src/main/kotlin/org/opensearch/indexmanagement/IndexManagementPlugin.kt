@@ -623,9 +623,7 @@ class IndexManagementPlugin :
     )
 
     override fun assignSubject(pluginSubject: PluginSubject?) {
-        if (this.pluginClient != null) {
-            pluginClient.setSubject(pluginSubject)
-        }
+        pluginClient.setSubject(pluginSubject)
     }
 
     override fun getTransportInterceptors(

@@ -192,7 +192,7 @@ constructor(
                     ),
                 )
                 .routing(transform.id)
-        client.update(
+        pluginClient.update(
             updateRequest,
             object : ActionListener<UpdateResponse> {
                 override fun onResponse(response: UpdateResponse) {
@@ -223,7 +223,7 @@ constructor(
                         ),
                 ),
             )
-        client.update(
+        pluginClient.update(
             updateReq,
             object : ActionListener<UpdateResponse> {
                 override fun onResponse(response: UpdateResponse) {
