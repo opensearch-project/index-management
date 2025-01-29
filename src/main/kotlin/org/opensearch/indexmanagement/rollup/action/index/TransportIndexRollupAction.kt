@@ -33,6 +33,7 @@ import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionReso
 import org.opensearch.indexmanagement.rollup.util.parseRollup
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.util.RunAsSubjectClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
@@ -51,6 +52,7 @@ constructor(
     val clusterService: ClusterService,
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
+    val pluginClient: RunAsSubjectClient,
 ) : HandledTransportAction<IndexRollupRequest, IndexRollupResponse>(
     IndexRollupAction.NAME, transportService, actionFilters, ::IndexRollupRequest,
 ) {
@@ -80,12 +82,10 @@ constructor(
                     ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
                 )}",
             )
-            client.threadPool().threadContext.stashContext().use {
-                if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
-                    return
-                }
-                indexManagementIndices.checkAndUpdateIMConfigIndex(ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure))
+            if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
+                return
             }
+            indexManagementIndices.checkAndUpdateIMConfigIndex(ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure))
         }
 
         private fun onCreateMappingsResponse(response: AcknowledgedResponse) {

@@ -119,16 +119,11 @@ class IndexStateManagementHistory(
     }
 
     private fun rolloverAndDeleteHistoryIndex() {
-        val ctx = threadPool.threadContext.stashContext()
-        try {
-            if (threadPool.threadContext.getTransient<String?>(OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST) == null) {
-                threadPool.threadContext.putTransient(OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST, "true")
-            }
-            if (historyEnabled) rolloverHistoryIndex()
-            deleteOldHistoryIndex()
-        } finally {
-            ctx.close()
+        if (threadPool.threadContext.getTransient<String?>(OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST) == null) {
+            threadPool.threadContext.putTransient(OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST, "true")
         }
+        if (historyEnabled) rolloverHistoryIndex()
+        deleteOldHistoryIndex()
     }
 
     private fun rolloverHistoryIndex() {

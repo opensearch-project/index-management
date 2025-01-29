@@ -26,6 +26,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.opensearchapi.parseFromSearchResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.util.RunAsSubjectClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.addUserFilter
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.search.builder.SearchSourceBuilder
@@ -43,6 +44,7 @@ constructor(
     val clusterService: ClusterService,
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
+    val pluginClient: RunAsSubjectClient,
 ) : HandledTransportAction<GetPoliciesRequest, GetPoliciesResponse>(
     GetPoliciesAction.NAME, transportService, actionFilters, ::GetPoliciesRequest,
 ) {
@@ -97,26 +99,24 @@ constructor(
                 .indices(INDEX_MANAGEMENT_INDEX)
                 .preference(Preference.PRIMARY_FIRST.type())
 
-        client.threadPool().threadContext.stashContext().use {
-            client.search(
-                searchRequest,
-                object : ActionListener<SearchResponse> {
-                    override fun onResponse(response: SearchResponse) {
-                        val totalPolicies = response.hits.totalHits?.value ?: 0
-                        val policies = parseFromSearchResponse(response, xContentRegistry, Policy.Companion::parse)
-                        actionListener.onResponse(GetPoliciesResponse(policies, totalPolicies.toInt()))
-                    }
+        pluginClient.search(
+            searchRequest,
+            object : ActionListener<SearchResponse> {
+                override fun onResponse(response: SearchResponse) {
+                    val totalPolicies = response.hits.totalHits?.value ?: 0
+                    val policies = parseFromSearchResponse(response, xContentRegistry, Policy.Companion::parse)
+                    actionListener.onResponse(GetPoliciesResponse(policies, totalPolicies.toInt()))
+                }
 
-                    override fun onFailure(t: Exception) {
-                        if (t is IndexNotFoundException) {
-                            // config index hasn't been initialized, catch this here and show empty result on Kibana
-                            actionListener.onResponse(GetPoliciesResponse(emptyList(), 0))
-                            return
-                        }
-                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                override fun onFailure(t: Exception) {
+                    if (t is IndexNotFoundException) {
+                        // config index hasn't been initialized, catch this here and show empty result on Kibana
+                        actionListener.onResponse(GetPoliciesResponse(emptyList(), 0))
+                        return
                     }
-                },
-            )
-        }
+                    actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                }
+            },
+        )
     }
 }

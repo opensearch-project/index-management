@@ -29,6 +29,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.ControlCenterIn
 import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.controlcenter.notification.util.getPriority
+import org.opensearch.indexmanagement.util.RunAsSubjectClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -43,6 +44,7 @@ constructor(
     val clusterService: ClusterService,
     val controlCenterIndices: ControlCenterIndices,
     val xContentRegistry: NamedXContentRegistry,
+    val pluginClient: RunAsSubjectClient,
 ) : HandledTransportAction<IndexLRONConfigRequest, LRONConfigResponse>(
     IndexLRONConfigAction.NAME, transportService, actionFilters, ::IndexLRONConfigRequest,
 ) {
@@ -65,16 +67,14 @@ constructor(
                     ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
                 )}",
             )
-            client.threadPool().threadContext.stashContext().use {
-                // we use dryRun to help check permission and do request validation
-                if (request.dryRun) {
-                    validate()
-                    return
-                }
-                controlCenterIndices.checkAndUpdateControlCenterIndex(
-                    ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure),
-                )
+            // we use dryRun to help check permission and do request validation
+            if (request.dryRun) {
+                validate()
+                return
             }
+            controlCenterIndices.checkAndUpdateControlCenterIndex(
+                ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure),
+            )
         }
 
         private fun onCreateMappingsResponse(response: AcknowledgedResponse) {

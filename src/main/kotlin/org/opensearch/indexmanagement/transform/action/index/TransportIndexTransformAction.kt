@@ -85,14 +85,12 @@ constructor(
                     ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
                 )}",
             )
-            client.threadPool().threadContext.stashContext().use {
-                if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
-                    return
-                }
-                indexManagementIndices.checkAndUpdateIMConfigIndex(
-                    ActionListener.wrap(::onConfigIndexAcknowledgedResponse, actionListener::onFailure),
-                )
+            if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
+                return
             }
+            indexManagementIndices.checkAndUpdateIMConfigIndex(
+                ActionListener.wrap(::onConfigIndexAcknowledgedResponse, actionListener::onFailure),
+            )
         }
 
         private fun onConfigIndexAcknowledgedResponse(response: AcknowledgedResponse) {

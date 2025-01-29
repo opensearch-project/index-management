@@ -51,6 +51,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedInd
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.util.IndexManagementException
+import org.opensearch.indexmanagement.util.RunAsSubjectClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -63,6 +64,7 @@ constructor(
     transportService: TransportService,
     actionFilters: ActionFilters,
     val indexMetadataProvider: IndexMetadataProvider,
+    val pluginClient: RunAsSubjectClient,
 ) : HandledTransportAction<RemovePolicyRequest, ISMStatusResponse>(
     RemovePolicyAction.NAME, transportService, actionFilters, ::RemovePolicyRequest,
 ) {
@@ -156,41 +158,40 @@ constructor(
                     .local(false)
                     .indicesOptions(strictExpandOptions)
 
-            client.threadPool().threadContext.stashContext().use {
-                client.admin()
-                    .cluster()
-                    .state(
-                        clusterStateRequest,
-                        object : ActionListener<ClusterStateResponse> {
-                            override fun onResponse(response: ClusterStateResponse) {
-                                val indexMetadatas = response.state.metadata.indices
-                                indexMetadatas.forEach {
-                                    if (it.value.settings.get(ManagedIndexSettings.AUTO_MANAGE.key) == "false") {
-                                        indicesWithAutoManageFalseBlock.add(it.value.indexUUID)
-                                    }
-                                    if (it.value.settings.get(SETTING_READ_ONLY) == "true") {
-                                        indicesWithReadOnlyBlock.add(it.value.indexUUID)
-                                    }
-                                    if (it.value.settings.get(SETTING_READ_ONLY_ALLOW_DELETE) == "true") {
-                                        indicesWithReadOnlyAllowDeleteBlock.add(it.value.indexUUID)
-                                    }
+            // TODO Ensure this use-case is supported
+            pluginClient.admin()
+                .cluster()
+                .state(
+                    clusterStateRequest,
+                    object : ActionListener<ClusterStateResponse> {
+                        override fun onResponse(response: ClusterStateResponse) {
+                            val indexMetadatas = response.state.metadata.indices
+                            indexMetadatas.forEach {
+                                if (it.value.settings.get(ManagedIndexSettings.AUTO_MANAGE.key) == "false") {
+                                    indicesWithAutoManageFalseBlock.add(it.value.indexUUID)
                                 }
-
-                                val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
-                                getUuidsForClosedIndices(response.state, defaultIndexMetadataService).forEach {
-                                    failedIndices.add(FailedIndex(indicesToRemove[it] as String, it, "This index is closed"))
-                                    indicesToRemove.remove(it)
+                                if (it.value.settings.get(SETTING_READ_ONLY) == "true") {
+                                    indicesWithReadOnlyBlock.add(it.value.indexUUID)
                                 }
-
-                                getExistingManagedIndices()
+                                if (it.value.settings.get(SETTING_READ_ONLY_ALLOW_DELETE) == "true") {
+                                    indicesWithReadOnlyAllowDeleteBlock.add(it.value.indexUUID)
+                                }
                             }
 
-                            override fun onFailure(t: Exception) {
-                                actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                            val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
+                            getUuidsForClosedIndices(response.state, defaultIndexMetadataService).forEach {
+                                failedIndices.add(FailedIndex(indicesToRemove[it] as String, it, "This index is closed"))
+                                indicesToRemove.remove(it)
                             }
-                        },
-                    )
-            }
+
+                            getExistingManagedIndices()
+                        }
+
+                        override fun onFailure(t: Exception) {
+                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                        }
+                    },
+                )
         }
 
         private fun getExistingManagedIndices() {

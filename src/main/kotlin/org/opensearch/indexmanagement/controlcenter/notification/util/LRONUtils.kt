@@ -13,7 +13,7 @@ import org.opensearch.action.admin.indices.open.OpenIndexAction
 import org.opensearch.action.admin.indices.shrink.ResizeAction
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
-import org.opensearch.client.node.NodeClient
+import org.opensearch.client.Client
 import org.opensearch.core.action.ActionListener
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.tasks.TaskId
@@ -68,7 +68,7 @@ fun getDocID(taskId: TaskId? = null, actionName: String? = null): String {
 }
 
 fun getLRONConfigAndParse(
-    client: NodeClient,
+    client: Client,
     docId: String,
     xContentRegistry: NamedXContentRegistry,
     actionListener: ActionListener<LRONConfigResponse>,

@@ -27,6 +27,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigRespo
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.controlcenter.notification.util.getLRONConfigAndParse
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.util.RunAsSubjectClient
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -38,6 +39,7 @@ constructor(
     transportService: TransportService,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
+    val pluginClient: RunAsSubjectClient,
 ) : HandledTransportAction<GetLRONConfigRequest, GetLRONConfigResponse>(
     GetLRONConfigAction.NAME, transportService, actionFilters, ::GetLRONConfigRequest,
 ) {
@@ -58,25 +60,23 @@ constructor(
                     ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
                 )}",
             )
-            client.threadPool().threadContext.stashContext().use {
-                if (null != request.docId) {
-                    getLRONConfigAndParse(
-                        client,
-                        request.docId,
-                        xContentRegistry,
-                        object : ActionListener<LRONConfigResponse> {
-                            override fun onResponse(response: LRONConfigResponse) {
-                                actionListener.onResponse(GetLRONConfigResponse(listOf(response), 1))
-                            }
+            if (null != request.docId) {
+                getLRONConfigAndParse(
+                    pluginClient,
+                    request.docId,
+                    xContentRegistry,
+                    object : ActionListener<LRONConfigResponse> {
+                        override fun onResponse(response: LRONConfigResponse) {
+                            actionListener.onResponse(GetLRONConfigResponse(listOf(response), 1))
+                        }
 
-                            override fun onFailure(e: Exception) {
-                                actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
-                            }
-                        },
-                    )
-                } else {
-                    doSearch()
-                }
+                        override fun onFailure(e: Exception) {
+                            actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+                        }
+                    },
+                )
+            } else {
+                doSearch()
             }
         }
 
@@ -101,7 +101,7 @@ constructor(
                     .indices(IndexManagementPlugin.CONTROL_CENTER_INDEX)
                     .preference(Preference.PRIMARY_FIRST.type())
 
-            client.search(
+            pluginClient.search(
                 searchRequest,
                 object : ActionListener<SearchResponse> {
                     override fun onResponse(response: SearchResponse) {

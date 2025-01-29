@@ -97,26 +97,24 @@ constructor(
                     ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
                 )}",
             )
-            client.threadPool().threadContext.stashContext().use {
-                if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
-                    return
-                }
-                ismIndices.checkAndUpdateIMConfigIndex(
-                    object : ActionListener<AcknowledgedResponse> {
-                        override fun onResponse(response: AcknowledgedResponse) {
-                            onCreateMappingsResponse(response)
-                        }
-
-                        override fun onFailure(t: Exception) {
-                            if (t is ResourceAlreadyExistsException) {
-                                actionListener.onFailure(OpenSearchStatusException(t.localizedMessage, RestStatus.CONFLICT))
-                            } else {
-                                actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
-                            }
-                        }
-                    },
-                )
+            if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
+                return
             }
+            ismIndices.checkAndUpdateIMConfigIndex(
+                object : ActionListener<AcknowledgedResponse> {
+                    override fun onResponse(response: AcknowledgedResponse) {
+                        onCreateMappingsResponse(response)
+                    }
+
+                    override fun onFailure(t: Exception) {
+                        if (t is ResourceAlreadyExistsException) {
+                            actionListener.onFailure(OpenSearchStatusException(t.localizedMessage, RestStatus.CONFLICT))
+                        } else {
+                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                        }
+                    }
+                },
+            )
         }
 
         @Suppress("ComplexMethod", "LongMethod", "NestedBlockDepth")

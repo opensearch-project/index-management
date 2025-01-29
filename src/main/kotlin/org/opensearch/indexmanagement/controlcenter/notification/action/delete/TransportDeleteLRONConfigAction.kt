@@ -16,6 +16,7 @@ import org.opensearch.common.inject.Inject
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.core.action.ActionListener
 import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.util.RunAsSubjectClient
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
@@ -25,6 +26,7 @@ constructor(
     val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
+    val pluginClient: RunAsSubjectClient,
 ) : HandledTransportAction<DeleteLRONConfigRequest, DeleteResponse>(
     DeleteLRONConfigAction.NAME, transportService, actionFilters, ::DeleteLRONConfigRequest,
 ) {
@@ -49,13 +51,11 @@ constructor(
                 }",
             )
 
-            client.threadPool().threadContext.stashContext().use {
-                val deleteRequest =
-                    DeleteRequest(IndexManagementPlugin.CONTROL_CENTER_INDEX, docId)
-                        .setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE)
+            val deleteRequest =
+                DeleteRequest(IndexManagementPlugin.CONTROL_CENTER_INDEX, docId)
+                    .setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE)
 
-                client.delete(deleteRequest, actionListener)
-            }
+            pluginClient.delete(deleteRequest, actionListener)
         }
     }
 }

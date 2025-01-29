@@ -35,6 +35,7 @@ import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.util.parseRollup
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.util.RunAsSubjectClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.tasks.Task
@@ -52,6 +53,7 @@ constructor(
     val settings: Settings,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
+    val pluginClient: RunAsSubjectClient,
 ) : HandledTransportAction<StartRollupRequest, AcknowledgedResponse>(
     StartRollupAction.NAME, transportService, actionFilters, ::StartRollupRequest,
 ) {
@@ -73,44 +75,42 @@ constructor(
         )
         val getReq = GetRequest(INDEX_MANAGEMENT_INDEX, request.id)
         val user: User? = buildUser(client.threadPool().threadContext)
-        client.threadPool().threadContext.stashContext().use {
-            client.get(
-                getReq,
-                object : ActionListener<GetResponse> {
-                    override fun onResponse(response: GetResponse) {
-                        if (!response.isExists) {
-                            actionListener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
-                            return
-                        }
-
-                        val rollup: Rollup?
-                        try {
-                            rollup = parseRollup(response, xContentRegistry)
-                        } catch (e: IllegalArgumentException) {
-                            actionListener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
-                            return
-                        }
-                        if (!userHasPermissionForResource(user, rollup.user, filterByEnabled, "rollup", rollup.id, actionListener)) {
-                            return
-                        }
-                        if (rollup.enabled) {
-                            log.debug("Rollup job is already enabled, checking if metadata needs to be updated")
-                            return if (rollup.metadataID == null) {
-                                actionListener.onResponse(AcknowledgedResponse(true))
-                            } else {
-                                getRollupMetadata(rollup, actionListener)
-                            }
-                        }
-
-                        updateRollupJob(rollup, request, actionListener)
+        pluginClient.get(
+            getReq,
+            object : ActionListener<GetResponse> {
+                override fun onResponse(response: GetResponse) {
+                    if (!response.isExists) {
+                        actionListener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
+                        return
                     }
 
-                    override fun onFailure(e: Exception) {
-                        actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+                    val rollup: Rollup?
+                    try {
+                        rollup = parseRollup(response, xContentRegistry)
+                    } catch (e: IllegalArgumentException) {
+                        actionListener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
+                        return
                     }
-                },
-            )
-        }
+                    if (!userHasPermissionForResource(user, rollup.user, filterByEnabled, "rollup", rollup.id, actionListener)) {
+                        return
+                    }
+                    if (rollup.enabled) {
+                        log.debug("Rollup job is already enabled, checking if metadata needs to be updated")
+                        return if (rollup.metadataID == null) {
+                            actionListener.onResponse(AcknowledgedResponse(true))
+                        } else {
+                            getRollupMetadata(rollup, actionListener)
+                        }
+                    }
+
+                    updateRollupJob(rollup, request, actionListener)
+                }
+
+                override fun onFailure(e: Exception) {
+                    actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+                }
+            },
+        )
     }
 
     // TODO: Should create a transport action to update metadata
