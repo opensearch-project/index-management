@@ -10,6 +10,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.DocWriteResponse
 import org.opensearch.action.support.ActionFilters
+import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.action.update.UpdateResponse
@@ -75,6 +76,7 @@ constructor(
     private suspend fun enableSMPolicy(updateRequest: StartSMRequest): Boolean {
         val now = Instant.now().toEpochMilli()
         val updateReq = UpdateRequest(INDEX_MANAGEMENT_INDEX, updateRequest.id)
+        updateReq.refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
         updateReq.doc(
             mapOf(
                 SMPolicy.SM_TYPE to

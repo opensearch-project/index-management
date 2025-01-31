@@ -421,7 +421,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             }
             """.trimIndent()
         val response =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "POST", "${IndexManagementIndices.HISTORY_ALL}/_search", emptyMap(),
                 StringEntity(request, ContentType.APPLICATION_JSON),
             )

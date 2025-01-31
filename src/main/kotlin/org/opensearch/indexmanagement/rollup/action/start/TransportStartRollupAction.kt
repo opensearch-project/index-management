@@ -153,7 +153,7 @@ constructor(
 
     private fun getRollupMetadata(rollup: Rollup, actionListener: ActionListener<AcknowledgedResponse>) {
         val req = GetRequest(INDEX_MANAGEMENT_INDEX, rollup.metadataID).routing(rollup.id)
-        client.get(
+        pluginClient.get(
             req,
             object : ActionListener<GetResponse> {
                 override fun onResponse(response: GetResponse) {
@@ -209,7 +209,8 @@ constructor(
                     ),
                 )
                 .routing(rollup.id)
-        client.update(
+        updateRequest.refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
+        pluginClient.update(
             updateRequest,
             object : ActionListener<UpdateResponse> {
                 override fun onResponse(response: UpdateResponse) {
