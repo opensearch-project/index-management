@@ -119,7 +119,7 @@ constructor(
                 indexRequest.opType(DocWriteRequest.OpType.CREATE)
             }
 
-            client.index(
+            pluginClient.index(
                 indexRequest,
                 object : ActionListener<IndexResponse> {
                     override fun onResponse(response: IndexResponse) {
