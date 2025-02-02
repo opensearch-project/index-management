@@ -13,6 +13,7 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.action.update.UpdateResponse
@@ -127,7 +128,8 @@ constructor(
                     ),
             ),
         )
-        client.update(
+        updateReq.refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
+        pluginClient.update(
             updateReq,
             object : ActionListener<UpdateResponse> {
                 override fun onResponse(response: UpdateResponse) {
@@ -152,7 +154,7 @@ constructor(
 
     private fun retrieveAndUpdateTransformMetadata(transform: Transform, actionListener: ActionListener<AcknowledgedResponse>) {
         val req = GetRequest(INDEX_MANAGEMENT_INDEX, transform.metadataId).routing(transform.id)
-        client.get(
+        pluginClient.get(
             req,
             object : ActionListener<GetResponse> {
                 override fun onResponse(response: GetResponse) {
@@ -208,7 +210,8 @@ constructor(
                     ),
                 )
                 .routing(transform.id)
-        client.update(
+        updateRequest.refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
+        pluginClient.update(
             updateRequest,
             object : ActionListener<UpdateResponse> {
                 override fun onResponse(response: UpdateResponse) {

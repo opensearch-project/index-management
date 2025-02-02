@@ -128,7 +128,7 @@ constructor(
         actionListener: ActionListener<AcknowledgedResponse>,
     ) {
         val req = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, transform.metadataId).routing(transform.id)
-        client.get(
+        pluginClient.get(
             req,
             object : ActionListener<GetResponse> {
                 override fun onResponse(response: GetResponse) {

@@ -163,6 +163,8 @@ constructor(
                 .clusterManagerNodeTimeout(request.clusterManagerTimeout)
                 .indicesOptions(strictExpandIndicesOptions)
 
+            // TODO refactor using indexMetadataProvider.clusterService to get IndexMetadata
+
             // TODO Verify this works
             pluginClient.admin()
                 .cluster()
