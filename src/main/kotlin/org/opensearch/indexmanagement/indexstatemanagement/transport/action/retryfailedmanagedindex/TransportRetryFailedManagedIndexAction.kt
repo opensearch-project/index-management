@@ -12,15 +12,12 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
 import org.opensearch.OpenSearchStatusException
-import org.opensearch.action.admin.cluster.state.ClusterStateRequest
-import org.opensearch.action.admin.cluster.state.ClusterStateResponse
 import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.get.MultiGetRequest
 import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
-import org.opensearch.action.support.IndicesOptions
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
@@ -154,45 +151,35 @@ constructor(
         }
 
         private fun getClusterState() {
-            val strictExpandIndicesOptions = IndicesOptions.strictExpand()
+            val clusterService = indexMetadataProvider.clusterService
+            val currentState = clusterService.state()
 
-            val clusterStateRequest = ClusterStateRequest()
-            clusterStateRequest.clear()
-                .indices(*request.indices.toTypedArray())
-                .metadata(true)
-                .local(false)
-                .clusterManagerNodeTimeout(request.clusterManagerTimeout)
-                .indicesOptions(strictExpandIndicesOptions)
+            val indicesNames = request.indices.toTypedArray()
 
-            // TODO refactor using indexMetadataProvider.clusterService to get IndexMetadata
+            try {
+                val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
 
-            // TODO Verify this works
-            pluginClient.admin()
-                .cluster()
-                .state(
-                    clusterStateRequest,
-                    object : ActionListener<ClusterStateResponse> {
-                        override fun onResponse(response: ClusterStateResponse) {
-                            val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
-                            response.state.metadata.indices.forEach {
-                                val indexUUID = defaultIndexMetadataService.getIndexUUID(it.value)
-                                indexUuidToIndexMetadata[indexUUID] = it.value
-                            }
-                            processResponse()
-                        }
+                // Get indices metadata from the cluster state
+                currentState.metadata.indices
+                    .filter { (name, _) ->
+                        indicesNames.contains(name)
+                    }
+                    .forEach {
+                        val indexUUID = defaultIndexMetadataService.getIndexUUID(it.value)
+                        indexUuidToIndexMetadata[indexUUID] = it.value
+                    }
 
-                        override fun onFailure(t: Exception) {
-                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
-                        }
-                    },
-                )
+                processResponse()
+            } catch (e: Exception) {
+                actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+            }
         }
 
         private fun processResponse() {
             val mReq = MultiGetRequest()
             indicesToRetry.map { it.key }.forEach { mReq.add(INDEX_MANAGEMENT_INDEX, it) }
 
-            client.multiGet(
+            pluginClient.multiGet(
                 mReq,
                 object : ActionListener<MultiGetResponse> {
                     override fun onResponse(response: MultiGetResponse) {
