@@ -18,7 +18,7 @@ jobs:
           distribution: temurin # Temurin is a distribution of adoptium
           java-version: 21
       - name: Checkout Branch
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Build Index Management
         run: ./gradlew assemble
       - name: Pull and Run Docker
