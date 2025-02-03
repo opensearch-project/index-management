@@ -21,6 +21,7 @@ import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.IndicesOptions
+import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.client.node.NodeClient
@@ -296,8 +297,9 @@ constructor(
                         UpdateRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(index.uuid)).routing(index.uuid).doc(builder)
                     }
                 val bulkUpdateMetadataRequest = BulkRequest().add(updateMetadataRequests)
+                bulkUpdateMetadataRequest.refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
 
-                client.bulk(bulkUpdateMetadataRequest, ActionListener.wrap(::onBulkUpdateMetadataResponse, ::onFailure))
+                pluginClient.bulk(bulkUpdateMetadataRequest, ActionListener.wrap(::onBulkUpdateMetadataResponse, ::onFailure))
             } else {
                 actionListener.onResponse(ISMStatusResponse(0, failedIndices))
             }

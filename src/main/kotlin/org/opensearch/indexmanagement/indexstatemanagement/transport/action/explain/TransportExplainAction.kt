@@ -186,7 +186,7 @@ constructor(
         }
 
         private fun searchForMetadata(searchRequest: SearchRequest) {
-            val threadContext = pluginClient.threadPool().threadContext.newStoredContext(true)
+            val threadContext = client.threadPool().threadContext.newStoredContext(true)
             pluginClient.search(
                 searchRequest,
                 object : ActionListener<SearchResponse> {
