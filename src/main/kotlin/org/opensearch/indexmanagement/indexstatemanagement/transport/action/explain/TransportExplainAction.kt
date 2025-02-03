@@ -11,8 +11,6 @@ import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
-import org.opensearch.action.admin.cluster.state.ClusterStateRequest
-import org.opensearch.action.admin.cluster.state.ClusterStateResponse
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.get.MultiGetRequest
 import org.opensearch.action.get.MultiGetResponse
@@ -264,26 +262,17 @@ constructor(
         @Suppress("SpreadOperator")
         fun getMetadata(indexNames: List<String>, threadContext: ThreadContext.StoredContext) {
             if (request.indexType == DEFAULT_INDEX_TYPE) {
-                val clusterStateRequest = ClusterStateRequest()
-                clusterStateRequest.clear()
-                    .indices(*indexNames.toTypedArray())
-                    .metadata(true)
-                    .local(request.local)
-                    .clusterManagerNodeTimeout(request.clusterManagerTimeout)
+                try {
+                    val state = clusterService.state()
+                    val indices = state.metadata.indices
+                    val filteredMetadata = indices.filter { (name, _) ->
+                        indexNames.contains(name)
+                    }
 
-                pluginClient.admin().cluster().state(
-                    clusterStateRequest,
-                    object : ActionListener<ClusterStateResponse> {
-                        override fun onResponse(response: ClusterStateResponse) {
-                            val clusterStateIndexMetadatas = response.state.metadata.indices
-                            getMetadataMap(clusterStateIndexMetadatas, threadContext)
-                        }
-
-                        override fun onFailure(t: Exception) {
-                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
-                        }
-                    },
-                )
+                    getMetadataMap(filteredMetadata, threadContext)
+                } catch (e: Exception) {
+                    actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+                }
             } else {
                 getMetadataMap(null, threadContext)
             }
