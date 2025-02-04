@@ -38,7 +38,7 @@ constructor(
     val clusterService: ClusterService,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
-) : HandledTransportAction<GetTransformRequest, GetTransformResponse> (
+) : HandledTransportAction<GetTransformRequest, GetTransformResponse>(
     GetTransformAction.NAME, transportService, actionFilters, ::GetTransformRequest,
 ) {
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)

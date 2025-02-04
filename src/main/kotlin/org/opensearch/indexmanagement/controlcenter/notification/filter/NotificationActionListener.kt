@@ -294,9 +294,7 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         }.toSet()
     }
 
-    fun escapeQueryString(query: String): String {
-        return query.replace("/", "\\/").replace(":", "\\:")
-    }
+    fun escapeQueryString(query: String): String = query.replace("/", "\\/").replace(":", "\\:")
 
     companion object {
         val MAX_WAIT_TIME: TimeValue = TimeValue.timeValueHours(1)

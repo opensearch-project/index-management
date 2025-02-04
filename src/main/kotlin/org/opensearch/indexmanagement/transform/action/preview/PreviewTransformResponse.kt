@@ -16,7 +16,8 @@ import org.opensearch.core.xcontent.XContentBuilder
 class PreviewTransformResponse(
     val documents: List<Map<String, Any>>,
     val status: RestStatus,
-) : ActionResponse(), ToXContentObject {
+) : ActionResponse(),
+    ToXContentObject {
     constructor(sin: StreamInput) : this(
         documents =
         sin.let {
@@ -38,9 +39,7 @@ class PreviewTransformResponse(
         out.writeEnum(status)
     }
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .field("documents", documents)
-            .endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .field("documents", documents)
+        .endObject()
 }

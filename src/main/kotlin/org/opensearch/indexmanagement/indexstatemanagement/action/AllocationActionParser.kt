@@ -49,9 +49,7 @@ class AllocationActionParser : ActionParser() {
         return AllocationAction(require, include, exclude, waitFor, index)
     }
 
-    override fun getActionType(): String {
-        return AllocationAction.name
-    }
+    override fun getActionType(): String = AllocationAction.name
 
     private fun assignObject(xcp: XContentParser, objectMap: MutableMap<String, String>) {
         ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)

@@ -19,16 +19,12 @@ import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.action.RestToXContentListener
 
 class RestPreviewTransformAction : BaseRestHandler() {
-    override fun routes(): List<RestHandler.Route> {
-        return listOf(
-            RestHandler.Route(POST, TRANSFORM_BASE_URI),
-            RestHandler.Route(POST, "$TRANSFORM_BASE_URI/_preview"),
-        )
-    }
+    override fun routes(): List<RestHandler.Route> = listOf(
+        RestHandler.Route(POST, TRANSFORM_BASE_URI),
+        RestHandler.Route(POST, "$TRANSFORM_BASE_URI/_preview"),
+    )
 
-    override fun getName(): String {
-        return "opendistro_preview_transform_action"
-    }
+    override fun getName(): String = "opendistro_preview_transform_action"
 
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
         val xcp = request.contentParser()

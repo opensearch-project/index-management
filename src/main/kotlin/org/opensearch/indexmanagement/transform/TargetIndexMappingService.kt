@@ -195,24 +195,22 @@ object TargetIndexMappingService {
     @Suppress("UNCHECKED_CAST")
     private fun mapCompositeAggregationToString(
         compositeAggregation: Map<String, Any>,
-    ): String {
-        return buildString {
-            var isFirst = true
-            val iterator = compositeAggregation.entries.iterator()
-            while (iterator.hasNext()) {
-                val it = iterator.next()
-                if (!isFirst) {
-                    append(",")
-                }
-                isFirst = false
-                if (it.value is Map<*, *>) {
-                    append("\"${it.key}\" : {")
-                    append(mapCompositeAggregationToString(it.value as Map<String, Any>))
-                    append("\n }")
-                } else {
-                    append("\n")
-                    append("\"${it.key}\" : \"${it.value}\"")
-                }
+    ): String = buildString {
+        var isFirst = true
+        val iterator = compositeAggregation.entries.iterator()
+        while (iterator.hasNext()) {
+            val it = iterator.next()
+            if (!isFirst) {
+                append(",")
+            }
+            isFirst = false
+            if (it.value is Map<*, *>) {
+                append("\"${it.key}\" : {")
+                append(mapCompositeAggregationToString(it.value as Map<String, Any>))
+                append("\n }")
+            } else {
+                append("\n")
+                append("\"${it.key}\" : \"${it.value}\"")
             }
         }
     }

@@ -17,7 +17,8 @@ import java.io.IOException
 data class ExplainSMPolicy(
     val metadata: SMMetadata? = null,
     val enabled: Boolean? = null,
-) : ToXContentFragment, Writeable {
+) : ToXContentFragment,
+    Writeable {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         metadata = if (sin.readBoolean()) SMMetadata(sin) else null,

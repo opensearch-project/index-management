@@ -170,26 +170,24 @@ class TransformActionIT : IndexStateManagementRestTestCase() {
     }
 
     // create an ISMTransform that matches SOURCE_INDEX_MAPPING
-    private fun prepareISMTransform(targetIndex: String): ISMTransform {
-        return ISMTransform(
-            description = "test transform",
-            targetIndex = targetIndex,
-            pageSize = 100,
-            dataSelectionQuery = MatchAllQueryBuilder(),
-            groups =
-            listOf(
-                DateHistogram(sourceField = "timestamp", fixedInterval = "1d"),
-                Terms(sourceField = "category", targetField = "category"),
-            ),
-            aggregations =
-            AggregatorFactories.builder()
-                .addAggregator(sumAggregation())
-                .addAggregator(maxAggregation())
-                .addAggregator(minAggregation())
-                .addAggregator(avgAggregation())
-                .addAggregator(valueCountAggregation()),
-        )
-    }
+    private fun prepareISMTransform(targetIndex: String): ISMTransform = ISMTransform(
+        description = "test transform",
+        targetIndex = targetIndex,
+        pageSize = 100,
+        dataSelectionQuery = MatchAllQueryBuilder(),
+        groups =
+        listOf(
+            DateHistogram(sourceField = "timestamp", fixedInterval = "1d"),
+            Terms(sourceField = "category", targetField = "category"),
+        ),
+        aggregations =
+        AggregatorFactories.builder()
+            .addAggregator(sumAggregation())
+            .addAggregator(maxAggregation())
+            .addAggregator(minAggregation())
+            .addAggregator(avgAggregation())
+            .addAggregator(valueCountAggregation()),
+    )
 
     private fun preparePolicyContainingTransform(indexName: String, ismTransform: ISMTransform, policyId: String, retry: Long = 0): Policy {
         val actionConfig = TransformAction(ismTransform, 0)

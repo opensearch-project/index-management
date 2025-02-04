@@ -113,9 +113,9 @@ class ManagedIndexCoordinator(
     indexManagementIndices: IndexManagementIndices,
     private val indexMetadataProvider: IndexMetadataProvider,
     private val xContentRegistry: NamedXContentRegistry,
-) : ClusterStateListener,
-    CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ManagedIndexCoordinator")),
-    LifecycleListener() {
+) : LifecycleListener(),
+    ClusterStateListener,
+    CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ManagedIndexCoordinator")) {
     private val logger = LogManager.getLogger(javaClass)
     private val ismIndices = indexManagementIndices
 
@@ -160,9 +160,7 @@ class ManagedIndexCoordinator(
         }
     }
 
-    private fun executorName(): String {
-        return ThreadPool.Names.MANAGEMENT
-    }
+    private fun executorName(): String = ThreadPool.Names.MANAGEMENT
 
     fun onClusterManager() {
         onClusterManagerTimeStamp = System.currentTimeMillis()

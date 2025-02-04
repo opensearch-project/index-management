@@ -58,6 +58,4 @@ suspend fun Channel.sendNotification(
     this.sendNotification(client, eventSource, compiledMessage, user)
 }
 
-fun ManagedIndexMetaData.getEventSource(title: String): EventSource {
-    return EventSource(title, indexUuid, SeverityType.INFO)
-}
+fun ManagedIndexMetaData.getEventSource(title: String): EventSource = EventSource(title, indexUuid, SeverityType.INFO)

@@ -74,7 +74,5 @@ class SerializationTests : OpenSearchTestCase() {
 
     private fun buildMessage(
         itemType: String,
-    ): String {
-        return "$itemType serialization test failed. "
-    }
+    ): String = "$itemType serialization test failed. "
 }

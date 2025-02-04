@@ -461,15 +461,13 @@ constructor(
             return null
         }
 
-        private fun parseSearchHits(hits: Array<SearchHit>): List<ManagedIndexConfig> {
-            return hits.map { hit ->
-                XContentHelper.createParser(
-                    xContentRegistry,
-                    LoggingDeprecationHandler.INSTANCE,
-                    hit.sourceRef,
-                    XContentType.JSON,
-                ).parseWithType(parse = ManagedIndexConfig.Companion::parse)
-            }
+        private fun parseSearchHits(hits: Array<SearchHit>): List<ManagedIndexConfig> = hits.map { hit ->
+            XContentHelper.createParser(
+                xContentRegistry,
+                LoggingDeprecationHandler.INSTANCE,
+                hit.sourceRef,
+                XContentType.JSON,
+            ).parseWithType(parse = ManagedIndexConfig.Companion::parse)
         }
     }
 }

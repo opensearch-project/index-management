@@ -21,7 +21,9 @@ import org.opensearch.indexmanagement.util._SEQ_NO
 import org.opensearch.indexmanagement.util._VERSION
 import java.io.IOException
 
-class GetPolicyResponse : ActionResponse, ToXContentObject {
+class GetPolicyResponse :
+    ActionResponse,
+    ToXContentObject {
     val id: String
     val version: Long
     val seqNo: Long

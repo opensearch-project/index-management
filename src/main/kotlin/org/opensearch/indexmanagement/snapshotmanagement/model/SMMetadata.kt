@@ -43,7 +43,8 @@ data class SMMetadata(
     val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     val primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
-) : Writeable, ToXContentObject {
+) : Writeable,
+    ToXContentObject {
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.startObject(SM_METADATA_TYPE)
@@ -105,9 +106,7 @@ data class SMMetadata(
             return info
         }
 
-        fun InfoType?.remove(key: String): InfoType? {
-            return this?.toMutableMap().remove(key)
-        }
+        fun InfoType?.remove(key: String): InfoType? = this?.toMutableMap().remove(key)
     }
 
     constructor(sin: StreamInput) : this(
@@ -136,16 +135,15 @@ data class SMMetadata(
         val started: List<String>? = null,
         val latestExecution: LatestExecution? = null,
         val retry: Retry? = null,
-    ) : Writeable, ToXContentObject {
-        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-            return builder.startObject()
-                .field(CURRENT_STATE_FIELD, currentState.toString())
-                .field(TRIGGER_FIELD, trigger)
-                .optionalField(STARTED_FIELD, started)
-                .optionalField(LAST_EXECUTION_FIELD, latestExecution)
-                .optionalField(RETRY_FIELD, retry)
-                .endObject()
-        }
+    ) : Writeable,
+        ToXContentObject {
+        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+            .field(CURRENT_STATE_FIELD, currentState.toString())
+            .field(TRIGGER_FIELD, trigger)
+            .optionalField(STARTED_FIELD, started)
+            .optionalField(LAST_EXECUTION_FIELD, latestExecution)
+            .optionalField(RETRY_FIELD, retry)
+            .endObject()
 
         companion object {
             const val CURRENT_STATE_FIELD = "current_state"
@@ -206,15 +204,14 @@ data class SMMetadata(
         val startTime: Instant,
         val endTime: Instant? = null,
         val info: Info? = null,
-    ) : Writeable, ToXContentObject {
-        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-            return builder.startObject()
-                .field(STATUS_FIELD, status.toString())
-                .optionalTimeField(START_TIME_FIELD, startTime)
-                .optionalTimeField(END_TIME_FIELD, endTime)
-                .optionalInfoField(INFO_FIELD, info)
-                .endObject()
-        }
+    ) : Writeable,
+        ToXContentObject {
+        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+            .field(STATUS_FIELD, status.toString())
+            .optionalTimeField(START_TIME_FIELD, startTime)
+            .optionalTimeField(END_TIME_FIELD, endTime)
+            .optionalInfoField(INFO_FIELD, info)
+            .endObject()
 
         companion object {
             const val STATUS_FIELD = "status"
@@ -249,13 +246,11 @@ data class SMMetadata(
                 )
             }
 
-            fun init(status: Status, info: Info? = null): LatestExecution {
-                return LatestExecution(
-                    status = status,
-                    startTime = now(),
-                    info = info,
-                )
-            }
+            fun init(status: Status, info: Info? = null): LatestExecution = LatestExecution(
+                status = status,
+                startTime = now(),
+                info = info,
+            )
         }
 
         constructor(sin: StreamInput) : this(
@@ -284,13 +279,12 @@ data class SMMetadata(
     data class Info(
         val message: String? = null,
         val cause: String? = null,
-    ) : Writeable, ToXContentObject {
-        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-            return builder.startObject()
-                .optionalField(MESSAGE_FIELD, message)
-                .optionalField(CAUSE_FIELD, cause)
-                .endObject()
-        }
+    ) : Writeable,
+        ToXContentObject {
+        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+            .optionalField(MESSAGE_FIELD, message)
+            .optionalField(CAUSE_FIELD, cause)
+            .endObject()
 
         companion object {
             const val MESSAGE_FIELD = "message"
@@ -337,12 +331,11 @@ data class SMMetadata(
      */
     data class Trigger(
         val time: Instant,
-    ) : Writeable, ToXContentObject {
-        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-            return builder.startObject()
-                .optionalTimeField(TIME_FIELD, time)
-                .endObject()
-        }
+    ) : Writeable,
+        ToXContentObject {
+        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+            .optionalTimeField(TIME_FIELD, time)
+            .endObject()
 
         companion object {
             const val TIME_FIELD = "time"
@@ -377,12 +370,11 @@ data class SMMetadata(
 
     data class Retry(
         val count: Int,
-    ) : Writeable, ToXContentObject {
-        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-            return builder.startObject()
-                .field(COUNT_FIELD, count)
-                .endObject()
-        }
+    ) : Writeable,
+        ToXContentObject {
+        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+            .field(COUNT_FIELD, count)
+            .endObject()
 
         companion object {
             const val RETRY_FIELD = "retry"
@@ -568,29 +560,23 @@ data class SMMetadata(
             return this
         }
 
-        fun getWorkflowMetadata(): WorkflowMetadata? {
-            return when (workflowType) {
-                WorkflowType.CREATION -> {
-                    metadata.creation
-                }
-                WorkflowType.DELETION -> {
-                    metadata.deletion
-                }
+        fun getWorkflowMetadata(): WorkflowMetadata? = when (workflowType) {
+            WorkflowType.CREATION -> {
+                metadata.creation
+            }
+            WorkflowType.DELETION -> {
+                metadata.deletion
             }
         }
 
-        fun getWorkflowType(): WorkflowType {
-            return workflowType
-        }
+        fun getWorkflowType(): WorkflowType = workflowType
 
-        fun getStartedSnapshots(): List<String>? {
-            return when (workflowType) {
-                WorkflowType.CREATION -> {
-                    metadata.creation.started
-                }
-                WorkflowType.DELETION -> {
-                    metadata.deletion?.started
-                }
+        fun getStartedSnapshots(): List<String>? = when (workflowType) {
+            WorkflowType.CREATION -> {
+                metadata.creation.started
+            }
+            WorkflowType.DELETION -> {
+                metadata.deletion?.started
             }
         }
 

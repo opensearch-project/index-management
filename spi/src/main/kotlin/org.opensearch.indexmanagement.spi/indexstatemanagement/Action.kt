@@ -20,7 +20,8 @@ import java.time.Instant
 abstract class Action(
     val type: String,
     val actionIndex: Int,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
     var configTimeout: ActionTimeout? = null
     var configRetry: ActionRetry? = ActionRetry(DEFAULT_RETRIES)
     var customAction: Boolean = false

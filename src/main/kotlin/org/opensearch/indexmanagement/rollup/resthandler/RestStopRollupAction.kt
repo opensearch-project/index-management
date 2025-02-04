@@ -21,22 +21,16 @@ import org.opensearch.rest.action.RestToXContentListener
 import java.io.IOException
 
 class RestStopRollupAction : BaseRestHandler() {
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                POST, "$ROLLUP_JOBS_BASE_URI/{rollupID}/_stop",
-                POST, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}/_stop",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            POST, "$ROLLUP_JOBS_BASE_URI/{rollupID}/_stop",
+            POST, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}/_stop",
+        ),
+    )
 
-    override fun getName(): String {
-        return "opendistro_stop_rollup_action"
-    }
+    override fun getName(): String = "opendistro_stop_rollup_action"
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {

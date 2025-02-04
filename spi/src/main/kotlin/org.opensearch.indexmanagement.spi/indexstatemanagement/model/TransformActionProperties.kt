@@ -16,7 +16,8 @@ import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 
 data class TransformActionProperties(
     val transformId: String?,
-) : Writeable, ToXContentFragment {
+) : Writeable,
+    ToXContentFragment {
     override fun writeTo(out: StreamOutput) {
         out.writeOptionalString(transformId)
     }

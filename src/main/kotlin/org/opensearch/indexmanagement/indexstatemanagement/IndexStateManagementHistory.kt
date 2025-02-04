@@ -207,8 +207,7 @@ class IndexStateManagementHistory(
 
             if ((Instant.now().toEpochMilli() - creationTime) > historyRetentionPeriod.millis) {
                 val alias =
-                    indexMetaData.aliases.firstNotNullOfOrNull {
-                            alias ->
+                    indexMetaData.aliases.firstNotNullOfOrNull { alias ->
                         IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS == alias.value.alias
                     }
                 if (alias != null && historyEnabled) {
@@ -300,12 +299,12 @@ class IndexStateManagementHistory(
         }
     }
 
-    private fun shouldAddManagedIndexMetaDataToHistory(managedIndexMetaData: ManagedIndexMetaData): Boolean {
-        return when (managedIndexMetaData.stepMetaData?.stepStatus) {
-            Step.StepStatus.STARTING -> false
-            Step.StepStatus.CONDITION_NOT_MET -> false
-            else -> true
-        }
+    private fun shouldAddManagedIndexMetaDataToHistory(
+        managedIndexMetaData: ManagedIndexMetaData,
+    ): Boolean = when (managedIndexMetaData.stepMetaData?.stepStatus) {
+        Step.StepStatus.STARTING -> false
+        Step.StepStatus.CONDITION_NOT_MET -> false
+        else -> true
     }
 
     private fun createManagedIndexMetaDataHistoryIndexRequest(managedIndexMetaData: ManagedIndexMetaData): IndexRequest {

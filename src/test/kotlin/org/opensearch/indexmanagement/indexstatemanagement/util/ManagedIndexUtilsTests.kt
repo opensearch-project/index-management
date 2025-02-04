@@ -289,28 +289,22 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
         )
     }
 
-    private fun contentParser(bytesReference: BytesReference): XContentParser {
-        return XContentHelper.createParser(
-            xContentRegistry(), LoggingDeprecationHandler.INSTANCE,
-            bytesReference, XContentType.JSON,
-        )
-    }
+    private fun contentParser(bytesReference: BytesReference): XContentParser = XContentHelper.createParser(
+        xContentRegistry(), LoggingDeprecationHandler.INSTANCE,
+        bytesReference, XContentType.JSON,
+    )
 
-    private fun createMessageWithHost(host: String): LegacyBaseMessage {
-        return LegacyCustomWebhookMessage.Builder("abc")
-            .withHost(host)
-            .withPath("incomingwebhooks/383c0e2b-d028-44f4-8d38-696754bc4574")
-            .withMessage("{\"Content\":\"Message test\"}")
-            .withMethod("POST")
-            .withQueryParams(HashMap<String, String>()).build()
-    }
+    private fun createMessageWithHost(host: String): LegacyBaseMessage = LegacyCustomWebhookMessage.Builder("abc")
+        .withHost(host)
+        .withPath("incomingwebhooks/383c0e2b-d028-44f4-8d38-696754bc4574")
+        .withMessage("{\"Content\":\"Message test\"}")
+        .withMethod("POST")
+        .withQueryParams(HashMap<String, String>()).build()
 
-    private fun createMessageWithURl(url: String): LegacyBaseMessage {
-        return LegacyCustomWebhookMessage.Builder("abc")
-            .withUrl(url)
-            .withPath("incomingwebhooks/383c0e2b-d028-44f4-8d38-696754bc4574")
-            .withMessage("{\"Content\":\"Message test\"}")
-            .withMethod("POST")
-            .withQueryParams(HashMap<String, String>()).build()
-    }
+    private fun createMessageWithURl(url: String): LegacyBaseMessage = LegacyCustomWebhookMessage.Builder("abc")
+        .withUrl(url)
+        .withPath("incomingwebhooks/383c0e2b-d028-44f4-8d38-696754bc4574")
+        .withMessage("{\"Content\":\"Message test\"}")
+        .withMethod("POST")
+        .withQueryParams(HashMap<String, String>()).build()
 }

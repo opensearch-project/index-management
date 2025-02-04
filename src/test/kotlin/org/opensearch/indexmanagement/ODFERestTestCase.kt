@@ -37,16 +37,14 @@ abstract class ODFERestTestCase : OpenSearchRestTestCase() {
         return mockSecureSettings
     }
 
-    override fun restAdminSettings(): Settings {
-        return Settings
-            .builder()
-            .put("http.port", 9200)
-            .put(OPENSEARCH_SECURITY_SSL_HTTP_ENABLED, isHttps())
-            .put(OPENSEARCH_SECURITY_SSL_HTTP_PEMCERT_FILEPATH, "sample.pem")
-            .put(OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_FILEPATH, "test-kirk.jks")
-            .setSecureSettings(createSecureSettings())
-            .build()
-    }
+    override fun restAdminSettings(): Settings = Settings
+        .builder()
+        .put("http.port", 9200)
+        .put(OPENSEARCH_SECURITY_SSL_HTTP_ENABLED, isHttps())
+        .put(OPENSEARCH_SECURITY_SSL_HTTP_PEMCERT_FILEPATH, "sample.pem")
+        .put(OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_FILEPATH, "test-kirk.jks")
+        .setSecureSettings(createSecureSettings())
+        .build()
 
     @Throws(IOException::class)
     override fun buildClient(settings: Settings, hosts: Array<HttpHost>): RestClient {

@@ -473,12 +473,10 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         }
     }
 
-    protected fun getExistingManagedIndexConfig(index: String): ManagedIndexConfig {
-        return waitFor {
-            val config = getManagedIndexConfig(index)
-            assertNotNull("ManagedIndexConfig is null", config)
-            config!!
-        }
+    protected fun getExistingManagedIndexConfig(index: String): ManagedIndexConfig = waitFor {
+        val config = getManagedIndexConfig(index)
+        assertNotNull("ManagedIndexConfig is null", config)
+        config!!
     }
 
     protected fun updateManagedIndexConfigStartTime(update: ManagedIndexConfig, desiredStartTimeMillis: Long? = null, retryOnConflict: Int = 0) {
@@ -545,14 +543,12 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     // Useful settings when debugging to prevent timeouts
-    override fun restClientSettings(): Settings {
-        return if (isDebuggingTest || isDebuggingRemoteCluster) {
-            Settings.builder()
-                .put(CLIENT_SOCKET_TIMEOUT, TimeValue.timeValueMinutes(10))
-                .build()
-        } else {
-            super.restClientSettings()
-        }
+    override fun restClientSettings(): Settings = if (isDebuggingTest || isDebuggingRemoteCluster) {
+        Settings.builder()
+            .put(CLIENT_SOCKET_TIMEOUT, TimeValue.timeValueMinutes(10))
+            .build()
+    } else {
+        super.restClientSettings()
     }
 
     // Validate segment count per shard by specifying the min and max it should be
@@ -677,14 +673,10 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     @Suppress("UNCHECKED_CAST")
-    protected fun getIndexShardNodes(indexName: String): List<Any> {
-        return getIndexShards(indexName).map { element -> (element as Map<String, String>)["node"]!! }
-    }
+    protected fun getIndexShardNodes(indexName: String): List<Any> = getIndexShards(indexName).map { element -> (element as Map<String, String>)["node"]!! }
 
     @Suppress("UNCHECKED_CAST")
-    protected fun getIndexShards(indexName: String): List<Any> {
-        return getShardsList().filter { element -> (element as Map<String, String>)["index"]!!.contains(indexName) }
-    }
+    protected fun getIndexShards(indexName: String): List<Any> = getShardsList().filter { element -> (element as Map<String, String>)["index"]!!.contains(indexName) }
 
     @Suppress("UNCHECKED_CAST")
     protected fun getNodes(): MutableSet<String> {
@@ -1212,12 +1204,10 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         }
     }
 
-    override fun xContentRegistry(): NamedXContentRegistry {
-        return NamedXContentRegistry(
-            listOf(
-                ClusterModule.getNamedXWriteables(),
-                SearchModule(Settings.EMPTY, emptyList()).namedXContents,
-            ).flatten(),
-        )
-    }
+    override fun xContentRegistry(): NamedXContentRegistry = NamedXContentRegistry(
+        listOf(
+            ClusterModule.getNamedXWriteables(),
+            SearchModule(Settings.EMPTY, emptyList()).namedXContents,
+        ).flatten(),
+    )
 }

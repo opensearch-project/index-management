@@ -26,7 +26,7 @@ import java.util.Base64
 @Suppress("UtilityClassWithPublicConstructor", "TooManyFunctions")
 class IndexUtils {
     companion object {
-        @Suppress("ObjectPropertyNaming")
+        @Suppress("ObjectPropertyNaming", "ktlint:standard:backing-property-naming")
         const val _META = "_meta"
         const val PROPERTIES = "properties"
         const val FIELDS = "fields"
@@ -196,13 +196,9 @@ class IndexUtils {
             return Base64.getUrlEncoder().withoutPadding().encodeToString(byteArray)
         }
 
-        fun isDataStream(name: String?, clusterState: ClusterState): Boolean {
-            return clusterState.metadata.dataStreams().containsKey(name)
-        }
+        fun isDataStream(name: String?, clusterState: ClusterState): Boolean = clusterState.metadata.dataStreams().containsKey(name)
 
-        fun isAlias(indexName: String?, clusterState: ClusterState): Boolean {
-            return clusterState.metadata.hasAlias(indexName)
-        }
+        fun isAlias(indexName: String?, clusterState: ClusterState): Boolean = clusterState.metadata.hasAlias(indexName)
 
         fun getWriteIndex(indexName: String?, clusterState: ClusterState): String? {
             if (isAlias(indexName, clusterState) || isDataStream(indexName, clusterState)) {
@@ -233,9 +229,7 @@ class IndexUtils {
             return newestIndex
         }
 
-        fun isConcreteIndex(indexName: String?, clusterState: ClusterState): Boolean {
-            return clusterState.metadata
-                .indicesLookup[indexName]!!.type == IndexAbstraction.Type.CONCRETE_INDEX
-        }
+        fun isConcreteIndex(indexName: String?, clusterState: ClusterState): Boolean = clusterState.metadata
+            .indicesLookup[indexName]!!.type == IndexAbstraction.Type.CONCRETE_INDEX
     }
 }

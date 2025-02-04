@@ -42,7 +42,5 @@ class ManagedIndexConfigTests : OpenSearchTestCase() {
         }
     }
 
-    private fun parserWithType(xc: String): XContentParser {
-        return XContentType.JSON.xContent().createParser(xContentRegistry(), LoggingDeprecationHandler.INSTANCE, xc)
-    }
+    private fun parserWithType(xc: String): XContentParser = XContentType.JSON.xContent().createParser(xContentRegistry(), LoggingDeprecationHandler.INSTANCE, xc)
 }

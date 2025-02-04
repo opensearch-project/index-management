@@ -110,7 +110,5 @@ class IndexManagementActionsMetrics private constructor() {
         )
     }
 
-    fun getActionMetrics(actionName: String): ActionMetrics? {
-        return actionMetricsMap[actionName]
-    }
+    fun getActionMetrics(actionName: String): ActionMetrics? = actionMetricsMap[actionName]
 }

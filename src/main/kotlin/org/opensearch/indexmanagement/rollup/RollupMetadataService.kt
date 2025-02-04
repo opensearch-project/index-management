@@ -342,15 +342,14 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
         return updateMetadata(updatedMetadata)
     }
 
-    suspend fun updateMetadata(metadata: RollupMetadata): RollupMetadata {
-        return when (val metadataUpdateResult = submitMetadataUpdate(metadata, metadata.id != NO_ID)) {
+    suspend fun updateMetadata(metadata: RollupMetadata): RollupMetadata =
+        when (val metadataUpdateResult = submitMetadataUpdate(metadata, metadata.id != NO_ID)) {
             is MetadataResult.Success -> metadataUpdateResult.metadata
             is MetadataResult.Failure ->
                 throw RollupMetadataException("Failed to update rollup metadata [${metadata.id}]", metadataUpdateResult.cause)
             // NoMetadata is not expected from submitMetadataUpdate here
             is MetadataResult.NoMetadata -> throw RollupMetadataException("Unexpected state when updating rollup metadata [${metadata.id}]", null)
         }
-    }
 
     /**
      * Sets a failure metadata for the rollup job with the given reason.

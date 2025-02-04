@@ -21,18 +21,14 @@ import org.opensearch.rest.action.RestStatusToXContentListener
 import java.io.IOException
 
 class RestDeletePolicyAction : BaseRestHandler() {
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                DELETE, "$POLICY_BASE_URI/{policyID}",
-                DELETE, "$LEGACY_POLICY_BASE_URI/{policyID}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            DELETE, "$POLICY_BASE_URI/{policyID}",
+            DELETE, "$LEGACY_POLICY_BASE_URI/{policyID}",
+        ),
+    )
 
     override fun getName(): String = "delete_policy_action"
 

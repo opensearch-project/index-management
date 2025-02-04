@@ -21,7 +21,9 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ValidationResult
 import java.io.IOException
 
-open class ExplainResponse : ActionResponse, ToXContentObject {
+open class ExplainResponse :
+    ActionResponse,
+    ToXContentObject {
     // TODO refactor these lists usage to map
     val indexNames: List<String>
     val indexPolicyIDs: List<String?>

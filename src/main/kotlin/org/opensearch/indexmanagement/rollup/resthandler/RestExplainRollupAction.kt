@@ -19,18 +19,14 @@ import org.opensearch.rest.RestRequest.Method.GET
 import org.opensearch.rest.action.RestToXContentListener
 
 class RestExplainRollupAction : BaseRestHandler() {
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                GET, "$ROLLUP_JOBS_BASE_URI/{rollupID}/_explain",
-                GET, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}/_explain",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            GET, "$ROLLUP_JOBS_BASE_URI/{rollupID}/_explain",
+            GET, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}/_explain",
+        ),
+    )
 
     override fun getName(): String = "opendistro_explain_rollup_action"
 
