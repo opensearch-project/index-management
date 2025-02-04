@@ -13,7 +13,6 @@ import org.opensearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequ
 import org.opensearch.action.admin.cluster.snapshots.restore.RestoreSnapshotResponse
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction
-import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.AttemptSnapshotStep
 import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
