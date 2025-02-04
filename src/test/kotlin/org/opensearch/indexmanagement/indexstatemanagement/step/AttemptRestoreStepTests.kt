@@ -136,24 +136,24 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
         restoreSnapshotResponse: RestoreSnapshotResponse?,
         exception: Exception?,
     ): ClusterAdminClient = mock {
-            // Mock getSnapshots call
-            doAnswer { invocationOnMock ->
-                val listener = invocationOnMock.getArgument<ActionListener<GetSnapshotsResponse>>(1)
-                when {
-                    exception != null -> listener.onFailure(exception)
-                    getSnapshotsResponse != null -> listener.onResponse(getSnapshotsResponse)
-                    else -> listener.onResponse(GetSnapshotsResponse(emptyList()))
-                }
-            }.whenever(this.mock).getSnapshots(any(), any())
+        // Mock getSnapshots call
+        doAnswer { invocationOnMock ->
+            val listener = invocationOnMock.getArgument<ActionListener<GetSnapshotsResponse>>(1)
+            when {
+                exception != null -> listener.onFailure(exception)
+                getSnapshotsResponse != null -> listener.onResponse(getSnapshotsResponse)
+                else -> listener.onResponse(GetSnapshotsResponse(emptyList()))
+            }
+        }.whenever(this.mock).getSnapshots(any(), any())
 
-            // Mock restoreSnapshot call
-            doAnswer { invocationOnMock ->
-                val listener = invocationOnMock.getArgument<ActionListener<RestoreSnapshotResponse>>(1)
-                when {
-                    exception != null -> listener.onFailure(exception)
-                    restoreSnapshotResponse != null -> listener.onResponse(restoreSnapshotResponse)
-                    else -> listener.onResponse(mock())
-                }
-            }.whenever(this.mock).restoreSnapshot(any(), any())
-        }
+        // Mock restoreSnapshot call
+        doAnswer { invocationOnMock ->
+            val listener = invocationOnMock.getArgument<ActionListener<RestoreSnapshotResponse>>(1)
+            when {
+                exception != null -> listener.onFailure(exception)
+                restoreSnapshotResponse != null -> listener.onResponse(restoreSnapshotResponse)
+                else -> listener.onResponse(mock())
+            }
+        }.whenever(this.mock).restoreSnapshot(any(), any())
+    }
 }
