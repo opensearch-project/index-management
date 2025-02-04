@@ -136,7 +136,7 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
     ): String {
         val contextMap =
             managedIndexMetaData.convertToMap().filterKeys { key ->
-                key in AttemptSnapshotStep.validTopContextFields
+                key in validTopContextFields
             }
         val compiledValue =
             scriptService.compile(template, TemplateScript.CONTEXT)

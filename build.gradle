@@ -586,7 +586,6 @@ integTest {
             excludeTestsMatching "org.opensearch.indexmanagement.indexstatemanagement.action.NotificationActionIT"
         }
         exclude 'org/opensearch/indexmanagement/indexstatemanagement/MetadataRegressionIT.class'
-        exclude 'org/opensearch/indexmanagement/indexstatemanagement/ConvertIndexToRemoteIT.class'
     }
 
     // TODO: raise issue in Core, this is because of the test framework
@@ -648,7 +647,6 @@ task integTestRemote(type: RestIntegTestTask) {
 
     // Snapshot action integration tests rely on node level setting path.repo which we can't set remotely
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/SnapshotActionIT.class'
-    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/ConvertIndexToRemoteIT.class'
 }
 
 // === Set up BWC tests ===
