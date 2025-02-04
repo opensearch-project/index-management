@@ -44,6 +44,7 @@ import org.opensearch.tasks.Task
 import org.opensearch.transport.RemoteTransportException
 import org.opensearch.transport.TransportService
 
+@Suppress("LongParameterList")
 class TransportExplainTransformAction
 @Inject
 constructor(

@@ -35,6 +35,7 @@ import org.opensearch.transport.TransportService
 
 private val log = LogManager.getLogger(TransportGetPoliciesAction::class.java)
 
+@Suppress("LongParameterList")
 class TransportGetPoliciesAction
 @Inject
 constructor(

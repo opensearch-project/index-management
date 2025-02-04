@@ -55,6 +55,7 @@ import java.time.Instant
  * The inverse (job: successful and metadata: fail) will end up with a disabled job and a metadata that potentially
  * says STARTED still which is wrong.
  */
+@Suppress("LongParameterList")
 class TransportStopRollupAction
 @Inject
 constructor(

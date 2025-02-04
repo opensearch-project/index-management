@@ -35,7 +35,7 @@ import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount", "LongParameterList")
 class TransportDeleteTransformsAction
 @Inject
 constructor(

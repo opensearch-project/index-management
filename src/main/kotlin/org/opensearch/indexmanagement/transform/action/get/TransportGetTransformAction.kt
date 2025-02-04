@@ -30,6 +30,7 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermis
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
+@Suppress("LongParameterList")
 class TransportGetTransformAction
 @Inject
 constructor(

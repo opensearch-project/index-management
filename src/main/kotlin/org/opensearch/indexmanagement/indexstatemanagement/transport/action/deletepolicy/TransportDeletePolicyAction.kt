@@ -37,7 +37,7 @@ import java.lang.IllegalArgumentException
 
 private val log = LogManager.getLogger(TransportDeletePolicyAction::class.java)
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount", "LongParameterList")
 class TransportDeletePolicyAction
 @Inject
 constructor(

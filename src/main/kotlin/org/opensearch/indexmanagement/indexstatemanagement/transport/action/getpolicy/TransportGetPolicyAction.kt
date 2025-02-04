@@ -32,7 +32,7 @@ import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import java.lang.IllegalArgumentException
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount", "LongParameterList")
 class TransportGetPolicyAction
 @Inject
 constructor(

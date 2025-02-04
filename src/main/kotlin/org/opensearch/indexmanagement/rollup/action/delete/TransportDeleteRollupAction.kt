@@ -34,7 +34,7 @@ import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import java.lang.Exception
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount", "LongParameterList")
 class TransportDeleteRollupAction
 @Inject
 constructor(

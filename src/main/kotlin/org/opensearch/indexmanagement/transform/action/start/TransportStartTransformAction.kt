@@ -41,7 +41,7 @@ import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import java.time.Instant
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount", "LongParameterList")
 class TransportStartTransformAction
 @Inject
 constructor(

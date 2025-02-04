@@ -37,6 +37,7 @@ import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import kotlin.Exception
 
+@Suppress("LongParameterList")
 class TransportGetRollupsAction
 @Inject
 constructor(

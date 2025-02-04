@@ -27,6 +27,7 @@ import org.opensearch.indexmanagement.util.RunAsSubjectClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.transport.TransportService
 
+@Suppress("LongParameterList")
 class TransportIndexSMPolicyAction
 @Inject
 constructor(

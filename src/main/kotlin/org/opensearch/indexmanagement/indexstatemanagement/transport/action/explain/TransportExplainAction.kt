@@ -72,7 +72,7 @@ typealias ManagedIndexConfigDocUUID = String
 typealias ManagedIndexMetadataDocUUID = String // managedIndexMetadataID(indexUuid) -> <indexUuid>#metadata
 typealias ManagedIndexMetadataMap = Map<String, String?>
 
-@Suppress("SpreadOperator", "TooManyFunctions", "UnusedPrivateMember")
+@Suppress("SpreadOperator", "TooManyFunctions", "UnusedPrivateMember", "LongParameterList")
 class TransportExplainAction
 @Inject
 constructor(

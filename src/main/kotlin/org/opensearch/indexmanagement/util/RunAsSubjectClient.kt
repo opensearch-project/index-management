@@ -22,6 +22,7 @@ import org.opensearch.identity.Subject
  * Implementation of client that will run transport actions in a stashed context and inject the name of the provided
  * subject into the context.
  */
+@Suppress("TooGenericExceptionThrown")
 class RunAsSubjectClient : FilterClient {
     private var subject: Subject? = null
 

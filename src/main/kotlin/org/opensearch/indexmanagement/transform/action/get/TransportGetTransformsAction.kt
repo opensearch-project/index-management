@@ -35,6 +35,7 @@ import org.opensearch.search.sort.SortOrder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 
+@Suppress("LongParameterList")
 class TransportGetTransformsAction
 @Inject
 constructor(

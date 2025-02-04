@@ -44,7 +44,7 @@ import org.opensearch.transport.TransportService
 import java.lang.IllegalArgumentException
 import java.time.Instant
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount", "LongParameterList")
 class TransportStartRollupAction
 @Inject
 constructor(
