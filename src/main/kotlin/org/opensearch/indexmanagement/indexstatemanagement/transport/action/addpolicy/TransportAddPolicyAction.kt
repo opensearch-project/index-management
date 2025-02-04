@@ -243,7 +243,7 @@ constructor(
 
             IndexUtils.checkAndUpdateConfigIndexMapping(
                 clusterService.state(),
-                client.admin().indices(),
+                pluginClient.admin().indices(),
                 ActionListener.wrap(::onUpdateMapping, ::onFailure),
             )
         }
@@ -281,7 +281,7 @@ constructor(
             val multiGetReq = MultiGetRequest()
             indicesToAdd.forEach { multiGetReq.add(INDEX_MANAGEMENT_INDEX, it.key) }
 
-            client.multiGet(
+            pluginClient.multiGet(
                 multiGetReq,
                 object : ActionListener<MultiGetResponse> {
                     override fun onResponse(response: MultiGetResponse) {
@@ -375,7 +375,7 @@ constructor(
         fun removeMetadatas(indices: List<Index>) {
             val request = indices.map { deleteManagedIndexMetadataRequest(it.uuid) }
             val bulkReq = BulkRequest().add(request)
-            client.bulk(
+            pluginClient.bulk(
                 bulkReq,
                 object : ActionListener<BulkResponse> {
                     override fun onResponse(response: BulkResponse) {
