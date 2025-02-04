@@ -16,6 +16,7 @@ import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.get.MultiGetRequest
 import org.opensearch.action.get.MultiGetResponse
+import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.WriteRequest
@@ -198,7 +199,7 @@ constructor(
                         }
 
                         // get back metadata from config index
-                        client.multiGet(
+                        pluginClient.multiGet(
                             buildMgetMetadataRequest(indicesToRetry.toList().map { it.first }),
                             ActionListener.wrap(::onMgetMetadataResponse, ::onFailure),
                         )

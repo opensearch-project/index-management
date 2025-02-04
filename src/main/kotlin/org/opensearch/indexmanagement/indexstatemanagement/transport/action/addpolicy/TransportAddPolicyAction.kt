@@ -24,6 +24,7 @@ import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.IndicesOptions
+import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.block.ClusterBlockException
@@ -329,7 +330,9 @@ constructor(
                     )
                 }
 
-                client.bulk(
+                bulkReq.refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
+
+                pluginClient.bulk(
                     bulkReq,
                     object : ActionListener<BulkResponse> {
                         override fun onResponse(response: BulkResponse) {
@@ -375,6 +378,7 @@ constructor(
         fun removeMetadatas(indices: List<Index>) {
             val request = indices.map { deleteManagedIndexMetadataRequest(it.uuid) }
             val bulkReq = BulkRequest().add(request)
+            bulkReq.refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
             pluginClient.bulk(
                 bulkReq,
                 object : ActionListener<BulkResponse> {
