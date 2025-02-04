@@ -13,11 +13,17 @@ import org.opensearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequ
 import org.opensearch.action.admin.cluster.snapshots.restore.RestoreSnapshotResponse
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction
+import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.AttemptSnapshotStep
+import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
+import org.opensearch.script.Script
+import org.opensearch.script.ScriptService
+import org.opensearch.script.ScriptType
+import org.opensearch.script.TemplateScript
 import org.opensearch.snapshots.SnapshotException
 import org.opensearch.snapshots.SnapshotState
 import org.opensearch.transport.RemoteTransportException
@@ -32,16 +38,22 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
     @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "LongMethod")
     override suspend fun execute(): Step {
         val context = this.context ?: return this
+        val managedIndexMetadata = context.metadata
         val indexName = context.metadata.index
+        val scriptService = context.scriptService
         val repository = action.repository
+        val snapshot = action.snapshot
 
         try {
             val mutableInfo = mutableMapOf<String, String>()
+            val snapshotScript = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, snapshot, mapOf())
+            val defaultSnapshotPattern = snapshot.ifBlank { indexName }
+            val snapshotPattern = compileTemplate(snapshotScript, managedIndexMetadata, defaultSnapshotPattern, scriptService)
 
             // List snapshots matching the pattern
             val getSnapshotsRequest = GetSnapshotsRequest()
                 .repository(repository)
-                .snapshots(arrayOf("$indexName*"))
+                .snapshots(arrayOf("$snapshotPattern*"))
                 .ignoreUnavailable(true)
                 .verbose(true)
 
@@ -50,7 +62,7 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
             }
             val snapshots = getSnapshotsResponse.snapshots
             if (snapshots.isNullOrEmpty()) {
-                val message = getFailedMessage(indexName, "No snapshots found matching pattern [$indexName*]")
+                val message = getFailedMessage(indexName, "No snapshots found matching pattern [$snapshotPattern*]")
                 stepStatus = StepStatus.FAILED
                 info = mapOf("message" to message)
                 return this
@@ -61,7 +73,7 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
             if (successfulSnapshots.isEmpty()) {
                 val message = getFailedMessage(
                     indexName,
-                    "No successful snapshots found matching pattern [$indexName*]",
+                    "No successful snapshots found matching pattern [$snapshotPattern*]",
                 )
                 stepStatus = StepStatus.FAILED
                 info = mapOf("message" to message)
@@ -114,6 +126,23 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
         }
 
         return this
+    }
+
+    private fun compileTemplate(
+        template: Script,
+        managedIndexMetaData: ManagedIndexMetaData,
+        defaultValue: String,
+        scriptService: ScriptService,
+    ): String {
+        val contextMap =
+            managedIndexMetaData.convertToMap().filterKeys { key ->
+                key in AttemptSnapshotStep.validTopContextFields
+            }
+        val compiledValue =
+            scriptService.compile(template, TemplateScript.CONTEXT)
+                .newInstance(template.params + mapOf("ctx" to contextMap))
+                .execute()
+        return compiledValue.ifBlank { defaultValue }
     }
 
     private fun handleRestoreException(indexName: String, e: SnapshotException) {

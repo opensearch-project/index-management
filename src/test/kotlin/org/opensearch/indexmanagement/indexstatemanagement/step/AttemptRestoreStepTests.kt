@@ -49,7 +49,7 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
-    private val restoreAction = randomRestoreActionConfig("repo")
+    private val restoreAction = randomRestoreActionConfig("repo", "sp")
     private val metadata = ManagedIndexMetaData(
         "test",
         "indexUuid",

@@ -40,6 +40,7 @@ class ConvertIndexToRemoteActionIT : IndexStateManagementRestTestCase() {
 
         val convertAction = ConvertIndexToRemoteAction(
             repository = repository,
+            snapshot = indexName,
             0,
         )
 

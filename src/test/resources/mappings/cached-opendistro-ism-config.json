@@ -220,6 +220,9 @@
                   "properties": {
                     "repository": {
                       "type": "keyword"
+                    },
+                    "snapshot": {
+                      "type": "keyword"
                     }
                   }
                 },
