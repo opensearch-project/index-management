@@ -79,7 +79,7 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
     @Before
     fun setup() {
         whenever(clusterService.clusterSettings).doReturn(ClusterSettings(Settings.EMPTY, setOf(SNAPSHOT_DENY_LIST)))
-        whenever(scriptService.compile(any(), eq(TemplateScript.CONTEXT))).doReturn(MockTemplateScript.Factory("snapshot-pattern*"))
+        whenever(scriptService.compile(any(), eq(TemplateScript.CONTEXT))).doReturn(MockTemplateScript.Factory("snapshot-pattern"))
     }
 
     fun `test restore failure with no matching snapshots`() {
@@ -98,7 +98,7 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
             )
             assertEquals(
                 "Did not get correct failure message",
-                "Failed to start restore for [index=test], cause: No snapshots found matching pattern [test*]",
+                "Failed to start restore for [index=test], cause: No snapshots found matching pattern [snapshot-pattern*]",
                 updatedMetadata.info!!["message"],
             )
         }
