@@ -135,8 +135,7 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
         getSnapshotsResponse: GetSnapshotsResponse?,
         restoreSnapshotResponse: RestoreSnapshotResponse?,
         exception: Exception?,
-    ): ClusterAdminClient {
-        return mock {
+    ): ClusterAdminClient = mock {
             // Mock getSnapshots call
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<GetSnapshotsResponse>>(1)
@@ -157,5 +156,4 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
                 }
             }.whenever(this.mock).restoreSnapshot(any(), any())
         }
-    }
 }
