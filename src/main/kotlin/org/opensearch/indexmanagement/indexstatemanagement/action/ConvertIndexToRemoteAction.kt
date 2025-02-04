@@ -29,10 +29,7 @@ class ConvertIndexToRemoteAction(
 
     private val steps = listOf(attemptRestoreStep)
 
-    @Suppress("ReturnCount")
-    override fun getStepToExecute(context: StepContext): Step {
-        return attemptRestoreStep
-    }
+    override fun getStepToExecute(context: StepContext): Step = attemptRestoreStep
 
     override fun getSteps(): List<Step> = steps
 

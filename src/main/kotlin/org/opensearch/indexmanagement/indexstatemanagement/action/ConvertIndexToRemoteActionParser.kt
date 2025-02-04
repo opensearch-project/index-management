@@ -45,7 +45,5 @@ class ConvertIndexToRemoteActionParser : ActionParser() {
         )
     }
 
-    override fun getActionType(): String {
-        return ConvertIndexToRemoteAction.name
-    }
+    override fun getActionType(): String = ConvertIndexToRemoteAction.name
 }
