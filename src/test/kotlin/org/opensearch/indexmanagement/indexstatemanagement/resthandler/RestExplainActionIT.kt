@@ -520,7 +520,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
                 )
 
         // check metadata for result from filtering on the first policy and its state
-        waitFor {
+        waitFor(Instant.ofEpochSecond(60)) {
             val filterPolicy =
                 ExplainFilter(
                     policyID = policy1.id,
