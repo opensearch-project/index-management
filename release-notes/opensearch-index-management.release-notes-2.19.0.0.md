@@ -12,7 +12,7 @@ Compatible with OpenSearch 2.19.0
 
 ### Maintenance
 * Update maintainers and codeowners of the repo ([#1316](https://github.com/opensearch-project/index-management/pull/1316))
-* Revert "Update maintainers and codeowners of the repo [#1316] (https://github.com/opensearch-project/index-management/pull/1316)" ([#1320](https://github.com/opensearch-project/index-management/pull/1320))
+* Revert "Update maintainers and codeowners of the repo" ([#1320](https://github.com/opensearch-project/index-management/pull/1320))
 * dependabot: bump commons-codec:commons-codec from 1.13 to 1.17.2 ([#1335](https://github.com/opensearch-project/index-management/pull/1335))
 * Adding new maintainers to ISM ([#1339](https://github.com/opensearch-project/index-management/pull/1339))
 * dependabot: bump com.puppycrawl.tools:checkstyle from 8.29 to 8.45.1  ([#1337](https://github.com/opensearch-project/index-management/pull/1337))
