@@ -262,6 +262,7 @@ class IndexStateManagementSecurityBehaviorIT : SecurityRestTestCase() {
     private fun createISMRollup(targetIdxRollup: String): ISMRollup = ISMRollup(
         description = "basic search test",
         targetIndex = targetIdxRollup,
+        targetIndexSettings = null,
         pageSize = 100,
         dimensions =
         listOf(
