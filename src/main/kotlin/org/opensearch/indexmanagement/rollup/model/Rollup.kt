@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.rollup.model
 
+import org.opensearch.common.settings.IndexScopedSettings
 import org.opensearch.common.settings.Settings
 import org.opensearch.commons.authuser.User
 import org.opensearch.core.common.io.stream.StreamInput
@@ -89,6 +90,9 @@ data class Rollup(
             }
         }
         require(sourceIndex != targetIndex) { "Your source and target index cannot be the same" }
+        if (targetIndexSettings != null) {
+            IndexScopedSettings(null, IndexScopedSettings.BUILT_IN_INDEX_SETTINGS).validate(targetIndexSettings, true)
+        }
         require(dimensions.filter { it.type == Dimension.Type.DATE_HISTOGRAM }.size == 1) {
             "Must specify precisely one date histogram dimension" // this covers empty dimensions case too
         }
