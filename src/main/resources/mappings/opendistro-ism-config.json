@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 22
+    "schema_version": 23
   },
   "dynamic": "strict",
   "properties": {
@@ -379,6 +379,10 @@
                               "ignore_above": 256
                             }
                           }
+                        },
+                        "target_index_settings": {
+                          "dynamic": "true",
+                          "type": "object"
                         },
                         "page_size": {
                           "type": "long"
@@ -1003,6 +1007,10 @@
               "ignore_above": 256
             }
           }
+        },
+        "target_index_settings": {
+          "dynamic": "true",
+          "type": "object"
         },
         "page_size": {
           "type": "long"

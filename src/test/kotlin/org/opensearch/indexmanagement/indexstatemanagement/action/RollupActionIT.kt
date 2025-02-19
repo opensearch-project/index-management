@@ -42,6 +42,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             ISMRollup(
                 description = "basic search test",
                 targetIndex = "target_rollup_search",
+                targetIndexSettings = null,
                 pageSize = 100,
                 dimensions =
                 listOf(
@@ -95,6 +96,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             ISMRollup(
                 description = "data stream rollup",
                 targetIndex = "target_rollup_search",
+                targetIndexSettings = null,
                 pageSize = 100,
                 dimensions =
                 listOf(
@@ -164,6 +166,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             ISMRollup(
                 description = "data stream rollup",
                 targetIndex = "rollup_{{ctx.source_index}}",
+                targetIndexSettings = null,
                 pageSize = 100,
                 dimensions =
                 listOf(
@@ -234,6 +237,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             ISMRollup(
                 description = "basic search test",
                 targetIndex = "target_rollup_search",
+                targetIndexSettings = null,
                 pageSize = 100,
                 dimensions =
                 listOf(
@@ -310,6 +314,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             ISMRollup(
                 description = "basic search test",
                 targetIndex = "target_with_wildcard*",
+                targetIndexSettings = null,
                 pageSize = 100,
                 dimensions =
                 listOf(
@@ -375,6 +380,7 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
             ISMRollup(
                 description = "basic search test",
                 targetIndex = "target_rollup_search",
+                targetIndexSettings = null,
                 pageSize = 100,
                 dimensions =
                 listOf(

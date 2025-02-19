@@ -228,6 +228,7 @@ class RollupSecurityBehaviorIT : SecurityRestTestCase() {
         description = "basic stats test",
         sourceIndex = sourceIndex,
         targetIndex = targetIndex,
+        targetIndexSettings = null,
         metadataID = null,
         roles = emptyList(),
         pageSize = 100,

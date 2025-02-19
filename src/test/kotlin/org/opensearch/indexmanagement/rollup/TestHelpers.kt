@@ -112,6 +112,7 @@ fun randomRollup(): Rollup {
         description = OpenSearchRestTestCase.randomAlphaOfLength(10),
         sourceIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
         targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
+        targetIndexSettings = null,
         metadataID = if (OpenSearchRestTestCase.randomBoolean()) null else OpenSearchRestTestCase.randomAlphaOfLength(10),
         roles = emptyList(),
         pageSize = OpenSearchRestTestCase.randomIntBetween(1, 10000),
@@ -172,6 +173,7 @@ fun randomExplainRollup(): ExplainRollup {
 fun randomISMRollup(): ISMRollup = ISMRollup(
     description = OpenSearchRestTestCase.randomAlphaOfLength(10),
     targetIndex = OpenSearchRestTestCase.randomAlphaOfLength(10).lowercase(Locale.ROOT),
+    targetIndexSettings = null,
     pageSize = OpenSearchRestTestCase.randomIntBetween(1, 10000),
     dimensions = randomRollupDimensions(),
     metrics = OpenSearchRestTestCase.randomList(20, ::randomRollupMetrics).distinctBy { it.targetField },
