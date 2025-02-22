@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.rollup.model
 
+import org.opensearch.Version
 import org.opensearch.common.settings.IndexScopedSettings
 import org.opensearch.common.settings.Settings
 import org.opensearch.commons.authuser.User
@@ -135,7 +136,7 @@ data class Rollup(
         description = sin.readString(),
         sourceIndex = sin.readString(),
         targetIndex = sin.readString(),
-        targetIndexSettings = if (sin.readBoolean()) {
+        targetIndexSettings = if (sin.getVersion().onOrAfter(Version.V_3_0_0) && sin.readBoolean()) {
             Settings.readSettingsFromStream(sin)
         } else {
             null
@@ -216,8 +217,10 @@ data class Rollup(
         out.writeString(description)
         out.writeString(sourceIndex)
         out.writeString(targetIndex)
-        out.writeBoolean(targetIndexSettings != null)
-        if (targetIndexSettings != null) Settings.writeSettingsToStream(targetIndexSettings, out)
+        if (out.version.onOrAfter(Version.V_3_0_0)) {
+            out.writeBoolean(targetIndexSettings != null)
+            if (targetIndexSettings != null) Settings.writeSettingsToStream(targetIndexSettings, out)
+        }
         out.writeOptionalString(metadataID)
         out.writeStringArray(emptyList<String>().toTypedArray())
         out.writeInt(pageSize)

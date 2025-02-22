@@ -6,6 +6,7 @@
 package org.opensearch.indexmanagement.rollup.model
 
 import org.apache.commons.codec.digest.DigestUtils
+import org.opensearch.Version
 import org.opensearch.common.settings.Settings
 import org.opensearch.commons.authuser.User
 import org.opensearch.core.common.io.stream.StreamInput
@@ -96,7 +97,7 @@ data class ISMRollup(
     constructor(sin: StreamInput) : this(
         description = sin.readString(),
         targetIndex = sin.readString(),
-        targetIndexSettings = if (sin.readBoolean()) {
+        targetIndexSettings = if (sin.version.onOrAfter(Version.V_3_0_0) && sin.readBoolean()) {
             Settings.readSettingsFromStream(sin)
         } else {
             null
@@ -143,8 +144,10 @@ data class ISMRollup(
     override fun writeTo(out: StreamOutput) {
         out.writeString(description)
         out.writeString(targetIndex)
-        out.writeBoolean(targetIndexSettings != null)
-        if (targetIndexSettings != null) Settings.writeSettingsToStream(targetIndexSettings, out)
+        if (out.version.onOrAfter(Version.V_3_0_0)) {
+            out.writeBoolean(targetIndexSettings != null)
+            if (targetIndexSettings != null) Settings.writeSettingsToStream(targetIndexSettings, out)
+        }
         out.writeInt(pageSize)
         out.writeVInt(dimensions.size)
         for (dimension in dimensions) {

@@ -8,6 +8,9 @@ package org.opensearch.indexmanagement.indexstatemanagement.action
 import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
 import org.opensearch.cluster.metadata.DataStream
+import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.common.settings.Settings
+import org.opensearch.index.engine.EngineConfig
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
@@ -43,6 +46,65 @@ class RollupActionIT : IndexStateManagementRestTestCase() {
                 description = "basic search test",
                 targetIndex = "target_rollup_search",
                 targetIndexSettings = null,
+                pageSize = 100,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                    Terms("RatecodeID", "RatecodeID"),
+                    Terms("PULocationID", "PULocationID"),
+                ),
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count", targetField = "passenger_count",
+                        metrics =
+                        listOf(
+                            Sum(), Min(), Max(),
+                            ValueCount(), Average(),
+                        ),
+                    ),
+                    RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min())),
+                ),
+            )
+        val actionConfig = RollupAction(rollup, 0)
+        val states =
+            listOf(
+                State("rollup", listOf(actionConfig), listOf()),
+            )
+        val sourceIndexMappingString =
+            "\"properties\": {\"tpep_pickup_datetime\": { \"type\": \"date\" }, \"RatecodeID\": { \"type\": " +
+                "\"keyword\" }, \"PULocationID\": { \"type\": \"keyword\" }, \"passenger_count\": { \"type\": \"integer\" }, \"total_amount\": " +
+                "{ \"type\": \"double\" }}"
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
+        createPolicy(policy, policyID)
+        createIndex(indexName, policyID, mapping = sourceIndexMappingString)
+
+        assertIndexRolledUp(indexName, policyID, rollup)
+    }
+
+    fun `test rollup action with specified target index settings`() {
+        val indexName = "${testIndexName}_index_settings"
+        val policyID = "${testIndexName}_policy_settings"
+        val targetIdxTestName = "target_rollup_settings"
+        val targetIndexReplicas = 0
+        val targetIndexCodec = "best_compression"
+        val rollup =
+            ISMRollup(
+                description = "basic search test",
+                targetIndex = targetIdxTestName,
+                targetIndexSettings = Settings.builder()
+                    .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, targetIndexReplicas)
+                    .put(EngineConfig.INDEX_CODEC_SETTING.key, targetIndexCodec)
+                    .build(),
                 pageSize = 100,
                 dimensions =
                 listOf(

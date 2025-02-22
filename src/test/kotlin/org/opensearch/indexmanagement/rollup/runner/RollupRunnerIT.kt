@@ -7,8 +7,10 @@ package org.opensearch.indexmanagement.rollup.runner
 
 import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
+import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.index.engine.EngineConfig
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
@@ -73,6 +75,69 @@ class RollupRunnerIT : RollupRestTestCase() {
             assertNotNull("Rollup metadata not found", rollupMetadata)
             // Non-continuous job will finish in a single execution
             assertEquals("Unexpected metadata state", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test rollup with creating target index with specific settings`() {
+        val sourceIdxTestName = "source_idx_test_settings"
+        val targetIdxTestName = "target_idx_test_settings"
+        val targetIndexReplicas = 0
+        val targetIndexCodec = "best_compression"
+        generateNYCTaxiData(sourceIdxTestName)
+
+        val rollup =
+            Rollup(
+                id = testName,
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic stats test",
+                sourceIndex = sourceIdxTestName,
+                targetIndex = targetIdxTestName,
+                targetIndexSettings = Settings.builder()
+                    .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, targetIndexReplicas)
+                    .put(EngineConfig.INDEX_CODEC_SETTING.key, targetIndexCodec)
+                    .build(),
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 100,
+                delay = 0,
+                continuous = false,
+                dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
+                metrics =
+                listOf(
+                    RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Average())),
+                ),
+            ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollup)
+
+        waitFor { assertTrue("Target rollup index was not created", indexExists(rollup.targetIndex)) }
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+
+            val rawRes = client().makeRequest(RestRequest.Method.GET.name, "/$targetIdxTestName/_settings", mapOf("flat_settings" to "true"))
+            assertTrue(rawRes.restStatus() == RestStatus.OK)
+            val indexSettingsRes = rawRes.asMap()[targetIdxTestName] as Map<String, Map<String, Any>>
+            val settingsRes = indexSettingsRes["settings"]
+            assertNotNull("Rollup index did not have any settings", settingsRes)
+            assertEquals(
+                "Rollup index did not have correct codec setting",
+                targetIndexCodec,
+                settingsRes?.getValue(EngineConfig.INDEX_CODEC_SETTING.key),
+            )
+            assertEquals(
+                "Rollup index did not have correct replicas setting",
+                targetIndexReplicas.toString(),
+                settingsRes?.getValue(IndexMetadata.SETTING_NUMBER_OF_REPLICAS),
+            )
         }
     }
 
