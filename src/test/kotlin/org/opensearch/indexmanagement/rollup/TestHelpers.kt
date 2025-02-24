@@ -106,8 +106,8 @@ fun randomRollupDimensions(): List<Dimension> {
 val codecs = listOf(CodecService.DEFAULT_CODEC, CodecService.LZ4, CodecService.BEST_COMPRESSION_CODEC, CodecService.ZLIB)
 
 fun randomSettings(): Settings = Settings.builder()
-    .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, OpenSearchTestCase.randomIntBetween(0, 10))
-    .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, OpenSearchTestCase.randomIntBetween(1, 10))
+    .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, OpenSearchTestCase.randomIntBetween(0, 2))
+    .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, OpenSearchTestCase.randomIntBetween(1, 5))
     .put(EngineConfig.INDEX_CODEC_SETTING.key, OpenSearchRestTestCase.randomSubsetOf(1, codecs).first())
     .build()
 
