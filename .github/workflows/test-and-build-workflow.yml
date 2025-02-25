@@ -22,9 +22,7 @@ jobs:
       fail-fast: false
       # This starts three jobs, setting these environment variables uniquely for the different jobs
       matrix:
-        java:
-          -21
-          -23
+        java: [21]
         os:
           - ubuntu-24.04-arm  # arm64-preview
           - ubuntu-24.04  # x64
