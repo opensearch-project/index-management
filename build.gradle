@@ -113,6 +113,8 @@ configurations.all {
         force "com.fasterxml.jackson.core:jackson-databind:${versions.jackson_databind}"
         force "org.yaml:snakeyaml:${versions.snakeyaml}"
         force 'org.codehaus.plexus:plexus-utils:3.0.24'
+        force "ch.qos.logback:logback-classic:1.5.16"
+        force "ch.qos.logback:logback-core:1.5.16"
     }
 }
 
