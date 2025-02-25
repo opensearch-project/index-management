@@ -5,7 +5,7 @@
 import org.opensearch.gradle.test.RestIntegTestTask
 
 plugins {
-    id 'com.github.johnrengelman.shadow'
+    id 'com.gradleup.shadow'
     id 'jacoco'
 }
 
@@ -33,7 +33,7 @@ plugins.withId('org.jetbrains.kotlin.jvm') {
 }
 
 jacoco {
-    toolVersion = '0.8.7'
+    toolVersion = '0.8.12'
     reportsDirectory = file("$buildDir/JacocoReport")
 }
 
