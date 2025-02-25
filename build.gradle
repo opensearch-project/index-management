@@ -652,7 +652,7 @@ task integTestRemote(type: RestIntegTestTask) {
 // === Set up BWC tests ===
 
 String bwcVersionShort = "2.20.0"
-String bwcVersion = bwcVersionShort + ".0"
+String bwcVersion = bwcVersionShort
 String baseName = "indexmanagementBwcCluster"
 
 configurations {
