@@ -132,6 +132,13 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         return getRollup(rollupId = rollupId)
     }
 
+    // TODO: can be replaced with createRandomRollup if implement assertEqual for mappings with "dynamic"=true fields
+    protected fun createRandomRollupWithoutTargetSettings(refresh: Boolean = true): Rollup {
+        val rollup = randomRollup().copy(targetIndexSettings = null)
+        val rollupId = createRollup(rollup, rollupId = rollup.id, refresh = refresh).id
+        return getRollup(rollupId = rollupId)
+    }
+
     // TODO: Maybe clean-up and use XContentFactory.jsonBuilder() to create mappings json
     protected fun createRollupMappingString(rollup: Rollup): String {
         var mappingString = ""

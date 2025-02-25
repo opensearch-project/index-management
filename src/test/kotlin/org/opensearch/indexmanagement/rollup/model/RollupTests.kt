@@ -5,6 +5,8 @@
 
 package org.opensearch.indexmanagement.rollup.model
 
+import org.opensearch.common.settings.Settings
+import org.opensearch.common.settings.SettingsException
 import org.opensearch.indexmanagement.randomInstant
 import org.opensearch.indexmanagement.randomSchedule
 import org.opensearch.indexmanagement.rollup.randomDateHistogram
@@ -50,6 +52,26 @@ class RollupTests : OpenSearchTestCase() {
         assertFailsWith(IllegalArgumentException::class, "Job enabled time must not be present if the job is disabled") {
             randomRollup().copy(enabled = false, jobEnabledTime = randomInstant())
         }
+    }
+
+    fun `test rollup requires correct target index settings`() {
+        assertFailsWith(SettingsException::class, "Unknown property was `index.codec1`") {
+            randomRollup().copy(targetIndexSettings = Settings.builder().put("index.codec1", "zlib").build())
+        }
+    }
+
+    fun `test rollup with single setting in target index settings`() {
+        val sb = Settings.builder()
+        sb.put("index.codec", "zlib")
+        randomRollup().copy(targetIndexSettings = sb.build())
+    }
+
+    fun `test rollup with multiple setting in target index settings`() {
+        val sb = Settings.builder()
+        sb.put("index.number_of_replicas", 1)
+        sb.put("index.codec", "zlib")
+        sb.put("index.soft_deletes.retention_lease.period", "1h")
+        randomRollup().copy(targetIndexSettings = sb.build())
     }
 
     fun `test rollup requires page size to be between 1 and 10k`() {

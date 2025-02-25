@@ -20,6 +20,7 @@ import org.opensearch.indexmanagement.rollup.randomMax
 import org.opensearch.indexmanagement.rollup.randomMin
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.indexmanagement.rollup.randomRollupMetrics
+import org.opensearch.indexmanagement.rollup.randomSettings
 import org.opensearch.indexmanagement.rollup.randomSum
 import org.opensearch.indexmanagement.rollup.randomTerms
 import org.opensearch.indexmanagement.rollup.randomValueCount
@@ -120,11 +121,26 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping Rollup without type doesn't work", rollup.copy(roles = listOf()), parsedRollup)
     }
 
+    fun `test rollup parsing with target index settings`() {
+        val rollup = randomRollup().copy(delay = randomLongBetween(0, 60000000), targetIndexSettings = randomSettings())
+        val rollupString = rollup.toJsonString(XCONTENT_WITHOUT_TYPE)
+        val parsedRollup = Rollup.parse(parser(rollupString), rollup.id, rollup.seqNo, rollup.primaryTerm)
+        // roles are deprecated and not populated in toXContent and parsed as part of parse
+        assertEquals("Round tripping Rollup with target index settings doesn't work", rollup.copy(roles = listOf()), parsedRollup)
+    }
+
     fun `test ism rollup parsing`() {
         val ismRollup = randomISMRollup()
         val ismRollupString = ismRollup.toJsonString()
         val parsedISMRollup = ISMRollup.parse(parser(ismRollupString))
         assertEquals("Round tripping ISMRollup doesn't work", ismRollup, parsedISMRollup)
+    }
+
+    fun `test ism rollup parsing with target index settings`() {
+        val ismRollup = randomISMRollup().copy(targetIndexSettings = randomSettings())
+        val ismRollupString = ismRollup.toJsonString()
+        val parsedISMRollup = ISMRollup.parse(parser(ismRollupString))
+        assertEquals("Round tripping ISMRollup with target index settings doesn't work", ismRollup, parsedISMRollup)
     }
 
     private fun parser(xc: String): XContentParser {

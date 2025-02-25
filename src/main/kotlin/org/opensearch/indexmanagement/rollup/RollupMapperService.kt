@@ -157,7 +157,7 @@ class RollupMapperService(
         } else {
             val errorMessage = "Failed to create target index [$targetIndexResolvedName]"
             return try {
-                val response = createTargetIndex(targetIndexResolvedName, hasLegacyPlugin)
+                val response = createTargetIndex(targetIndexResolvedName, job.targetIndexSettings, hasLegacyPlugin)
                 if (response.isAcknowledged) {
                     updateRollupIndexMappings(job, targetIndexResolvedName)
                 } else {
@@ -228,13 +228,17 @@ class RollupMapperService(
         return RollupJobValidationResult.Valid
     }
 
-    private suspend fun createTargetIndex(targetIndexName: String, hasLegacyPlugin: Boolean): CreateIndexResponse {
-        val settings =
-            if (hasLegacyPlugin) {
-                Settings.builder().put(LegacyOpenDistroRollupSettings.ROLLUP_INDEX.key, true).build()
+    private suspend fun createTargetIndex(targetIndexName: String, targetIndexSettings: Settings?, hasLegacyPlugin: Boolean): CreateIndexResponse {
+        val settings = Settings.builder().apply {
+            targetIndexSettings?.let { put(it) }
+            val rollupIndexSetting = if (hasLegacyPlugin) {
+                LegacyOpenDistroRollupSettings.ROLLUP_INDEX
             } else {
-                Settings.builder().put(RollupSettings.ROLLUP_INDEX.key, true).build()
+                RollupSettings.ROLLUP_INDEX
             }
+            put(rollupIndexSetting.key, true)
+        }.build()
+
         val request =
             CreateIndexRequest(targetIndexName)
                 .settings(settings)
