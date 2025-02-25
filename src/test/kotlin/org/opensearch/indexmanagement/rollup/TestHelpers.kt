@@ -39,7 +39,7 @@ import org.opensearch.indexmanagement.rollup.model.metric.Sum
 import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.rest.OpenSearchRestTestCase
-import java.util.*
+import java.util.Locale
 
 fun randomInterval(): String = if (OpenSearchRestTestCase.randomBoolean()) randomFixedInterval() else randomCalendarInterval()
 
