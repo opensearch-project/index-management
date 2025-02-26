@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.step.alias
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.indexmanagement.indexstatemanagement.action.AliasAction
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step

@@ -14,9 +14,6 @@ import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.mockito.ArgumentMatchers.anyBoolean
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
-import org.opensearch.client.AdminClient
-import org.opensearch.client.Client
-import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.metadata.MappingMetadata
 import org.opensearch.cluster.service.ClusterService
@@ -24,6 +21,9 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.action.ActionListener
 import org.opensearch.indexmanagement.rollup.model.RollupJobValidationResult
 import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.transport.client.AdminClient
+import org.opensearch.transport.client.Client
+import org.opensearch.transport.client.IndicesAdminClient
 import java.time.Instant
 
 class RollupMapperServiceTests : OpenSearchTestCase() {

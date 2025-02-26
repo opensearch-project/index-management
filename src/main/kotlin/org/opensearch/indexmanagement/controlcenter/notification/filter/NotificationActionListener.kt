@@ -26,7 +26,6 @@ import org.opensearch.action.admin.indices.shrink.ResizeResponse
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.delete.DeleteResponse
 import org.opensearch.action.support.ActiveShardsObserver
-import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.TimeValue
@@ -60,6 +59,7 @@ import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.tasks.Task
 import org.opensearch.threadpool.ThreadPool.Names.GENERIC
+import org.opensearch.transport.client.Client
 import java.util.function.Consumer
 
 @Suppress("LongParameterList", "MaxLineLength")
