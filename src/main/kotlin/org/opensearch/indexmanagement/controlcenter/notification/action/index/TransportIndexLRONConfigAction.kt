@@ -14,8 +14,7 @@ import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.WriteRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.node.NodeClient
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.xcontent.XContentFactory
@@ -32,6 +31,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.util.getPriorit
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.node.NodeClient
 
 @Suppress("LongParameterList")
 class TransportIndexLRONConfigAction

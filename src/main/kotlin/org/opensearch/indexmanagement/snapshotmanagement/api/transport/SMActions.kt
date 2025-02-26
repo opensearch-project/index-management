@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.api.transport
 
 import org.opensearch.action.ActionType
 import org.opensearch.action.delete.DeleteResponse
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.delete.TransportDeleteSMPolicyAction
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.ExplainSMPolicyResponse
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.explain.TransportExplainSMAction

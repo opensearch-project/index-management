@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.client.node.NodeClient
 import org.opensearch.common.logging.DeprecationLogger
 import org.opensearch.core.common.Strings
 import org.opensearch.core.xcontent.XContentParser.Token
@@ -33,6 +32,7 @@ import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.GET
 import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.action.RestToXContentListener
+import org.opensearch.transport.client.node.NodeClient
 
 private val log = LogManager.getLogger(RestExplainAction::class.java)
 

@@ -17,7 +17,6 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
-import org.opensearch.client.Client
 import org.opensearch.common.Rounding
 import org.opensearch.common.time.DateFormatter
 import org.opensearch.common.time.DateFormatters
@@ -43,6 +42,7 @@ import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregat
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.sort.SortOrder
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.Client
 import java.time.Instant
 
 // TODO: Wrap client calls in retry for transient failures

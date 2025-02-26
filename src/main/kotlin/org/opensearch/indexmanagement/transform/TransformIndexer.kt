@@ -16,7 +16,6 @@ import org.opensearch.action.bulk.BulkItemResponse
 import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.index.IndexRequest
-import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.rest.RestStatus
@@ -26,6 +25,7 @@ import org.opensearch.indexmanagement.transform.exceptions.TransformIndexExcepti
 import org.opensearch.indexmanagement.transform.settings.TransformSettings
 import org.opensearch.indexmanagement.transform.util.TransformContext
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.Client
 
 @Suppress("ComplexMethod")
 class TransformIndexer(

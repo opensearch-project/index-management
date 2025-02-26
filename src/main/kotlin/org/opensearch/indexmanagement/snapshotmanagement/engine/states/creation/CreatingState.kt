@@ -9,7 +9,6 @@ import org.apache.logging.log4j.Logger
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
-import org.opensearch.client.ClusterAdminClient
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.addSMPolicyInSnapshotMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
@@ -22,6 +21,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.snapshots.ConcurrentSnapshotExecutionException
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.ClusterAdminClient
 import java.time.Instant
 
 object CreatingState : State {

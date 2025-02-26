@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
-import org.opensearch.client.node.NodeClient
 import org.opensearch.common.logging.DeprecationLogger
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.core.common.Strings
@@ -23,6 +22,7 @@ import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.action.RestToXContentListener
+import org.opensearch.transport.client.node.NodeClient
 
 class RestRetryFailedManagedIndexAction : BaseRestHandler() {
     override fun routes(): List<Route> = emptyList()

@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.transform.resthandler
 
-import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.transform.action.start.StartTransformAction
 import org.opensearch.indexmanagement.transform.action.start.StartTransformRequest
@@ -16,6 +15,7 @@ import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.action.RestToXContentListener
+import org.opensearch.transport.client.node.NodeClient
 import java.io.IOException
 
 class RestStartTransformAction : BaseRestHandler() {

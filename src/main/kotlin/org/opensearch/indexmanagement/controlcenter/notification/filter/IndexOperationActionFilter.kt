@@ -10,7 +10,6 @@ import org.opensearch.action.ActionRequest
 import org.opensearch.action.support.ActionFilter
 import org.opensearch.action.support.ActionFilterChain
 import org.opensearch.action.support.ActiveShardsObserver
-import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.core.action.ActionListener
@@ -18,6 +17,7 @@ import org.opensearch.core.action.ActionResponse
 import org.opensearch.core.tasks.TaskId
 import org.opensearch.indexmanagement.controlcenter.notification.util.supportedActions
 import org.opensearch.tasks.Task
+import org.opensearch.transport.client.Client
 
 class IndexOperationActionFilter(
     val client: Client,

@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.action.bulk.BackoffPolicy
-import org.opensearch.client.Client
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.commons.ConfigConstants
@@ -27,6 +26,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Latest
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.threadpool.ThreadPool
+import org.opensearch.transport.client.Client
 import java.time.Instant.now
 
 @OpenForTesting

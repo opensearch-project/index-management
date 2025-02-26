@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.rollup.resthandler
 
-import org.opensearch.client.node.NodeClient
 import org.opensearch.core.common.Strings
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
@@ -17,6 +16,7 @@ import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.GET
 import org.opensearch.rest.action.RestToXContentListener
+import org.opensearch.transport.client.node.NodeClient
 
 class RestExplainRollupAction : BaseRestHandler() {
     override fun routes(): List<Route> = emptyList()

@@ -9,8 +9,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchException
 import org.opensearch.action.support.WriteRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.Client
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransformAction
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -26,6 +25,7 @@ import org.opensearch.indexmanagement.transform.action.index.IndexTransformRespo
 import org.opensearch.indexmanagement.transform.action.start.StartTransformAction
 import org.opensearch.indexmanagement.transform.action.start.StartTransformRequest
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.Client
 
 class AttemptCreateTransformJobStep(
     private val action: TransformAction,

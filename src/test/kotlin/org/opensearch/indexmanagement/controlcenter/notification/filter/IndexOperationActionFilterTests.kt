@@ -12,7 +12,6 @@ import org.opensearch.action.admin.indices.forcemerge.ForceMergeAction
 import org.opensearch.action.admin.indices.open.OpenIndexAction
 import org.opensearch.action.admin.indices.shrink.ResizeAction
 import org.opensearch.action.support.ActiveShardsObserver
-import org.opensearch.client.Client
 import org.opensearch.cluster.OpenSearchAllocationTestCase
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
@@ -24,6 +23,7 @@ import org.opensearch.index.reindex.ReindexAction
 import org.opensearch.index.reindex.ReindexRequest
 import org.opensearch.tasks.Task
 import org.opensearch.threadpool.ThreadPool
+import org.opensearch.transport.client.Client
 
 class IndexOperationActionFilterTests : OpenSearchAllocationTestCase() {
     private lateinit var client: Client

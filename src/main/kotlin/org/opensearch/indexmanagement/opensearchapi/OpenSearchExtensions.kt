@@ -19,7 +19,6 @@ import org.opensearch.action.admin.indices.alias.Alias
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.search.SearchResponse
-import org.opensearch.client.OpenSearchClient
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.util.concurrent.ThreadContext
@@ -55,6 +54,7 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.DEFAULT_INJEC
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.INTERNAL_REQUEST
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.OpenSearchClient
 import java.io.IOException
 import java.time.Instant
 import kotlin.coroutines.CoroutineContext

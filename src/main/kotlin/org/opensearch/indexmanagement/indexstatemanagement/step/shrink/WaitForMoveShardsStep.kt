@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.step.shrink
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.action.admin.indices.stats.ShardStats
-import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterState
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.util.getActionStartTime
@@ -17,6 +16,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionPrope
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
+import org.opensearch.transport.client.Client
 import java.time.Duration
 import java.time.Instant
 

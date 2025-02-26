@@ -17,7 +17,6 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
-import org.opensearch.client.Client
 import org.opensearch.common.time.DateFormatter
 import org.opensearch.common.time.DateFormatters
 import org.opensearch.common.unit.TimeValue
@@ -47,6 +46,7 @@ import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.snapshots.SnapshotMissingException
 import org.opensearch.snapshots.SnapshotsService
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.Client
 import java.time.Instant
 import java.time.Instant.now
 import java.time.ZoneId

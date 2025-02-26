@@ -16,10 +16,7 @@ import org.junit.Before
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.ArgumentMatchers.eq
 import org.opensearch.action.admin.indices.rollover.RolloverResponse
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.AdminClient
-import org.opensearch.client.Client
-import org.opensearch.client.IndicesAdminClient
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.metadata.Metadata
@@ -43,6 +40,9 @@ import org.opensearch.telemetry.metrics.Counter
 import org.opensearch.telemetry.metrics.MetricsRegistry
 import org.opensearch.telemetry.metrics.tags.Tags
 import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.transport.client.AdminClient
+import org.opensearch.transport.client.Client
+import org.opensearch.transport.client.IndicesAdminClient
 import java.time.Instant
 
 class AttemptRolloverStepTests : OpenSearchTestCase() {

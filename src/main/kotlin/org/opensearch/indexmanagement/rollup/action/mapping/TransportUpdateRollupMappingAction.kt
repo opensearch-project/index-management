@@ -8,9 +8,8 @@ package org.opensearch.indexmanagement.rollup.action.mapping
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.mapping.put.PutMappingRequest
 import org.opensearch.action.support.ActionFilters
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.action.support.clustermanager.TransportClusterManagerNodeAction
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.cluster.block.ClusterBlockLevel
@@ -30,6 +29,7 @@ import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionReso
 import org.opensearch.indexmanagement.util.IndexUtils.Companion._META
 import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 import java.lang.Exception
 
 class TransportUpdateRollupMappingAction

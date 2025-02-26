@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.opensearch.action.support.WriteRequest.RefreshPolicy
-import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_POLICY_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.deletepolicy.DeletePolicyAction
@@ -18,6 +17,7 @@ import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.DELETE
 import org.opensearch.rest.action.RestStatusToXContentListener
+import org.opensearch.transport.client.node.NodeClient
 import java.io.IOException
 
 class RestDeletePolicyAction : BaseRestHandler() {

@@ -27,9 +27,8 @@ import org.opensearch.action.search.SearchPhaseExecutionException
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.search.SearchScrollRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
-import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterChangedEvent
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.ClusterStateListener
@@ -87,6 +86,7 @@ import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.threadpool.Scheduler
 import org.opensearch.threadpool.ThreadPool
+import org.opensearch.transport.client.Client
 
 /**
  * Listens for cluster changes to pick up new indices to manage.

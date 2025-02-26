@@ -13,7 +13,6 @@ import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
-import org.opensearch.client.Client
 import org.opensearch.common.util.concurrent.ThreadContext.StoredContext
 import org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
 import org.opensearch.commons.authuser.User
@@ -26,6 +25,7 @@ import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 
 abstract class BaseTransportAction<Request : ActionRequest, Response : ActionResponse>(
     name: String,

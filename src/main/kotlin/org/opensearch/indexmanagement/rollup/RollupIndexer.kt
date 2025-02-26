@@ -13,7 +13,6 @@ import org.opensearch.action.bulk.BulkItemResponse
 import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.index.IndexRequest
-import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentType
@@ -35,6 +34,7 @@ import org.opensearch.search.aggregations.metrics.InternalMin
 import org.opensearch.search.aggregations.metrics.InternalSum
 import org.opensearch.search.aggregations.metrics.InternalValueCount
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.Client
 
 @Suppress("ThrowsCount", "ComplexMethod")
 class RollupIndexer(

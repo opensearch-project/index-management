@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.snapshotmanagement.api.resthandler
 
 import org.opensearch.action.support.WriteRequest
-import org.opensearch.client.node.NodeClient
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.seqno.SequenceNumbers
@@ -25,6 +24,7 @@ import org.opensearch.rest.BytesRestResponse
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestResponse
 import org.opensearch.rest.action.RestResponseListener
+import org.opensearch.transport.client.node.NodeClient
 import java.time.Instant
 
 abstract class RestBaseIndexSMPolicyHandler : BaseRestHandler() {

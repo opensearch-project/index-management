@@ -9,7 +9,6 @@ import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
-import org.opensearch.client.Client
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
@@ -26,6 +25,7 @@ import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.transform.action.get.GetTransformsResponse
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.search.builder.SearchSourceBuilder
+import org.opensearch.transport.client.Client
 
 fun getJobs(
     client: Client,

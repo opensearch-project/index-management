@@ -16,7 +16,6 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.search.TransportSearchAction.SEARCH_CANCEL_AFTER_TIME_INTERVAL_SETTING
-import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
@@ -63,6 +62,7 @@ import org.opensearch.search.aggregations.metrics.Percentiles
 import org.opensearch.search.aggregations.metrics.ScriptedMetric
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.Client
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
