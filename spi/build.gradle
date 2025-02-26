@@ -33,7 +33,7 @@ plugins.withId('org.jetbrains.kotlin.jvm') {
 }
 
 jacoco {
-    toolVersion = '0.8.7'
+    toolVersion = '0.8.12'
     reportsDirectory = file("$buildDir/JacocoReport")
 }
 

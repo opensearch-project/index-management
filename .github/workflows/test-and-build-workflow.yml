@@ -23,13 +23,16 @@ jobs:
       # This starts three jobs, setting these environment variables uniquely for the different jobs
       matrix:
         java: [21]
+        os:
+          - ubuntu-24.04-arm  # arm64-preview
+          - ubuntu-24.04  # x64
         feature: [ism, non-ism]
         include:
           - feature: ism
             test_filter: -PincludeTests="org.opensearch.indexmanagement.indexstatemanagement*"
           - feature: non-ism
             test_filter: -PexcludeTests="org.opensearch.indexmanagement.indexstatemanagement*"
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     container:
       # using the same image which is used by opensearch-build team to build the OpenSearch Distribution
       # this image tag is subject to change as more dependencies and updates will arrive over time
