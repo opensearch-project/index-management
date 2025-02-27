@@ -13,7 +13,6 @@ import org.opensearch.action.admin.indices.open.OpenIndexAction
 import org.opensearch.action.admin.indices.shrink.ResizeAction
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
-import org.opensearch.client.Client
 import org.opensearch.core.action.ActionListener
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.tasks.TaskId
@@ -23,7 +22,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
-import org.opensearch.transport.client.node.NodeClient
+import org.opensearch.transport.client.Client
 
 const val LRON_DOC_ID_PREFIX = "LRON:"
 

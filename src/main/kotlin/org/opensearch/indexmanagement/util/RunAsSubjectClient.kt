@@ -12,11 +12,11 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.ActionType
-import org.opensearch.client.Client
-import org.opensearch.client.FilterClient
 import org.opensearch.core.action.ActionListener
 import org.opensearch.core.action.ActionResponse
 import org.opensearch.identity.Subject
+import org.opensearch.transport.client.Client
+import org.opensearch.transport.client.FilterClient
 
 /**
  * Implementation of client that will run transport actions in a stashed context and inject the name of the provided

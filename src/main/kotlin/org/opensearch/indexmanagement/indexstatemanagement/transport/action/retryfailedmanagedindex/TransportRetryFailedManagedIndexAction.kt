@@ -19,7 +19,6 @@ import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.WriteRequest
-import org.opensearch.action.support.IndicesOptions
 import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.cluster.block.ClusterBlockException
