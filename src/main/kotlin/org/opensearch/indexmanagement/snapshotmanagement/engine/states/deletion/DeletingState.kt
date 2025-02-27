@@ -8,8 +8,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion
 import org.apache.logging.log4j.Logger
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.ClusterAdminClient
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
@@ -23,6 +22,7 @@ import org.opensearch.snapshots.ConcurrentSnapshotExecutionException
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.snapshots.SnapshotState
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.ClusterAdminClient
 import java.time.Instant
 import java.time.Instant.now
 

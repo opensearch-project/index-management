@@ -23,9 +23,6 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
 import org.opensearch.action.admin.cluster.snapshots.restore.RestoreSnapshotResponse
-import org.opensearch.client.AdminClient
-import org.opensearch.client.Client
-import org.opensearch.client.ClusterAdminClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
@@ -43,6 +40,9 @@ import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
 import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.transport.client.AdminClient
+import org.opensearch.transport.client.Client
+import org.opensearch.transport.client.ClusterAdminClient
 
 class AttemptRestoreStepTests : OpenSearchTestCase() {
 

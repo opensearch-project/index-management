@@ -17,8 +17,7 @@ import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
 import org.opensearch.action.admin.indices.mapping.put.PutMappingRequest
 import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
 import org.opensearch.action.support.IndicesOptions
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.Client
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.metadata.MappingMetadata
 import org.opensearch.cluster.service.ClusterService
@@ -42,6 +41,7 @@ import org.opensearch.indexmanagement.rollup.util.isTargetIndexAlias
 import org.opensearch.indexmanagement.util.IndexUtils.Companion._META
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.Client
 
 // TODO: Validation of fields across source and target indices overwriting existing rollup data
 //  and type validation using mappings from source index

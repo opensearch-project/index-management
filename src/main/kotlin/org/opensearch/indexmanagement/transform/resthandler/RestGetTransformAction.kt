@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.transform.resthandler
 
-import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.transform.action.get.GetTransformAction
 import org.opensearch.indexmanagement.transform.action.get.GetTransformRequest
@@ -24,6 +23,7 @@ import org.opensearch.rest.RestRequest.Method.GET
 import org.opensearch.rest.RestRequest.Method.HEAD
 import org.opensearch.rest.action.RestToXContentListener
 import org.opensearch.search.fetch.subphase.FetchSourceContext
+import org.opensearch.transport.client.node.NodeClient
 
 class RestGetTransformAction : BaseRestHandler() {
     override fun routes(): List<Route> = listOf(

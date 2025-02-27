@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.transform.resthandler
 
-import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.transform.action.preview.PreviewTransformAction
@@ -17,6 +16,7 @@ import org.opensearch.rest.RestHandler
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.action.RestToXContentListener
+import org.opensearch.transport.client.node.NodeClient
 
 class RestPreviewTransformAction : BaseRestHandler() {
     override fun routes(): List<RestHandler.Route> = listOf(

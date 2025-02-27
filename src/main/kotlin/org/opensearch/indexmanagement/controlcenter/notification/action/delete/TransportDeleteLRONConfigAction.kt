@@ -11,13 +11,13 @@ import org.opensearch.action.delete.DeleteResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.WriteRequest
-import org.opensearch.client.node.NodeClient
 import org.opensearch.common.inject.Inject
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.core.action.ActionListener
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.node.NodeClient
 
 class TransportDeleteLRONConfigAction
 @Inject

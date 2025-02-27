@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.snapshotmanagement.model
 
 import org.apache.logging.log4j.Logger
-import org.opensearch.client.Client
 import org.opensearch.commons.authuser.User
 import org.opensearch.commons.notifications.model.EventSource
 import org.opensearch.commons.notifications.model.SeverityType
@@ -20,6 +19,7 @@ import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.indexmanagement.common.model.notification.Channel
+import org.opensearch.transport.client.Client
 import java.io.IOException
 
 /*
