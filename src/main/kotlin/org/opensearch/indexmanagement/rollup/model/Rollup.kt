@@ -5,6 +5,9 @@
 
 package org.opensearch.indexmanagement.rollup.model
 
+import org.opensearch.Version
+import org.opensearch.common.settings.IndexScopedSettings
+import org.opensearch.common.settings.Settings
 import org.opensearch.commons.authuser.User
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
@@ -47,6 +50,7 @@ data class Rollup(
     val description: String,
     val sourceIndex: String,
     val targetIndex: String,
+    val targetIndexSettings: Settings?,
     val metadataID: String?,
     @Deprecated("Will be ignored, to check the roles use user field") val roles: List<String> = listOf(),
     val pageSize: Int,
@@ -87,6 +91,9 @@ data class Rollup(
             }
         }
         require(sourceIndex != targetIndex) { "Your source and target index cannot be the same" }
+        if (targetIndexSettings != null) {
+            IndexScopedSettings(null, IndexScopedSettings.BUILT_IN_INDEX_SETTINGS).validate(targetIndexSettings, true)
+        }
         require(dimensions.filter { it.type == Dimension.Type.DATE_HISTOGRAM }.size == 1) {
             "Must specify precisely one date histogram dimension" // this covers empty dimensions case too
         }
@@ -129,6 +136,11 @@ data class Rollup(
         description = sin.readString(),
         sourceIndex = sin.readString(),
         targetIndex = sin.readString(),
+        targetIndexSettings = if (sin.getVersion().onOrAfter(Version.V_3_0_0) && sin.readBoolean()) {
+            Settings.readSettingsFromStream(sin)
+        } else {
+            null
+        },
         metadataID = sin.readOptionalString(),
         roles = sin.readStringArray().toList(),
         pageSize = sin.readInt(),
@@ -177,6 +189,11 @@ data class Rollup(
             .field(CONTINUOUS_FIELD, continuous)
             .field(DIMENSIONS_FIELD, dimensions.toTypedArray())
             .field(RollupMetrics.METRICS_FIELD, metrics.toTypedArray())
+        if (targetIndexSettings != null) {
+            builder.startObject(TARGET_INDEX_SETTINGS_FIELD)
+            targetIndexSettings.toXContent(builder, params)
+            builder.endObject()
+        }
         if (params.paramAsBoolean(WITH_USER, true)) builder.optionalUserField(USER_FIELD, user)
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         builder.endObject()
@@ -200,6 +217,10 @@ data class Rollup(
         out.writeString(description)
         out.writeString(sourceIndex)
         out.writeString(targetIndex)
+        if (out.version.onOrAfter(Version.V_3_0_0)) {
+            out.writeBoolean(targetIndexSettings != null)
+            if (targetIndexSettings != null) Settings.writeSettingsToStream(targetIndexSettings, out)
+        }
         out.writeOptionalString(metadataID)
         out.writeStringArray(emptyList<String>().toTypedArray())
         out.writeInt(pageSize)
@@ -237,6 +258,7 @@ data class Rollup(
         const val DESCRIPTION_FIELD = "description"
         const val SOURCE_INDEX_FIELD = "source_index"
         const val TARGET_INDEX_FIELD = "target_index"
+        const val TARGET_INDEX_SETTINGS_FIELD = "target_index_settings"
         const val METADATA_ID_FIELD = "metadata_id"
         const val ROLES_FIELD = "roles"
         const val PAGE_SIZE_FIELD = "page_size"
@@ -275,6 +297,7 @@ data class Rollup(
             var description: String? = null
             var sourceIndex: String? = null
             var targetIndex: String? = null
+            var targetIndexSettings: Settings? = null
             var metadataID: String? = null
             var pageSize: Int? = null
             var delay: Long? = null
@@ -301,6 +324,10 @@ data class Rollup(
                     DESCRIPTION_FIELD -> description = xcp.text()
                     SOURCE_INDEX_FIELD -> sourceIndex = xcp.text()
                     TARGET_INDEX_FIELD -> targetIndex = xcp.text()
+                    TARGET_INDEX_SETTINGS_FIELD -> {
+                        ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
+                        targetIndexSettings = Settings.fromXContent(xcp)
+                    }
                     METADATA_ID_FIELD -> metadataID = xcp.textOrNull()
                     ROLES_FIELD -> {
                         // Parsing but not storing the field, deprecated
@@ -357,6 +384,7 @@ data class Rollup(
                 description = requireNotNull(description) { "Rollup description is null" },
                 sourceIndex = requireNotNull(sourceIndex) { "Rollup source index is null" },
                 targetIndex = requireNotNull(targetIndex) { "Rollup target index is null" },
+                targetIndexSettings = targetIndexSettings,
                 metadataID = metadataID,
                 pageSize = requireNotNull(pageSize) { "Rollup page size is null" },
                 delay = delay,

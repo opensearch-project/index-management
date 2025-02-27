@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.controlcenter.notification.resthandler
 
-import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.action.index.IndexLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.index.IndexLRONConfigRequest
@@ -18,6 +17,7 @@ import org.opensearch.rest.BaseRestHandler.RestChannelConsumer
 import org.opensearch.rest.RestHandler
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.action.RestToXContentListener
+import org.opensearch.transport.client.node.NodeClient
 import java.io.IOException
 
 class RestIndexLRONConfigAction : BaseRestHandler() {

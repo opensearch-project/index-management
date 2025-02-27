@@ -14,10 +14,9 @@ import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.WriteRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.action.update.UpdateResponse
-import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
@@ -39,6 +38,7 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 import java.time.Instant
 
 @Suppress("ReturnCount", "LongParameterList")

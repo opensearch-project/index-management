@@ -11,7 +11,6 @@ import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
-import org.opensearch.client.Client
 import org.opensearch.cluster.routing.Preference
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
@@ -32,6 +31,7 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 
 private val log = LogManager.getLogger(TransportGetPoliciesAction::class.java)
 

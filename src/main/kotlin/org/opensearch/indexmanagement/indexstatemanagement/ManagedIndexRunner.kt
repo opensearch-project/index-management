@@ -24,7 +24,6 @@ import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.support.IndicesOptions
 import org.opensearch.action.update.UpdateResponse
-import org.opensearch.client.Client
 import org.opensearch.cluster.health.ClusterHealthStatus
 import org.opensearch.cluster.health.ClusterStateHealth
 import org.opensearch.cluster.metadata.IndexMetadata
@@ -104,6 +103,7 @@ import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
 import org.opensearch.threadpool.ThreadPool
+import org.opensearch.transport.client.Client
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 

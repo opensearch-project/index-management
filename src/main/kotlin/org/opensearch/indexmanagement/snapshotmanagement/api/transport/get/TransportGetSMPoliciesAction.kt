@@ -11,7 +11,6 @@ import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.ActionFilters
-import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
@@ -37,6 +36,7 @@ import org.opensearch.indexmanagement.util.RunAsSubjectClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 
 class TransportGetSMPoliciesAction
 @Inject

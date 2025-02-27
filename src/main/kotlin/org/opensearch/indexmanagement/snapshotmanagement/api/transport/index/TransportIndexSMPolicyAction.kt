@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.snapshotmanagement.api.transport.index
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.support.ActionFilters
-import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
@@ -26,6 +25,7 @@ import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.RunAsSubjectClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 
 @Suppress("LongParameterList")
 class TransportIndexSMPolicyAction

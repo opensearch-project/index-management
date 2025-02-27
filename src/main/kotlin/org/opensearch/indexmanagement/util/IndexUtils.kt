@@ -7,8 +7,7 @@ package org.opensearch.indexmanagement.util
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.mapping.put.PutMappingRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.IndicesAdminClient
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexAbstraction
 import org.opensearch.cluster.metadata.IndexMetadata
@@ -20,6 +19,7 @@ import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.transport.client.IndicesAdminClient
 import java.nio.ByteBuffer
 import java.util.Base64
 

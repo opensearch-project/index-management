@@ -16,9 +16,7 @@ import org.opensearch.action.admin.indices.create.CreateIndexRequest
 import org.opensearch.action.admin.indices.create.CreateIndexResponse
 import org.opensearch.action.admin.indices.exists.indices.IndicesExistsRequest
 import org.opensearch.action.admin.indices.exists.indices.IndicesExistsResponse
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.Client
-import org.opensearch.client.IndicesAdminClient
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.action.ActionListener
@@ -31,6 +29,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.OpenForTesting
+import org.opensearch.transport.client.Client
+import org.opensearch.transport.client.IndicesAdminClient
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine

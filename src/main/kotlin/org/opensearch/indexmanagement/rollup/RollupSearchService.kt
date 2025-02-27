@@ -12,7 +12,6 @@ import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.search.SearchPhaseExecutionException
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.search.TransportSearchAction.SEARCH_CANCEL_AFTER_TIME_INTERVAL_SETTING
-import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
@@ -28,6 +27,7 @@ import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.R
 import org.opensearch.indexmanagement.rollup.util.getRollupSearchRequest
 import org.opensearch.search.aggregations.MultiBucketConsumerService
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.Client
 import java.time.Instant
 import kotlin.math.max
 import kotlin.math.pow

@@ -70,6 +70,7 @@ class ISMRollupTests : OpenSearchTestCase() {
 
         assertEquals(sourceIndex, rollup.sourceIndex)
         assertEquals(ismRollup.targetIndex, rollup.targetIndex)
+        assertEquals(ismRollup.targetIndexSettings, rollup.targetIndexSettings)
         assertEquals(ismRollup.pageSize, rollup.pageSize)
         assertEquals(ismRollup.dimensions, rollup.dimensions)
         assertEquals(ismRollup.metrics, rollup.metrics)

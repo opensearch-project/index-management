@@ -13,8 +13,7 @@ import org.opensearch.action.admin.cluster.health.ClusterHealthResponse
 import org.opensearch.action.admin.cluster.node.stats.NodeStats
 import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
 import org.opensearch.action.admin.indices.stats.ShardStats
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.Client
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.node.DiscoveryNodes
 import org.opensearch.cluster.routing.allocation.DiskThresholdSettings
@@ -32,6 +31,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActionProperties
 import org.opensearch.jobscheduler.spi.LockModel
 import org.opensearch.jobscheduler.spi.utils.LockService
+import org.opensearch.transport.client.Client
 import java.lang.Exception
 import java.time.Instant
 

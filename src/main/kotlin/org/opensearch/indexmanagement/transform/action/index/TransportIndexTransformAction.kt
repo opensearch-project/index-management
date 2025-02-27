@@ -18,8 +18,7 @@ import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.IndicesOptions
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.Client
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
@@ -44,6 +43,7 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermis
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 
 @Suppress("SpreadOperator", "LongParameterList")
 class TransportIndexTransformAction

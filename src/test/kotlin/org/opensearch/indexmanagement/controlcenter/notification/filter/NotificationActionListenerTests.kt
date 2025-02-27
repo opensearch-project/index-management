@@ -10,7 +10,6 @@ import org.junit.Before
 import org.mockito.Mockito.mock
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.support.ActiveShardsObserver
-import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.core.action.ActionListener
@@ -21,6 +20,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.randomLRONConfi
 import org.opensearch.indexmanagement.controlcenter.notification.randomLRONConfigResponse
 import org.opensearch.tasks.Task
 import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.transport.client.Client
 
 class NotificationActionListenerTests : OpenSearchTestCase() {
     private lateinit var listener: NotificationActionListener<ActionRequest, ActionResponse>

@@ -13,8 +13,7 @@ import org.opensearch.action.admin.indices.rollover.RolloverRequest
 import org.opensearch.action.admin.indices.rollover.RolloverResponse
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.Client
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.common.unit.ByteSizeValue
@@ -31,6 +30,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.Client
 import java.time.Instant
 
 @Suppress("ReturnCount")

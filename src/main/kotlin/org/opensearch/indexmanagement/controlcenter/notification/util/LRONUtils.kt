@@ -23,6 +23,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
+import org.opensearch.transport.client.node.NodeClient
 
 const val LRON_DOC_ID_PREFIX = "LRON:"
 

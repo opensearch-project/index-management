@@ -5,13 +5,13 @@
 
 package org.opensearch.indexmanagement.spi.indexstatemanagement.model
 
-import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.commons.authuser.User
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.ScriptService
+import org.opensearch.transport.client.Client
 
 class StepContext(
     val metadata: ManagedIndexMetaData,

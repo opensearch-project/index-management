@@ -14,8 +14,7 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.Client
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
@@ -39,6 +38,7 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 
 // TODO: Field and mappings validations of source and target index, i.e. reject a histogram agg on example_field if its not possible
 @Suppress("LongParameterList")

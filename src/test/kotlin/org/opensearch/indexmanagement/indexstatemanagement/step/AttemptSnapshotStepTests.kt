@@ -18,9 +18,6 @@ import org.mockito.ArgumentMatchers
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
-import org.opensearch.client.AdminClient
-import org.opensearch.client.Client
-import org.opensearch.client.ClusterAdminClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
@@ -47,6 +44,9 @@ import org.opensearch.telemetry.metrics.MetricsRegistry
 import org.opensearch.telemetry.metrics.tags.Tags
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.AdminClient
+import org.opensearch.transport.client.Client
+import org.opensearch.transport.client.ClusterAdminClient
 
 class AttemptSnapshotStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock()

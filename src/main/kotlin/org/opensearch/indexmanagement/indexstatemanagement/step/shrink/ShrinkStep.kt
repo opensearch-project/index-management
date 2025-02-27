@@ -10,7 +10,7 @@ import org.apache.logging.log4j.Logger
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
 import org.opensearch.action.admin.indices.delete.DeleteIndexRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction.Companion.getSecurityFailureMessage
 import org.opensearch.indexmanagement.indexstatemanagement.util.getUpdatedShrinkActionProperties
 import org.opensearch.indexmanagement.indexstatemanagement.util.releaseShrinkLock

@@ -9,13 +9,13 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.spi.indexstatemanagement.IndexMetadataService
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
+import org.opensearch.transport.client.Client
 
 /**
  * Consolidates IndexMetadataServices from all extensions to delegate the index metadata provider based on index type.

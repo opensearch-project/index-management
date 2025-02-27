@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.rollup.util
 
 import org.opensearch.Version
-import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.regex.Regex
@@ -27,6 +26,7 @@ import org.opensearch.indices.analysis.AnalysisModule
 import org.opensearch.plugins.MapperPlugin
 import org.opensearch.plugins.PluginsService
 import org.opensearch.script.ScriptService
+import org.opensearch.transport.client.Client
 import java.time.Instant
 
 /**

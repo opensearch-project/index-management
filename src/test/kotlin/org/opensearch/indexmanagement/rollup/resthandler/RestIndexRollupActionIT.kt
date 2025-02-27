@@ -73,7 +73,7 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
 
     @Throws(Exception::class)
     fun `test mappings after rollup creation`() {
-        createRandomRollup()
+        createRandomRollupWithoutTargetSettings()
 
         val response = client().makeRequest("GET", "/$INDEX_MANAGEMENT_INDEX/_mapping")
         val parserMap = createParser(XContentType.JSON.xContent(), response.entity.content).map() as Map<String, Map<String, Any>>

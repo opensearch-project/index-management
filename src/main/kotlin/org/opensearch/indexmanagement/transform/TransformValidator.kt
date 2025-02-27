@@ -13,7 +13,6 @@ import org.opensearch.action.admin.cluster.health.ClusterHealthResponse
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsRequest
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
 import org.opensearch.action.support.IndicesOptions
-import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
@@ -24,6 +23,7 @@ import org.opensearch.indexmanagement.transform.model.TransformValidationResult
 import org.opensearch.indexmanagement.transform.settings.TransformSettings
 import org.opensearch.monitor.jvm.JvmService
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.Client
 
 @Suppress("SpreadOperator", "ReturnCount", "ThrowsCount")
 class TransformValidator(

@@ -19,9 +19,9 @@ import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.WriteRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.IndicesOptions
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
-import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.inject.Inject
@@ -54,6 +54,7 @@ import org.opensearch.indexmanagement.util.RunAsSubjectClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.node.NodeClient
 
 private val log = LogManager.getLogger(TransportRetryFailedManagedIndexAction::class.java)
 

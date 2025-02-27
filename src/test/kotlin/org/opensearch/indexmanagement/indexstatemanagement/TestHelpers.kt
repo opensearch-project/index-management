@@ -17,6 +17,7 @@ import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.action.AliasAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.CloseAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityAction
@@ -237,6 +238,8 @@ fun randomTemplateScript(
 ): Script = Script(scriptType, lang, source, params)
 
 fun randomSnapshotActionConfig(repository: String = "repo", snapshot: String = "sp"): SnapshotAction = SnapshotAction(repository, snapshot, index = 0)
+
+fun randomRestoreActionConfig(repository: String = "repo", snapshot: String = "sp"): ConvertIndexToRemoteAction = ConvertIndexToRemoteAction(repository, snapshot, index = 0)
 
 /**
  * Helper functions for creating a random Conditions object
