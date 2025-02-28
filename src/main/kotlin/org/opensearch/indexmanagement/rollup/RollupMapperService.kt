@@ -17,8 +17,7 @@ import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
 import org.opensearch.action.admin.indices.mapping.put.PutMappingRequest
 import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
 import org.opensearch.action.support.IndicesOptions
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.Client
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.metadata.MappingMetadata
 import org.opensearch.cluster.service.ClusterService
@@ -42,6 +41,7 @@ import org.opensearch.indexmanagement.rollup.util.isTargetIndexAlias
 import org.opensearch.indexmanagement.util.IndexUtils.Companion._META
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.getFieldFromMappings
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.Client
 
 // TODO: Validation of fields across source and target indices overwriting existing rollup data
 //  and type validation using mappings from source index
@@ -157,7 +157,7 @@ class RollupMapperService(
         } else {
             val errorMessage = "Failed to create target index [$targetIndexResolvedName]"
             return try {
-                val response = createTargetIndex(targetIndexResolvedName, hasLegacyPlugin)
+                val response = createTargetIndex(targetIndexResolvedName, job.targetIndexSettings, hasLegacyPlugin)
                 if (response.isAcknowledged) {
                     updateRollupIndexMappings(job, targetIndexResolvedName)
                 } else {
@@ -228,13 +228,17 @@ class RollupMapperService(
         return RollupJobValidationResult.Valid
     }
 
-    private suspend fun createTargetIndex(targetIndexName: String, hasLegacyPlugin: Boolean): CreateIndexResponse {
-        val settings =
-            if (hasLegacyPlugin) {
-                Settings.builder().put(LegacyOpenDistroRollupSettings.ROLLUP_INDEX.key, true).build()
+    private suspend fun createTargetIndex(targetIndexName: String, targetIndexSettings: Settings?, hasLegacyPlugin: Boolean): CreateIndexResponse {
+        val settings = Settings.builder().apply {
+            targetIndexSettings?.let { put(it) }
+            val rollupIndexSetting = if (hasLegacyPlugin) {
+                LegacyOpenDistroRollupSettings.ROLLUP_INDEX
             } else {
-                Settings.builder().put(RollupSettings.ROLLUP_INDEX.key, true).build()
+                RollupSettings.ROLLUP_INDEX
             }
+            put(rollupIndexSetting.key, true)
+        }.build()
+
         val request =
             CreateIndexRequest(targetIndexName)
                 .settings(settings)

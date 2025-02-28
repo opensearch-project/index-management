@@ -36,7 +36,5 @@ class RollupActionParser : ActionParser() {
         return RollupAction(ismRollup = requireNotNull(ismRollup) { "RollupAction rollup is null" }, index)
     }
 
-    override fun getActionType(): String {
-        return RollupAction.name
-    }
+    override fun getActionType(): String = RollupAction.name
 }

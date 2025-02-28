@@ -13,10 +13,9 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.action.update.UpdateResponse
-import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
@@ -37,6 +36,7 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 import java.time.Instant
 
 @Suppress("ReturnCount")
@@ -68,7 +68,7 @@ constructor(
                 ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
             )}",
         )
-        val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id())
+        val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id)
         val user = buildUser(client.threadPool().threadContext)
         client.threadPool().threadContext.stashContext().use {
             client.get(
@@ -117,7 +117,8 @@ constructor(
         actionListener: ActionListener<AcknowledgedResponse>,
     ) {
         val now = Instant.now().toEpochMilli()
-        request.index(INDEX_MANAGEMENT_INDEX).doc(
+        val updateReq = UpdateRequest(INDEX_MANAGEMENT_INDEX, request.id)
+        updateReq.doc(
             mapOf(
                 Transform.TRANSFORM_TYPE to
                     mapOf(
@@ -127,7 +128,7 @@ constructor(
             ),
         )
         client.update(
-            request,
+            updateReq,
             object : ActionListener<UpdateResponse> {
                 override fun onResponse(response: UpdateResponse) {
                     if (response.result == DocWriteResponse.Result.UPDATED) {

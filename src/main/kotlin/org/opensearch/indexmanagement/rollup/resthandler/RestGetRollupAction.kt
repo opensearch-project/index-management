@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.rollup.resthandler
 
-import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.rollup.action.get.GetRollupAction
@@ -25,32 +24,27 @@ import org.opensearch.rest.RestRequest.Method.GET
 import org.opensearch.rest.RestRequest.Method.HEAD
 import org.opensearch.rest.action.RestToXContentListener
 import org.opensearch.search.fetch.subphase.FetchSourceContext
+import org.opensearch.transport.client.node.NodeClient
 
 class RestGetRollupAction : BaseRestHandler() {
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                GET, ROLLUP_JOBS_BASE_URI,
-                GET, LEGACY_ROLLUP_JOBS_BASE_URI,
-            ),
-            ReplacedRoute(
-                GET, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
-                GET, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
-            ),
-            ReplacedRoute(
-                HEAD, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
-                HEAD, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            GET, ROLLUP_JOBS_BASE_URI,
+            GET, LEGACY_ROLLUP_JOBS_BASE_URI,
+        ),
+        ReplacedRoute(
+            GET, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
+            GET, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
+        ),
+        ReplacedRoute(
+            HEAD, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
+            HEAD, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
+        ),
+    )
 
-    override fun getName(): String {
-        return "opendistro_get_rollup_action"
-    }
+    override fun getName(): String = "opendistro_get_rollup_action"
 
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
         val rollupID = request.param("rollupID")

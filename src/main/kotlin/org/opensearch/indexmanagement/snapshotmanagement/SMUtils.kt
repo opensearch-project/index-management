@@ -17,7 +17,6 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
-import org.opensearch.client.Client
 import org.opensearch.common.time.DateFormatter
 import org.opensearch.common.time.DateFormatters
 import org.opensearch.common.unit.TimeValue
@@ -47,6 +46,7 @@ import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.snapshots.SnapshotMissingException
 import org.opensearch.snapshots.SnapshotsService
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.Client
 import java.time.Instant
 import java.time.Instant.now
 import java.time.ZoneId
@@ -178,16 +178,14 @@ fun generateFormatDate(dateFormat: String, timezone: ZoneId = ZoneId.of("UTC")):
     return dateFormatter.format(now())
 }
 
-fun validateDateFormat(dateFormat: String): String? {
-    return try {
-        val timeZone = ZoneId.systemDefault()
-        val dateFormatter = DateFormatter.forPattern(dateFormat).withZone(timeZone)
-        val instant = dateFormatter.toDateMathParser().parse("now/s", System::currentTimeMillis, false, timeZone)
-        dateFormatter.format(instant)
-        null
-    } catch (e: Exception) {
-        e.message ?: "Invalid date format."
-    }
+fun validateDateFormat(dateFormat: String): String? = try {
+    val timeZone = ZoneId.systemDefault()
+    val dateFormatter = DateFormatter.forPattern(dateFormat).withZone(timeZone)
+    val instant = dateFormatter.toDateMathParser().parse("now/s", System::currentTimeMillis, false, timeZone)
+    dateFormatter.format(instant)
+    null
+} catch (e: Exception) {
+    e.message ?: "Invalid date format."
 }
 
 fun preFixTimeStamp(msg: String?): String {
@@ -208,9 +206,7 @@ fun addSMPolicyInSnapshotMetadata(snapshotConfig: Map<String, Any>, policyName: 
     return snapshotConfigWithSMPolicyMetadata
 }
 
-fun List<SnapshotInfo>.filterBySMPolicyInSnapshotMetadata(policyName: String): List<SnapshotInfo> {
-    return filter { it.userMetadata()?.get(SM_TYPE) == policyName }
-}
+fun List<SnapshotInfo>.filterBySMPolicyInSnapshotMetadata(policyName: String): List<SnapshotInfo> = filter { it.userMetadata()?.get(SM_TYPE) == policyName }
 
 /**
  * Get snapshots

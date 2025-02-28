@@ -5,11 +5,13 @@
 
 package org.opensearch.indexmanagement.rollup.resthandler
 
+import org.opensearch.client.Request
 import org.opensearch.client.ResponseException
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
@@ -91,6 +93,7 @@ class RestStartRollupActionIT : RollupRestAPITestCase() {
                 description = "basic search test",
                 sourceIndex = "source_restart_failed_rollup",
                 targetIndex = "target_restart_failed_rollup",
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 10,
@@ -154,6 +157,7 @@ class RestStartRollupActionIT : RollupRestAPITestCase() {
                 description = "basic search test",
                 sourceIndex = "source_restart_finished_rollup",
                 targetIndex = "target_restart_finished_rollup",
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 10,
@@ -200,7 +204,8 @@ class RestStartRollupActionIT : RollupRestAPITestCase() {
 
     fun `test start rollup when multiple shards configured for IM config index`() {
         // setup ism-config index with multiple primary shards
-        deleteIndex(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
+        val deleteISMIndexRequest = Request("DELETE", "/$INDEX_MANAGEMENT_INDEX")
+        adminClient().performRequest(deleteISMIndexRequest)
         val mapping = IndexManagementIndices.indexManagementMappings.trim().trimStart('{').trimEnd('}')
         val settings =
             Settings.builder()
@@ -221,6 +226,7 @@ class RestStartRollupActionIT : RollupRestAPITestCase() {
                 description = "basic search test",
                 sourceIndex = "source_multi_shard_start",
                 targetIndex = "target_multi_shard_start",
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 10,
@@ -253,7 +259,7 @@ class RestStartRollupActionIT : RollupRestAPITestCase() {
 
         // clearing the config index to prevent other tests using this multi shard index
         Thread.sleep(2000L)
-        deleteIndex(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
+        adminClient().performRequest(deleteISMIndexRequest)
         Thread.sleep(2000L)
     }
 }

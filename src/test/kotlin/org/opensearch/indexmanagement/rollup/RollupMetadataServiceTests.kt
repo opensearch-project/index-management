@@ -16,7 +16,6 @@ import org.opensearch.action.DocWriteResponse
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.search.SearchResponse
-import org.opensearch.client.Client
 import org.opensearch.common.document.DocumentField
 import org.opensearch.core.action.ActionListener
 import org.opensearch.core.common.bytes.BytesArray
@@ -31,6 +30,7 @@ import org.opensearch.indexmanagement.rollup.model.RollupStats
 import org.opensearch.search.SearchHit
 import org.opensearch.search.SearchHits
 import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.transport.client.Client
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId

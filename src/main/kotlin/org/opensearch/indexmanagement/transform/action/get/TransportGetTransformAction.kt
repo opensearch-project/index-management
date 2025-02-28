@@ -12,7 +12,6 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
-import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
@@ -28,6 +27,7 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 
 class TransportGetTransformAction
 @Inject
@@ -38,7 +38,7 @@ constructor(
     val clusterService: ClusterService,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
-) : HandledTransportAction<GetTransformRequest, GetTransformResponse> (
+) : HandledTransportAction<GetTransformRequest, GetTransformResponse>(
     GetTransformAction.NAME, transportService, actionFilters, ::GetTransformRequest,
 ) {
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)

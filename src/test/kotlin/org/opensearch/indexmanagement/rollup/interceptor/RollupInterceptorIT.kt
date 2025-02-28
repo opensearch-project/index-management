@@ -42,6 +42,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 description = "basic search test",
                 sourceIndex = "source_rollup_search",
                 targetIndex = "target_rollup_search",
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 10,
@@ -494,6 +495,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 description = "basic search test",
                 sourceIndex = "source_rollup_bucket_and_sub",
                 targetIndex = "target_rollup_bucket_and_sub",
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 10,
@@ -595,6 +597,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 description = "basic search test",
                 sourceIndex = "source_continuous_rollup_search",
                 targetIndex = "target_continuous_rollup_search",
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 10,
@@ -684,6 +687,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 description = "basic search test",
                 sourceIndex = "source_rollup_search_all_jobs_1",
                 targetIndex = targetIndex,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 10,
@@ -729,6 +733,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 description = "basic search test",
                 sourceIndex = "source_rollup_search_all_jobs_2",
                 targetIndex = targetIndex,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 10,
@@ -843,6 +848,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 description = "basic search test",
                 sourceIndex = sourceIndex1,
                 targetIndex = targetIndex1,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 10,
@@ -888,6 +894,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 description = "basic search test",
                 sourceIndex = sourceIndex2,
                 targetIndex = targetIndex2,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 10,
@@ -1003,6 +1010,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 description = "basic search test",
                 sourceIndex = sourceIndex1,
                 targetIndex = targetIndex1,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 10,
@@ -1047,6 +1055,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 description = "basic search test",
                 sourceIndex = sourceIndex2,
                 targetIndex = targetIndex2,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 10,
@@ -1092,12 +1101,12 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 },
                 "aggs": {
                     "sum_passenger_count": { "sum": { "field": "passenger_count" } },
-                    "max_passenger_count": { "max": { "field": "passenger_count" } },
-                    "value_count_passenger_count": { "value_count": { "field": "passenger_count" } }
+                    "max_passenger_count": { "max": { "field": "passenger_count" } }
                 }
             }
             """.trimIndent()
-        // Search 1 non-rollup index and 1 rollup
+//        Search 1 non-rollup index and 1 rollup
+        updateSearchRawRollupClusterSetting(false)
         val searchResult1 = client().makeRequest("POST", "/$sourceIndex2,$targetIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
         assertTrue(searchResult1.restStatus() == RestStatus.OK)
         val failures = extractFailuresFromSearchResponse(searchResult1)
@@ -1110,6 +1119,29 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals(
             "Searching multiple indices where one is rollup and other is not, didn't return failure",
             "Not all indices have rollup job", failures?.get(0)?.get("reason") ?: "Didn't find failure reason in search response",
+        )
+
+        // Updating to allow searching on non-rollup and rolled-up index together
+        updateSearchRawRollupClusterSetting(true)
+        val rawRes1 = client().makeRequest("POST", "/$sourceIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes1.restStatus() == RestStatus.OK)
+        val rawRes2 = client().makeRequest("POST", "/$targetIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes2.restStatus() == RestStatus.OK)
+        val searchResult = client().makeRequest("POST", "/$sourceIndex2,$targetIndex2/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(searchResult.restStatus() == RestStatus.OK)
+        val rawAgg1Res = rawRes1.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        val rawAgg2Res = rawRes2.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        val rollupAggResMulti = searchResult.asMap()["aggregations"] as Map<String, Map<String, Any>>
+
+        val trueAggSum = rawAgg1Res.getValue("sum_passenger_count")["value"] as Double + rawAgg2Res.getValue("sum_passenger_count")["value"] as Double
+
+        assertEquals(
+            "Searching single raw source index and rollup target index did not return the same sum results",
+            rawAgg1Res.getValue("max_passenger_count")["value"], rollupAggResMulti.getValue("max_passenger_count")["value"],
+        )
+        assertEquals(
+            "Searching rollup target index did not return the sum for all of the rollup jobs on the index",
+            trueAggSum, rollupAggResMulti.getValue("sum_passenger_count")["value"],
         )
 
         // Search 2 rollups with different mappings
@@ -1147,6 +1179,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 description = "basic search test",
                 sourceIndex = sourceIndex,
                 targetIndex = targetIndex,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 10,
@@ -1650,6 +1683,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 description = "basic search test",
                 sourceIndex = sourceIndex,
                 targetIndex = targetIndex,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 10,
@@ -1728,6 +1762,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 description = "basic search test",
                 sourceIndex = sourceIndex,
                 targetIndex = targetIndex,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 10,
@@ -1808,6 +1843,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 description = "basic search test",
                 sourceIndex = "source_111*",
                 targetIndex = targetIndex,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 10,
@@ -1897,6 +1933,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 description = "basic search test",
                 sourceIndex = "source_999*",
                 targetIndex = targetIndex,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 10,

@@ -56,9 +56,7 @@ private fun randomStringList(): List<String> {
     return data
 }
 
-fun randomUser(): User {
-    return User(OpenSearchRestTestCase.randomAlphaOfLength(10), randomStringList(), randomStringList(), randomStringList())
-}
+fun randomUser(): User = User(OpenSearchRestTestCase.randomAlphaOfLength(10), randomStringList(), randomStringList(), randomStringList())
 
 /**
 * Wrapper for [RestClient.performRequest] which was deprecated in ES 6.5 and is used in tests. This provides

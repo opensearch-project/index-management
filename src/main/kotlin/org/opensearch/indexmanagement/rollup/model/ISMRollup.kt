@@ -6,6 +6,8 @@
 package org.opensearch.indexmanagement.rollup.model
 
 import org.apache.commons.codec.digest.DigestUtils
+import org.opensearch.Version
+import org.opensearch.common.settings.Settings
 import org.opensearch.commons.authuser.User
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
@@ -29,10 +31,12 @@ import java.time.temporal.ChronoUnit
 data class ISMRollup(
     val description: String,
     val targetIndex: String,
+    val targetIndexSettings: Settings?,
     val pageSize: Int,
     val dimensions: List<Dimension>,
     val metrics: List<RollupMetrics>,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
     // TODO: This can be moved to a common place, since this is shared between Rollup and ISMRollup
     init {
         require(pageSize in Rollup.MINIMUM_PAGE_SIZE..Rollup.MAXIMUM_PAGE_SIZE) {
@@ -54,6 +58,11 @@ data class ISMRollup(
             .field(Rollup.PAGE_SIZE_FIELD, pageSize)
             .field(Rollup.DIMENSIONS_FIELD, dimensions)
             .field(Rollup.METRICS_FIELD, metrics)
+        if (targetIndexSettings != null) {
+            builder.startObject(Rollup.TARGET_INDEX_SETTINGS_FIELD)
+            targetIndexSettings.toXContent(builder, params)
+            builder.endObject()
+        }
         builder.endObject()
         return builder
     }
@@ -73,6 +82,7 @@ data class ISMRollup(
             description = this.description,
             sourceIndex = sourceIndex,
             targetIndex = this.targetIndex,
+            targetIndexSettings = this.targetIndexSettings,
             metadataID = null,
             pageSize = pageSize,
             delay = null,
@@ -87,6 +97,11 @@ data class ISMRollup(
     constructor(sin: StreamInput) : this(
         description = sin.readString(),
         targetIndex = sin.readString(),
+        targetIndexSettings = if (sin.version.onOrAfter(Version.V_3_0_0) && sin.readBoolean()) {
+            Settings.readSettingsFromStream(sin)
+        } else {
+            null
+        },
         pageSize = sin.readInt(),
         dimensions =
         sin.let {
@@ -110,6 +125,7 @@ data class ISMRollup(
     override fun toString(): String {
         val sb = StringBuffer()
         sb.append(targetIndex)
+        sb.append(targetIndexSettings)
         sb.append(pageSize)
         dimensions.forEach {
             sb.append(it.type)
@@ -128,6 +144,10 @@ data class ISMRollup(
     override fun writeTo(out: StreamOutput) {
         out.writeString(description)
         out.writeString(targetIndex)
+        if (out.version.onOrAfter(Version.V_3_0_0)) {
+            out.writeBoolean(targetIndexSettings != null)
+            if (targetIndexSettings != null) Settings.writeSettingsToStream(targetIndexSettings, out)
+        }
         out.writeInt(pageSize)
         out.writeVInt(dimensions.size)
         for (dimension in dimensions) {
@@ -150,6 +170,7 @@ data class ISMRollup(
         ): ISMRollup {
             var description = ""
             var targetIndex = ""
+            var targetIndexSettings: Settings? = null
             var pageSize = 0
             val dimensions = mutableListOf<Dimension>()
             val metrics = mutableListOf<RollupMetrics>()
@@ -163,6 +184,14 @@ data class ISMRollup(
                 when (fieldName) {
                     Rollup.DESCRIPTION_FIELD -> description = xcp.text()
                     Rollup.TARGET_INDEX_FIELD -> targetIndex = xcp.text()
+                    Rollup.TARGET_INDEX_SETTINGS_FIELD -> {
+                        XContentParserUtils.ensureExpectedToken(
+                            XContentParser.Token.START_OBJECT,
+                            xcp.currentToken(),
+                            xcp,
+                        )
+                        targetIndexSettings = Settings.fromXContent(xcp)
+                    }
                     Rollup.PAGE_SIZE_FIELD -> pageSize = xcp.intValue()
                     Rollup.DIMENSIONS_FIELD -> {
                         XContentParserUtils.ensureExpectedToken(
@@ -194,6 +223,7 @@ data class ISMRollup(
                 dimensions = dimensions,
                 metrics = metrics,
                 targetIndex = targetIndex,
+                targetIndexSettings = targetIndexSettings,
             )
         }
     }

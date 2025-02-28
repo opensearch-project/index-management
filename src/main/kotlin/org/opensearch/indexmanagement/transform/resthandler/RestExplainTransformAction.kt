@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.transform.resthandler
 
-import org.opensearch.client.node.NodeClient
 import org.opensearch.core.common.Strings
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.transform.action.explain.ExplainTransformAction
@@ -16,11 +15,10 @@ import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.GET
 import org.opensearch.rest.action.RestToXContentListener
+import org.opensearch.transport.client.node.NodeClient
 
 class RestExplainTransformAction : BaseRestHandler() {
-    override fun routes(): List<Route> {
-        return listOf(Route(GET, "$TRANSFORM_BASE_URI/{transformID}/_explain"))
-    }
+    override fun routes(): List<Route> = listOf(Route(GET, "$TRANSFORM_BASE_URI/{transformID}/_explain"))
 
     override fun getName(): String = "opendistro_explain_transform_action"
 

@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.transform.resthandler
 
 import org.opensearch.action.support.WriteRequest
-import org.opensearch.client.node.NodeClient
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.seqno.SequenceNumbers
@@ -29,20 +28,17 @@ import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.PUT
 import org.opensearch.rest.RestResponse
 import org.opensearch.rest.action.RestResponseListener
+import org.opensearch.transport.client.node.NodeClient
 import java.io.IOException
 import java.time.Instant
 
 class RestIndexTransformAction : BaseRestHandler() {
-    override fun routes(): List<RestHandler.Route> {
-        return listOf(
-            RestHandler.Route(PUT, TRANSFORM_BASE_URI),
-            RestHandler.Route(PUT, "$TRANSFORM_BASE_URI/{transformID}"),
-        )
-    }
+    override fun routes(): List<RestHandler.Route> = listOf(
+        RestHandler.Route(PUT, TRANSFORM_BASE_URI),
+        RestHandler.Route(PUT, "$TRANSFORM_BASE_URI/{transformID}"),
+    )
 
-    override fun getName(): String {
-        return "opendistro_index_transform_action"
-    }
+    override fun getName(): String = "opendistro_index_transform_action"
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {

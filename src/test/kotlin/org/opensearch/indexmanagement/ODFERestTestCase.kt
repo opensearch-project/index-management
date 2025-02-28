@@ -37,16 +37,14 @@ abstract class ODFERestTestCase : OpenSearchRestTestCase() {
         return mockSecureSettings
     }
 
-    override fun restAdminSettings(): Settings {
-        return Settings
-            .builder()
-            .put("http.port", 9200)
-            .put(OPENSEARCH_SECURITY_SSL_HTTP_ENABLED, isHttps())
-            .put(OPENSEARCH_SECURITY_SSL_HTTP_PEMCERT_FILEPATH, "sample.pem")
-            .put(OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_FILEPATH, "test-kirk.jks")
-            .setSecureSettings(createSecureSettings())
-            .build()
-    }
+    override fun restAdminSettings(): Settings = Settings
+        .builder()
+        .put("http.port", 9200)
+        .put(OPENSEARCH_SECURITY_SSL_HTTP_ENABLED, isHttps())
+        .put(OPENSEARCH_SECURITY_SSL_HTTP_PEMCERT_FILEPATH, "sample.pem")
+        .put(OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_FILEPATH, "test-kirk.jks")
+        .setSecureSettings(createSecureSettings())
+        .build()
 
     @Throws(IOException::class)
     override fun buildClient(settings: Settings, hosts: Array<HttpHost>): RestClient {
@@ -55,7 +53,7 @@ abstract class ODFERestTestCase : OpenSearchRestTestCase() {
             return when (keystore != null) {
                 true -> {
                     // create adminDN (super-admin) client
-                    val uri = javaClass.classLoader.getResource("security/sample.pem")?.toURI()
+                    val uri = javaClass.classLoader.getResource("sample.pem")?.toURI()
                     val configPath = PathUtils.get(uri).parent.toAbsolutePath()
                     SecureRestClientBuilder(settings, configPath, hosts).setSocketTimeout(60000)
                         .setConnectionRequestTimeout(180000).build()

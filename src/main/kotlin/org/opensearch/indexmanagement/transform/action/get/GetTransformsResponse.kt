@@ -24,7 +24,8 @@ class GetTransformsResponse(
     val transforms: List<Transform>,
     val totalTransforms: Int,
     val status: RestStatus,
-) : ActionResponse(), ToXContentObject {
+) : ActionResponse(),
+    ToXContentObject {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         transforms = sin.readList(::Transform),
@@ -38,21 +39,19 @@ class GetTransformsResponse(
         out.writeEnum(status)
     }
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .field("total_transforms", totalTransforms)
-            .startArray("transforms")
-            .apply {
-                for (transform in transforms) {
-                    this.startObject()
-                        .field(_ID, transform.id)
-                        .field(_SEQ_NO, transform.seqNo)
-                        .field(_PRIMARY_TERM, transform.primaryTerm)
-                        .field(TRANSFORM_TYPE, transform, XCONTENT_WITHOUT_TYPE_AND_USER)
-                        .endObject()
-                }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .field("total_transforms", totalTransforms)
+        .startArray("transforms")
+        .apply {
+            for (transform in transforms) {
+                this.startObject()
+                    .field(_ID, transform.id)
+                    .field(_SEQ_NO, transform.seqNo)
+                    .field(_PRIMARY_TERM, transform.primaryTerm)
+                    .field(TRANSFORM_TYPE, transform, XCONTENT_WITHOUT_TYPE_AND_USER)
+                    .endObject()
             }
-            .endArray()
-            .endObject()
-    }
+        }
+        .endArray()
+        .endObject()
 }

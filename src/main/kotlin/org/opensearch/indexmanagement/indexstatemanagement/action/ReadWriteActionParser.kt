@@ -24,7 +24,5 @@ class ReadWriteActionParser : ActionParser() {
         return ReadWriteAction(index)
     }
 
-    override fun getActionType(): String {
-        return ReadWriteAction.name
-    }
+    override fun getActionType(): String = ReadWriteAction.name
 }

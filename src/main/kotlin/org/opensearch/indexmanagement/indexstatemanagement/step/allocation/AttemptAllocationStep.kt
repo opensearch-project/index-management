@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.step.allocation
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -64,13 +64,11 @@ class AttemptAllocationStep(private val action: AllocationAction) : Step(name) {
         }
     }
 
-    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
-        return currentMetadata.copy(
-            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
-            transitionTo = null,
-            info = info,
-        )
-    }
+    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData = currentMetadata.copy(
+        stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
+        transitionTo = null,
+        info = info,
+    )
 
     override fun isIdempotent() = true
 

@@ -20,9 +20,7 @@ class ReadOnlyAction(
     private val setReadOnlyStep = SetReadOnlyStep()
     private val steps = listOf(setReadOnlyStep)
 
-    override fun getStepToExecute(context: StepContext): Step {
-        return setReadOnlyStep
-    }
+    override fun getStepToExecute(context: StepContext): Step = setReadOnlyStep
 
     override fun getSteps(): List<Step> = steps
 }

@@ -7,8 +7,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-import org.opensearch.client.Client
-import org.opensearch.client.node.NodeClient
 import org.opensearch.commons.authuser.User
 import org.opensearch.commons.destination.message.LegacyBaseMessage
 import org.opensearch.commons.notifications.NotificationsPluginInterface
@@ -21,6 +19,8 @@ import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.common.model.notification.validateResponseStatus
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.transport.client.Client
+import org.opensearch.transport.client.node.NodeClient
 
 /**
  * Extension function for publishing a notification to a legacy destination.
@@ -58,6 +58,4 @@ suspend fun Channel.sendNotification(
     this.sendNotification(client, eventSource, compiledMessage, user)
 }
 
-fun ManagedIndexMetaData.getEventSource(title: String): EventSource {
-    return EventSource(title, indexUuid, SeverityType.INFO)
-}
+fun ManagedIndexMetaData.getEventSource(title: String): EventSource = EventSource(title, indexUuid, SeverityType.INFO)

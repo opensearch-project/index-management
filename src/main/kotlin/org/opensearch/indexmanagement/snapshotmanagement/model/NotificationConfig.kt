@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.snapshotmanagement.model
 
 import org.apache.logging.log4j.Logger
-import org.opensearch.client.Client
 import org.opensearch.commons.authuser.User
 import org.opensearch.commons.notifications.model.EventSource
 import org.opensearch.commons.notifications.model.SeverityType
@@ -20,6 +19,7 @@ import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.indexmanagement.common.model.notification.Channel
+import org.opensearch.transport.client.Client
 import java.io.IOException
 
 /*
@@ -28,13 +28,12 @@ import java.io.IOException
 data class NotificationConfig(
     val channel: Channel,
     val conditions: Conditions,
-) : ToXContentObject, Writeable {
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .field(CHANNEL_FIELD, channel)
-            .field(CONDITIONS_FIELD, conditions)
-            .endObject()
-    }
+) : ToXContentObject,
+    Writeable {
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .field(CHANNEL_FIELD, channel)
+        .field(CONDITIONS_FIELD, conditions)
+        .endObject()
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
@@ -139,15 +138,14 @@ data class NotificationConfig(
         val deletion: Boolean = false,
         val failure: Boolean = false,
         val timeLimitExceeded: Boolean = false,
-    ) : Writeable, ToXContent {
-        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-            return builder.startObject()
-                .field(CREATION_FIELD, creation)
-                .field(DELETION_FIELD, deletion)
-                .field(FAILURE_FIELD, failure)
-                .field(TIME_LIMIT_EXCEEDED_FIELD, timeLimitExceeded)
-                .endObject()
-        }
+    ) : Writeable,
+        ToXContent {
+        override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+            .field(CREATION_FIELD, creation)
+            .field(DELETION_FIELD, deletion)
+            .field(FAILURE_FIELD, failure)
+            .field(TIME_LIMIT_EXCEEDED_FIELD, timeLimitExceeded)
+            .endObject()
 
         companion object {
             const val CREATION_FIELD = "creation"

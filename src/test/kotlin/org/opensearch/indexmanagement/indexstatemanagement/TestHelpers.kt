@@ -17,6 +17,7 @@ import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.action.AliasAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.CloseAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityAction
@@ -76,27 +77,21 @@ fun randomPolicy(
     errorNotification: ErrorNotification? = randomErrorNotification(),
     states: List<State> = List(OpenSearchRestTestCase.randomIntBetween(1, 10)) { randomState() },
     ismTemplate: List<ISMTemplate>? = null,
-): Policy {
-    return Policy(
-        id = id, schemaVersion = schemaVersion, lastUpdatedTime = lastUpdatedTime,
-        errorNotification = errorNotification, defaultState = states[0].name, states = states, description = description, ismTemplate = ismTemplate,
-    )
-}
+): Policy = Policy(
+    id = id, schemaVersion = schemaVersion, lastUpdatedTime = lastUpdatedTime,
+    errorNotification = errorNotification, defaultState = states[0].name, states = states, description = description, ismTemplate = ismTemplate,
+)
 
 fun randomState(
     name: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     actions: List<Action> = listOf(),
     transitions: List<Transition> = listOf(),
-): State {
-    return State(name = name, actions = actions, transitions = transitions)
-}
+): State = State(name = name, actions = actions, transitions = transitions)
 
 fun randomTransition(
     stateName: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     conditions: Conditions? = randomConditions(),
-): Transition {
-    return Transition(stateName = stateName, conditions = conditions)
-}
+): Transition = Transition(stateName = stateName, conditions = conditions)
 
 /**
  * TODO: Excluded randomCronSchedule being included in randomConditions as two issues need to be resolved first:
@@ -126,24 +121,20 @@ fun randomConditions(
 fun nonNullRandomConditions(): Conditions =
     randomConditions(OpenSearchRestTestCase.randomFrom(listOf(randomIndexAge(), randomDocCount(), randomSize())))!!
 
-fun randomDeleteActionConfig(): DeleteAction {
-    return DeleteAction(index = 0)
-}
+fun randomDeleteActionConfig(): DeleteAction = DeleteAction(index = 0)
 
 fun randomRolloverActionConfig(
     minSize: ByteSizeValue = randomByteSizeValue(),
     minDocs: Long = OpenSearchRestTestCase.randomLongBetween(1, 1000),
     minAge: TimeValue = randomTimeValueObject(),
     minPrimaryShardSize: ByteSizeValue = randomByteSizeValue(),
-): RolloverAction {
-    return RolloverAction(
-        minSize = minSize,
-        minDocs = minDocs,
-        minAge = minAge,
-        minPrimaryShardSize = minPrimaryShardSize,
-        index = 0,
-    )
-}
+): RolloverAction = RolloverAction(
+    minSize = minSize,
+    minDocs = minDocs,
+    minAge = minAge,
+    minPrimaryShardSize = minPrimaryShardSize,
+    index = 0,
+)
 
 @Suppress("ReturnCount")
 fun randomShrinkAction(
@@ -165,55 +156,33 @@ fun randomShrinkAction(
     return ShrinkAction(numNewShards, maxShardSize, percentageOfSourceShards, targetIndexTemplate, aliases, switchAliases, forceUnsafe, 0)
 }
 
-fun randomReadOnlyActionConfig(): ReadOnlyAction {
-    return ReadOnlyAction(index = 0)
-}
+fun randomReadOnlyActionConfig(): ReadOnlyAction = ReadOnlyAction(index = 0)
 
-fun randomReadWriteActionConfig(): ReadWriteAction {
-    return ReadWriteAction(index = 0)
-}
+fun randomReadWriteActionConfig(): ReadWriteAction = ReadWriteAction(index = 0)
 
-fun randomReplicaCountActionConfig(numOfReplicas: Int = OpenSearchRestTestCase.randomIntBetween(0, 200)): ReplicaCountAction {
-    return ReplicaCountAction(index = 0, numOfReplicas = numOfReplicas)
-}
+fun randomReplicaCountActionConfig(numOfReplicas: Int = OpenSearchRestTestCase.randomIntBetween(0, 200)): ReplicaCountAction = ReplicaCountAction(index = 0, numOfReplicas = numOfReplicas)
 
-fun randomIndexPriorityActionConfig(indexPriority: Int = OpenSearchRestTestCase.randomIntBetween(0, 100)): IndexPriorityAction {
-    return IndexPriorityAction(index = 0, indexPriority = indexPriority)
-}
+fun randomIndexPriorityActionConfig(indexPriority: Int = OpenSearchRestTestCase.randomIntBetween(0, 100)): IndexPriorityAction = IndexPriorityAction(index = 0, indexPriority = indexPriority)
 
 fun randomForceMergeActionConfig(
     maxNumSegments: Int = OpenSearchRestTestCase.randomIntBetween(1, 50),
-): ForceMergeAction {
-    return ForceMergeAction(maxNumSegments = maxNumSegments, index = 0)
-}
+): ForceMergeAction = ForceMergeAction(maxNumSegments = maxNumSegments, index = 0)
 
 fun randomNotificationActionConfig(
     destination: Destination = randomDestination(),
     messageTemplate: Script = randomTemplateScript("random message"),
     index: Int = 0,
-): NotificationAction {
-    return NotificationAction(destination, null, messageTemplate, index)
-}
+): NotificationAction = NotificationAction(destination, null, messageTemplate, index)
 
-fun randomAllocationActionConfig(require: Map<String, String> = emptyMap(), exclude: Map<String, String> = emptyMap(), include: Map<String, String> = emptyMap()): AllocationAction {
-    return AllocationAction(require, include, exclude, index = 0)
-}
+fun randomAllocationActionConfig(require: Map<String, String> = emptyMap(), exclude: Map<String, String> = emptyMap(), include: Map<String, String> = emptyMap()): AllocationAction = AllocationAction(require, include, exclude, index = 0)
 
-fun randomRollupActionConfig(): RollupAction {
-    return RollupAction(ismRollup = randomISMRollup(), index = 0)
-}
+fun randomRollupActionConfig(): RollupAction = RollupAction(ismRollup = randomISMRollup(), index = 0)
 
-fun randomTransformActionConfig(): TransformAction {
-    return TransformAction(ismTransform = randomISMTransform(), index = 0)
-}
+fun randomTransformActionConfig(): TransformAction = TransformAction(ismTransform = randomISMTransform(), index = 0)
 
-fun randomCloseActionConfig(): CloseAction {
-    return CloseAction(index = 0)
-}
+fun randomCloseActionConfig(): CloseAction = CloseAction(index = 0)
 
-fun randomOpenActionConfig(): OpenAction {
-    return OpenAction(index = 0)
-}
+fun randomOpenActionConfig(): OpenAction = OpenAction(index = 0)
 
 fun randomAliasAction(includeIndices: Boolean = false): AliasAction {
     val actions = List(OpenSearchRestTestCase.randomIntBetween(1, 10)) { if (includeIndices) randomAliasActionWithIndices() else randomAliasActions() }
@@ -233,41 +202,33 @@ fun randomAliasActionWithIndices(): IndicesAliasesRequest.AliasActions {
         .indices(OpenSearchRestTestCase.randomAlphaOfLength(10))
 }
 
-fun randomDestination(type: DestinationType = randomDestinationType()): Destination {
-    return Destination(
-        type = type,
-        chime = if (type == DestinationType.CHIME) randomChime() else null,
-        slack = if (type == DestinationType.SLACK) randomSlack() else null,
-        customWebhook = if (type == DestinationType.CUSTOM_WEBHOOK) randomCustomWebhook() else null,
-    )
-}
+fun randomDestination(type: DestinationType = randomDestinationType()): Destination = Destination(
+    type = type,
+    chime = if (type == DestinationType.CHIME) randomChime() else null,
+    slack = if (type == DestinationType.SLACK) randomSlack() else null,
+    customWebhook = if (type == DestinationType.CUSTOM_WEBHOOK) randomCustomWebhook() else null,
+)
 
 fun randomDestinationType(): DestinationType {
     val types = listOf(DestinationType.SLACK, DestinationType.CHIME, DestinationType.CUSTOM_WEBHOOK)
     return OpenSearchRestTestCase.randomSubsetOf(1, types).first()
 }
 
-fun randomChime(): Chime {
-    return Chime("https://www.amazon.com")
-}
+fun randomChime(): Chime = Chime("https://www.amazon.com")
 
-fun randomSlack(): Slack {
-    return Slack("https://www.amazon.com")
-}
+fun randomSlack(): Slack = Slack("https://www.amazon.com")
 
-fun randomCustomWebhook(): CustomWebhook {
-    return CustomWebhook(
-        url = "https://www.amazon.com",
-        scheme = null,
-        host = null,
-        port = -1,
-        path = null,
-        queryParams = emptyMap(),
-        headerParams = emptyMap(),
-        username = null,
-        password = null,
-    )
-}
+fun randomCustomWebhook(): CustomWebhook = CustomWebhook(
+    url = "https://www.amazon.com",
+    scheme = null,
+    host = null,
+    port = -1,
+    path = null,
+    queryParams = emptyMap(),
+    headerParams = emptyMap(),
+    username = null,
+    password = null,
+)
 
 fun randomTemplateScript(
     source: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
@@ -276,9 +237,9 @@ fun randomTemplateScript(
     lang: String = Script.DEFAULT_TEMPLATE_LANG,
 ): Script = Script(scriptType, lang, source, params)
 
-fun randomSnapshotActionConfig(repository: String = "repo", snapshot: String = "sp"): SnapshotAction {
-    return SnapshotAction(repository, snapshot, index = 0)
-}
+fun randomSnapshotActionConfig(repository: String = "repo", snapshot: String = "sp"): SnapshotAction = SnapshotAction(repository, snapshot, index = 0)
+
+fun randomRestoreActionConfig(repository: String = "repo", snapshot: String = "sp"): ConvertIndexToRemoteAction = ConvertIndexToRemoteAction(repository, snapshot, index = 0)
 
 /**
  * Helper functions for creating a random Conditions object
@@ -311,18 +272,14 @@ fun randomExplainFilter(
     state: String? = if (OpenSearchRestTestCase.randomBoolean()) OpenSearchRestTestCase.randomAlphaOfLength(10) else null,
     actionType: String? = if (OpenSearchRestTestCase.randomBoolean()) OpenSearchRestTestCase.randomAlphaOfLength(10) else null,
     failed: Boolean? = if (OpenSearchRestTestCase.randomBoolean()) OpenSearchRestTestCase.randomBoolean() else null,
-): ExplainFilter {
-    return ExplainFilter(policyID, state, actionType, failed)
-}
+): ExplainFilter = ExplainFilter(policyID, state, actionType, failed)
 
 fun randomChangePolicy(
     policyID: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     state: String? = if (OpenSearchRestTestCase.randomBoolean()) OpenSearchRestTestCase.randomAlphaOfLength(10) else null,
     include: List<StateFilter> = emptyList(),
     isSafe: Boolean = false,
-): ChangePolicy {
-    return ChangePolicy(policyID, state, include, isSafe)
-}
+): ChangePolicy = ChangePolicy(policyID, state, include, isSafe)
 
 // will only return null since we dont want to send actual notifications during integ tests
 @Suppress("FunctionOnlyReturningConstant")
@@ -339,23 +296,21 @@ fun randomManagedIndexConfig(
     policy: Policy = randomPolicy(),
     changePolicy: ChangePolicy? = randomChangePolicy(),
     jitter: Double? = 0.0,
-): ManagedIndexConfig {
-    return ManagedIndexConfig(
-        jobName = name,
-        index = index,
-        indexUuid = uuid,
-        enabled = enabled,
-        jobSchedule = schedule,
-        jobLastUpdatedTime = lastUpdatedTime,
-        jobEnabledTime = enabledTime,
-        policyID = policy.id,
-        policySeqNo = policy.seqNo,
-        policyPrimaryTerm = policy.primaryTerm,
-        policy = policy.copy(seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM),
-        changePolicy = changePolicy,
-        jobJitter = jitter,
-    )
-}
+): ManagedIndexConfig = ManagedIndexConfig(
+    jobName = name,
+    index = index,
+    indexUuid = uuid,
+    enabled = enabled,
+    jobSchedule = schedule,
+    jobLastUpdatedTime = lastUpdatedTime,
+    jobEnabledTime = enabledTime,
+    policyID = policy.id,
+    policySeqNo = policy.seqNo,
+    policyPrimaryTerm = policy.primaryTerm,
+    policy = policy.copy(seqNo = SequenceNumbers.UNASSIGNED_SEQ_NO, primaryTerm = SequenceNumbers.UNASSIGNED_PRIMARY_TERM),
+    changePolicy = changePolicy,
+    jobJitter = jitter,
+)
 
 fun randomClusterStateManagedIndexConfig(
     index: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
@@ -363,15 +318,13 @@ fun randomClusterStateManagedIndexConfig(
     policyID: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
     seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
     primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
-): ClusterStateManagedIndexConfig {
-    return ClusterStateManagedIndexConfig(
-        index = index,
-        uuid = uuid,
-        policyID = policyID,
-        seqNo = seqNo,
-        primaryTerm = primaryTerm,
-    )
-}
+): ClusterStateManagedIndexConfig = ClusterStateManagedIndexConfig(
+    index = index,
+    uuid = uuid,
+    policyID = policyID,
+    seqNo = seqNo,
+    primaryTerm = primaryTerm,
+)
 
 fun randomSweptManagedIndexConfig(
     index: String = OpenSearchRestTestCase.randomAlphaOfLength(10),
@@ -381,33 +334,27 @@ fun randomSweptManagedIndexConfig(
     primaryTerm: Long = SequenceNumbers.UNASSIGNED_PRIMARY_TERM,
     changePolicy: ChangePolicy? = null,
     policy: Policy? = null,
-): SweptManagedIndexConfig {
-    return SweptManagedIndexConfig(
-        index = index,
-        uuid = uuid,
-        policyID = policyID,
-        seqNo = seqNo,
-        primaryTerm = primaryTerm,
-        policy = policy,
-        changePolicy = changePolicy,
-    )
-}
+): SweptManagedIndexConfig = SweptManagedIndexConfig(
+    index = index,
+    uuid = uuid,
+    policyID = policyID,
+    seqNo = seqNo,
+    primaryTerm = primaryTerm,
+    policy = policy,
+    changePolicy = changePolicy,
+)
 
 fun randomISMTemplate(
     indexPatterns: List<String> = listOf(OpenSearchRestTestCase.randomAlphaOfLength(10) + "*"),
     priority: Int = OpenSearchRestTestCase.randomIntBetween(0, 100),
     lastUpdatedTime: Instant = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-): ISMTemplate {
-    return ISMTemplate(
-        indexPatterns = indexPatterns,
-        priority = priority,
-        lastUpdatedTime = lastUpdatedTime,
-    )
-}
+): ISMTemplate = ISMTemplate(
+    indexPatterns = indexPatterns,
+    priority = priority,
+    lastUpdatedTime = lastUpdatedTime,
+)
 
-fun randomChannel(id: String = OpenSearchRestTestCase.randomAlphaOfLength(10)): Channel {
-    return Channel(id = id)
-}
+fun randomChannel(id: String = OpenSearchRestTestCase.randomAlphaOfLength(10)): Channel = Channel(id = id)
 
 fun Policy.toJsonString(): String {
     val builder = XContentFactory.jsonBuilder()

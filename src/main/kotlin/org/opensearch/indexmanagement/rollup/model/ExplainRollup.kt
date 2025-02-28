@@ -16,7 +16,8 @@ import java.io.IOException
 data class ExplainRollup(
     val metadataID: String? = null,
     val metadata: RollupMetadata? = null,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         metadataID = sin.readOptionalString(),
@@ -31,10 +32,8 @@ data class ExplainRollup(
     }
 
     @Throws(IOException::class)
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .field(Rollup.METADATA_ID_FIELD, metadataID)
-            .field(RollupMetadata.ROLLUP_METADATA_TYPE, metadata)
-            .endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .field(Rollup.METADATA_ID_FIELD, metadataID)
+        .field(RollupMetadata.ROLLUP_METADATA_TYPE, metadata)
+        .endObject()
 }

@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.controlcenter.notification.resthandler
 
-import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.action.delete.DeleteLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.delete.DeleteLRONConfigRequest
@@ -13,18 +12,15 @@ import org.opensearch.rest.BaseRestHandler
 import org.opensearch.rest.RestHandler
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.action.RestToXContentListener
+import org.opensearch.transport.client.node.NodeClient
 import java.io.IOException
 
 class RestDeleteLRONConfigAction : BaseRestHandler() {
-    override fun routes(): List<RestHandler.Route> {
-        return listOf(
-            RestHandler.Route(RestRequest.Method.DELETE, "${IndexManagementPlugin.LRON_BASE_URI}/{id}"),
-        )
-    }
+    override fun routes(): List<RestHandler.Route> = listOf(
+        RestHandler.Route(RestRequest.Method.DELETE, "${IndexManagementPlugin.LRON_BASE_URI}/{id}"),
+    )
 
-    override fun getName(): String {
-        return "delete_lron_config_action"
-    }
+    override fun getName(): String = "delete_lron_config_action"
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {

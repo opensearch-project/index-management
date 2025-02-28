@@ -5,8 +5,6 @@
 
 package org.opensearch.indexmanagement.common.model.notification
 
-import org.opensearch.client.Client
-import org.opensearch.client.node.NodeClient
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.commons.authuser.User
 import org.opensearch.commons.notifications.NotificationsPluginInterface
@@ -22,18 +20,20 @@ import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.generateUserString
+import org.opensearch.transport.client.Client
+import org.opensearch.transport.client.node.NodeClient
 import java.io.IOException
 
-data class Channel(val id: String) : ToXContent, Writeable {
+data class Channel(val id: String) :
+    ToXContent,
+    Writeable {
     init {
         require(id.isNotEmpty()) { "Channel ID cannot be empty" }
     }
 
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .field(ID, id)
-            .endObject()
-    }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .field(ID, id)
+        .endObject()
 
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(

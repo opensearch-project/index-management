@@ -41,7 +41,7 @@ import javax.management.remote.JMXConnectorFactory
 import javax.management.remote.JMXServiceURL
 
 abstract class IndexManagementRestTestCase : ODFERestTestCase() {
-    val configSchemaVersion = 21
+    val configSchemaVersion = 23
     val historySchemaVersion = 7
 
     // Having issues with tests leaking into other tests and mappings being incorrect and they are not caught by any pending task wait check as
@@ -92,9 +92,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
     protected val isLocalTest = clusterName() == "integTest"
 
-    private fun clusterName(): String {
-        return System.getProperty("tests.clustername")
-    }
+    private fun clusterName(): String = System.getProperty("tests.clustername")
 
     fun Response.asMap(): Map<String, Any> = entityAsMap(this)
 
@@ -219,7 +217,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         // Since from the log, this happens very fast (within 0.1~0.2s), the above cluster explain may not have the granularity to catch this.
         logger.info("Update rollup start time to $startTimeMillis")
         val response =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_update/${update.id}?wait_for_active_shards=$waitForActiveShards&refresh=true",
                 StringEntity(
                     "{\"doc\":{\"rollup\":{\"schedule\":{\"interval\":{\"start_time\":" +
@@ -249,7 +247,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
         val startTimeMillis = desiredStartTimeMillis ?: (Instant.now().toEpochMilli() - millis)
         val waitForActiveShards = if (isMultiNode) "all" else "1"
         val response =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "POST", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_update/${update.id}?wait_for_active_shards=$waitForActiveShards",
                 StringEntity(
                     "{\"doc\":{\"transform\":{\"schedule\":{\"interval\":{\"start_time\":" +

@@ -27,6 +27,7 @@ import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.indexmanagement.rollup.randomRollupMetadata
 import org.opensearch.indexmanagement.rollup.randomRollupMetrics
 import org.opensearch.indexmanagement.rollup.randomRollupStats
+import org.opensearch.indexmanagement.rollup.randomSettings
 import org.opensearch.indexmanagement.rollup.randomSum
 import org.opensearch.indexmanagement.rollup.randomTerms
 import org.opensearch.indexmanagement.rollup.randomValueCount
@@ -126,6 +127,14 @@ class WriteableTests : OpenSearchTestCase() {
         assertTrue("roles field in rollup model is deprecated and should be parsed to empty list.", streamedRollup.roles.isEmpty())
     }
 
+    fun `test rollup as stream with target index settings`() {
+        val rollup = randomRollup().copy(delay = randomLongBetween(0, 60000000), targetIndexSettings = randomSettings())
+        val out = BytesStreamOutput().also { rollup.writeTo(it) }
+        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
+        val streamedRollup = Rollup(sin)
+        assertEquals("Round tripping Rollup stream with target index settings doesn't work", rollup, streamedRollup)
+    }
+
     fun `test explain rollup as stream`() {
         val explainRollup = randomExplainRollup()
         val out = BytesStreamOutput().also { explainRollup.writeTo(it) }
@@ -164,5 +173,17 @@ class WriteableTests : OpenSearchTestCase() {
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
         val streamedISMRollup = ISMRollup(sin)
         assertEquals("Round tripping ISMRollup stream doesn't work", ismRollup, streamedISMRollup)
+    }
+
+    fun `test ism rollup as stream with target index settings`() {
+        val ismRollup = randomISMRollup().copy(targetIndexSettings = randomSettings())
+        val out = BytesStreamOutput().also { ismRollup.writeTo(it) }
+        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
+        val streamedISMRollup = ISMRollup(sin)
+        assertEquals(
+            "Round tripping ISMRollup stream with target index settings doesn't work",
+            ismRollup,
+            streamedISMRollup,
+        )
     }
 }

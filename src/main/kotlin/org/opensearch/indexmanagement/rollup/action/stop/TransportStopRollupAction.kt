@@ -13,10 +13,9 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.action.update.UpdateResponse
-import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
@@ -37,6 +36,7 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 import java.lang.IllegalArgumentException
 import java.time.Instant
 
@@ -77,13 +77,13 @@ constructor(
 
     @Suppress("ReturnCount")
     override fun doExecute(task: Task, request: StopRollupRequest, actionListener: ActionListener<AcknowledgedResponse>) {
-        log.debug("Executing StopRollupAction on ${request.id()}")
+        log.debug("Executing StopRollupAction on ${request.id}")
         log.debug(
             "User and roles string from thread context: ${client.threadPool().threadContext.getTransient<String>(
                 ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
             )}",
         )
-        val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.id())
+        val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.id)
         val user = buildUser(client.threadPool().threadContext)
         client.threadPool().threadContext.stashContext().use {
             client.get(
@@ -214,7 +214,8 @@ constructor(
 
     private fun updateRollupJob(rollup: Rollup, request: StopRollupRequest, actionListener: ActionListener<AcknowledgedResponse>) {
         val now = Instant.now().toEpochMilli()
-        request.index(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX).setIfSeqNo(rollup.seqNo).setIfPrimaryTerm(rollup.primaryTerm)
+        val updateReq = UpdateRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.id)
+        updateReq.setIfSeqNo(rollup.seqNo).setIfPrimaryTerm(rollup.primaryTerm)
             .doc(
                 mapOf(
                     Rollup.ROLLUP_TYPE to
@@ -226,7 +227,7 @@ constructor(
             )
             .routing(rollup.id)
         client.update(
-            request,
+            updateReq,
             object : ActionListener<UpdateResponse> {
                 override fun onResponse(response: UpdateResponse) {
                     actionListener.onResponse(AcknowledgedResponse(response.result == DocWriteResponse.Result.UPDATED))

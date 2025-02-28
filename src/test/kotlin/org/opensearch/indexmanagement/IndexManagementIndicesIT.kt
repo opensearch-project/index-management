@@ -135,7 +135,7 @@ class IndexManagementIndicesIT : IndexStateManagementRestTestCase() {
                     .replace("\"schema_version\": $configSchemaVersion", "\"schema_version\": 0")
 
         val entity = StringEntity(mapping, ContentType.APPLICATION_JSON)
-        client().makeRequest(
+        adminClient().makeRequest(
             RestRequest.Method.PUT.toString(),
             "/$INDEX_MANAGEMENT_INDEX/_mapping", emptyMap(), entity,
         )

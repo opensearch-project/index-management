@@ -26,8 +26,8 @@ import java.util.concurrent.TimeUnit
 buildscript {
     ext {
         isSnapshot = "true" == System.getProperty("build.snapshot", "true")
-        opensearch_version = System.getProperty("opensearch.version", "3.0.0-SNAPSHOT")
-        buildVersionQualifier = System.getProperty("build.version_qualifier", "")
+        opensearch_version = System.getProperty("opensearch.version", "3.0.0-alpha1-SNAPSHOT")
+        buildVersionQualifier = System.getProperty("build.version_qualifier", "alpha1")
         // 2.2.0-SNAPSHOT -> 2.2.0.0-SNAPSHOT
         version_tokens = opensearch_version.tokenize('-')
         opensearch_build = version_tokens[0] + '.0'
@@ -63,7 +63,7 @@ buildscript {
         notifications_core_build_download = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + opensearch_no_snapshot +
                 '/latest/linux/x64/tar/builds/opensearch/plugins/opensearch-notifications-core-' + notifications_no_snapshot + '.zip'
 
-        kotlin_version = System.getProperty("kotlin.version", "1.8.21")
+        kotlin_version = System.getProperty("kotlin.version", "1.9.25")
 
         security_plugin_version = System.getProperty("security.version", opensearch_build)
         ccr_version = System.getProperty("ccr.version", opensearch_build)
@@ -82,13 +82,14 @@ buildscript {
         classpath "org.opensearch.gradle:build-tools:${opensearch_version}"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlin_version}"
         classpath "org.jetbrains.kotlin:kotlin-allopen:${kotlin_version}"
-        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.21.0"
-        classpath "org.jacoco:org.jacoco.agent:0.8.7"
+        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.8"
+        classpath "org.jacoco:org.jacoco.agent:0.8.12"
     }
 }
 
 plugins {
-    id "com.netflix.nebula.ospackage" version "11.5.0"
+    id "de.undercouch.download" version "5.6.0"
+    id "com.netflix.nebula.ospackage" version "11.11.1"
     id "com.dorongold.task-tree" version "2.1.1"
 }
 
@@ -108,14 +109,17 @@ configurations.all {
     resolutionStrategy {
         force "org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}"
         force "org.jetbrains.kotlin:kotlin-stdlib-common:${kotlin_version}"
-        force 'junit:junit:4.13.1'
-        force 'commons-beanutils:commons-beanutils:1.9.4'
-        force 'com.google.guava:guava:30.0-jre'
-        force 'com.puppycrawl.tools:checkstyle:8.29'
-        force 'commons-codec:commons-codec:1.13'
+        force "org.jetbrains.kotlin:kotlin-reflect:${kotlin_version}"
+        force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlin_version}"
+        force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${kotlin_version}"
+        force 'junit:junit:4.13.2'
+        force 'commons-beanutils:commons-beanutils:1.10.1'
+        force 'com.google.guava:guava:30.1.1-jre'
+        force 'com.puppycrawl.tools:checkstyle:8.45.1'
+        force 'commons-codec:commons-codec:1.17.2'
         force "com.fasterxml.jackson.core:jackson-databind:${versions.jackson_databind}"
         force "org.yaml:snakeyaml:${versions.snakeyaml}"
-        force 'org.codehaus.plexus:plexus-utils:3.0.24'
+        force 'org.codehaus.plexus:plexus-utils:3.6.0'
     }
 }
 
@@ -189,6 +193,18 @@ tasks.named('forbiddenApisTest').configure {
 
 ext {
     projectSubstitutions = [:]
+
+    ['esnode.pem', 'esnode-key.pem', 'kirk.pem', 'kirk-key.pem', 'root-ca.pem', 'sample.pem', 'test-kirk.jks'].forEach { file ->
+        File local = getLayout().getBuildDirectory().file(file).get().getAsFile()
+        download.run {
+            src "https://raw.githubusercontent.com/opensearch-project/security/refs/heads/main/bwc-test/src/test/resources/security/" + file
+            dest local
+            overwrite false
+        }
+        processResources {
+            from(local)
+        }
+    }
 }
 
 allprojects {
@@ -205,12 +221,11 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-common:${kotlin_version}"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${kotlin_version}"
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.9'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
     implementation "org.jetbrains:annotations:13.0"
     implementation project(path: ":${rootProject.name}-spi", configuration: 'shadow')
     implementation "org.opensearch:common-utils:${common_utils_version}"
-    // implementation(files("libs/common-utils-3.0.0.0-SNAPSHOT.jar"))
-    implementation "com.github.seancfoley:ipaddress:5.4.1"
+    implementation "com.github.seancfoley:ipaddress:5.5.1"
     implementation "commons-codec:commons-codec:${versions.commonscodec}"
     implementation "org.apache.httpcomponents:httpclient:${versions.httpclient}"
     implementation "org.apache.httpcomponents:httpcore:${versions.httpcore}"
@@ -221,13 +236,13 @@ dependencies {
     testImplementation "org.mockito:mockito-core:${versions.mockito}"
     testImplementation "org.mockito:mockito-inline:4.11.0"
 
-    add("ktlint", "com.pinterest.ktlint:ktlint-cli:1.1.0") {
+    add("ktlint", "com.pinterest.ktlint:ktlint-cli:1.5.0") {
         attributes {
             attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
         }
     }
     configurations.ktlint {
-        resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22"
+        resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.25"
     }
 
     // https://aws.oss.sonatype.org/content/repositories/snapshots/org/opensearch/plugin/
@@ -276,12 +291,14 @@ publishing {
     }
 }
 
+tasks.generatePomFileForPluginZipPublication.dependsOn publishNebulaPublicationToMavenLocal
+
 plugins.withId('java') {
-    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_21
 }
 
 plugins.withId('org.jetbrains.kotlin.jvm') {
-    compileKotlin.kotlinOptions.jvmTarget = compileTestKotlin.kotlinOptions.jvmTarget = JavaVersion.VERSION_11
+    compileKotlin.kotlinOptions.jvmTarget = compileTestKotlin.kotlinOptions.jvmTarget = JavaVersion.VERSION_21
     compileKotlin.dependsOn ktlint
 }
 
@@ -343,11 +360,11 @@ afterEvaluate {
         plugins.add(firstPlugin)
 
         if (securityEnabled) {
-            node.extraConfigFile("kirk.pem", file("src/test/resources/security/kirk.pem"))
-            node.extraConfigFile("kirk-key.pem", file("src/test/resources/security/kirk-key.pem"))
-            node.extraConfigFile("esnode.pem", file("src/test/resources/security/esnode.pem"))
-            node.extraConfigFile("esnode-key.pem", file("src/test/resources/security/esnode-key.pem"))
-            node.extraConfigFile("root-ca.pem", file("src/test/resources/security/root-ca.pem"))
+            node.extraConfigFile("kirk.pem", file("build/resources/main/kirk.pem"))
+            node.extraConfigFile("kirk-key.pem", file("build/resources/main/kirk-key.pem"))
+            node.extraConfigFile("esnode.pem", file("build/resources/main/esnode.pem"))
+            node.extraConfigFile("esnode-key.pem", file("build/resources/main/esnode-key.pem"))
+            node.extraConfigFile("root-ca.pem", file("build/resources/main/root-ca.pem"))
             node.setting("plugins.security.ssl.transport.pemcert_filepath", "esnode.pem")
             node.setting("plugins.security.ssl.transport.pemkey_filepath", "esnode-key.pem")
             node.setting("plugins.security.ssl.transport.pemtrustedcas_filepath", "root-ca.pem")
@@ -658,7 +675,7 @@ task integTestRemote(type: RestIntegTestTask) {
 
 // === Set up BWC tests ===
 
-String bwcVersionShort = "2.12.0"
+String bwcVersionShort = "2.20.0"
 String bwcVersion = bwcVersionShort + ".0"
 String baseName = "indexmanagementBwcCluster"
 

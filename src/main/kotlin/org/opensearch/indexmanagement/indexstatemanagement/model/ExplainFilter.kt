@@ -25,7 +25,8 @@ data class ExplainFilter(
     val state: String? = null,
     val actionType: String? = null,
     val failed: Boolean? = null,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         policyID = sin.readOptionalString(),

@@ -9,8 +9,7 @@ import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest.AliasActions
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.Client
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
@@ -24,6 +23,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ShrinkActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
+import org.opensearch.transport.client.Client
 import java.time.Duration
 import java.time.Instant
 
@@ -159,20 +159,18 @@ class WaitForShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
         }
     }
 
-    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
-        return currentMetadata.copy(
-            actionMetaData =
-            currentMetadata.actionMetaData?.copy(
-                actionProperties =
-                ActionProperties(
-                    shrinkActionProperties = shrinkActionProperties,
-                ),
+    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData = currentMetadata.copy(
+        actionMetaData =
+        currentMetadata.actionMetaData?.copy(
+            actionProperties =
+            ActionProperties(
+                shrinkActionProperties = shrinkActionProperties,
             ),
-            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
-            transitionTo = null,
-            info = info,
-        )
-    }
+        ),
+        stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
+        transitionTo = null,
+        info = info,
+    )
 
     override fun isIdempotent() = true
 

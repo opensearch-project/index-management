@@ -17,7 +17,6 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.update.UpdateRequest
-import org.opensearch.client.Client
 import org.opensearch.cluster.routing.Preference
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
@@ -53,6 +52,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetry
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.search.builder.SearchSourceBuilder
+import org.opensearch.transport.client.Client
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -89,14 +89,12 @@ fun managedIndexConfigIndexRequest(
         .source(managedIndexConfig.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
 }
 
-fun managedIndexConfigIndexRequest(managedIndexConfig: ManagedIndexConfig): IndexRequest {
-    return IndexRequest(INDEX_MANAGEMENT_INDEX)
-        .id(managedIndexConfig.indexUuid)
-        .setIfPrimaryTerm(managedIndexConfig.primaryTerm)
-        .setIfSeqNo(managedIndexConfig.seqNo)
-        .routing(managedIndexConfig.indexUuid) // we want job doc and its metadata doc be routed to same shard
-        .source(managedIndexConfig.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
-}
+fun managedIndexConfigIndexRequest(managedIndexConfig: ManagedIndexConfig): IndexRequest = IndexRequest(INDEX_MANAGEMENT_INDEX)
+    .id(managedIndexConfig.indexUuid)
+    .setIfPrimaryTerm(managedIndexConfig.primaryTerm)
+    .setIfSeqNo(managedIndexConfig.seqNo)
+    .routing(managedIndexConfig.indexUuid) // we want job doc and its metadata doc be routed to same shard
+    .source(managedIndexConfig.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
 
 const val METADATA_POST_FIX = "#metadata"
 
@@ -137,28 +135,20 @@ private fun updateEnabledField(uuid: String, enabled: Boolean, enabledTime: Long
     return UpdateRequest(INDEX_MANAGEMENT_INDEX, uuid).doc(builder)
 }
 
-fun updateDisableManagedIndexRequest(uuid: String): UpdateRequest {
-    return updateEnabledField(uuid, false, null)
-}
+fun updateDisableManagedIndexRequest(uuid: String): UpdateRequest = updateEnabledField(uuid, false, null)
 
-fun updateEnableManagedIndexRequest(uuid: String): UpdateRequest {
-    return updateEnabledField(uuid, true, Instant.now().toEpochMilli())
-}
+fun updateEnableManagedIndexRequest(uuid: String): UpdateRequest = updateEnabledField(uuid, true, Instant.now().toEpochMilli())
 
-fun deleteManagedIndexRequest(uuid: String): DeleteRequest {
-    return DeleteRequest(INDEX_MANAGEMENT_INDEX, uuid)
-}
+fun deleteManagedIndexRequest(uuid: String): DeleteRequest = DeleteRequest(INDEX_MANAGEMENT_INDEX, uuid)
 
-fun deleteManagedIndexMetadataRequest(uuid: String): DeleteRequest {
-    return DeleteRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(uuid)).routing(uuid)
-}
+fun deleteManagedIndexMetadataRequest(uuid: String): DeleteRequest = DeleteRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(uuid)).routing(uuid)
 
-fun updateManagedIndexRequest(sweptManagedIndexConfig: SweptManagedIndexConfig): UpdateRequest {
-    return UpdateRequest(INDEX_MANAGEMENT_INDEX, sweptManagedIndexConfig.uuid)
-        .setIfPrimaryTerm(sweptManagedIndexConfig.primaryTerm)
-        .setIfSeqNo(sweptManagedIndexConfig.seqNo)
-        .doc(getPartialChangePolicyBuilder(sweptManagedIndexConfig.changePolicy))
-}
+fun updateManagedIndexRequest(
+    sweptManagedIndexConfig: SweptManagedIndexConfig,
+): UpdateRequest = UpdateRequest(INDEX_MANAGEMENT_INDEX, sweptManagedIndexConfig.uuid)
+    .setIfPrimaryTerm(sweptManagedIndexConfig.primaryTerm)
+    .setIfSeqNo(sweptManagedIndexConfig.seqNo)
+    .doc(getPartialChangePolicyBuilder(sweptManagedIndexConfig.changePolicy))
 
 /**
  * Finds ManagedIndices that exist in [INDEX_MANAGEMENT_INDEX] that do not exist in the cluster state
@@ -171,10 +161,8 @@ fun updateManagedIndexRequest(sweptManagedIndexConfig: SweptManagedIndexConfig):
 fun getManagedIndicesToDelete(
     currentIndexUuids: List<String>,
     currentManagedIndexUuids: List<String>,
-): List<String> {
-    return currentManagedIndexUuids.filter { currentManagedIndex ->
-        !currentIndexUuids.contains(currentManagedIndex)
-    }
+): List<String> = currentManagedIndexUuids.filter { currentManagedIndex ->
+    !currentIndexUuids.contains(currentManagedIndex)
 }
 
 fun getSweptManagedIndexSearchRequest(scroll: Boolean = false, size: Int = ManagedIndexCoordinator.MAX_HITS): SearchRequest {
@@ -283,9 +271,8 @@ fun State.getUpdatedStateMetaData(managedIndexMetaData: ManagedIndexMetaData): S
     }
 }
 
-fun Action.shouldBackoff(actionMetaData: ActionMetaData?, actionRetry: ActionRetry?): Pair<Boolean, Long?>? {
-    return this.configRetry?.backoff?.shouldBackoff(actionMetaData, actionRetry)
-}
+fun Action.shouldBackoff(actionMetaData: ActionMetaData?, actionRetry: ActionRetry?): Pair<Boolean, Long?>? =
+    this.configRetry?.backoff?.shouldBackoff(actionMetaData, actionRetry)
 
 @Suppress("ReturnCount")
 fun Action.hasTimedOut(actionMetaData: ActionMetaData?): Boolean {

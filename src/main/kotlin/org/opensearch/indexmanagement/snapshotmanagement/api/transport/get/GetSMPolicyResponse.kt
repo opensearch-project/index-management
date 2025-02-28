@@ -25,7 +25,8 @@ class GetSMPolicyResponse(
     val seqNo: Long,
     val primaryTerm: Long,
     val policy: SMPolicy,
-) : ActionResponse(), ToXContentObject {
+) : ActionResponse(),
+    ToXContentObject {
     constructor(sin: StreamInput) : this(
         id = sin.readString(),
         version = sin.readLong(),

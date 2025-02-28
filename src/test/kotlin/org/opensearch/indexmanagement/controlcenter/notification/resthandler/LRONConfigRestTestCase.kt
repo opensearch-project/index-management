@@ -31,7 +31,7 @@ abstract class LRONConfigRestTestCase : IndexManagementRestTestCase() {
     @After
     fun removeAllDocs() {
         try {
-            client().makeRequest(
+            adminClient().makeRequest(
                 "POST",
                 "${IndexManagementPlugin.CONTROL_CENTER_INDEX}/_delete_by_query",
                 mapOf("refresh" to "true"),
@@ -44,9 +44,7 @@ abstract class LRONConfigRestTestCase : IndexManagementRestTestCase() {
         }
     }
 
-    fun createLRONConfig(lronConfig: LRONConfig): Response {
-        return client().makeRequest("POST", IndexManagementPlugin.LRON_BASE_URI, emptyMap(), lronConfig.toHttpEntity())
-    }
+    fun createLRONConfig(lronConfig: LRONConfig): Response = client().makeRequest("POST", IndexManagementPlugin.LRON_BASE_URI, emptyMap(), lronConfig.toHttpEntity())
 
     protected fun LRONConfig.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), ContentType.APPLICATION_JSON)
 

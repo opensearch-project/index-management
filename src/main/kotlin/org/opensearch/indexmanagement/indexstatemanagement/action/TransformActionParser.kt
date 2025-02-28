@@ -36,7 +36,5 @@ class TransformActionParser : ActionParser() {
         return TransformAction(ismTransform = requireNotNull(ismTransform) { "TransformAction transform is null." }, index)
     }
 
-    override fun getActionType(): String {
-        return TransformAction.name
-    }
+    override fun getActionType(): String = TransformAction.name
 }

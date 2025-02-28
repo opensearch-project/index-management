@@ -132,6 +132,13 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         return getRollup(rollupId = rollupId)
     }
 
+    // TODO: can be replaced with createRandomRollup if implement assertEqual for mappings with "dynamic"=true fields
+    protected fun createRandomRollupWithoutTargetSettings(refresh: Boolean = true): Rollup {
+        val rollup = randomRollup().copy(targetIndexSettings = null)
+        val rollupId = createRollup(rollup, rollupId = rollup.id, refresh = refresh).id
+        return getRollup(rollupId = rollupId)
+    }
+
     // TODO: Maybe clean-up and use XContentFactory.jsonBuilder() to create mappings json
     protected fun createRollupMappingString(rollup: Rollup): String {
         var mappingString = ""
@@ -209,7 +216,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         refresh: Boolean = true,
         header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): RollupMetadata {
-        val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId?refresh=$refresh", null, header)
+        val response = adminClient().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId?refresh=$refresh", null, header)
         assertEquals("Unable to get rollup metadata $metadataId", RestStatus.OK, response.restStatus())
         return parseRollupMetadata(response)
     }
@@ -220,7 +227,7 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
         refresh: Boolean = true,
         header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): RollupMetadata {
-        val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId?routing=$routingId&refresh=$refresh", null, header)
+        val response = adminClient().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId?routing=$routingId&refresh=$refresh", null, header)
         assertEquals("Unable to get rollup metadata $metadataId", RestStatus.OK, response.restStatus())
 
         return parseRollupMetadata(response)
@@ -258,6 +265,24 @@ abstract class RollupRestTestCase : IndexManagementRestTestCase() {
             {
                 "persistent": {
                     "${RollupSettings.ROLLUP_SEARCH_ALL_JOBS.key}": $formattedValue
+                }
+            }
+            """.trimIndent()
+        val res =
+            client().makeRequest(
+                "PUT", "_cluster/settings", emptyMap(),
+                StringEntity(request, ContentType.APPLICATION_JSON),
+            )
+        assertEquals("Request failed", RestStatus.OK, res.restStatus())
+    }
+
+    protected fun updateSearchRawRollupClusterSetting(value: Boolean) {
+        val formattedValue = "\"${value}\""
+        val request =
+            """
+            {
+                "persistent": {
+                    "${RollupSettings.ROLLUP_SEARCH_SOURCE_INDICES.key}": $formattedValue
                 }
             }
             """.trimIndent()

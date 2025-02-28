@@ -7,8 +7,7 @@ package org.opensearch.indexmanagement.util
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.mapping.put.PutMappingRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.IndicesAdminClient
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexAbstraction
 import org.opensearch.cluster.metadata.IndexMetadata
@@ -20,13 +19,14 @@ import org.opensearch.core.xcontent.NamedXContentRegistry
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.transport.client.IndicesAdminClient
 import java.nio.ByteBuffer
 import java.util.Base64
 
 @Suppress("UtilityClassWithPublicConstructor", "TooManyFunctions")
 class IndexUtils {
     companion object {
-        @Suppress("ObjectPropertyNaming")
+        @Suppress("ObjectPropertyNaming", "ktlint:standard:backing-property-naming")
         const val _META = "_meta"
         const val PROPERTIES = "properties"
         const val FIELDS = "fields"
@@ -196,13 +196,9 @@ class IndexUtils {
             return Base64.getUrlEncoder().withoutPadding().encodeToString(byteArray)
         }
 
-        fun isDataStream(name: String?, clusterState: ClusterState): Boolean {
-            return clusterState.metadata.dataStreams().containsKey(name)
-        }
+        fun isDataStream(name: String?, clusterState: ClusterState): Boolean = clusterState.metadata.dataStreams().containsKey(name)
 
-        fun isAlias(indexName: String?, clusterState: ClusterState): Boolean {
-            return clusterState.metadata.hasAlias(indexName)
-        }
+        fun isAlias(indexName: String?, clusterState: ClusterState): Boolean = clusterState.metadata.hasAlias(indexName)
 
         fun getWriteIndex(indexName: String?, clusterState: ClusterState): String? {
             if (isAlias(indexName, clusterState) || isDataStream(indexName, clusterState)) {
@@ -233,9 +229,7 @@ class IndexUtils {
             return newestIndex
         }
 
-        fun isConcreteIndex(indexName: String?, clusterState: ClusterState): Boolean {
-            return clusterState.metadata
-                .indicesLookup[indexName]!!.type == IndexAbstraction.Type.CONCRETE_INDEX
-        }
+        fun isConcreteIndex(indexName: String?, clusterState: ClusterState): Boolean = clusterState.metadata
+            .indicesLookup[indexName]!!.type == IndexAbstraction.Type.CONCRETE_INDEX
     }
 }

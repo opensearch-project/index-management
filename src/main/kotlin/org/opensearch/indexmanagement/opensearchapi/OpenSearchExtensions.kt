@@ -19,7 +19,6 @@ import org.opensearch.action.admin.indices.alias.Alias
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.search.SearchResponse
-import org.opensearch.client.OpenSearchClient
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.util.concurrent.ThreadContext
@@ -56,6 +55,7 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.DEFAULT_INJEC
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.INTERNAL_REQUEST
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.OpenSearchClient
 import java.io.IOException
 import java.time.Instant
 import kotlin.coroutines.CoroutineContext
@@ -65,14 +65,15 @@ import kotlin.coroutines.suspendCoroutine
 
 const val OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST = "_opendistro_security_protected_indices_conf_request"
 
-fun contentParser(bytesReference: BytesReference, xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY): XContentParser {
-    return XContentHelper.createParser(
-        xContentRegistry,
-        LoggingDeprecationHandler.INSTANCE,
-        bytesReference,
-        XContentType.JSON,
-    )
-}
+fun contentParser(
+    bytesReference: BytesReference,
+    xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY,
+): XContentParser = XContentHelper.createParser(
+    xContentRegistry,
+    LoggingDeprecationHandler.INSTANCE,
+    bytesReference,
+    XContentType.JSON,
+)
 
 /** Convert an object to maps and lists representation */
 fun ToXContent.convertToMap(): Map<String, Any> {
@@ -83,14 +84,12 @@ fun ToXContent.convertToMap(): Map<String, Any> {
     return XContentHelper.convertToMap(bytesReference, false, XContentType.JSON as (MediaType)).v2()
 }
 
-fun XContentParser.instant(): Instant? {
-    return when {
-        currentToken() == Token.VALUE_NULL -> null
-        currentToken().isValue -> Instant.ofEpochMilli(longValue())
-        else -> {
-            XContentParserUtils.throwUnknownToken(currentToken(), tokenLocation)
-            null // unreachable
-        }
+fun XContentParser.instant(): Instant? = when {
+    currentToken() == Token.VALUE_NULL -> null
+    currentToken().isValue -> Instant.ofEpochMilli(longValue())
+    else -> {
+        XContentParserUtils.throwUnknownToken(currentToken(), tokenLocation)
+        null // unreachable
     }
 }
 
@@ -118,9 +117,7 @@ fun XContentBuilder.optionalISMTemplateField(name: String, ismTemplates: List<IS
     return this.field(Policy.ISM_TEMPLATE, ismTemplates.toTypedArray())
 }
 
-fun XContentBuilder.optionalUserField(name: String, user: User?): XContentBuilder {
-    return if (user == null) nullField(name) else this.field(name, user)
-}
+fun XContentBuilder.optionalUserField(name: String, user: User?): XContentBuilder = if (user == null) nullField(name) else this.field(name, user)
 
 /**
  * Parse data from SearchResponse using the defined parser and xContentRegistry
@@ -129,14 +126,12 @@ fun <T> parseFromSearchResponse(
     response: SearchResponse,
     xContentRegistry: NamedXContentRegistry = NamedXContentRegistry.EMPTY,
     parse: (xcp: XContentParser, id: String, seqNo: Long, primaryTerm: Long) -> T,
-): List<T> {
-    return response.hits.hits.map {
-        val id = it.id
-        val seqNo = it.seqNo
-        val primaryTerm = it.primaryTerm
-        val xcp = XContentHelper.createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, it.sourceRef, XContentType.JSON)
-        xcp.parseWithType(id, seqNo, primaryTerm, parse)
-    }
+): List<T> = response.hits.hits.map {
+    val id = it.id
+    val seqNo = it.seqNo
+    val primaryTerm = it.primaryTerm
+    val xcp = XContentHelper.createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, it.sourceRef, XContentType.JSON)
+    xcp.parseWithType(id, seqNo, primaryTerm, parse)
 }
 
 /**
@@ -201,9 +196,7 @@ suspend fun <T> BackoffPolicy.retry(
  * Retries on 502, 503 and 504 per elastic client's behavior: https://github.com/elastic/elasticsearch-net/issues/2061
  * 429 must be retried manually as it's not clear if it's ok to retry for requests other than Bulk requests.
  */
-fun OpenSearchException.isRetryable(): Boolean {
-    return (status() in listOf(RestStatus.BAD_GATEWAY, RestStatus.SERVICE_UNAVAILABLE, RestStatus.GATEWAY_TIMEOUT))
-}
+fun OpenSearchException.isRetryable(): Boolean = (status() in listOf(RestStatus.BAD_GATEWAY, RestStatus.SERVICE_UNAVAILABLE, RestStatus.GATEWAY_TIMEOUT))
 
 /**
  * Extension function for OpenSearch 6.3 and above that duplicates the OpenSearch 6.2 XContentBuilder.string() method.
@@ -340,29 +333,23 @@ suspend fun <T> withClosableContext(
     }
 }
 
-fun XContentBuilder.optionalField(name: String, value: Any?): XContentBuilder {
-    return if (value != null) {
-        this.field(name, value)
+fun XContentBuilder.optionalField(name: String, value: Any?): XContentBuilder = if (value != null) {
+    this.field(name, value)
+} else {
+    this
+}
+
+fun XContentBuilder.optionalInfoField(name: String, info: SMMetadata.Info?): XContentBuilder = if (info != null) {
+    if (info.message != null || info.cause != null) {
+        this.field(name, info)
     } else {
         this
     }
+} else {
+    this
 }
 
-fun XContentBuilder.optionalInfoField(name: String, info: SMMetadata.Info?): XContentBuilder {
-    return if (info != null) {
-        if (info.message != null || info.cause != null) {
-            this.field(name, info)
-        } else {
-            this
-        }
-    } else {
-        this
-    }
-}
-
-inline fun <T> XContentParser.nullValueHandler(block: XContentParser.() -> T): T? {
-    return if (currentToken() == Token.VALUE_NULL) null else block()
-}
+inline fun <T> XContentParser.nullValueHandler(block: XContentParser.() -> T): T? = if (currentToken() == Token.VALUE_NULL) null else block()
 
 inline fun <T> XContentParser.parseArray(block: XContentParser.() -> T): List<T> {
     val resArr = mutableListOf<T>()
@@ -374,12 +361,10 @@ inline fun <T> XContentParser.parseArray(block: XContentParser.() -> T): List<T>
 }
 
 // similar to readOptionalWriteable
-fun <T> StreamInput.readOptionalValue(reader: Writeable.Reader<T>): T? {
-    return if (readBoolean()) {
-        reader.read(this)
-    } else {
-        null
-    }
+fun <T> StreamInput.readOptionalValue(reader: Writeable.Reader<T>): T? = if (readBoolean()) {
+    reader.read(this)
+} else {
+    null
 }
 
 fun <T> StreamOutput.writeOptionalValue(value: T, writer: Writeable.Writer<T>) {

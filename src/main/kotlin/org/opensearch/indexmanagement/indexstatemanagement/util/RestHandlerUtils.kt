@@ -72,7 +72,9 @@ fun buildInvalidIndexResponse(builder: XContentBuilder, failedIndices: List<Fail
     }
 }
 
-data class FailedIndex(val name: String, val uuid: String, val reason: String) : Writeable, ToXContentFragment {
+data class FailedIndex(val name: String, val uuid: String, val reason: String) :
+    Writeable,
+    ToXContentFragment {
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
             .field(INDEX_NAME_FIELD, name)

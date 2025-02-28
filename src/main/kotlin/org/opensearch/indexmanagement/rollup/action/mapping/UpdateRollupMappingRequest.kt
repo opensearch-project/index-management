@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.rollup.action.mapping
 
 import org.opensearch.action.ActionRequestValidationException
-import org.opensearch.action.support.master.AcknowledgedRequest
+import org.opensearch.action.support.clustermanager.AcknowledgedRequest
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.indexmanagement.rollup.model.Rollup
@@ -22,9 +22,7 @@ class UpdateRollupMappingRequest : AcknowledgedRequest<UpdateRollupMappingReques
         this.rollup = rollup
     }
 
-    override fun validate(): ActionRequestValidationException? {
-        return null
-    }
+    override fun validate(): ActionRequestValidationException? = null
 
     override fun writeTo(out: StreamOutput) {
         super.writeTo(out)

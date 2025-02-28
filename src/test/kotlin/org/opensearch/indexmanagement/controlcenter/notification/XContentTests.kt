@@ -146,9 +146,7 @@ class XContentTests : OpenSearchTestCase() {
     private fun buildMessage(
         itemType: String,
         xContentType: XContentType,
-    ): String {
-        return "$itemType toXContent test failed. xContentType: ${xContentType.subtype()}. "
-    }
+    ): String = "$itemType toXContent test failed. xContentType: ${xContentType.subtype()}. "
 
     private fun <T : ToXContent> parsedItem(
         item: T,

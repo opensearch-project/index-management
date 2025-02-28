@@ -101,7 +101,6 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     protected open fun enableValidationService() {
         updateValidationServiceSetting(true)
     }
-
     protected fun createPolicy(
         policy: Policy,
         policyId: String = OpenSearchTestCase.randomAlphaOfLength(10),
@@ -339,6 +338,42 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         updateClusterSetting(ManagedIndexSettings.ACTION_VALIDATION_ENABLED.key, value.toString(), false)
     }
 
+    protected fun isIndexRemote(indexName: String): Boolean {
+        val response = client().makeRequest("GET", "/$indexName/_settings")
+        assertEquals("Unable to get index settings", RestStatus.OK, response.restStatus())
+        val settingsMap = response.asMap()
+        val indexSettings = (settingsMap[indexName] as Map<*, *>)["settings"] as Map<*, *>
+        val remoteSetting = ((indexSettings["index"] as Map<*, *>)["store"] as Map<*, *>)["type"]?.equals("remote_snapshot")
+        return remoteSetting ?: false
+    }
+
+    protected fun getDoc(indexName: String, docId: String): Map<*, *>? {
+        try {
+            val response = client().makeRequest("GET", "/$indexName/_doc/$docId")
+            if (response.restStatus() == RestStatus.OK) {
+                val responseMap = response.asMap()
+                val source = responseMap["_source"] as Map<*, *>
+                return source
+            }
+        } catch (e: ResponseException) {
+            if (e.response.restStatus() != RestStatus.NOT_FOUND) {
+                throw e
+            }
+        }
+        return null
+    }
+
+    protected fun indexDoc(index: String, id: String? = null, source: String) {
+        val endpoint = if (id != null) "/$index/_doc/$id" else "/$index/_doc"
+        val response = client().makeRequest(
+            "POST",
+            endpoint,
+            emptyMap(),
+            StringEntity(source, ContentType.APPLICATION_JSON),
+        )
+        assertEquals("Failed to index document", RestStatus.CREATED, response.restStatus())
+    }
+
     protected fun updateIndexSetting(
         index: String,
         key: String,
@@ -351,7 +386,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             }
             """.trimIndent()
         val res =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "PUT", "$index/_settings", emptyMap(),
                 StringEntity(body, ContentType.APPLICATION_JSON),
             )
@@ -379,7 +414,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             }
             """.trimIndent()
         val response =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "POST", "$INDEX_MANAGEMENT_INDEX/_search", emptyMap(),
                 StringEntity(request, ContentType.APPLICATION_JSON),
             )
@@ -394,7 +429,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     protected fun getManagedIndexConfigByDocId(id: String): ManagedIndexConfig? {
-        val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$id")
+        val response = adminClient().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$id")
         assertEquals("Request failed", RestStatus.OK, response.restStatus())
         val getResponse = GetResponse.fromXContent(createParser(jsonXContent, response.entity.content))
         assertTrue("Did not find managed index config", getResponse.isExists)
@@ -438,12 +473,10 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         }
     }
 
-    protected fun getExistingManagedIndexConfig(index: String): ManagedIndexConfig {
-        return waitFor {
-            val config = getManagedIndexConfig(index)
-            assertNotNull("ManagedIndexConfig is null", config)
-            config!!
-        }
+    protected fun getExistingManagedIndexConfig(index: String): ManagedIndexConfig = waitFor {
+        val config = getManagedIndexConfig(index)
+        assertNotNull("ManagedIndexConfig is null", config)
+        config!!
     }
 
     protected fun updateManagedIndexConfigStartTime(update: ManagedIndexConfig, desiredStartTimeMillis: Long? = null, retryOnConflict: Int = 0) {
@@ -469,7 +502,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         val waitForActiveShards = if (isMultiNode) "all" else "1"
         val endpoint = "$INDEX_MANAGEMENT_INDEX/_update/${update.id}?wait_for_active_shards=$waitForActiveShards;retry_on_conflict=$retryOnConflict"
         val response =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "POST", endpoint,
                 StringEntity(
                     "{\"doc\":{\"managed_index\":{\"schedule\":{\"interval\":{\"start_time\":" +
@@ -483,7 +516,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     protected fun updateManagedIndexConfigPolicySeqNo(update: ManagedIndexConfig) {
         val response =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "POST", "$INDEX_MANAGEMENT_INDEX/_update/${update.id}",
                 StringEntity(
                     "{\"doc\":{\"managed_index\":{\"policy_seq_no\":\"${update.policySeqNo}\"}}}",
@@ -510,14 +543,12 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     // Useful settings when debugging to prevent timeouts
-    override fun restClientSettings(): Settings {
-        return if (isDebuggingTest || isDebuggingRemoteCluster) {
-            Settings.builder()
-                .put(CLIENT_SOCKET_TIMEOUT, TimeValue.timeValueMinutes(10))
-                .build()
-        } else {
-            super.restClientSettings()
-        }
+    override fun restClientSettings(): Settings = if (isDebuggingTest || isDebuggingRemoteCluster) {
+        Settings.builder()
+            .put(CLIENT_SOCKET_TIMEOUT, TimeValue.timeValueMinutes(10))
+            .build()
+    } else {
+        super.restClientSettings()
     }
 
     // Validate segment count per shard by specifying the min and max it should be
@@ -642,14 +673,10 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     @Suppress("UNCHECKED_CAST")
-    protected fun getIndexShardNodes(indexName: String): List<Any> {
-        return getIndexShards(indexName).map { element -> (element as Map<String, String>)["node"]!! }
-    }
+    protected fun getIndexShardNodes(indexName: String): List<Any> = getIndexShards(indexName).map { element -> (element as Map<String, String>)["node"]!! }
 
     @Suppress("UNCHECKED_CAST")
-    protected fun getIndexShards(indexName: String): List<Any> {
-        return getShardsList().filter { element -> (element as Map<String, String>)["index"]!!.contains(indexName) }
-    }
+    protected fun getIndexShards(indexName: String): List<Any> = getShardsList().filter { element -> (element as Map<String, String>)["index"]!!.contains(indexName) }
 
     @Suppress("UNCHECKED_CAST")
     protected fun getNodes(): MutableSet<String> {
@@ -854,7 +881,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         metadataId: String,
         header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): RollupMetadata {
-        val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, header)
+        val response = adminClient().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, header)
         assertEquals("Unable to get rollup metadata $metadataId", RestStatus.OK, response.restStatus())
 
         val parser = createParser(XContentType.JSON.xContent(), response.entity.content)
@@ -911,7 +938,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         metadataId: String,
         header: BasicHeader = BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     ): TransformMetadata {
-        val response = client().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, header)
+        val response = adminClient().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, header)
         assertEquals("Unable to get transform metadata $metadataId", RestStatus.OK, response.restStatus())
 
         val parser = createParser(XContentType.JSON.xContent(), response.entity.content)
@@ -1177,12 +1204,10 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         }
     }
 
-    override fun xContentRegistry(): NamedXContentRegistry {
-        return NamedXContentRegistry(
-            listOf(
-                ClusterModule.getNamedXWriteables(),
-                SearchModule(Settings.EMPTY, emptyList()).namedXContents,
-            ).flatten(),
-        )
-    }
+    override fun xContentRegistry(): NamedXContentRegistry = NamedXContentRegistry(
+        listOf(
+            ClusterModule.getNamedXWriteables(),
+            SearchModule(Settings.EMPTY, emptyList()).namedXContents,
+        ).flatten(),
+    )
 }

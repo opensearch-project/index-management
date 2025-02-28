@@ -9,14 +9,14 @@ import org.opensearch.ExceptionsHelper
 import org.opensearch.ResourceAlreadyExistsException
 import org.opensearch.action.admin.indices.create.CreateIndexRequest
 import org.opensearch.action.admin.indices.create.CreateIndexResponse
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.IndicesAdminClient
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.action.ActionListener
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.transport.client.IndicesAdminClient
 
 class ControlCenterIndices(
     private val client: IndicesAdminClient,

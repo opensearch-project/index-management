@@ -38,7 +38,5 @@ class ReplicaCountActionParser : ActionParser() {
         )
     }
 
-    override fun getActionType(): String {
-        return ReplicaCountAction.name
-    }
+    override fun getActionType(): String = ReplicaCountAction.name
 }

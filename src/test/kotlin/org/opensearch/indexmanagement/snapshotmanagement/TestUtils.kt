@@ -37,6 +37,7 @@ import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.snapshots.Snapshot
 import org.opensearch.snapshots.SnapshotId
 import org.opensearch.snapshots.SnapshotInfo
+import org.opensearch.snapshots.SnapshotState
 import org.opensearch.test.OpenSearchTestCase.randomAlphaOfLength
 import org.opensearch.test.OpenSearchTestCase.randomBoolean
 import org.opensearch.test.OpenSearchTestCase.randomIntBetween
@@ -58,34 +59,32 @@ fun randomSMMetadata(
     deletionLatestExecution: SMMetadata.LatestExecution? = null,
     creationRetryCount: Int? = null,
     deletionRetryCount: Int? = null,
-): SMMetadata {
-    return SMMetadata(
-        policySeqNo = policySeqNo,
-        policyPrimaryTerm = policyPrimaryTerm,
-        creation =
-        SMMetadata.WorkflowMetadata(
-            currentState = creationCurrentState,
-            trigger =
-            SMMetadata.Trigger(
-                time = nextCreationTime,
-            ),
-            started = if (startedCreation != null) listOf(startedCreation) else null,
-            latestExecution = creationLatestExecution,
-            retry = creationRetryCount?.let { SMMetadata.Retry(it) },
+): SMMetadata = SMMetadata(
+    policySeqNo = policySeqNo,
+    policyPrimaryTerm = policyPrimaryTerm,
+    creation =
+    SMMetadata.WorkflowMetadata(
+        currentState = creationCurrentState,
+        trigger =
+        SMMetadata.Trigger(
+            time = nextCreationTime,
         ),
-        deletion =
-        SMMetadata.WorkflowMetadata(
-            currentState = deletionCurrentState,
-            trigger =
-            SMMetadata.Trigger(
-                time = nextDeletionTime,
-            ),
-            started = startedDeletion,
-            latestExecution = deletionLatestExecution,
-            retry = deletionRetryCount?.let { SMMetadata.Retry(it) },
+        started = if (startedCreation != null) listOf(startedCreation) else null,
+        latestExecution = creationLatestExecution,
+        retry = creationRetryCount?.let { SMMetadata.Retry(it) },
+    ),
+    deletion =
+    SMMetadata.WorkflowMetadata(
+        currentState = deletionCurrentState,
+        trigger =
+        SMMetadata.Trigger(
+            time = nextDeletionTime,
         ),
-    )
-}
+        started = startedDeletion,
+        latestExecution = deletionLatestExecution,
+        retry = deletionRetryCount?.let { SMMetadata.Retry(it) },
+    ),
+)
 
 fun randomLatestExecution(
     status: SMMetadata.LatestExecution.Status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
@@ -177,11 +176,14 @@ fun randomSMState(): SMState = SMState.values()[randomIntBetween(0, SMState.valu
 
 fun randomNotificationConfig(): NotificationConfig = NotificationConfig(randomChannel(), randomConditions())
 
-fun randomConditions(): NotificationConfig.Conditions = NotificationConfig.Conditions(randomBoolean(), randomBoolean(), randomBoolean(), randomBoolean())
+fun randomConditions(): NotificationConfig.Conditions =
+    NotificationConfig.Conditions(randomBoolean(), randomBoolean(), randomBoolean(), randomBoolean())
 
-fun ToXContent.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String = this.toXContent(XContentFactory.jsonBuilder(), params).string()
+fun ToXContent.toJsonString(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): String =
+    this.toXContent(XContentFactory.jsonBuilder(), params).string()
 
-fun ToXContent.toMap(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): Map<String, Any> = this.toXContent(XContentFactory.jsonBuilder(), params).toMap()
+fun ToXContent.toMap(params: ToXContent.Params = ToXContent.EMPTY_PARAMS): Map<String, Any> =
+    this.toXContent(XContentFactory.jsonBuilder(), params).toMap()
 
 fun mockIndexResponse(status: RestStatus = RestStatus.OK): IndexResponse {
     val indexResponse: IndexResponse = mock()
@@ -263,6 +265,16 @@ fun mockInProgressSnapshotInfo(
     return SnapshotInfo(entry)
 }
 
+fun mockSnapshotInfo(
+    name: String = randomAlphaOfLength(10),
+    snapshotState: SnapshotState,
+): SnapshotInfo = SnapshotInfo(
+    SnapshotId(name, UUIDs.randomBase64UUID()),
+    emptyList(),
+    emptyList(),
+    snapshotState,
+)
+
 fun mockGetSnapshotResponse(num: Int): GetSnapshotsResponse {
     val getSnapshotsRes: GetSnapshotsResponse = mock()
     whenever(getSnapshotsRes.snapshots).doReturn(mockSnapshotInfoList(num))
@@ -281,4 +293,5 @@ fun mockSnapshotInfoList(num: Int, namePrefix: String = randomAlphaOfLength(10))
     return result.toList()
 }
 
-fun String.parser(): XContentParser = XContentType.JSON.xContent().createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, this)
+fun String.parser(): XContentParser =
+    XContentType.JSON.xContent().createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, this)

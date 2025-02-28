@@ -11,6 +11,7 @@ import org.opensearch.core.xcontent.XContentParserUtils
 import org.opensearch.indexmanagement.indexstatemanagement.action.AliasActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.CloseActionParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityActionParser
@@ -54,6 +55,7 @@ class ISMActionsParser private constructor() {
             SnapshotActionParser(),
             TransformActionParser(),
             UnfollowActionParser(),
+            ConvertIndexToRemoteActionParser(),
         )
 
     val customActionExtensionMap = mutableMapOf<String, String>()

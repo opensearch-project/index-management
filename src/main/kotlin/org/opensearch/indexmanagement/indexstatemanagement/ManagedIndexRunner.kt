@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement
 
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
@@ -23,7 +24,6 @@ import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.support.IndicesOptions
 import org.opensearch.action.update.UpdateResponse
-import org.opensearch.client.Client
 import org.opensearch.cluster.health.ClusterHealthStatus
 import org.opensearch.cluster.health.ClusterStateHealth
 import org.opensearch.cluster.metadata.IndexMetadata
@@ -86,6 +86,7 @@ import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
+import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
@@ -101,6 +102,7 @@ import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
 import org.opensearch.threadpool.ThreadPool
+import org.opensearch.transport.client.Client
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -121,6 +123,7 @@ object ManagedIndexRunner :
     private lateinit var skipExecFlag: SkipExecution
     private lateinit var threadPool: ThreadPool
     private lateinit var extensionStatusChecker: ExtensionStatusChecker
+    lateinit var indexManagementActionMetrics: IndexManagementActionsMetrics
     private lateinit var indexMetadataProvider: IndexMetadataProvider
     private var indexStateManagementEnabled: Boolean = DEFAULT_ISM_ENABLED
     private var validationServiceEnabled: Boolean = DEFAULT_ACTION_VALIDATION_ENABLED
@@ -221,6 +224,11 @@ object ManagedIndexRunner :
         return this
     }
 
+    fun registerIndexManagementActionMetrics(indexManagementActionsMetrics: IndexManagementActionsMetrics): Any {
+        this.indexManagementActionMetrics = indexManagementActionsMetrics
+        return this
+    }
+
     override fun runJob(job: ScheduledJobParameter, context: JobExecutionContext) {
         if (job !is ManagedIndexConfig) {
             throw IllegalArgumentException("Invalid job type, found ${job.javaClass.simpleName} with id: ${context.jobId}")
@@ -247,6 +255,7 @@ object ManagedIndexRunner :
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     @Suppress("ReturnCount", "ComplexMethod", "LongMethod", "ComplexCondition", "NestedBlockDepth")
     private suspend fun runManagedIndexConfig(managedIndexConfig: ManagedIndexConfig, jobContext: JobExecutionContext) {
         logger.debug("Run job for index ${managedIndexConfig.index}")
@@ -446,7 +455,8 @@ object ManagedIndexRunner :
                     managedIndexConfig.id, settings, threadPool.threadContext, managedIndexConfig.policy.user,
                 ),
             ) {
-                step.preExecute(logger, stepContext.getUpdatedContext(startingManagedIndexMetaData)).execute().postExecute(logger)
+                step.preExecute(logger, stepContext.getUpdatedContext(startingManagedIndexMetaData)).execute()
+                    .postExecute(logger, indexManagementActionMetrics, step, startingManagedIndexMetaData)
             }
             var executedManagedIndexMetaData = startingManagedIndexMetaData.getCompletedManagedIndexMetaData(action, step)
 
@@ -632,6 +642,7 @@ object ManagedIndexRunner :
      * update metadata in config index, and save metadata in history after update
      * this can be called 2 times in one job run, so need to save seqNo & primeTerm
      */
+    @OptIn(DelicateCoroutinesApi::class)
     private suspend fun updateManagedIndexMetaData(
         managedIndexMetaData: ManagedIndexMetaData,
         lastUpdateResult: UpdateMetadataResult? = null,
@@ -811,16 +822,14 @@ object ManagedIndexRunner :
         }
     }
 
-    private fun compileTemplate(template: Script, managedIndexMetaData: ManagedIndexMetaData): String {
-        return try {
-            scriptService.compile(template, TemplateScript.CONTEXT)
-                .newInstance(template.params + mapOf("ctx" to managedIndexMetaData.convertToMap()))
-                .execute()
-        } catch (e: Exception) {
-            val message = "There was an error compiling mustache template"
-            logger.error(message, e)
-            e.message ?: message
-        }
+    private fun compileTemplate(template: Script, managedIndexMetaData: ManagedIndexMetaData): String = try {
+        scriptService.compile(template, TemplateScript.CONTEXT)
+            .newInstance(template.params + mapOf("ctx" to managedIndexMetaData.convertToMap()))
+            .execute()
+    } catch (e: Exception) {
+        val message = "There was an error compiling mustache template"
+        logger.error(message, e)
+        e.message ?: message
     }
 
     private fun clusterIsRed(): Boolean = ClusterStateHealth(clusterService.state()).status == ClusterHealthStatus.RED
@@ -849,23 +858,21 @@ object ManagedIndexRunner :
     // TODO: This is a hacky solution to get the current start time off the job interval as job-scheduler currently does not
     //  make this public, long term solution is to make the changes in job-scheduler, cherry-pick back into ISM supported versions and
     //  republish job-scheduler spi to maven, in the interim we will parse the current interval start time
-    private suspend fun getIntervalStartTime(managedIndexConfig: ManagedIndexConfig): Instant {
-        return withContext(Dispatchers.IO) {
-            val intervalJsonString = managedIndexConfig.schedule.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string()
-            val xcp = XContentType.JSON.xContent().createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, intervalJsonString)
-            ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp) // start of schedule block
-            ensureExpectedToken(Token.FIELD_NAME, xcp.nextToken(), xcp) // "interval"
-            ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp) // start of interval block
-            var startTime: Long? = null
-            while (xcp.nextToken() != Token.END_OBJECT) {
-                val fieldName = xcp.currentName()
-                xcp.nextToken()
-                when (fieldName) {
-                    "start_time" -> startTime = xcp.longValue()
-                }
+    private suspend fun getIntervalStartTime(managedIndexConfig: ManagedIndexConfig): Instant = withContext(Dispatchers.IO) {
+        val intervalJsonString = managedIndexConfig.schedule.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string()
+        val xcp = XContentType.JSON.xContent().createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, intervalJsonString)
+        ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp) // start of schedule block
+        ensureExpectedToken(Token.FIELD_NAME, xcp.nextToken(), xcp) // "interval"
+        ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp) // start of interval block
+        var startTime: Long? = null
+        while (xcp.nextToken() != Token.END_OBJECT) {
+            val fieldName = xcp.currentName()
+            xcp.nextToken()
+            when (fieldName) {
+                "start_time" -> startTime = xcp.longValue()
             }
-            Instant.ofEpochMilli(requireNotNull(startTime))
         }
+        Instant.ofEpochMilli(requireNotNull(startTime))
     }
 
     /**

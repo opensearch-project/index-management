@@ -150,7 +150,7 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
     fun `test mappings after policy creation`() {
         createRandomPolicy()
 
-        val response = client().makeRequest("GET", "/$INDEX_MANAGEMENT_INDEX/_mapping")
+        val response = adminClient().makeRequest("GET", "/$INDEX_MANAGEMENT_INDEX/_mapping")
         val parserMap =
             createParser(XContentType.JSON.xContent(), response.entity.content).map() as Map<String, Map<String, Any>>
         val mappingsMap = parserMap[INDEX_MANAGEMENT_INDEX]!!["mappings"] as Map<String, Any>
@@ -271,7 +271,7 @@ class IndexStateManagementRestApiIT : IndexStateManagementRestTestCase() {
             }
             """.trimIndent()
         val response =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "POST", "$INDEX_MANAGEMENT_INDEX/_search", emptyMap(),
                 StringEntity(request, ContentType.APPLICATION_JSON),
             )

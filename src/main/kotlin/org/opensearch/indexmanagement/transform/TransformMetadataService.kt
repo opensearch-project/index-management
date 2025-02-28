@@ -15,7 +15,6 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
-import org.opensearch.client.Client
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
@@ -32,6 +31,7 @@ import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.transform.model.TransformStats
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.hashToFixedSize
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.Client
 import java.time.Instant
 
 @SuppressWarnings("ReturnCount")
@@ -39,26 +39,24 @@ class TransformMetadataService(private val client: Client, val xContentRegistry:
     private val logger = LogManager.getLogger(javaClass)
 
     @Suppress("BlockingMethodInNonBlockingContext")
-    suspend fun getMetadata(transform: Transform): TransformMetadata {
-        return if (transform.metadataId != null) {
-            // update metadata
-            val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, transform.metadataId).routing(transform.id)
-            val response: GetResponse = client.suspendUntil { get(getRequest, it) }
-            val metadataSource = response.sourceAsBytesRef
-            val transformMetadata =
-                metadataSource?.let {
-                    withContext(Dispatchers.IO) {
-                        val xcp = XContentHelper.createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, metadataSource, XContentType.JSON)
-                        xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, TransformMetadata.Companion::parse)
-                    }
+    suspend fun getMetadata(transform: Transform): TransformMetadata = if (transform.metadataId != null) {
+        // update metadata
+        val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, transform.metadataId).routing(transform.id)
+        val response: GetResponse = client.suspendUntil { get(getRequest, it) }
+        val metadataSource = response.sourceAsBytesRef
+        val transformMetadata =
+            metadataSource?.let {
+                withContext(Dispatchers.IO) {
+                    val xcp = XContentHelper.createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, metadataSource, XContentType.JSON)
+                    xcp.parseWithType(response.id, response.seqNo, response.primaryTerm, TransformMetadata.Companion::parse)
                 }
-            // TODO: Should we attempt to create a new document instead if failed to parse, the only reason this can happen is if someone deleted
-            //  the metadata doc?
-            transformMetadata ?: throw TransformMetadataException("Failed to parse the existing metadata document")
-        } else {
-            logger.debug("Creating metadata doc as none exists at the moment for transform job [${transform.id}]")
-            createMetadata(transform)
-        }
+            }
+        // TODO: Should we attempt to create a new document instead if failed to parse, the only reason this can happen is if someone deleted
+        //  the metadata doc?
+        transformMetadata ?: throw TransformMetadataException("Failed to parse the existing metadata document")
+    } else {
+        logger.debug("Creating metadata doc as none exists at the moment for transform job [${transform.id}]")
+        createMetadata(transform)
     }
 
     private suspend fun createMetadata(transform: Transform): TransformMetadata {

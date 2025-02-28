@@ -6,7 +6,7 @@
 package org.opensearch.indexmanagement.transform.action.start
 
 import org.opensearch.action.ActionType
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 
 class StartTransformAction private constructor() : ActionType<AcknowledgedResponse>(NAME, ::AcknowledgedResponse) {
     companion object {

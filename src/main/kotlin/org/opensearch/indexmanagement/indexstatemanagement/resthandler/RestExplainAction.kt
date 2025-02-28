@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.client.node.NodeClient
 import org.opensearch.common.logging.DeprecationLogger
 import org.opensearch.core.common.Strings
 import org.opensearch.core.xcontent.XContentParser.Token
@@ -33,6 +32,7 @@ import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.GET
 import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.action.RestToXContentListener
+import org.opensearch.transport.client.node.NodeClient
 
 private val log = LogManager.getLogger(RestExplainAction::class.java)
 
@@ -42,34 +42,28 @@ class RestExplainAction : BaseRestHandler() {
         const val LEGACY_EXPLAIN_BASE_URI = "$LEGACY_ISM_BASE_URI/explain"
     }
 
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                GET, EXPLAIN_BASE_URI,
-                GET, LEGACY_EXPLAIN_BASE_URI,
-            ),
-            ReplacedRoute(
-                GET, "$EXPLAIN_BASE_URI/{index}",
-                GET, "$LEGACY_EXPLAIN_BASE_URI/{index}",
-            ),
-            ReplacedRoute(
-                POST, EXPLAIN_BASE_URI,
-                POST, LEGACY_EXPLAIN_BASE_URI,
-            ),
-            ReplacedRoute(
-                POST, "$EXPLAIN_BASE_URI/{index}",
-                POST, "$LEGACY_EXPLAIN_BASE_URI/{index}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            GET, EXPLAIN_BASE_URI,
+            GET, LEGACY_EXPLAIN_BASE_URI,
+        ),
+        ReplacedRoute(
+            GET, "$EXPLAIN_BASE_URI/{index}",
+            GET, "$LEGACY_EXPLAIN_BASE_URI/{index}",
+        ),
+        ReplacedRoute(
+            POST, EXPLAIN_BASE_URI,
+            POST, LEGACY_EXPLAIN_BASE_URI,
+        ),
+        ReplacedRoute(
+            POST, "$EXPLAIN_BASE_URI/{index}",
+            POST, "$LEGACY_EXPLAIN_BASE_URI/{index}",
+        ),
+    )
 
-    override fun getName(): String {
-        return "ism_explain_action"
-    }
+    override fun getName(): String = "ism_explain_action"
 
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
         log.debug("${request.method()} ${request.path()}")

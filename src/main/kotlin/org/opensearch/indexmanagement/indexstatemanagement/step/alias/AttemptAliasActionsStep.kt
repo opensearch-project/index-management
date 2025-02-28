@@ -7,7 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.step.alias
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.indexmanagement.indexstatemanagement.action.AliasAction
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
@@ -61,13 +61,11 @@ class AttemptAliasActionsStep(private val action: AliasAction) : Step(name) {
         }
     }
 
-    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
-        return currentMetadata.copy(
-            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
-            transitionTo = null,
-            info = info,
-        )
-    }
+    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData = currentMetadata.copy(
+        stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
+        transitionTo = null,
+        info = info,
+    )
 
     override fun isIdempotent() = true
 

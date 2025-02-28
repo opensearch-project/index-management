@@ -20,9 +20,7 @@ class ReadWriteAction(
     private val setReadWriteStep = SetReadWriteStep()
     private val steps = listOf(setReadWriteStep)
 
-    override fun getStepToExecute(context: StepContext): Step {
-        return setReadWriteStep
-    }
+    override fun getStepToExecute(context: StepContext): Step = setReadWriteStep
 
     override fun getSteps(): List<Step> = steps
 }

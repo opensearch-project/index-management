@@ -41,9 +41,7 @@ class SampleCustomActionParser : ActionParser() {
         return SampleCustomAction(someInt = requireNotNull(someInt) { "SomeInt field must be specified" }, index)
     }
 
-    override fun getActionType(): String {
-        return SampleCustomAction.name
-    }
+    override fun getActionType(): String = SampleCustomAction.name
 
     class SampleCustomAction(val someInt: Int, index: Int) : Action(name, index) {
         private val sampleCustomStep = SampleCustomStep()
@@ -78,13 +76,11 @@ class SampleCustomActionParser : ActionParser() {
             return this
         }
 
-        override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
-            return currentMetadata.copy(
-                stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
-                transitionTo = null,
-                info = null,
-            )
-        }
+        override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData = currentMetadata.copy(
+            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
+            transitionTo = null,
+            info = null,
+        )
 
         override fun isIdempotent(): Boolean = true
 

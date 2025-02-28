@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
-import org.opensearch.client.node.NodeClient
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.core.common.Strings
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ISM_BASE_URI
@@ -21,27 +20,24 @@ import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.action.RestToXContentListener
+import org.opensearch.transport.client.node.NodeClient
 import java.io.IOException
 
 class RestAddPolicyAction : BaseRestHandler() {
     override fun getName(): String = "add_policy_action"
 
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                POST, ADD_POLICY_BASE_URI,
-                POST, LEGACY_ADD_POLICY_BASE_URI,
-            ),
-            ReplacedRoute(
-                POST, "$ADD_POLICY_BASE_URI/{index}",
-                POST, "$LEGACY_ADD_POLICY_BASE_URI/{index}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            POST, ADD_POLICY_BASE_URI,
+            POST, LEGACY_ADD_POLICY_BASE_URI,
+        ),
+        ReplacedRoute(
+            POST, "$ADD_POLICY_BASE_URI/{index}",
+            POST, "$LEGACY_ADD_POLICY_BASE_URI/{index}",
+        ),
+    )
 
     @Throws(IOException::class)
     @Suppress("SpreadOperator") // There is no way around dealing with java vararg without spread operator.

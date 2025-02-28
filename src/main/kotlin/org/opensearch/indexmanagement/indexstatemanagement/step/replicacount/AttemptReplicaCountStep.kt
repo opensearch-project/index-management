@@ -8,7 +8,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.step.replicacount
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPLICAS
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountAction
@@ -64,13 +64,11 @@ class AttemptReplicaCountStep(private val action: ReplicaCountAction) : Step(nam
         info = mutableInfo.toMap()
     }
 
-    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
-        return currentMetadata.copy(
-            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
-            transitionTo = null,
-            info = info,
-        )
-    }
+    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData = currentMetadata.copy(
+        stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
+        transitionTo = null,
+        info = info,
+    )
 
     override fun isIdempotent() = true
 

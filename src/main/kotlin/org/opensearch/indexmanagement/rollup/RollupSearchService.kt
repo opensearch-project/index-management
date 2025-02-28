@@ -12,7 +12,6 @@ import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.search.SearchPhaseExecutionException
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.search.TransportSearchAction.SEARCH_CANCEL_AFTER_TIME_INTERVAL_SETTING
-import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
@@ -28,6 +27,7 @@ import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.R
 import org.opensearch.indexmanagement.rollup.util.getRollupSearchRequest
 import org.opensearch.search.aggregations.MultiBucketConsumerService
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.Client
 import java.time.Instant
 import kotlin.math.max
 import kotlin.math.pow
@@ -99,53 +99,51 @@ class RollupSearchService(
     }
 
     @Suppress("ComplexMethod")
-    suspend fun executeCompositeSearch(job: Rollup, metadata: RollupMetadata): RollupSearchResult {
-        return try {
-            var retryCount = 0
-            RollupSearchResult.Success(
-                retrySearchPolicy.retry(logger) {
-                    val decay = 2f.pow(retryCount++)
-                    client.suspendUntil { listener: ActionListener<SearchResponse> ->
-                        val pageSize = max(1, job.pageSize.div(decay.toInt()))
-                        if (decay > 1) {
-                            logger.warn(
-                                "Composite search failed for rollup, retrying [#${retryCount - 1}] -" +
-                                    " reducing page size of composite aggregation from ${job.pageSize} to $pageSize",
-                            )
-                        }
-
-                        val searchRequest = job.copy(pageSize = pageSize).getRollupSearchRequest(metadata)
-                        val cancelTimeoutTimeValue = TimeValue.timeValueMinutes(getCancelAfterTimeInterval(cancelAfterTimeInterval.minutes))
-                        searchRequest.cancelAfterTimeInterval = cancelTimeoutTimeValue
-
-                        search(searchRequest, listener)
+    suspend fun executeCompositeSearch(job: Rollup, metadata: RollupMetadata): RollupSearchResult = try {
+        var retryCount = 0
+        RollupSearchResult.Success(
+            retrySearchPolicy.retry(logger) {
+                val decay = 2f.pow(retryCount++)
+                client.suspendUntil { listener: ActionListener<SearchResponse> ->
+                    val pageSize = max(1, job.pageSize.div(decay.toInt()))
+                    if (decay > 1) {
+                        logger.warn(
+                            "Composite search failed for rollup, retrying [#${retryCount - 1}] -" +
+                                " reducing page size of composite aggregation from ${job.pageSize} to $pageSize",
+                        )
                     }
-                },
-            )
-        } catch (e: SearchPhaseExecutionException) {
-            logger.error(e.message, e.cause)
-            if (e.shardFailures().isEmpty()) {
-                RollupSearchResult.Failure(cause = ExceptionsHelper.unwrapCause(e) as Exception)
-            } else {
-                val shardFailure = e.shardFailures().reduce { s1, s2 -> if (s1.status().status > s2.status().status) s1 else s2 }
-                RollupSearchResult.Failure(cause = ExceptionsHelper.unwrapCause(shardFailure.cause) as Exception)
-            }
-        } catch (e: RemoteTransportException) {
-            logger.error(e.message, e.cause)
+
+                    val searchRequest = job.copy(pageSize = pageSize).getRollupSearchRequest(metadata)
+                    val cancelTimeoutTimeValue = TimeValue.timeValueMinutes(getCancelAfterTimeInterval(cancelAfterTimeInterval.minutes))
+                    searchRequest.cancelAfterTimeInterval = cancelTimeoutTimeValue
+
+                    search(searchRequest, listener)
+                }
+            },
+        )
+    } catch (e: SearchPhaseExecutionException) {
+        logger.error(e.message, e.cause)
+        if (e.shardFailures().isEmpty()) {
             RollupSearchResult.Failure(cause = ExceptionsHelper.unwrapCause(e) as Exception)
-        } catch (e: CircuitBreakingException) {
-            logger.error(e.message, e.cause)
-            RollupSearchResult.Failure(cause = e)
-        } catch (e: MultiBucketConsumerService.TooManyBucketsException) {
-            logger.error(e.message, e.cause)
-            RollupSearchResult.Failure(cause = e)
-        } catch (e: OpenSearchSecurityException) {
-            logger.error(e.message, e.cause)
-            RollupSearchResult.Failure("Cannot search data in source index/s - missing required index permissions: ${e.localizedMessage}", e)
-        } catch (e: Exception) {
-            logger.error(e.message, e.cause)
-            RollupSearchResult.Failure(cause = e)
+        } else {
+            val shardFailure = e.shardFailures().reduce { s1, s2 -> if (s1.status().status > s2.status().status) s1 else s2 }
+            RollupSearchResult.Failure(cause = ExceptionsHelper.unwrapCause(shardFailure.cause) as Exception)
         }
+    } catch (e: RemoteTransportException) {
+        logger.error(e.message, e.cause)
+        RollupSearchResult.Failure(cause = ExceptionsHelper.unwrapCause(e) as Exception)
+    } catch (e: CircuitBreakingException) {
+        logger.error(e.message, e.cause)
+        RollupSearchResult.Failure(cause = e)
+    } catch (e: MultiBucketConsumerService.TooManyBucketsException) {
+        logger.error(e.message, e.cause)
+        RollupSearchResult.Failure(cause = e)
+    } catch (e: OpenSearchSecurityException) {
+        logger.error(e.message, e.cause)
+        RollupSearchResult.Failure("Cannot search data in source index/s - missing required index permissions: ${e.localizedMessage}", e)
+    } catch (e: Exception) {
+        logger.error(e.message, e.cause)
+        RollupSearchResult.Failure(cause = e)
     }
 
     private fun getCancelAfterTimeInterval(givenInterval: Long): Long {

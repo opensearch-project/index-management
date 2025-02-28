@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 21
+    "schema_version": 23
   },
   "dynamic": "strict",
   "properties": {
@@ -219,6 +219,16 @@
                     }
                   }
                 },
+                "convert_index_to_remote": {
+                  "properties": {
+                    "repository": {
+                      "type": "keyword"
+                    },
+                    "snapshot": {
+                      "type": "keyword"
+                    }
+                  }
+                },
                 "rollover": {
                   "properties": {
                     "min_size": {
@@ -372,6 +382,10 @@
                               "ignore_above": 256
                             }
                           }
+                        },
+                        "target_index_settings": {
+                          "dynamic": "true",
+                          "type": "object"
                         },
                         "page_size": {
                           "type": "long"
@@ -996,6 +1010,10 @@
               "ignore_above": 256
             }
           }
+        },
+        "target_index_settings": {
+          "dynamic": "true",
+          "type": "object"
         },
         "page_size": {
           "type": "long"

@@ -7,8 +7,10 @@ package org.opensearch.indexmanagement.rollup.runner
 
 import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
+import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.index.engine.EngineConfig
 import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
@@ -77,6 +79,69 @@ class RollupRunnerIT : RollupRestTestCase() {
     }
 
     @Suppress("UNCHECKED_CAST")
+    fun `test rollup with creating target index with specific settings`() {
+        val sourceIdxTestName = "source_idx_test_settings"
+        val targetIdxTestName = "target_idx_test_settings"
+        val targetIndexReplicas = 0
+        val targetIndexCodec = "best_compression"
+        generateNYCTaxiData(sourceIdxTestName)
+
+        val rollup =
+            Rollup(
+                id = testName,
+                schemaVersion = 1L,
+                enabled = true,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "basic stats test",
+                sourceIndex = sourceIdxTestName,
+                targetIndex = targetIdxTestName,
+                targetIndexSettings = Settings.builder()
+                    .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, targetIndexReplicas)
+                    .put(EngineConfig.INDEX_CODEC_SETTING.key, targetIndexCodec)
+                    .build(),
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 100,
+                delay = 0,
+                continuous = false,
+                dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
+                metrics =
+                listOf(
+                    RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Average())),
+                ),
+            ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollup)
+
+        waitFor { assertTrue("Target rollup index was not created", indexExists(rollup.targetIndex)) }
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+
+            val rawRes = client().makeRequest(RestRequest.Method.GET.name, "/$targetIdxTestName/_settings", mapOf("flat_settings" to "true"))
+            assertTrue(rawRes.restStatus() == RestStatus.OK)
+            val indexSettingsRes = rawRes.asMap()[targetIdxTestName] as Map<String, Map<String, Any>>
+            val settingsRes = indexSettingsRes["settings"]
+            assertNotNull("Rollup index did not have any settings", settingsRes)
+            assertEquals(
+                "Rollup index did not have correct codec setting",
+                targetIndexCodec,
+                settingsRes?.getValue(EngineConfig.INDEX_CODEC_SETTING.key),
+            )
+            assertEquals(
+                "Rollup index did not have correct replicas setting",
+                targetIndexReplicas.toString(),
+                settingsRes?.getValue(IndexMetadata.SETTING_NUMBER_OF_REPLICAS),
+            )
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
     fun `test rollup with avg metric`() {
         val sourceIdxTestName = "source_idx_test"
         val targetIdxTestName = "target_idx_test"
@@ -96,6 +161,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                 description = "basic stats test",
                 sourceIndex = sourceIdxTestName,
                 targetIndex = targetIdxTestName,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 100,
@@ -387,6 +453,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                 description = "basic stats test",
                 sourceIndex = "source_runner_fifth",
                 targetIndex = "target_runner_fifth",
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 100,
@@ -410,6 +477,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                 description = "basic stats test",
                 sourceIndex = "source_runner_fifth",
                 targetIndex = "target_runner_fifth",
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 100,
@@ -433,6 +501,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                 description = "basic 1s test",
                 sourceIndex = "source_runner_fifth",
                 targetIndex = "target_runner_fifth",
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 100,
@@ -539,6 +608,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                 description = "basic change of page size",
                 sourceIndex = "source_runner_sixth",
                 targetIndex = "target_runner_sixth",
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 1,
@@ -602,6 +672,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                 description = "basic page size",
                 sourceIndex = "source_runner_seventh",
                 targetIndex = "target_runner_seventh",
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 100,
@@ -638,6 +709,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                 description = "basic page size",
                 sourceIndex = "source_runner_seventh",
                 targetIndex = "new_target_runner_seventh",
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 100,
@@ -732,6 +804,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                 description = "basic delay test",
                 sourceIndex = "source_runner_ninth",
                 targetIndex = "target_runner_ninth",
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 100,
@@ -798,6 +871,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                 description = "basic delay test",
                 sourceIndex = "source_runner_tenth",
                 targetIndex = "target_runner_tenth",
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 100,
@@ -867,6 +941,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                 description = "basic change of page size",
                 sourceIndex = "source_runner_sixth_eleventh_1",
                 targetIndex = indexAlias,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 1000,
@@ -959,6 +1034,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                 description = "basic change of page size",
                 sourceIndex = "source_runner_sixth_29932",
                 targetIndex = indexAlias,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 1000,
@@ -1060,6 +1136,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                 description = "basic change of page size",
                 sourceIndex = "source_runner_sixth_2123",
                 targetIndex = indexAlias,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 1000,
@@ -1179,6 +1256,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                 description = "basic change of page size",
                 sourceIndex = "source_runner_sixth_2209",
                 targetIndex = indexAlias,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 1000,
@@ -1271,6 +1349,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                 description = "basic change of page size",
                 sourceIndex = "source_runner_sixth_1532209",
                 targetIndex = indexAlias,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 1000,
@@ -1347,6 +1426,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                 description = "basic change of page size",
                 sourceIndex = index,
                 targetIndex = rollupIndex,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 1000,
@@ -1398,6 +1478,7 @@ class RollupRunnerIT : RollupRestTestCase() {
                 description = "basic stats test",
                 sourceIndex = sourceIdxTestName,
                 targetIndex = targetIdxTestName,
+                targetIndexSettings = null,
                 metadataID = null,
                 roles = emptyList(),
                 pageSize = 100,
@@ -1466,7 +1547,7 @@ class RollupRunnerIT : RollupRestTestCase() {
     // - Source index with pattern mapping to some closed indices
 
     private fun deleteRollupMetadata(metadataId: String) {
-        val response = client().makeRequest("DELETE", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_doc/$metadataId")
+        val response = adminClient().makeRequest("DELETE", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_doc/$metadataId")
         assertEquals("Unable to delete rollup metadata $metadataId", RestStatus.OK, response.restStatus())
     }
 }

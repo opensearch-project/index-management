@@ -11,7 +11,6 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
-import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
@@ -27,6 +26,7 @@ import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 import java.lang.Exception
 
 class TransportGetRollupAction
@@ -38,7 +38,7 @@ constructor(
     val settings: Settings,
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
-) : HandledTransportAction<GetRollupRequest, GetRollupResponse> (
+) : HandledTransportAction<GetRollupRequest, GetRollupResponse>(
     GetRollupAction.NAME, transportService, actionFilters, ::GetRollupRequest,
 ) {
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)

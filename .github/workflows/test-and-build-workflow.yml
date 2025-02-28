@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
       # This starts three jobs, setting these environment variables uniquely for the different jobs
       matrix:
-        java: [11, 17, 21]
+        java: [21]
         feature: [ism, non-ism]
         include:
           - feature: ism
@@ -34,19 +34,20 @@ jobs:
       # using the same image which is used by opensearch-build team to build the OpenSearch Distribution
       # this image tag is subject to change as more dependencies and updates will arrive over time
       image: ${{ needs.Get-CI-Image-Tag.outputs.ci-image-version-linux }}
-      # need to switch to root so that github actions can install runner binary on container without permission issues.
-      options: --user root
+      options: ${{ needs.Get-CI-Image-Tag.outputs.ci-image-start-options }}
 
     steps:
+      - name: Run start commands
+        run: ${{ needs.Get-CI-Image-Tag.outputs.ci-image-start-command }}
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
       - name: Set Up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
           distribution: temurin # Temurin is a distribution of adoptium
           java-version: ${{ matrix.java }}
       # build index management
       - name: Checkout Branch
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       # This is a hack, but this step creates a link to the X: mounted drive, which makes the path
       # short enough to work on Windows
       - name: Build with Gradle
@@ -54,25 +55,28 @@ jobs:
           chown -R 1000:1000 `pwd`
           su `id -un 1000` -c "./gradlew build ${{ env.TEST_FILTER }}"
       - name: Upload failed logs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
-          name: logs
+          name: logs-${{ matrix.java }}-${{ matrix.feature }}
           path: build/testclusters/integTest-*/logs/*
+          overwrite: 'true'
       - name: Create Artifact Path
         run: |
           mkdir -p index-management-artifacts
           cp ./build/distributions/*.zip index-management-artifacts
       - name: Uploads coverage
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
       # This step uses the upload-artifact Github action: https://github.com/actions/upload-artifact
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v1
+        # v4 requires node.js 20 which is not supported
+        uses: actions/upload-artifact@v4
         with:
-          name: index-management-plugin-ubuntu-latest
+          name: index-management-plugin-ubuntu-latest-${{ matrix.java }}
           path: index-management-artifacts
+          overwrite: 'true'
 
   test-and-build-windows-macos:
     env:
@@ -84,7 +88,7 @@ jobs:
       fail-fast: false
       # This starts three jobs, setting these environment variables uniquely for the different jobs
       matrix:
-        java: [11, 17, 21]
+        java: [21]
         os: [windows-latest, macos-latest]
         feature: [ism, non-ism]
         include:
@@ -102,13 +106,13 @@ jobs:
     steps:
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
       - name: Set Up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
           distribution: temurin # Temurin is a distribution of adoptium
           java-version: ${{ matrix.java }}
       # build index management
       - name: Checkout Branch
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       # This is a hack, but this step creates a link to the X: mounted drive, which makes the path
       # short enough to work on Windows
       - name: Shorten Path
@@ -125,7 +129,8 @@ jobs:
           cp ./build/distributions/*.zip index-management-artifacts
       # This step uses the upload-artifact Github action: https://github.com/actions/upload-artifact
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
-          name: index-management-plugin-${{ matrix.os }}
+          name: index-management-plugin-${{ matrix.os }}-${{ matrix.java }}
           path: index-management-artifacts
+          overwrite: 'true'

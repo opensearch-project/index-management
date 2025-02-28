@@ -119,7 +119,7 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
 
     protected fun getTransformMetadata(metadataId: String): TransformMetadata {
         val response =
-            client().makeRequest(
+            adminClient().makeRequest(
                 "GET", "$INDEX_MANAGEMENT_INDEX/_doc/$metadataId", null, BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
             )
         assertEquals("Unable to get transform metadata $metadataId", RestStatus.OK, response.restStatus())
@@ -222,7 +222,5 @@ abstract class TransformRestTestCase : IndexManagementRestTestCase() {
 
     protected fun Transform.toHttpEntity(): HttpEntity = StringEntity(toJsonString(), ContentType.APPLICATION_JSON)
 
-    override fun xContentRegistry(): NamedXContentRegistry {
-        return NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents)
-    }
+    override fun xContentRegistry(): NamedXContentRegistry = NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents)
 }
