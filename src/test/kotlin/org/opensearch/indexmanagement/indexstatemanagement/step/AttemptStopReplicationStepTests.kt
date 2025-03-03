@@ -142,7 +142,6 @@ class AttemptStopReplicationStepTests : OpenSearchTestCase() {
             val attemptStopReplicationStep = AttemptStopReplicationStep()
             attemptStopReplicationStep.preExecute(logger, context).execute()
             val updatedManagedIndexMetaData = attemptStopReplicationStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
-            println("Step status for 3rd test: " + updatedManagedIndexMetaData.stepMetaData?.stepStatus)
             assertEquals(
                 "Step status is not FAILED",
                 Step.StepStatus.FAILED,
