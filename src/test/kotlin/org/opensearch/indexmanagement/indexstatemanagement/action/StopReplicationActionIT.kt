@@ -50,7 +50,6 @@ class StopReplicationActionIT : IndexStateManagementRestTestCase() {
         // Change the start time so the job will trigger in 2 seconds.
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            print("Output of metadata - " + getExplainManagedIndexMetaData(indexName).toString())
             // Expecting the step to fail as there's no replication in progress on this index
             assertEquals(Step.StepStatus.FAILED, getExplainManagedIndexMetaData(indexName).stepMetaData?.stepStatus)
             assertTrue(
