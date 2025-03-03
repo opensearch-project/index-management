@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 23
+    "schema_version": 24
   },
   "dynamic": "strict",
   "properties": {
@@ -168,6 +168,9 @@
                   }
                 },
                 "delete": {
+                  "type": "object"
+                },
+                "stop_replication": {
                   "type": "object"
                 },
                 "force_merge": {
