@@ -67,8 +67,6 @@ buildscript {
 
         security_plugin_version = System.getProperty("security.version", opensearch_build)
         ccr_version = System.getProperty("ccr.version", opensearch_build)
-        ccr_build_download = 'http://localhost:8000/opensearch-cross-cluster-replication-3.0.0.0-SNAPSHOT.zip'
-        ccr_resource_folder = "src/test/resources/replication"
     }
 
     repositories {
@@ -234,7 +232,6 @@ dependencies {
     testImplementation "org.jetbrains.kotlin:kotlin-test:${kotlin_version}"
     testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
     testImplementation "org.mockito:mockito-core:${versions.mockito}"
-    testImplementation "org.mockito:mockito-inline:4.11.0"
 
     add("ktlint", "com.pinterest.ktlint:ktlint-cli:1.5.0") {
         attributes {
@@ -250,6 +247,7 @@ dependencies {
     opensearchPlugin "org.opensearch.plugin:opensearch-notifications-core:${notifications_version}@zip"
     opensearchPlugin "org.opensearch.plugin:notifications:${notifications_version}@zip"
     opensearchPlugin "org.opensearch.plugin:opensearch-security:${security_plugin_version}@zip"
+    opensearchPlugin "org.opensearch.plugin:opensearch-cross-cluster-replication:${ccr_version}@zip"
 }
 
 repositories {
@@ -415,24 +413,6 @@ testClusters.integTest {
         plugin(provider(securityPluginFile))
     }
     plugin(provider(ccrFile))
-    /*plugin(provider(new Callable<RegularFile>(){
-        @Override
-        RegularFile call() throws Exception {
-            return new RegularFile() {
-                @Override
-                File getAsFile() {
-                    if (new File("$project.rootDir/$ccr_resource_folder").exists()) {
-                        project.delete(files("$project.rootDir/$ccr_resource_folder"))
-                    }
-                    project.mkdir ccr_resource_folder
-                    ant.get(src: ccr_build_download,
-                            dest: ccr_resource_folder,
-                            httpusecaches: false)
-                    return fileTree(ccr_resource_folder).getSingleFile()
-                }
-            }
-        }
-    }))*/
     setting 'path.repo', repo.absolutePath
 }
 

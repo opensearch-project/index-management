@@ -11,20 +11,18 @@ import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
 
-class UnfollowActionParser : ActionParser() {
+class StopReplicationActionParser : ActionParser() {
     override fun fromStreamInput(sin: StreamInput): Action {
         val index = sin.readInt()
-        return UnfollowAction(index)
+        return StopReplicationAction(index)
     }
 
     override fun fromXContent(xcp: XContentParser, index: Int): Action {
         ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
         ensureExpectedToken(XContentParser.Token.END_OBJECT, xcp.nextToken(), xcp)
 
-        return UnfollowAction(index)
+        return StopReplicationAction(index)
     }
 
-    override fun getActionType(): String {
-        return UnfollowAction.name
-    }
+    override fun getActionType(): String = StopReplicationAction.name
 }

@@ -13,8 +13,9 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.Validate
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.indices.InvalidIndexNameException
 import org.opensearch.monitor.jvm.JvmService
+
 @OpenForTesting
-class ValidateUnfollow(
+class ValidateStopReplication(
     settings: Settings,
     clusterService: ClusterService,
     jvmService: JvmService,
@@ -23,7 +24,7 @@ class ValidateUnfollow(
 
     @Suppress("ReturnSuppressCount", "ReturnCount")
     override fun execute(indexName: String): Validate {
-        // if these conditions are false, fail validation and do not execute unfollow action
+        // if these conditions are false, fail validation and do not execute stop_replication action
         if (!indexExists(indexName) || !validIndex(indexName)) {
             validationStatus = ValidationStatus.FAILED
             return this
@@ -60,12 +61,12 @@ class ValidateUnfollow(
 
     @Suppress("TooManyFunctions")
     companion object {
-        const val name = "validate_unfollow"
+        const val name = "validate_stop_replication"
 
-        fun getNoIndexMessage(index: String) = "No such index [index=$index] for unfollow action."
+        fun getNoIndexMessage(index: String) = "No such index [index=$index] for stop replication action."
 
-        fun getIndexNotValidMessage(index: String) = "Index [index=$index] is not valid. Abort unfollow action on it."
+        fun getIndexNotValidMessage(index: String) = "Index [index=$index] is not valid. Abort stop replication action on it."
 
-        fun getValidationPassedMessage(index: String) = "Unfollow action validation passed for [index=$index]"
+        fun getValidationPassedMessage(index: String) = "Stop replication action validation passed for [index=$index]"
     }
 }

@@ -3,12 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.indexstatemanagement.step.unfollow
+package org.opensearch.indexmanagement.indexstatemanagement.step.stopreplication
 
 import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.node.NodeClient
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.commons.replication.ReplicationPluginInterface
 import org.opensearch.commons.replication.action.StopIndexReplicationRequest
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -17,7 +16,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.snapshots.SnapshotInProgressException
 import org.opensearch.transport.RemoteTransportException
-class AttemptUnfollowStep : Step(name) {
+
+class AttemptStopReplicationStep : Step(name) {
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
@@ -27,15 +27,13 @@ class AttemptUnfollowStep : Step(name) {
         val indexName = context.metadata.index
         try {
             val stopIndexReplicationRequestObj = StopIndexReplicationRequest(indexName)
-            /*val response: AcknowledgedResponse =
-                ReplicationPluginInterface.suspendUntil {
-                    this.stopReplication(
-                        context.client as NodeClient,
-                        stopIndexReplicationRequestObj,
-                        it,
-                    )
-                }*/
-            val response = performStopAction(context.client as NodeClient, stopIndexReplicationRequestObj)
+            val response: AcknowledgedResponse = context.client.suspendUntil {
+                ReplicationPluginInterface.stopReplication(
+                    context.client,
+                    stopIndexReplicationRequestObj,
+                    it,
+                )
+            }
             if (response.isAcknowledged) {
                 stepStatus = StepStatus.COMPLETED
                 info = mapOf("message" to getSuccessMessage(indexName))
@@ -60,21 +58,10 @@ class AttemptUnfollowStep : Step(name) {
         return this
     }
 
-    internal suspend fun performStopAction(client: NodeClient, request: StopIndexReplicationRequest): AcknowledgedResponse {
-        val response: AcknowledgedResponse =
-            ReplicationPluginInterface.suspendUntil {
-                this.stopReplication(
-                    client,
-                    request,
-                    it,
-                )
-            }
-        return response
-    }
     private fun handleSnapshotException(indexName: String, e: SnapshotInProgressException) {
         val message = getSnapshotMessage(indexName)
-        logger.warn(message, e)
-        stepStatus = StepStatus.CONDITION_NOT_MET
+        logger.error(message, e)
+        stepStatus = StepStatus.FAILED
         info = mapOf("message" to message)
     }
 
@@ -88,23 +75,21 @@ class AttemptUnfollowStep : Step(name) {
         info = mutableInfo.toMap()
     }
 
-    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
-        return currentMetadata.copy(
-            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
-            transitionTo = null,
-            info = info,
-        )
-    }
+    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData = currentMetadata.copy(
+        stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
+        transitionTo = null,
+        info = info,
+    )
 
-    override fun isIdempotent() = true
+    override fun isIdempotent() = false
 
     companion object {
-        const val name = "attempt_unfollow"
+        const val name = "attempt_stop_replication"
 
-        fun getFailedMessage(index: String) = "Failed to unfollow index [index=$index]"
+        fun getFailedMessage(index: String) = "Failed to stop replication [index=$index]"
 
-        fun getSuccessMessage(index: String) = "Successfully unfollowed index [index=$index]"
+        fun getSuccessMessage(index: String) = "Successfully stopped replication [index=$index]"
 
-        fun getSnapshotMessage(index: String) = "Index had snapshot in progress, retrying unfollowing [index=$index]"
+        fun getSnapshotMessage(index: String) = "Index had snapshot in progress, retrying stop replication [index=$index]"
     }
 }
