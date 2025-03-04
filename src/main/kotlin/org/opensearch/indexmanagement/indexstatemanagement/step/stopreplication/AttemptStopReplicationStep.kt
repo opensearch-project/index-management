@@ -21,18 +21,14 @@ class AttemptStopReplicationStep : Step(name) {
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
-    private var replicationPluginInterface: ReplicationPluginInterface = ReplicationPluginInterface()
-    fun setReplicationPluginInterface(replicationPluginInterface: ReplicationPluginInterface) {
-        this.replicationPluginInterface = replicationPluginInterface
-    }
 
     override suspend fun execute(): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index
         try {
             val stopIndexReplicationRequestObj = StopIndexReplicationRequest(indexName)
-            val response: AcknowledgedResponse = context.client.admin().indices().suspendUntil {
-                replicationPluginInterface.stopReplication(
+            val response: AcknowledgedResponse = context.client.suspendUntil {
+                ReplicationPluginInterface.stopReplication(
                     context.client,
                     stopIndexReplicationRequestObj,
                     it,

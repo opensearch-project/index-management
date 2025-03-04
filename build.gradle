@@ -35,7 +35,6 @@ buildscript {
         job_scheduler_no_snapshot = opensearch_build
         notifications_no_snapshot = opensearch_build
         security_no_snapshot = opensearch_build
-        ccr_no_snapshot = opensearch_build
         if (buildVersionQualifier) {
             opensearch_build += "-${buildVersionQualifier}"
             job_scheduler_no_snapshot += "-${buildVersionQualifier}"
@@ -68,9 +67,6 @@ buildscript {
 
         security_plugin_version = System.getProperty("security.version", opensearch_build)
         ccr_version = System.getProperty("ccr.version", opensearch_build)
-        ccr_build_download = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + opensearch_no_snapshot +
-                '/latest/linux/x64/tar/builds/opensearch/plugins/opensearch-cross-cluster-replication-' + ccr_no_snapshot + '.zip'
-        ccr_resource_folder = "src/test/resources/replication"
     }
 
     repositories {
@@ -319,7 +315,8 @@ def jobSchedulerFile = resolvePluginFile("opensearch-job-scheduler")
 def notificationsCoreFile = resolvePluginFile("opensearch-notifications-core")
 def notificationsFile = resolvePluginFile("notifications")
 def securityPluginFile = resolvePluginFile("opensearch-security")
-def ccrFile = resolvePluginFile("opensearch-security")
+def ccrFile = resolvePluginFile("opensearch-cross-cluster-replication")
+
 
 ext.getPluginResource = { download_to_folder, download_from_src ->
     def src_split = download_from_src.split("/")

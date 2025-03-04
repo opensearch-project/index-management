@@ -9,6 +9,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementR
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -17,7 +18,7 @@ import java.util.Locale
 class StopReplicationActionIT : IndexStateManagementRestTestCase() {
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
-    fun `test stop_replication on a non-replicated index`() {
+    fun `test failure in stop_replication on a non-replicated index`() {
         val indexName = "${testIndexName}_index_1"
         val policyID = "${testIndexName}_testPolicyName_1"
         val actionConfig = StopReplicationAction(0)
@@ -48,9 +49,10 @@ class StopReplicationActionIT : IndexStateManagementRestTestCase() {
         // Change the start time so the job will trigger in 2 seconds.
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
-            val metadataInfo = getExplainManagedIndexMetaData(indexName).info.toString()
+            // Expecting the step to fail as there's no replication in progress on this index
+            assertEquals(Step.StepStatus.FAILED, getExplainManagedIndexMetaData(indexName).stepMetaData?.stepStatus)
             assertTrue(
-                metadataInfo.contains("cause=No replication in progress for index:" + indexName),
+                getExplainManagedIndexMetaData(indexName).info.toString().contains("cause=No replication in progress for index:" + indexName),
             )
         }
     }
