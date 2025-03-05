@@ -66,6 +66,7 @@ buildscript {
         kotlin_version = System.getProperty("kotlin.version", "1.9.25")
 
         security_plugin_version = System.getProperty("security.version", opensearch_build)
+        ccr_version = System.getProperty("ccr.version", opensearch_build)
     }
 
     repositories {
@@ -246,6 +247,7 @@ dependencies {
     opensearchPlugin "org.opensearch.plugin:opensearch-notifications-core:${notifications_version}@zip"
     opensearchPlugin "org.opensearch.plugin:notifications:${notifications_version}@zip"
     opensearchPlugin "org.opensearch.plugin:opensearch-security:${security_plugin_version}@zip"
+    opensearchPlugin "org.opensearch.plugin:opensearch-cross-cluster-replication:${ccr_version}@zip"
 }
 
 repositories {
@@ -329,6 +331,7 @@ def jobSchedulerFile = resolvePluginFile("opensearch-job-scheduler")
 def notificationsCoreFile = resolvePluginFile("opensearch-notifications-core")
 def notificationsFile = resolvePluginFile("notifications")
 def securityPluginFile = resolvePluginFile("opensearch-security")
+def ccrFile = resolvePluginFile("opensearch-cross-cluster-replication")
 
 ext.getPluginResource = { download_to_folder, download_from_src ->
     def src_split = download_from_src.split("/")
@@ -409,6 +412,7 @@ testClusters.integTest {
     if (securityEnabled) {
         plugin(provider(securityPluginFile))
     }
+    plugin(provider(ccrFile))
     setting 'path.repo', repo.absolutePath
 }
 
