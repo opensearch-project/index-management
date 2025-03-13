@@ -1,4 +1,4 @@
-## Version 3.0.0-alpha1 2025-03-13
+## Version 3.0.0.0-alpha1 2025-03-13
 
 Compatible with OpenSearch 3.0.0-alpha1
 
