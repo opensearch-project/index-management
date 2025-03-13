@@ -227,7 +227,7 @@ dependencies {
     implementation "commons-codec:commons-codec:${versions.commonscodec}"
     implementation "org.apache.httpcomponents:httpclient:${versions.httpclient}"
     implementation "org.apache.httpcomponents:httpcore:${versions.httpcore}"
-    implementation "ch.qos.logback:logback-core:1.5.13"
+    implementation "ch.qos.logback:logback-core:1.5.17"
 
     testImplementation "org.opensearch.test:framework:${opensearch_version}"
     testImplementation "org.jetbrains.kotlin:kotlin-test:${kotlin_version}"
