@@ -26,8 +26,8 @@ import java.util.concurrent.TimeUnit
 buildscript {
     ext {
         isSnapshot = "true" == System.getProperty("build.snapshot", "true")
-        opensearch_version = System.getProperty("opensearch.version", "3.0.0-alpha1-SNAPSHOT")
-        buildVersionQualifier = System.getProperty("build.version_qualifier", "alpha1")
+        opensearch_version = System.getProperty("opensearch.version", "3.0.0-beta1-SNAPSHOT")
+        buildVersionQualifier = System.getProperty("build.version_qualifier", "beta1")
         // 2.2.0-SNAPSHOT -> 2.2.0.0-SNAPSHOT
         version_tokens = opensearch_version.tokenize('-')
         opensearch_build = version_tokens[0] + '.0'
@@ -119,6 +119,10 @@ configurations.all {
         force "org.yaml:snakeyaml:${versions.snakeyaml}"
         force 'org.codehaus.plexus:plexus-utils:3.6.0'
     }
+    exclude group:"org.bouncycastle", module: "bc-fips"
+    exclude group:"org.bouncycastle", module:"bctls-fips"
+    exclude group:"org.bouncycastle", module:"bcutil-fips"
+    exclude group:"org.bouncycastle", module:"bcpkix-fips"
 }
 
 idea.module {
