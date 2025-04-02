@@ -30,7 +30,7 @@ jobs:
           plugin_version=`echo $plugin|awk -F- '{print $4}'| cut -d. -f 1-4`
           qualifier=`echo $plugin|awk -F- '{print $5}'| cut -d. -f 1-1`
           candidate_version=`echo $plugin|awk -F- '{print $5}'| cut -d. -f 1-1`
-          if qualifier
+          if [ -n "$qualifier" ]; then
           then
             docker_version=$version-$qualifier
           else
