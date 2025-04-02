@@ -28,7 +28,7 @@ jobs:
           list_of_all_files=`ls build/distributions/`
           version=`echo $plugin|awk -F- '{print $4}'| cut -d. -f 1-3`
           plugin_version=`echo $plugin|awk -F- '{print $4}'| cut -d. -f 1-4`
-          qualifier=`echo $plugin|awk -F- '{print $4}'| cut -d. -f 1-1`
+          qualifier=`echo $plugin|awk -F- '{print $5}'| cut -d. -f 1-1`
           candidate_version=`echo $plugin|awk -F- '{print $5}'| cut -d. -f 1-1`
           if qualifier
           then
