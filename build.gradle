@@ -119,10 +119,6 @@ configurations.all {
         force "org.yaml:snakeyaml:${versions.snakeyaml}"
         force 'org.codehaus.plexus:plexus-utils:3.6.0'
     }
-    exclude group:"org.bouncycastle", module: "bc-fips"
-    exclude group:"org.bouncycastle", module:"bctls-fips"
-    exclude group:"org.bouncycastle", module:"bcutil-fips"
-    exclude group:"org.bouncycastle", module:"bcpkix-fips"
 }
 
 idea.module {
