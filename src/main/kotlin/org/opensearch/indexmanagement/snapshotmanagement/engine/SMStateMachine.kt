@@ -11,6 +11,7 @@ import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.commons.ConfigConstants
+import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.retry
@@ -122,8 +123,12 @@ class SMStateMachine(
                 }
             } while (currentState.instance.continuous && result is SMResult.Next)
         } catch (ex: Exception) {
-            val message = "There was an exception at ${now()} while executing Snapshot Management policy ${job.policyName}, please check logs."
-            job.notificationConfig?.sendFailureNotification(client, job.policyName, message, job.user, log)
+            @Suppress("InstanceOfCheckForException")
+            if (ex !is VersionConflictEngineException) {
+                val message = "There was an exception at ${now()} while executing Snapshot Management policy ${job.policyName}, please check logs."
+                job.notificationConfig?.sendFailureNotification(client, job.policyName, message, job.user, log)
+            }
+
             @Suppress("InstanceOfCheckForException")
             if (ex is SnapshotManagementException &&
                 ex.exKey == ExceptionKey.METADATA_INDEXING_FAILURE
