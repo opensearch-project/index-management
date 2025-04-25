@@ -123,6 +123,7 @@ class SMStateMachine(
                 }
             } while (currentState.instance.continuous && result is SMResult.Next)
         } catch (ex: Exception) {
+            //
             @Suppress("InstanceOfCheckForException")
             if (ex !is VersionConflictEngineException) {
                 val message = "There was an exception at ${now()} while executing Snapshot Management policy ${job.policyName}, please check logs."
