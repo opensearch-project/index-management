@@ -5,13 +5,23 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.engine
 
+import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.argumentCaptor
+import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.spy
 import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
+import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
+import org.opensearch.OpenSearchException
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.core.action.ActionListener
+import org.opensearch.core.action.ActionResponse
+import org.opensearch.core.index.shard.ShardId
+import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.indexmanagement.MocksTestCase
+import org.opensearch.indexmanagement.opensearchapi.retry
+import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creationTransitions
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletionTransitions
@@ -230,4 +240,66 @@ open class SMStateMachineTests : MocksTestCase() {
                 assertEquals(1, firstValue.policyPrimaryTerm)
             }
         }
+
+    fun `test updateMetadata handles VersionConflictEngineException gracefully`() = runBlocking {
+        val initialMetadata = randomSMMetadata(
+            policySeqNo = 0,
+            policyPrimaryTerm = 0,
+        )
+        val smPolicy = randomSMPolicy(
+            seqNo = 1,
+            primaryTerm = 1,
+        )
+        val updatedMetadata = randomSMMetadata(
+            policySeqNo = 1,
+            policyPrimaryTerm = 1,
+        )
+
+        doAnswer {
+            val listener = it.getArgument<ActionListener<ActionResponse>>(1)
+            listener.onFailure(VersionConflictEngineException(ShardId("index", "_na_", 1), "test", "message"))
+        }.whenever(client).index(any(), any())
+
+        val stateMachineSpy = spy(SMStateMachine(client, smPolicy, initialMetadata, settings, threadPool, indicesManager))
+
+        // Verify VersionConflictEngineException is handled gracefully
+        try {
+            stateMachineSpy.updateMetadata(updatedMetadata)
+        } catch (e: Exception) {
+            fail("VersionConflictEngineException should be handled without throwing: ${e.message}")
+        }
+    }
+
+    fun `test updateMetadata throws SnapshotManagementException for other exceptions`() = runBlocking {
+        val initialMetadata = randomSMMetadata(
+            policySeqNo = 0,
+            policyPrimaryTerm = 0,
+        )
+        val smPolicy = randomSMPolicy(
+            seqNo = 1,
+            primaryTerm = 1,
+        )
+        val updatedMetadata = randomSMMetadata(
+            policySeqNo = 1,
+            policyPrimaryTerm = 1,
+        )
+
+        val stateMachineSpy = spy(SMStateMachine(client, smPolicy, initialMetadata, settings, threadPool, indicesManager))
+
+        val openSearchException = OpenSearchException("Test exception")
+        doAnswer {
+            val listener = it.getArgument<ActionListener<ActionResponse>>(1)
+            listener.onFailure(openSearchException)
+        }.whenever(client).index(any(), any())
+
+        // Verify OpenSearchException is wrapped in SnapshotManagementException
+        val thrownException = assertThrows(SnapshotManagementException::class.java) {
+            runBlocking {
+                stateMachineSpy.updateMetadata(updatedMetadata)
+            }
+        }
+
+        // Verify exception type and cause
+        assertTrue(thrownException.cause is OpenSearchException)
+    }
 }
