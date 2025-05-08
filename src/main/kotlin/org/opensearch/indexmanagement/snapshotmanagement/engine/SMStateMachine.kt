@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine
 
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.opensearch.ExceptionsHelper
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
@@ -123,8 +124,9 @@ class SMStateMachine(
                 }
             } while (currentState.instance.continuous && result is SMResult.Next)
         } catch (ex: Exception) {
-            @Suppress("InstanceOfCheckForException")
-            if (ex !is VersionConflictEngineException) {
+            val unwrappedException = ExceptionsHelper.unwrapCause(ex) as Exception
+
+            if (unwrappedException !is VersionConflictEngineException) {
                 val message = "There was an exception at ${now()} while executing Snapshot Management policy ${job.policyName}, please check logs."
                 job.notificationConfig?.sendFailureNotification(client, job.policyName, message, job.user, log)
             }
