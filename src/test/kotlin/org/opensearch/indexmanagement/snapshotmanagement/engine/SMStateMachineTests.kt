@@ -6,12 +6,23 @@
 package org.opensearch.indexmanagement.snapshotmanagement.engine
 
 import com.nhaarman.mockitokotlin2.argumentCaptor
+import com.nhaarman.mockitokotlin2.doAnswer
+import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.spy
 import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import kotlinx.coroutines.runBlocking
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
+import org.opensearch.OpenSearchException
+import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.core.index.shard.ShardId
+import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.indexmanagement.MocksTestCase
+import org.opensearch.indexmanagement.opensearchapi.retry
+import org.opensearch.indexmanagement.snapshotmanagement.SnapshotManagementException
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMState
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.creationTransitions
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletionTransitions
@@ -230,4 +241,70 @@ open class SMStateMachineTests : MocksTestCase() {
                 assertEquals(1, firstValue.policyPrimaryTerm)
             }
         }
+
+    fun `test updateMetadata handles VersionConflictEngineException gracefully`() = runBlocking {
+        val initialMetadata = randomSMMetadata(
+            policySeqNo = 0,
+            policyPrimaryTerm = 0,
+        )
+        val smPolicy = randomSMPolicy(
+            seqNo = 1,
+            primaryTerm = 1,
+        )
+        val updatedMetadata = randomSMMetadata(
+            policySeqNo = 1,
+            policyPrimaryTerm = 1,
+        )
+
+        val mockBackoffPolicy = mock<BackoffPolicy>()
+        val stateMachineSpy = spy(SMStateMachine(client, smPolicy, initialMetadata, settings, threadPool, indicesManager))
+        doReturn(mockBackoffPolicy).`when`(stateMachineSpy).updateMetaDataRetryPolicy
+        val logger: Logger = LogManager.getLogger(javaClass)
+
+        doAnswer { throw VersionConflictEngineException(ShardId("index", "_na_", 1), "test", "message") }
+            .`when`(mockBackoffPolicy)
+            .retry(logger) { true }
+
+        // Verify VersionConflictEngineException is handled gracefully
+        try {
+            stateMachineSpy.updateMetadata(updatedMetadata)
+        } catch (e: Exception) {
+            fail("VersionConflictEngineException should be handled without throwing: ${e.message}")
+        }
+    }
+
+    fun `test updateMetadata throws SnapshotManagementException for other exceptions`() = runBlocking {
+        val initialMetadata = randomSMMetadata(
+            policySeqNo = 0,
+            policyPrimaryTerm = 0,
+        )
+        val smPolicy = randomSMPolicy(
+            seqNo = 1,
+            primaryTerm = 1,
+        )
+        val updatedMetadata = randomSMMetadata(
+            policySeqNo = 1,
+            policyPrimaryTerm = 1,
+        )
+
+        val mockBackoffPolicy = mock<BackoffPolicy>()
+        val stateMachineSpy = spy(SMStateMachine(client, smPolicy, initialMetadata, settings, threadPool, indicesManager))
+        doReturn(mockBackoffPolicy).`when`(stateMachineSpy).updateMetaDataRetryPolicy
+        val logger: Logger = LogManager.getLogger(javaClass)
+
+        val openSearchException = OpenSearchException("Test exception")
+        doAnswer { throw openSearchException }
+            .`when`(mockBackoffPolicy)
+            .retry(logger) { true }
+
+        // Verify OpenSearchException is wrapped in SnapshotManagementException
+        val thrownException = assertThrows(SnapshotManagementException::class.java) {
+            runBlocking {
+                stateMachineSpy.updateMetadata(updatedMetadata)
+            }
+        }
+
+        // Verify exception type and cause
+        assertTrue(thrownException.cause is OpenSearchException)
+    }
 }
