@@ -243,7 +243,6 @@ open class SMStateMachineTests : MocksTestCase() {
         }
 
     fun `test updateMetadata handles VersionConflictEngineException gracefully`() = runBlocking {
-        // Setup test data
         val initialMetadata = randomSMMetadata(
             policySeqNo = 0,
             policyPrimaryTerm = 0,
@@ -257,13 +256,11 @@ open class SMStateMachineTests : MocksTestCase() {
             policyPrimaryTerm = 1,
         )
 
-        // Setup mocks and spies
         val mockBackoffPolicy = mock<BackoffPolicy>()
         val stateMachineSpy = spy(SMStateMachine(client, smPolicy, initialMetadata, settings, threadPool, indicesManager))
         doReturn(mockBackoffPolicy).`when`(stateMachineSpy).updateMetaDataRetryPolicy
         val logger: Logger = LogManager.getLogger(javaClass)
 
-        // Setup VersionConflictEngineException
         doAnswer { throw VersionConflictEngineException(ShardId("index", "_na_", 1), "test", "message") }
             .`when`(mockBackoffPolicy)
             .retry(logger) { true }
@@ -277,7 +274,6 @@ open class SMStateMachineTests : MocksTestCase() {
     }
 
     fun `test updateMetadata throws SnapshotManagementException for other exceptions`() = runBlocking {
-        // Setup test data
         val initialMetadata = randomSMMetadata(
             policySeqNo = 0,
             policyPrimaryTerm = 0,
@@ -291,13 +287,11 @@ open class SMStateMachineTests : MocksTestCase() {
             policyPrimaryTerm = 1,
         )
 
-        // Setup mocks and spies
         val mockBackoffPolicy = mock<BackoffPolicy>()
         val stateMachineSpy = spy(SMStateMachine(client, smPolicy, initialMetadata, settings, threadPool, indicesManager))
         doReturn(mockBackoffPolicy).`when`(stateMachineSpy).updateMetaDataRetryPolicy
         val logger: Logger = LogManager.getLogger(javaClass)
 
-        // Setup OpenSearchException
         val openSearchException = OpenSearchException("Test exception")
         doAnswer { throw openSearchException }
             .`when`(mockBackoffPolicy)

@@ -27,7 +27,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.util.OpenForTesting
-import org.opensearch.jobscheduler.repackage.com.cronutils.utils.VisibleForTesting
 import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.client.Client
 import java.time.Instant.now
@@ -220,8 +219,8 @@ class SMStateMachine(
         } catch (ex: Exception) {
             val unwrappedException = ExceptionsHelper.unwrapCause(ex) as Exception
             if (unwrappedException is VersionConflictEngineException) {
-                // don't throw the exception
-                // TODO: Extract seqNo and primaryTerm from VersionConflictException and retry updateMetadata with updated versions
+                // Don't throw the exception
+                // TODO: Extract seqNo on VersionConflictException and retry updateMetadata with updated seqNo.
                 log.error("Version conflict exception while updating metadata.", ex)
                 return
             }
@@ -234,7 +233,6 @@ class SMStateMachine(
         // TODO SM save a copy to history
     }
 
-    @VisibleForTesting
     val updateMetaDataRetryPolicy =
         BackoffPolicy.exponentialBackoff(
             TimeValue.timeValueMillis(EXPONENTIAL_BACKOFF_MILLIS), MAX_NUMBER_OF_RETRIES,
