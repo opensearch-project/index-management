@@ -27,6 +27,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.util.OpenForTesting
+import org.opensearch.jobscheduler.repackage.com.cronutils.utils.VisibleForTesting
 import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.client.Client
 import java.time.Instant.now
@@ -124,13 +125,8 @@ class SMStateMachine(
                 }
             } while (currentState.instance.continuous && result is SMResult.Next)
         } catch (ex: Exception) {
-            val unwrappedException = ExceptionsHelper.unwrapCause(ex) as Exception
-
-            if (unwrappedException !is VersionConflictEngineException) {
-                val message = "There was an exception at ${now()} while executing Snapshot Management policy ${job.policyName}, please check logs."
-                job.notificationConfig?.sendFailureNotification(client, job.policyName, message, job.user, log)
-            }
-
+            val message = "There was an exception at ${now()} while executing Snapshot Management policy ${job.policyName}, please check logs."
+            job.notificationConfig?.sendFailureNotification(client, job.policyName, message, job.user, log)
             @Suppress("InstanceOfCheckForException")
             if (ex is SnapshotManagementException &&
                 ex.exKey == ExceptionKey.METADATA_INDEXING_FAILURE
@@ -222,6 +218,14 @@ class SMStateMachine(
                 metadata = md
             }
         } catch (ex: Exception) {
+            val unwrappedException = ExceptionsHelper.unwrapCause(ex) as Exception
+            if (unwrappedException is VersionConflictEngineException) {
+                // don't throw the exception
+                // TODO: Extract seqNo and primaryTerm from VersionConflictException and retry updateMetadata with updated versions
+                log.error("Version conflict exception while updating metadata.", ex)
+                return
+            }
+
             val smEx = SnapshotManagementException(ExceptionKey.METADATA_INDEXING_FAILURE, ex)
             log.error(smEx.message, ex)
             throw smEx
@@ -230,7 +234,8 @@ class SMStateMachine(
         // TODO SM save a copy to history
     }
 
-    private val updateMetaDataRetryPolicy =
+    @VisibleForTesting
+    val updateMetaDataRetryPolicy =
         BackoffPolicy.exponentialBackoff(
             TimeValue.timeValueMillis(EXPONENTIAL_BACKOFF_MILLIS), MAX_NUMBER_OF_RETRIES,
         )
