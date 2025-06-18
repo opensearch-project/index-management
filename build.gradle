@@ -228,7 +228,6 @@ dependencies {
     implementation "commons-codec:commons-codec:${versions.commonscodec}"
     implementation "org.apache.httpcomponents:httpclient:${versions.httpclient}"
     implementation "org.apache.httpcomponents:httpcore:${versions.httpcore}"
-    implementation "ch.qos.logback:logback-core:1.5.13"
 
     testImplementation "org.opensearch.test:framework:${opensearch_version}"
     testImplementation "org.jetbrains.kotlin:kotlin-test:${kotlin_version}"
@@ -241,7 +240,11 @@ dependencies {
         }
     }
     configurations.ktlint {
-        resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.25"
+        resolutionStrategy{
+            force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.25"
+            force "ch.qos.logback:logback-classic:1.5.16"
+            force "ch.qos.logback:logback-core:1.5.16"
+        }
     }
 
     // https://aws.oss.sonatype.org/content/repositories/snapshots/org/opensearch/plugin/
