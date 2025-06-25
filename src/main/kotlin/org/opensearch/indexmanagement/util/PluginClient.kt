@@ -41,7 +41,7 @@ class PluginClient : FilterClient {
     ) {
         checkNotNull(subject) { "RunAsSubjectClient is not initialized." }
         threadPool().threadContext.newStoredContext(false).use { ctx ->
-            subject!!.runAs<Any?> {
+            subject!!.runAs<Exception?> {
                 Companion.logger.info(
                     "Running transport action with subject: {}",
                     subject!!.principal.name,
@@ -52,7 +52,6 @@ class PluginClient : FilterClient {
                         listener,
                     ) { ctx.restore() },
                 )
-                null
             }
         }
     }
