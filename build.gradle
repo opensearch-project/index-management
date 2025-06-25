@@ -26,8 +26,8 @@ import java.util.concurrent.TimeUnit
 buildscript {
     ext {
         isSnapshot = "true" == System.getProperty("build.snapshot", "true")
-        opensearch_version = System.getProperty("opensearch.version", "3.0.0-alpha1-SNAPSHOT")
-        buildVersionQualifier = System.getProperty("build.version_qualifier", "alpha1")
+        opensearch_version = System.getProperty("opensearch.version", "3.1.0-SNAPSHOT")
+        buildVersionQualifier = System.getProperty("build.version_qualifier", "")
         // 2.2.0-SNAPSHOT -> 2.2.0.0-SNAPSHOT
         version_tokens = opensearch_version.tokenize('-')
         opensearch_build = version_tokens[0] + '.0'
@@ -66,6 +66,7 @@ buildscript {
         kotlin_version = System.getProperty("kotlin.version", "1.9.25")
 
         security_plugin_version = System.getProperty("security.version", opensearch_build)
+        ccr_version = System.getProperty("ccr.version", opensearch_build)
     }
 
     repositories {
@@ -100,6 +101,7 @@ apply plugin: 'io.gitlab.arturbosch.detekt'
 apply plugin: 'org.jetbrains.kotlin.jvm'
 apply plugin: 'org.jetbrains.kotlin.plugin.allopen'
 apply plugin: 'opensearch.pluginzip'
+apply plugin: 'opensearch.java-agent'
 
 configurations.all {
     if (it.state != Configuration.State.UNRESOLVED) return
@@ -238,7 +240,11 @@ dependencies {
         }
     }
     configurations.ktlint {
-        resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.25"
+        resolutionStrategy{
+            force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.25"
+            force "ch.qos.logback:logback-classic:1.5.16"
+            force "ch.qos.logback:logback-core:1.5.16"
+        }
     }
 
     // https://aws.oss.sonatype.org/content/repositories/snapshots/org/opensearch/plugin/
@@ -246,6 +252,7 @@ dependencies {
     opensearchPlugin "org.opensearch.plugin:opensearch-notifications-core:${notifications_version}@zip"
     opensearchPlugin "org.opensearch.plugin:notifications:${notifications_version}@zip"
     opensearchPlugin "org.opensearch.plugin:opensearch-security:${security_plugin_version}@zip"
+    opensearchPlugin "org.opensearch.plugin:opensearch-cross-cluster-replication:${ccr_version}@zip"
 }
 
 repositories {
@@ -329,6 +336,7 @@ def jobSchedulerFile = resolvePluginFile("opensearch-job-scheduler")
 def notificationsCoreFile = resolvePluginFile("opensearch-notifications-core")
 def notificationsFile = resolvePluginFile("notifications")
 def securityPluginFile = resolvePluginFile("opensearch-security")
+def ccrFile = resolvePluginFile("opensearch-cross-cluster-replication")
 
 ext.getPluginResource = { download_to_folder, download_from_src ->
     def src_split = download_from_src.split("/")
@@ -409,6 +417,7 @@ testClusters.integTest {
     if (securityEnabled) {
         plugin(provider(securityPluginFile))
     }
+    plugin(provider(ccrFile))
     setting 'path.repo', repo.absolutePath
 }
 
