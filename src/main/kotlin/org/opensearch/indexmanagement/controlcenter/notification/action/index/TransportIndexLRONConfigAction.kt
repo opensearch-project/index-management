@@ -28,7 +28,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.ControlCenterIn
 import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.controlcenter.notification.util.getPriority
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -44,7 +44,7 @@ constructor(
     val clusterService: ClusterService,
     val controlCenterIndices: ControlCenterIndices,
     val xContentRegistry: NamedXContentRegistry,
-    val pluginClient: RunAsSubjectClient,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<IndexLRONConfigRequest, LRONConfigResponse>(
     IndexLRONConfigAction.NAME, transportService, actionFilters, ::IndexLRONConfigRequest,
 ) {

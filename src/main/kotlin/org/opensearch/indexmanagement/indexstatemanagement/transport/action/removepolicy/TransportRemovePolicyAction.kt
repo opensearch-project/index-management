@@ -47,7 +47,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedInd
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.util.IndexManagementException
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -61,7 +61,7 @@ constructor(
     transportService: TransportService,
     actionFilters: ActionFilters,
     val indexMetadataProvider: IndexMetadataProvider,
-    val pluginClient: RunAsSubjectClient,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<RemovePolicyRequest, ISMStatusResponse>(
     RemovePolicyAction.NAME, transportService, actionFilters, ::RemovePolicyRequest,
 ) {

@@ -32,7 +32,7 @@ import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionReso
 import org.opensearch.indexmanagement.rollup.util.parseRollup
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.IndexUtils
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
@@ -52,7 +52,7 @@ constructor(
     val clusterService: ClusterService,
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
-    val pluginClient: RunAsSubjectClient,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<IndexRollupRequest, IndexRollupResponse>(
     IndexRollupAction.NAME, transportService, actionFilters, ::IndexRollupRequest,
 ) {

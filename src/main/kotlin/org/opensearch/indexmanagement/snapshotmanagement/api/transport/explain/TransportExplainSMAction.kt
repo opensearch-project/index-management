@@ -38,7 +38,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companio
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.NAME_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
 import org.opensearch.indexmanagement.snapshotmanagement.smMetadataDocIdToPolicyName
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.subphase.FetchSourceContext
@@ -53,7 +53,7 @@ constructor(
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
-    pluginClient: RunAsSubjectClient,
+    pluginClient: PluginClient,
 ) : BaseTransportAction<ExplainSMPolicyRequest, ExplainSMPolicyResponse>(
     SMActions.EXPLAIN_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::ExplainSMPolicyRequest, pluginClient,
 ) {

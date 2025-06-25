@@ -93,7 +93,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetry
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.LockModel
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
@@ -115,7 +115,7 @@ object ManagedIndexRunner :
 
     private lateinit var clusterService: ClusterService
     private lateinit var client: Client
-    private lateinit var pluginClient: RunAsSubjectClient
+    private lateinit var pluginClient: PluginClient
     private lateinit var xContentRegistry: NamedXContentRegistry
     private lateinit var scriptService: ScriptService
     private lateinit var settings: Settings
@@ -151,7 +151,7 @@ object ManagedIndexRunner :
         return this
     }
 
-    fun registerPluginClient(pluginClient: RunAsSubjectClient): ManagedIndexRunner {
+    fun registerPluginClient(pluginClient: PluginClient): ManagedIndexRunner {
         this.pluginClient = pluginClient
         return this
     }

@@ -35,7 +35,7 @@ import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.transform.model.ExplainTransform
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.addUserFilter
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.search.builder.SearchSourceBuilder
@@ -54,7 +54,7 @@ constructor(
     val clusterService: ClusterService,
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
-    val pluginClient: RunAsSubjectClient,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<ExplainTransformRequest, ExplainTransformResponse>(
     ExplainTransformAction.NAME, transportService, actionFilters, ::ExplainTransformRequest,
 ) {

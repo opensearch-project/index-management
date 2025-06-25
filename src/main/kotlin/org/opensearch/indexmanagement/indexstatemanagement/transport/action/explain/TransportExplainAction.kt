@@ -53,7 +53,7 @@ import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ValidationResult
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.search.SearchHit
 import org.opensearch.search.builder.SearchSourceBuilder
@@ -82,7 +82,7 @@ constructor(
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
     val indexMetadataProvider: IndexMetadataProvider,
-    val pluginClient: RunAsSubjectClient,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<ExplainRequest, ExplainResponse>(
     ExplainAction.NAME, transportService, actionFilters, ::ExplainRequest,
 ) {

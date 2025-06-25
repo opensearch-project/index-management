@@ -35,7 +35,7 @@ import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.util.parseRollup
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.tasks.Task
@@ -54,7 +54,7 @@ constructor(
     val settings: Settings,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
-    val pluginClient: RunAsSubjectClient,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<StartRollupRequest, AcknowledgedResponse>(
     StartRollupAction.NAME, transportService, actionFilters, ::StartRollupRequest,
 ) {

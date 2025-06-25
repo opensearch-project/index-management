@@ -27,7 +27,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.transform.model.Transform
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.search.fetch.subphase.FetchSourceContext
@@ -44,7 +44,7 @@ constructor(
     val settings: Settings,
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
-    val pluginClient: RunAsSubjectClient,
+    val pluginClient: PluginClient,
     actionFilters: ActionFilters,
 ) : HandledTransportAction<DeleteTransformsRequest, BulkResponse>(
     DeleteTransformsAction.NAME, transportService, actionFilters, ::DeleteTransformsRequest,

@@ -47,7 +47,7 @@ import org.opensearch.indexmanagement.opensearchapi.parseFromSearchResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.IndexUtils
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
 import org.opensearch.search.builder.SearchSourceBuilder
@@ -69,7 +69,7 @@ constructor(
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
     var awarenessReplicaBalance: AwarenessReplicaBalance,
-    val pluginClient: RunAsSubjectClient,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<IndexPolicyRequest, IndexPolicyResponse>(
     IndexPolicyAction.NAME, transportService, actionFilters, ::IndexPolicyRequest,
 ) {

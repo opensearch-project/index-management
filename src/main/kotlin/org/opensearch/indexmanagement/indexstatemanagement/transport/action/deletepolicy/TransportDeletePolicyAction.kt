@@ -26,7 +26,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.tasks.Task
@@ -47,7 +47,7 @@ constructor(
     val clusterService: ClusterService,
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
-    val pluginClient: RunAsSubjectClient,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<DeletePolicyRequest, DeleteResponse>(
     DeletePolicyAction.NAME, transportService, actionFilters, ::DeletePolicyRequest,
 ) {

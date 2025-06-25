@@ -176,7 +176,7 @@ import org.opensearch.indexmanagement.transform.resthandler.RestPreviewTransform
 import org.opensearch.indexmanagement.transform.resthandler.RestStartTransformAction
 import org.opensearch.indexmanagement.transform.resthandler.RestStopTransformAction
 import org.opensearch.indexmanagement.transform.settings.TransformSettings
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indices.SystemIndexDescriptor
 import org.opensearch.jobscheduler.spi.JobSchedulerExtension
 import org.opensearch.jobscheduler.spi.ScheduledJobParser
@@ -227,7 +227,7 @@ class IndexManagementPlugin :
     private val extensionCheckerMap = mutableMapOf<String, StatusChecker>()
     lateinit var indexOperationActionFilter: IndexOperationActionFilter
     private lateinit var metricsRegistry: MetricsRegistry
-    private lateinit var pluginClient: RunAsSubjectClient
+    private lateinit var pluginClient: PluginClient
 
     companion object {
         const val PLUGINS_BASE_URI = "/_plugins"
@@ -403,7 +403,7 @@ class IndexManagementPlugin :
             environment,
         )
 
-        this.pluginClient = RunAsSubjectClient(client)
+        this.pluginClient = PluginClient(client)
 
         IndexManagementActionsMetrics.instance.initialize(metricsRegistry)
         rollupInterceptor = RollupInterceptor(clusterService, settings, indexNameExpressionResolver)

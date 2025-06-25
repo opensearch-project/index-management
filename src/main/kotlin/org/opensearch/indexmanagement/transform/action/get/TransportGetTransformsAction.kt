@@ -25,7 +25,7 @@ import org.opensearch.index.query.ExistsQueryBuilder
 import org.opensearch.index.query.WildcardQueryBuilder
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.transform.model.Transform
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.addUserFilter
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.getJobs
@@ -45,7 +45,7 @@ constructor(
     val clusterService: ClusterService,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
-    val pluginClient: RunAsSubjectClient,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<GetTransformsRequest, GetTransformsResponse>(
     GetTransformsAction.NAME, transportService, actionFilters, ::GetTransformsRequest,
 ) {

@@ -22,7 +22,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTrans
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.INDEX_SM_POLICY_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
 import org.opensearch.indexmanagement.util.IndexUtils
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.transport.TransportService
 import org.opensearch.transport.client.Client
@@ -37,7 +37,7 @@ constructor(
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
-    pluginClient: RunAsSubjectClient,
+    pluginClient: PluginClient,
 ) : BaseTransportAction<IndexSMPolicyRequest, IndexSMPolicyResponse>(
     INDEX_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::IndexSMPolicyRequest, pluginClient,
 ) {

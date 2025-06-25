@@ -26,7 +26,7 @@ import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigRespo
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.controlcenter.notification.util.getLRONConfigAndParse
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -39,7 +39,7 @@ constructor(
     transportService: TransportService,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
-    val pluginClient: RunAsSubjectClient,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<GetLRONConfigRequest, GetLRONConfigResponse>(
     GetLRONConfigAction.NAME, transportService, actionFilters, ::GetLRONConfigRequest,
 ) {

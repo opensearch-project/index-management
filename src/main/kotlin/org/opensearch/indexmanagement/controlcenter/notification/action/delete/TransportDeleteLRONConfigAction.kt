@@ -15,7 +15,7 @@ import org.opensearch.common.inject.Inject
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.core.action.ActionListener
 import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import org.opensearch.transport.client.node.NodeClient
@@ -26,7 +26,7 @@ constructor(
     val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
-    val pluginClient: RunAsSubjectClient,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<DeleteLRONConfigRequest, DeleteResponse>(
     DeleteLRONConfigAction.NAME, transportService, actionFilters, ::DeleteLRONConfigRequest,
 ) {

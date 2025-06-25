@@ -37,7 +37,7 @@ import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.transform.TransformValidator
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.util.IndexUtils
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
@@ -57,7 +57,7 @@ constructor(
     val clusterService: ClusterService,
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
-    val pluginClient: RunAsSubjectClient,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<IndexTransformRequest, IndexTransformResponse>(
     IndexTransformAction.NAME, transportService, actionFilters, ::IndexTransformRequest,
 ) {

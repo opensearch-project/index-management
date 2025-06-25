@@ -25,7 +25,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.opensearchapi.parseFromSearchResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.addUserFilter
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.search.builder.SearchSourceBuilder
@@ -45,7 +45,7 @@ constructor(
     val clusterService: ClusterService,
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
-    val pluginClient: RunAsSubjectClient,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<GetPoliciesRequest, GetPoliciesResponse>(
     GetPoliciesAction.NAME, transportService, actionFilters, ::GetPoliciesRequest,
 ) {

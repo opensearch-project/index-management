@@ -28,7 +28,7 @@ import org.opensearch.indexmanagement.rollup.model.ExplainRollup
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.addUserFilter
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.search.builder.SearchSourceBuilder
@@ -46,7 +46,7 @@ constructor(
     val settings: Settings,
     val clusterService: ClusterService,
     actionFilters: ActionFilters,
-    val pluginClient: RunAsSubjectClient,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<ExplainRollupRequest, ExplainRollupResponse>(
     ExplainRollupAction.NAME, transportService, actionFilters, ::ExplainRollupRequest,
 ) {

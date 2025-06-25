@@ -19,11 +19,9 @@ import org.opensearch.transport.client.Client
 import org.opensearch.transport.client.FilterClient
 
 /**
- * Implementation of client that will run transport actions in a stashed context and inject the name of the provided
- * subject into the context.
+ * A special client for executing transport actions as this plugin's system subject.
  */
-@Suppress("TooGenericExceptionThrown")
-class RunAsSubjectClient : FilterClient {
+class PluginClient : FilterClient {
     private var subject: Subject? = null
 
     constructor(delegate: Client) : super(delegate)
@@ -42,30 +40,26 @@ class RunAsSubjectClient : FilterClient {
         listener: ActionListener<Response>,
     ) {
         checkNotNull(subject) { "RunAsSubjectClient is not initialized." }
-        try {
-            threadPool().threadContext.newStoredContext(false).use { ctx ->
-                subject!!.runAs<Any?> {
-                    Companion.logger.info(
-                        "Running transport action with subject: {}",
-                        subject!!.principal.name,
-                    )
-                    super.doExecute(
-                        action, request,
-                        ActionListener.runBefore(
-                            listener,
-                        ) { ctx.restore() },
-                    )
-                    null
-                }
+        threadPool().threadContext.newStoredContext(false).use { ctx ->
+            subject!!.runAs<Any?> {
+                Companion.logger.info(
+                    "Running transport action with subject: {}",
+                    subject!!.principal.name,
+                )
+                super.doExecute(
+                    action, request,
+                    ActionListener.runBefore(
+                        listener,
+                    ) { ctx.restore() },
+                )
+                null
             }
-        } catch (e: Exception) {
-            throw RuntimeException(e)
         }
     }
 
     companion object {
         private val logger: Logger = LogManager.getLogger(
-            RunAsSubjectClient::class.java,
+            PluginClient::class.java,
         )
     }
 }

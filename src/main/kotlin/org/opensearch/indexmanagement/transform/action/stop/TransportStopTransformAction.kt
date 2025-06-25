@@ -34,7 +34,7 @@ import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
-import org.opensearch.indexmanagement.util.RunAsSubjectClient
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.tasks.Task
@@ -65,7 +65,7 @@ constructor(
     val clusterService: ClusterService,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
-    val pluginClient: RunAsSubjectClient,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<StopTransformRequest, AcknowledgedResponse>(
     StopTransformAction.NAME, transportService, actionFilters, ::StopTransformRequest,
 ) {
