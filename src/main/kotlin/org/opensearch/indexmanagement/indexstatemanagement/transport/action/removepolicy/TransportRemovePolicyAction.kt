@@ -12,6 +12,8 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchSecurityException
 import org.opensearch.OpenSearchStatusException
+import org.opensearch.action.admin.cluster.state.ClusterStateRequest
+import org.opensearch.action.admin.cluster.state.ClusterStateResponse
 import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest
 import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
@@ -19,6 +21,7 @@ import org.opensearch.action.get.MultiGetRequest
 import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.action.support.IndicesOptions
 import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.cluster.metadata.IndexMetadata.INDEX_BLOCKS_READ_ONLY_ALLOW_DELETE_SETTING
@@ -145,29 +148,48 @@ constructor(
         }
 
         private fun getClusterState() {
-            val clusterService = indexMetadataProvider.clusterService
-            val clusterState = clusterService.state()
-            val indexMetadatas = clusterState.metadata.indices
+            val strictExpandOptions = IndicesOptions.strictExpand()
 
-            indexMetadatas.forEach {
-                if (it.value.settings.get(ManagedIndexSettings.AUTO_MANAGE.key) == "false") {
-                    indicesWithAutoManageFalseBlock.add(it.value.indexUUID)
-                }
-                if (it.value.settings.get(SETTING_READ_ONLY) == "true") {
-                    indicesWithReadOnlyBlock.add(it.value.indexUUID)
-                }
-                if (it.value.settings.get(SETTING_READ_ONLY_ALLOW_DELETE) == "true") {
-                    indicesWithReadOnlyAllowDeleteBlock.add(it.value.indexUUID)
-                }
-            }
+            val clusterStateRequest =
+                ClusterStateRequest()
+                    .clear()
+                    .indices(*request.indices.toTypedArray())
+                    .metadata(true)
+                    .local(false)
+                    .indicesOptions(strictExpandOptions)
+            pluginClient.admin()
+                .cluster()
+                .state(
+                    clusterStateRequest,
+                    object : ActionListener<ClusterStateResponse> {
+                        override fun onResponse(response: ClusterStateResponse) {
+                            val indexMetadatas = response.state.metadata.indices
+                            indexMetadatas.forEach {
+                                if (it.value.settings.get(ManagedIndexSettings.AUTO_MANAGE.key) == "false") {
+                                    indicesWithAutoManageFalseBlock.add(it.value.indexUUID)
+                                }
+                                if (it.value.settings.get(SETTING_READ_ONLY) == "true") {
+                                    indicesWithReadOnlyBlock.add(it.value.indexUUID)
+                                }
+                                if (it.value.settings.get(SETTING_READ_ONLY_ALLOW_DELETE) == "true") {
+                                    indicesWithReadOnlyAllowDeleteBlock.add(it.value.indexUUID)
+                                }
+                            }
 
-            val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
-            getUuidsForClosedIndices(clusterState, defaultIndexMetadataService).forEach {
-                failedIndices.add(FailedIndex(indicesToRemove[it] as String, it, "This index is closed"))
-                indicesToRemove.remove(it)
-            }
+                            val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
+                            getUuidsForClosedIndices(response.state, defaultIndexMetadataService).forEach {
+                                failedIndices.add(FailedIndex(indicesToRemove[it] as String, it, "This index is closed"))
+                                indicesToRemove.remove(it)
+                            }
 
-            getExistingManagedIndices()
+                            getExistingManagedIndices()
+                        }
+
+                        override fun onFailure(t: Exception) {
+                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                        }
+                    },
+                )
         }
 
         private fun getExistingManagedIndices() {

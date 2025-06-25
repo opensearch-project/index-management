@@ -1,2 +1,7 @@
 cluster_permissions:
   - "cluster:monitor/state"
+index_permissions:
+  - index_patterns:
+      - "*"
+    allowed_actions:
+      - "indices:admin/delete"
