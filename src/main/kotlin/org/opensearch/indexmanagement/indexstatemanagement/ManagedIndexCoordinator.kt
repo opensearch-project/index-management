@@ -83,6 +83,7 @@ import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.util.OpenForTesting
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.threadpool.Scheduler
 import org.opensearch.threadpool.ThreadPool
@@ -113,6 +114,7 @@ class ManagedIndexCoordinator(
     indexManagementIndices: IndexManagementIndices,
     private val indexMetadataProvider: IndexMetadataProvider,
     private val xContentRegistry: NamedXContentRegistry,
+    private val pluginClient: PluginClient,
 ) : LifecycleListener(),
     ClusterStateListener,
     CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ManagedIndexCoordinator")) {
@@ -430,7 +432,7 @@ class ManagedIndexCoordinator(
                 .preference(Preference.PRIMARY_FIRST.type())
 
         return try {
-            val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
+            val response: SearchResponse = pluginClient.suspendUntil { search(searchRequest, it) }
             parseFromSearchResponse(response, xContentRegistry, Policy.Companion::parse)
         } catch (ex: IndexNotFoundException) {
             emptyList()

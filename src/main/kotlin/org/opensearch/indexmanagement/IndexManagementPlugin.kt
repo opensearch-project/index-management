@@ -480,7 +480,7 @@ class IndexManagementPlugin :
         val managedIndexCoordinator =
             ManagedIndexCoordinator(
                 environment.settings(),
-                client, clusterService, threadPool, indexManagementIndices, indexMetadataProvider, xContentRegistry,
+                client, clusterService, threadPool, indexManagementIndices, indexMetadataProvider, xContentRegistry, pluginClient,
             )
 
         val smRunner = SMRunner.init(client, threadPool, settings, indexManagementIndices, clusterService)
