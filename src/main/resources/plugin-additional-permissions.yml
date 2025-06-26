@@ -1,5 +1,6 @@
 cluster_permissions:
   - "cluster:monitor/state"
+  - "indices:data/read/mget"
 index_permissions:
   - index_patterns:
       - "*"

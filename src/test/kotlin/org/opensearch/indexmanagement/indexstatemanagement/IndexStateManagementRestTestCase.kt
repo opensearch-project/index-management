@@ -77,7 +77,7 @@ import org.opensearch.test.OpenSearchTestCase
 import java.io.IOException
 import java.time.Duration
 import java.time.Instant
-import java.util.Locale
+import java.util.*
 
 abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() {
     @After
@@ -304,7 +304,10 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     }
 
     protected fun removePolicyFromIndex(index: String) {
-        client().makeRequest("POST", "/_opendistro/_ism/remove/$index")
+        val request = Request("POST", "/_opendistro/_ism/remove/$index")
+        val statusCodes = mapOf("ignore" to "404")
+        request.addParameters(statusCodes)
+        client().performRequest(request)
     }
 
     protected fun getPolicyIDOfManagedIndex(index: String): String? {
