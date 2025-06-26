@@ -21,6 +21,7 @@ import org.opensearch.transport.client.FilterClient
 /**
  * A special client for executing transport actions as this plugin's system subject.
  */
+@OpenForTesting
 class PluginClient : FilterClient {
     private var subject: Subject? = null
 
