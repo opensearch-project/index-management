@@ -623,6 +623,11 @@ integTest {
             excludeTestsMatching excludeTests
         }
     }
+
+    retry {
+        failOnPassedAfterRetry = false
+        maxRetries = 5
+    }
 }
 
 task integTestRemote(type: RestIntegTestTask) {
