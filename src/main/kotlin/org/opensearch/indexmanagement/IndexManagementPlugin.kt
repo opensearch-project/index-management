@@ -29,6 +29,8 @@ import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.env.Environment
 import org.opensearch.env.NodeEnvironment
+import org.opensearch.identity.PluginSubject
+import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_INDEX_BASE
 import org.opensearch.indexmanagement.controlcenter.notification.ControlCenterIndices
 import org.opensearch.indexmanagement.controlcenter.notification.action.delete.DeleteLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.delete.TransportDeleteLRONConfigAction
@@ -174,6 +176,7 @@ import org.opensearch.indexmanagement.transform.resthandler.RestPreviewTransform
 import org.opensearch.indexmanagement.transform.resthandler.RestStartTransformAction
 import org.opensearch.indexmanagement.transform.resthandler.RestStopTransformAction
 import org.opensearch.indexmanagement.transform.settings.TransformSettings
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indices.SystemIndexDescriptor
 import org.opensearch.jobscheduler.spi.JobSchedulerExtension
 import org.opensearch.jobscheduler.spi.ScheduledJobParser
@@ -181,6 +184,7 @@ import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.monitor.jvm.JvmService
 import org.opensearch.plugins.ActionPlugin
 import org.opensearch.plugins.ExtensiblePlugin
+import org.opensearch.plugins.IdentityAwarePlugin
 import org.opensearch.plugins.NetworkPlugin
 import org.opensearch.plugins.Plugin
 import org.opensearch.plugins.SystemIndexPlugin
@@ -207,7 +211,8 @@ class IndexManagementPlugin :
     ActionPlugin,
     ExtensiblePlugin,
     SystemIndexPlugin,
-    TelemetryAwarePlugin {
+    TelemetryAwarePlugin,
+    IdentityAwarePlugin {
     private val logger = LogManager.getLogger(javaClass)
     lateinit var indexManagementIndices: IndexManagementIndices
     lateinit var actionValidation: ActionValidation
@@ -222,6 +227,7 @@ class IndexManagementPlugin :
     private val extensionCheckerMap = mutableMapOf<String, StatusChecker>()
     lateinit var indexOperationActionFilter: IndexOperationActionFilter
     private lateinit var metricsRegistry: MetricsRegistry
+    private lateinit var pluginClient: PluginClient
 
     companion object {
         const val PLUGINS_BASE_URI = "/_plugins"
@@ -397,6 +403,8 @@ class IndexManagementPlugin :
             environment,
         )
 
+        this.pluginClient = PluginClient(client)
+
         IndexManagementActionsMetrics.instance.initialize(metricsRegistry)
         rollupInterceptor = RollupInterceptor(clusterService, settings, indexNameExpressionResolver)
         val jvmService = JvmService(environment.settings())
@@ -429,13 +437,13 @@ class IndexManagementPlugin :
                 .registerMetadataServices(RollupMetadataService(client, xContentRegistry))
                 .registerConsumers()
                 .registerClusterConfigurationProvider(skipFlag)
-        indexManagementIndices = IndexManagementIndices(settings, client.admin().indices(), clusterService)
-        val controlCenterIndices = ControlCenterIndices(client.admin().indices(), clusterService)
+        indexManagementIndices = IndexManagementIndices(settings, this.pluginClient.admin().indices(), clusterService)
+        val controlCenterIndices = ControlCenterIndices(this.pluginClient.admin().indices(), clusterService)
         actionValidation = ActionValidation(settings, clusterService, jvmService)
         val indexStateManagementHistory =
             IndexStateManagementHistory(
                 settings,
-                client,
+                this.pluginClient,
                 threadPool,
                 clusterService,
                 indexManagementIndices,
@@ -454,6 +462,7 @@ class IndexManagementPlugin :
         val managedIndexRunner =
             ManagedIndexRunner
                 .registerClient(client)
+                .registerPluginClient(pluginClient)
                 .registerClusterService(clusterService)
                 .registerValidationService(actionValidation)
                 .registerNamedXContentRegistry(xContentRegistry)
@@ -471,7 +480,7 @@ class IndexManagementPlugin :
         val managedIndexCoordinator =
             ManagedIndexCoordinator(
                 environment.settings(),
-                client, clusterService, threadPool, indexManagementIndices, indexMetadataProvider, xContentRegistry,
+                client, clusterService, threadPool, indexManagementIndices, indexMetadataProvider, xContentRegistry, pluginClient,
             )
 
         val smRunner = SMRunner.init(client, threadPool, settings, indexManagementIndices, clusterService)
@@ -499,6 +508,7 @@ class IndexManagementPlugin :
             indexMetadataProvider,
             smRunner,
             pluginVersionSweepCoordinator,
+            pluginClient,
         )
     }
 
@@ -613,6 +623,10 @@ class IndexManagementPlugin :
         ActionPlugin.ActionHandler(DeleteLRONConfigAction.INSTANCE, TransportDeleteLRONConfigAction::class.java),
     )
 
+    override fun assignSubject(pluginSubject: PluginSubject?) {
+        pluginClient.setSubject(pluginSubject)
+    }
+
     override fun getTransportInterceptors(
         namedWriteableRegistry: NamedWriteableRegistry,
         threadContext: ThreadContext,
@@ -628,6 +642,10 @@ class IndexManagementPlugin :
         SystemIndexDescriptor(
             CONTROL_CENTER_INDEX,
             "Index for storing notification policy of long running index operations.",
+        ),
+        SystemIndexDescriptor(
+            HISTORY_INDEX_BASE + "*",
+            "Index for history for index management operations.",
         ),
     )
 }

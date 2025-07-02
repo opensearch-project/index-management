@@ -60,6 +60,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.NO_ID
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
@@ -82,6 +83,7 @@ constructor(
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
     val indexMetadataProvider: IndexMetadataProvider,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<ChangePolicyRequest, ISMStatusResponse>(
     ChangePolicyAction.NAME, transportService, actionFilters, ::ChangePolicyRequest,
 ) {
@@ -156,12 +158,10 @@ constructor(
         private fun getPolicy() {
             val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, changePolicy.policyID)
 
-            client.threadPool().threadContext.stashContext().use {
-                if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
-                    return
-                }
-                client.get(getRequest, ActionListener.wrap(::onGetPolicyResponse, ::onFailure))
+            if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
+                return
             }
+            pluginClient.get(getRequest, ActionListener.wrap(::onGetPolicyResponse, ::onFailure))
         }
 
         @Suppress("ReturnCount")
@@ -182,7 +182,7 @@ constructor(
 
             IndexUtils.checkAndUpdateConfigIndexMapping(
                 clusterService.state(),
-                client.admin().indices(),
+                pluginClient.admin().indices(),
                 ActionListener.wrap(::onUpdateMapping, ::onFailure),
             )
         }

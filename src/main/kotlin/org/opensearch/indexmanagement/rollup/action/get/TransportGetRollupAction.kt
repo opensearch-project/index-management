@@ -22,6 +22,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.util.parseRollup
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.tasks.Task
@@ -29,6 +30,7 @@ import org.opensearch.transport.TransportService
 import org.opensearch.transport.client.Client
 import java.lang.Exception
 
+@Suppress("LongParameterList")
 class TransportGetRollupAction
 @Inject
 constructor(
@@ -38,6 +40,7 @@ constructor(
     val settings: Settings,
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<GetRollupRequest, GetRollupResponse>(
     GetRollupAction.NAME, transportService, actionFilters, ::GetRollupRequest,
 ) {
@@ -59,41 +62,39 @@ constructor(
         )
         val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id).preference(request.preference)
         val user = buildUser(client.threadPool().threadContext)
-        client.threadPool().threadContext.stashContext().use {
-            client.get(
-                getRequest,
-                object : ActionListener<GetResponse> {
-                    override fun onResponse(response: GetResponse) {
-                        if (!response.isExists) {
-                            return listener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
-                        }
-
-                        val rollup: Rollup?
-                        try {
-                            rollup = parseRollup(response, xContentRegistry)
-                        } catch (e: IllegalArgumentException) {
-                            listener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
-                            return
-                        }
-                        if (!SecurityUtils.userHasPermissionForResource(user, rollup.user, filterByEnabled, "rollup", request.id, listener)) {
-                            return
-                        } else {
-                            // if HEAD request don't return the rollup
-                            val rollupResponse =
-                                if (request.srcContext != null && !request.srcContext.fetchSource()) {
-                                    GetRollupResponse(response.id, response.version, response.seqNo, response.primaryTerm, RestStatus.OK, null)
-                                } else {
-                                    GetRollupResponse(response.id, response.version, response.seqNo, response.primaryTerm, RestStatus.OK, rollup)
-                                }
-                            listener.onResponse(rollupResponse)
-                        }
+        pluginClient.get(
+            getRequest,
+            object : ActionListener<GetResponse> {
+                override fun onResponse(response: GetResponse) {
+                    if (!response.isExists) {
+                        return listener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
                     }
 
-                    override fun onFailure(e: Exception) {
-                        listener.onFailure(e)
+                    val rollup: Rollup?
+                    try {
+                        rollup = parseRollup(response, xContentRegistry)
+                    } catch (e: IllegalArgumentException) {
+                        listener.onFailure(OpenSearchStatusException("Rollup not found", RestStatus.NOT_FOUND))
+                        return
                     }
-                },
-            )
-        }
+                    if (!SecurityUtils.userHasPermissionForResource(user, rollup.user, filterByEnabled, "rollup", request.id, listener)) {
+                        return
+                    } else {
+                        // if HEAD request don't return the rollup
+                        val rollupResponse =
+                            if (request.srcContext != null && !request.srcContext.fetchSource()) {
+                                GetRollupResponse(response.id, response.version, response.seqNo, response.primaryTerm, RestStatus.OK, null)
+                            } else {
+                                GetRollupResponse(response.id, response.version, response.seqNo, response.primaryTerm, RestStatus.OK, rollup)
+                            }
+                        listener.onResponse(rollupResponse)
+                    }
+                }
+
+                override fun onFailure(e: Exception) {
+                    listener.onFailure(e)
+                }
+            },
+        )
     }
 }
