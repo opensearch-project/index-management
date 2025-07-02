@@ -392,11 +392,31 @@ class RollupInterceptorIT : RollupRestTestCase() {
             client().makeRequest("POST", "/target_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
+            val reason = (e.response.asMap() as Map<String, Map<String, Map<String, String>>>)
+                .getValue("error").getValue("caused_by").getValue("reason")
+
+            assertTrue(
+                "Wrong error message prefix:\n$reason",
+                reason.startsWith("Could not find a rollup job that can answer this query because"),
+            )
+
+            val actualItems: Set<String> = Regex("""\[(.*)]""")
+                .find(reason)!!
+                .groupValues[1]
+                .split(',')
+                .map { it.trim() }
+                .toSet()
+
+            val expectedItems = setOf(
+                "missing field RateCodeID",
+                "missing field timestamp",
+                "missing sum aggregation on total_amount",
+            )
+
             assertEquals(
-                "Wrong error message",
-                "Could not find a rollup job that can answer this query because [missing field RateCodeID, missing field timestamp, " +
-                    "missing sum aggregation on total_amount]",
-                (e.response.asMap() as Map<String, Map<String, Map<String, String>>>)["error"]!!["caused_by"]!!["reason"],
+                "Wrong error details (order doesn’t matter)",
+                expectedItems,
+                actualItems,
             )
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
         }
