@@ -230,4 +230,49 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
             )
         }
     }
+
+    fun `test minStateAge transition occurs after elapsed time`() {
+        val indexName = "${testIndexName}_min_state_age"
+        val policyID = "${testIndexName}_min_state_age_policy"
+        val secondStateName = "second"
+        val states =
+            listOf(
+                State("first", listOf(), listOf(Transition(secondStateName, Conditions(minStateAge = TimeValue.timeValueSeconds(5))))),
+                State(secondStateName, listOf(), listOf()),
+            )
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
+        createPolicy(policy, policyID)
+        createIndex(indexName, policyID)
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+        // Initialising policy
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        // should not transition immediately
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            assertEquals(
+                AttemptTransitionStep.getEvaluatingMessage(indexName),
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
+            )
+        }
+        // Wait for min_state_age to elapse
+        Thread.sleep(5500)
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        // Should transition now
+        waitFor {
+            assertEquals(
+                AttemptTransitionStep.getSuccessMessage(indexName, secondStateName),
+                getExplainManagedIndexMetaData(indexName).info?.get("message"),
+            )
+        }
+    }
 }
