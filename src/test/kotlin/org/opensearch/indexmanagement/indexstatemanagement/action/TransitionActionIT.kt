@@ -147,4 +147,87 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         // Should have evaluated to true
         waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
     }
+
+    fun `test noAlias transition condition`() {
+        val indexName = "${testIndexName}_no_alias"
+        val policyID = "${testIndexName}_no_alias_policy"
+        val secondStateName = "second"
+        val states =
+            listOf(
+                State("first", listOf(), listOf(Transition(secondStateName, Conditions(noAlias = true)))),
+                State(secondStateName, listOf(), listOf()),
+            )
+
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
+
+        createPolicy(policy, policyID)
+        createIndex(indexName, policyID)
+
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+
+        // Initializing the policy/metadata
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+
+        // Evaluating transition conditions for first time (should succeed, no alias)
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+
+        // Create a new index and add an alias, then attach the policy with noAlias=true (should NOT transition)
+        val indexWithAlias = "${testIndexName}_with_alias"
+        createIndex(indexWithAlias, policyID, "foo-alias")
+        addPolicyToIndex(indexWithAlias, policyID)
+        val managedIndexConfigWithAlias = getExistingManagedIndexConfig(indexWithAlias)
+        updateManagedIndexConfigStartTime(managedIndexConfigWithAlias)
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexWithAlias).policyID) }
+        updateManagedIndexConfigStartTime(managedIndexConfigWithAlias)
+        // Should not transition because alias exists and noAlias=true
+        waitFor { assertEquals(AttemptTransitionStep.getEvaluatingMessage(indexWithAlias), getExplainManagedIndexMetaData(indexWithAlias).info?.get("message")) }
+
+        // Now test noAlias=false: should transition if alias exists
+        val indexWithAlias2 = "${indexWithAlias}_2"
+        val policyIDWithNoAliasFalse = "${testIndexName}_no_alias_false_policy"
+        val statesWithNoAliasFalse =
+            listOf(
+                State("first", listOf(), listOf(Transition(secondStateName, Conditions(noAlias = false)))),
+                State(secondStateName, listOf(), listOf()),
+            )
+        val policyWithAlias =
+            Policy(
+                id = policyIDWithNoAliasFalse,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = statesWithNoAliasFalse[0].name,
+                states = statesWithNoAliasFalse,
+            )
+        createPolicy(policyWithAlias, policyIDWithNoAliasFalse)
+        waitFor { assertNotNull(getPolicy(policyIDWithNoAliasFalse)) }
+        createIndex(indexWithAlias2, policyIDWithNoAliasFalse, "foo-alias-2")
+        addPolicyToIndex(indexWithAlias2, policyIDWithNoAliasFalse)
+        val managedIndexConfigWithAlias2 = getExistingManagedIndexConfig(indexWithAlias2)
+        updateManagedIndexConfigStartTime(managedIndexConfigWithAlias2)
+        waitFor { assertEquals(policyIDWithNoAliasFalse, getExplainManagedIndexMetaData(indexWithAlias2).policyID) }
+        updateManagedIndexConfigStartTime(managedIndexConfigWithAlias2)
+        // Should transition because alias exists and noAlias=false
+        waitFor {
+            assertEquals(
+                AttemptTransitionStep.getSuccessMessage(indexWithAlias2, secondStateName),
+                getExplainManagedIndexMetaData(
+                    indexWithAlias2,
+                ).info?.get("message"),
+            )
+        }
+    }
 }

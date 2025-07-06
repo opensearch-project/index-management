@@ -189,6 +189,7 @@ fun Transition.evaluateConditions(
     indexSize: ByteSizeValue?,
     transitionStartTime: Instant,
     rolloverDate: Instant?,
+    indexAliasesCount: Int? = null,
 ): Boolean {
     // If there are no conditions, treat as always true
     if (this.conditions == null) return true
@@ -217,6 +218,11 @@ fun Transition.evaluateConditions(
         val rolloverDateMilli = rolloverDate?.toEpochMilli() ?: return false
         val elapsedTime = Instant.now().toEpochMilli() - rolloverDateMilli
         return this.conditions.rolloverAge.millis <= elapsedTime
+    }
+
+    if (this.conditions.noAlias != null && indexAliasesCount != null) {
+        return (this.conditions.noAlias && indexAliasesCount == 0) ||
+            (!this.conditions.noAlias && indexAliasesCount > 0)
     }
 
     // We should never reach this

@@ -100,9 +100,10 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             }
 
             // Find the first transition that evaluates to true and get the state to transition to, otherwise return null if none are true
+            val indexAliasesCount = indexMetadata?.aliases?.size ?: 0
             stateName =
                 transitions.find {
-                    it.evaluateConditions(indexCreationDateInstant, numDocs, indexSize, stepStartTime, rolloverDate)
+                    it.evaluateConditions(indexCreationDateInstant, numDocs, indexSize, stepStartTime, rolloverDate, indexAliasesCount)
                 }?.stateName
             val message: String
             val stateName = stateName // shadowed on purpose to prevent var from changing
