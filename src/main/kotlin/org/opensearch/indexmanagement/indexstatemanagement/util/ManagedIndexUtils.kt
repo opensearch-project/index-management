@@ -190,6 +190,7 @@ fun Transition.evaluateConditions(
     transitionStartTime: Instant,
     rolloverDate: Instant?,
     indexAliasesCount: Int? = null,
+    stateStartTime: Instant? = null,
 ): Boolean {
     // If there are no conditions, treat as always true
     if (this.conditions == null) return true
@@ -223,6 +224,11 @@ fun Transition.evaluateConditions(
     if (this.conditions.noAlias != null && indexAliasesCount != null) {
         return (this.conditions.noAlias && indexAliasesCount == 0) ||
             (!this.conditions.noAlias && indexAliasesCount > 0)
+    }
+
+    if (this.conditions.minStateAge != null && stateStartTime != null) {
+        val elapsed = System.currentTimeMillis() - stateStartTime.toEpochMilli()
+        return elapsed >= this.conditions.minStateAge.millis
     }
 
     // We should never reach this
