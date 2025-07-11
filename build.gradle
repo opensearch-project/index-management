@@ -4,6 +4,7 @@
  */
 
 
+import io.gitlab.arturbosch.detekt.Detekt
 import org.opensearch.gradle.testclusters.OpenSearchCluster
 import org.opensearch.gradle.testclusters.StandaloneRestIntegTestTask
 
@@ -180,6 +181,11 @@ detekt {
 // When writing detekt Gradle first finds the extension with this name,
 // but with a string it should look for a task with that name instead
 check.dependsOn "detekt"
+
+// TODO Remove this once detekt supports JDK24
+tasks.withType(Detekt).configureEach {
+    jvmTarget = "22"
+}
 
 configurations.testImplementation {
     exclude module: "securemock"
