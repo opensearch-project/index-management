@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
+import org.opensearch.Version
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
@@ -125,8 +126,10 @@ data class Conditions(
         out.writeOptionalWriteable(size)
         out.writeOptionalWriteable(cron)
         out.writeOptionalTimeValue(rolloverAge)
-        out.writeOptionalBoolean(noAlias)
-        out.writeOptionalTimeValue(minStateAge)
+        if (out.version.onOrAfter(Version.V_3_0_0)) {
+            out.writeOptionalBoolean(noAlias)
+            out.writeOptionalTimeValue(minStateAge)
+        }
     }
 
     companion object {
