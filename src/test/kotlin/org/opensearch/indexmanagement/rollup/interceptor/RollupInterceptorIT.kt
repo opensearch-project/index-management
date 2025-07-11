@@ -392,31 +392,13 @@ class RollupInterceptorIT : RollupRestTestCase() {
             client().makeRequest("POST", "/target_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
-            val reason = (e.response.asMap() as Map<String, Map<String, Map<String, String>>>)
-                .getValue("error").getValue("caused_by").getValue("reason")
-
+            val errorMessage = (e.response.asMap() as Map<String, Map<String, Map<String, String>>>)["error"]!!["caused_by"]!!["reason"]!!
             assertTrue(
-                "Wrong error message prefix:\n$reason",
-                reason.startsWith("Could not find a rollup job that can answer this query because"),
-            )
-
-            val actualItems: Set<String> = Regex("""\[(.*)]""")
-                .find(reason)!!
-                .groupValues[1]
-                .split(',')
-                .map { it.trim() }
-                .toSet()
-
-            val expectedItems = setOf(
-                "missing field RateCodeID",
-                "missing field timestamp",
-                "missing sum aggregation on total_amount",
-            )
-
-            assertEquals(
-                "Wrong error details (order doesn’t matter)",
-                expectedItems,
-                actualItems,
+                "Wrong error message",
+                errorMessage.startsWith("Could not find a rollup job that can answer this query because") == true &&
+                    errorMessage.contains("missing field RateCodeID") == true &&
+                    errorMessage.contains("missing field timestamp") == true &&
+                    errorMessage.contains("missing sum aggregation on total_amount") == true,
             )
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
         }

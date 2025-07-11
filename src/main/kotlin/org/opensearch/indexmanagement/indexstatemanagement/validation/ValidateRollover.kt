@@ -31,8 +31,7 @@ class ValidateRollover(
         if (skipRollover(indexName) || alreadyRolledOver(rolloverTarget, indexName)) return this
 
         if (!isDataStream) {
-            if (!hasAlias(rolloverTarget, indexName) || !isWriteIndex(rolloverTarget, indexName)
-            ) {
+            if (!hasAlias(rolloverTarget, indexName) || !isWriteIndex(rolloverTarget, indexName)) {
                 return this
             }
         }
