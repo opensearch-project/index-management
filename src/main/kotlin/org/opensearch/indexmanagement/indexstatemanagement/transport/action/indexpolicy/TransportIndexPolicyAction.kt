@@ -47,6 +47,7 @@ import org.opensearch.indexmanagement.opensearchapi.parseFromSearchResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
 import org.opensearch.search.builder.SearchSourceBuilder
@@ -68,6 +69,7 @@ constructor(
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
     var awarenessReplicaBalance: AwarenessReplicaBalance,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<IndexPolicyRequest, IndexPolicyResponse>(
     IndexPolicyAction.NAME, transportService, actionFilters, ::IndexPolicyRequest,
 ) {
@@ -97,26 +99,24 @@ constructor(
                     ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
                 )}",
             )
-            client.threadPool().threadContext.stashContext().use {
-                if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
-                    return
-                }
-                ismIndices.checkAndUpdateIMConfigIndex(
-                    object : ActionListener<AcknowledgedResponse> {
-                        override fun onResponse(response: AcknowledgedResponse) {
-                            onCreateMappingsResponse(response)
-                        }
-
-                        override fun onFailure(t: Exception) {
-                            if (t is ResourceAlreadyExistsException) {
-                                actionListener.onFailure(OpenSearchStatusException(t.localizedMessage, RestStatus.CONFLICT))
-                            } else {
-                                actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
-                            }
-                        }
-                    },
-                )
+            if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
+                return
             }
+            ismIndices.checkAndUpdateIMConfigIndex(
+                object : ActionListener<AcknowledgedResponse> {
+                    override fun onResponse(response: AcknowledgedResponse) {
+                        onCreateMappingsResponse(response)
+                    }
+
+                    override fun onFailure(t: Exception) {
+                        if (t is ResourceAlreadyExistsException) {
+                            actionListener.onFailure(OpenSearchStatusException(t.localizedMessage, RestStatus.CONFLICT))
+                        } else {
+                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                        }
+                    }
+                },
+            )
         }
 
         @Suppress("ComplexMethod", "LongMethod", "NestedBlockDepth")
@@ -189,7 +189,7 @@ constructor(
                     .indices(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
                     .preference(Preference.PRIMARY_FIRST.type())
 
-            client.search(
+            pluginClient.search(
                 searchRequest,
                 object : ActionListener<SearchResponse> {
                     override fun onResponse(response: SearchResponse) {
@@ -246,7 +246,7 @@ constructor(
                     .setIfPrimaryTerm(request.primaryTerm)
             }
 
-            client.index(
+            pluginClient.index(
                 indexRequest,
                 object : ActionListener<IndexResponse> {
                     override fun onResponse(response: IndexResponse) {

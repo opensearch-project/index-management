@@ -79,20 +79,21 @@ data class Channel(val id: String) :
         user: User?,
     ) {
         val channel = this
-        client.threadPool().threadContext.stashContext().use {
-            // We need to set the user context information in the thread context for notification plugin to correctly resolve the user object
+        // TODO Understand why this is called twice when reindexing is finished in NotificationActionListenerIT.test notify for reindex with runtime policy
+        // We need to set the user context information in the thread context for notification plugin to correctly resolve the user object
+        client.threadPool().threadContext.getTransient<String>(ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT)?.let {
             client.threadPool().threadContext.putTransient(ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT, generateUserString(user))
-            val res: SendNotificationResponse =
-                NotificationsPluginInterface.suspendUntil {
-                    this.sendNotification(
-                        (client as NodeClient),
-                        eventSource,
-                        ChannelMessage(message, null, null),
-                        listOf(channel.id),
-                        it,
-                    )
-                }
-            validateResponseStatus(res.getStatus(), res.notificationEvent.eventSource.referenceId)
         }
+        val res: SendNotificationResponse =
+            NotificationsPluginInterface.suspendUntil {
+                this.sendNotification(
+                    (client as NodeClient),
+                    eventSource,
+                    ChannelMessage(message, null, null),
+                    listOf(channel.id),
+                    it,
+                )
+            }
+        validateResponseStatus(res.getStatus(), res.notificationEvent.eventSource.referenceId)
     }
 }
