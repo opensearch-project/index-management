@@ -104,8 +104,7 @@ class TransformLockManager(
      */
     suspend fun renewLockForLongSearch(timeSpentOnSearch: Long) {
         // If the request was longer than 10 minutes and lock expires in less than 20 minutes, renew the lock just in case
-        if (timeSpentOnSearch > TIMEOUT_UPPER_BOUND_IN_SECONDS && lockExpirationInSeconds() ?: 0 < MAXIMUM_LOCK_EXPIRATION_IN_SECONDS
-        ) {
+        if (timeSpentOnSearch > TIMEOUT_UPPER_BOUND_IN_SECONDS && lockExpirationInSeconds() ?: 0 < MAXIMUM_LOCK_EXPIRATION_IN_SECONDS) {
             this.renewLockForScheduledJob()
         }
     }

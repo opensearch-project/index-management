@@ -18,6 +18,12 @@ jobs:
     needs: Get-CI-Image-Tag
     # This job runs on Linux
     runs-on: ubuntu-latest
+    strategy:
+      # This setting says that all jobs should finish, even if one fails
+      fail-fast: false
+      # This starts three jobs, setting these environment variables uniquely for the different jobs
+      matrix:
+        java: [ 21, 24 ]
     container:
       # using the same image which is used by opensearch-build team to build the OpenSearch Distribution
       # this image tag is subject to change as more dependencies and updates will arrive over time
@@ -28,11 +34,11 @@ jobs:
       - name: Run start commands
         run: ${{ needs.Get-CI-Image-Tag.outputs.ci-image-start-command }}
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
-      - name: Set Up JDK
+      - name: Set Up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
           distribution: temurin # Temurin is a distribution of adoptium
-          java-version: 21
+          java-version: ${{ matrix.java }}
       # index-management
       - name: Checkout Branch
         uses: actions/checkout@v4
