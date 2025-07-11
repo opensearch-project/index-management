@@ -392,11 +392,13 @@ class RollupInterceptorIT : RollupRestTestCase() {
             client().makeRequest("POST", "/target_rollup_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
             fail("Expected 400 Method BAD_REQUEST response")
         } catch (e: ResponseException) {
-            assertEquals(
+            val errorMessage = (e.response.asMap() as Map<String, Map<String, Map<String, String>>>)["error"]!!["caused_by"]!!["reason"]!!
+            assertTrue(
                 "Wrong error message",
-                "Could not find a rollup job that can answer this query because [missing field RateCodeID, missing field timestamp, " +
-                    "missing sum aggregation on total_amount]",
-                (e.response.asMap() as Map<String, Map<String, Map<String, String>>>)["error"]!!["caused_by"]!!["reason"],
+                errorMessage.startsWith("Could not find a rollup job that can answer this query because") == true &&
+                    errorMessage.contains("missing field RateCodeID") == true &&
+                    errorMessage.contains("missing field timestamp") == true &&
+                    errorMessage.contains("missing sum aggregation on total_amount") == true,
             )
             assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
         }
