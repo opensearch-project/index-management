@@ -29,6 +29,7 @@ import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.env.Environment
 import org.opensearch.env.NodeEnvironment
+import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_ALL
 import org.opensearch.indexmanagement.controlcenter.notification.ControlCenterIndices
 import org.opensearch.indexmanagement.controlcenter.notification.action.delete.DeleteLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.delete.TransportDeleteLRONConfigAction
@@ -628,6 +629,10 @@ class IndexManagementPlugin :
         SystemIndexDescriptor(
             CONTROL_CENTER_INDEX,
             "Index for storing notification policy of long running index operations.",
+        ),
+        SystemIndexDescriptor(
+            HISTORY_ALL,
+            "Index for history for index management operations.",
         ),
     )
 }
