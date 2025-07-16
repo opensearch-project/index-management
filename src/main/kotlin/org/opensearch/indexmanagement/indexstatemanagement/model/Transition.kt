@@ -115,8 +115,8 @@ data class Conditions(
         size = sin.readOptionalWriteable(::ByteSizeValue),
         cron = sin.readOptionalWriteable(::CronSchedule),
         rolloverAge = sin.readOptionalTimeValue(),
-        noAlias = sin.readOptionalBoolean(),
-        minStateAge = sin.readOptionalTimeValue(),
+        noAlias = if (sin.version.onOrAfter(Version.V_3_2_0)) sin.readOptionalBoolean() else null,
+        minStateAge = if (sin.version.onOrAfter(Version.V_3_2_0)) sin.readOptionalTimeValue() else null,
     )
 
     @Throws(IOException::class)
@@ -126,7 +126,7 @@ data class Conditions(
         out.writeOptionalWriteable(size)
         out.writeOptionalWriteable(cron)
         out.writeOptionalTimeValue(rolloverAge)
-        if (out.version.onOrAfter(Version.V_3_0_0)) {
+        if (out.version.onOrAfter(Version.V_3_2_0)) {
             out.writeOptionalBoolean(noAlias)
             out.writeOptionalTimeValue(minStateAge)
         }
