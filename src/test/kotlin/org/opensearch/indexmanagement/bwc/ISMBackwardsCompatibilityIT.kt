@@ -11,8 +11,16 @@ import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_W
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
+import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
+import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.indexstatemanagement.model.State
+import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
+import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.step.rollover.AttemptRolloverStep
+import org.opensearch.indexmanagement.indexstatemanagement.step.transition.AttemptTransitionStep
 import org.opensearch.indexmanagement.waitFor
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
@@ -130,6 +138,62 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
         }
     }
 
+    @Throws(Exception::class)
+    @Suppress("UNCHECKED_CAST")
+    fun `test existing transition conditions backwards compatibility`() {
+        val indexNameBase = "${testIndexName}_existing_conditions"
+        val index1 = "$indexNameBase-1"
+        val index2 = "$indexNameBase-2"
+        val policyID = "${testIndexName}_doc_count_policy"
+
+        val uri = getPluginUri()
+        val responseMap = getAsMap(uri)["nodes"] as Map<String, Map<String, Any>>
+        for (response in responseMap.values) {
+            val plugins = response["plugins"] as List<Map<String, Any>>
+            val pluginNames = plugins.map { plugin -> plugin["name"] }.toSet()
+            when (CLUSTER_TYPE) {
+                ClusterType.OLD -> {
+                    assertTrue(pluginNames.contains("opendistro-index-management") || pluginNames.contains("opensearch-index-management"))
+
+                    createDocCountTransitionPolicy(policyID)
+
+                    createIndex(index1, policyID)
+                    createIndex(index2, policyID)
+
+                    // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
+                    updateManagedIndexConfigStartTime(getExistingManagedIndexConfig(index1))
+                    waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index1).policyID) }
+
+                    // Change the start time so the job will trigger in 2 seconds, this will trigger the first initialization of the policy
+                    updateManagedIndexConfigStartTime(getExistingManagedIndexConfig(index2))
+                    waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(index2).policyID) }
+
+                    verifyPendingTransition(index1)
+                    verifyPendingTransition(index2)
+                }
+                ClusterType.MIXED -> {
+                    assertTrue(pluginNames.contains("opensearch-index-management"))
+
+                    verifyPendingTransition(index1)
+                    verifyPendingTransition(index2)
+                }
+                ClusterType.UPGRADED -> {
+                    assertTrue(pluginNames.contains("opensearch-index-management"))
+
+                    verifyPendingTransition(index1)
+                    insertSampleData(index = index1, docCount = 6, delay = 0)
+                    verifySuccessfulTransition(index1)
+
+                    insertSampleData(index = index2, docCount = 6, delay = 0)
+                    verifySuccessfulTransition(index2)
+
+                    deleteIndex("$indexNameBase*")
+                }
+            }
+            break
+        }
+    }
+
     private fun createRolloverPolicy(policyID: String) {
         val policy =
             """
@@ -208,5 +272,51 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
             assertEquals("Did not have rolled over index name", metadata.rolledOverIndexName, newIndex)
         }
         Assert.assertTrue("New rollover index does not exist.", indexExists(newIndex))
+    }
+
+    private fun createDocCountTransitionPolicy(policyID: String) {
+        val secondStateName = "second"
+        val states = listOf(
+            State("first", listOf(), listOf(Transition(secondStateName, Conditions(docCount = 5L)))),
+            State(secondStateName, listOf(), listOf()),
+        )
+
+        val policy = Policy(
+            id = policyID,
+            description = "BWC test policy with doc count transition",
+            schemaVersion = 5L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states,
+        )
+
+        createPolicy(policy, policyID)
+    }
+
+    private fun verifyPendingTransition(index: String) {
+        val managedIndexConfig = getExistingManagedIndexConfig(index)
+        // Need to speed up to second execution where it will trigger the first execution of transition evaluation
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            assertEquals(
+                "Index transitioned before it met the condition.",
+                AttemptTransitionStep.getEvaluatingMessage(index),
+                getExplainManagedIndexMetaData(index).info?.get("message"),
+            )
+        }
+    }
+
+    private fun verifySuccessfulTransition(index: String) {
+        val managedIndexConfig = getExistingManagedIndexConfig(index)
+        // Need to speed up to second execution where it will trigger the transition evaluation
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            assertEquals(
+                "Index did not transition successfully",
+                AttemptTransitionStep.getSuccessMessage(index, "second"),
+                getExplainManagedIndexMetaData(index).info?.get("message"),
+            )
+        }
     }
 }
