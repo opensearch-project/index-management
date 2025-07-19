@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.model
 
+import org.opensearch.Version
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
@@ -80,10 +81,12 @@ data class Conditions(
     val size: ByteSizeValue? = null,
     val cron: CronSchedule? = null,
     val rolloverAge: TimeValue? = null,
+    val noAlias: Boolean? = null,
+    val minStateAge: TimeValue? = null,
 ) : ToXContentObject,
     Writeable {
     init {
-        val conditionsList = listOf(indexAge, docCount, size, cron, rolloverAge)
+        val conditionsList = listOf(indexAge, docCount, size, cron, rolloverAge, noAlias, minStateAge)
         require(conditionsList.filterNotNull().size == 1) { "Cannot provide more than one Transition condition" }
 
         // Validate doc count condition
@@ -100,6 +103,8 @@ data class Conditions(
         if (size != null) builder.field(MIN_SIZE_FIELD, size.stringRep)
         if (cron != null) builder.field(CRON_FIELD, cron)
         if (rolloverAge != null) builder.field(MIN_ROLLOVER_AGE_FIELD, rolloverAge.stringRep)
+        if (noAlias != null) builder.field(NO_ALIAS_FIELD, noAlias)
+        if (minStateAge != null) builder.field(MIN_STATE_AGE_FIELD, minStateAge.stringRep)
         return builder.endObject()
     }
 
@@ -110,6 +115,8 @@ data class Conditions(
         size = sin.readOptionalWriteable(::ByteSizeValue),
         cron = sin.readOptionalWriteable(::CronSchedule),
         rolloverAge = sin.readOptionalTimeValue(),
+        noAlias = if (sin.version.onOrAfter(Version.V_3_2_0)) sin.readOptionalBoolean() else null,
+        minStateAge = if (sin.version.onOrAfter(Version.V_3_2_0)) sin.readOptionalTimeValue() else null,
     )
 
     @Throws(IOException::class)
@@ -119,6 +126,10 @@ data class Conditions(
         out.writeOptionalWriteable(size)
         out.writeOptionalWriteable(cron)
         out.writeOptionalTimeValue(rolloverAge)
+        if (out.version.onOrAfter(Version.V_3_2_0)) {
+            out.writeOptionalBoolean(noAlias)
+            out.writeOptionalTimeValue(minStateAge)
+        }
     }
 
     companion object {
@@ -127,6 +138,8 @@ data class Conditions(
         const val MIN_SIZE_FIELD = "min_size"
         const val CRON_FIELD = "cron"
         const val MIN_ROLLOVER_AGE_FIELD = "min_rollover_age"
+        const val NO_ALIAS_FIELD = "no_alias"
+        const val MIN_STATE_AGE_FIELD = "min_state_age"
 
         @JvmStatic
         @Throws(IOException::class)
@@ -136,6 +149,8 @@ data class Conditions(
             var size: ByteSizeValue? = null
             var cron: CronSchedule? = null
             var rolloverAge: TimeValue? = null
+            var noAlias: Boolean? = null
+            var minStateAge: TimeValue? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != Token.END_OBJECT) {
@@ -148,11 +163,13 @@ data class Conditions(
                     MIN_SIZE_FIELD -> size = ByteSizeValue.parseBytesSizeValue(xcp.text(), MIN_SIZE_FIELD)
                     CRON_FIELD -> cron = ScheduleParser.parse(xcp) as? CronSchedule
                     MIN_ROLLOVER_AGE_FIELD -> rolloverAge = TimeValue.parseTimeValue(xcp.text(), MIN_ROLLOVER_AGE_FIELD)
+                    NO_ALIAS_FIELD -> noAlias = xcp.booleanValue()
+                    MIN_STATE_AGE_FIELD -> minStateAge = TimeValue.parseTimeValue(xcp.text(), MIN_STATE_AGE_FIELD)
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in Conditions.")
                 }
             }
 
-            return Conditions(indexAge, docCount, size, cron, rolloverAge)
+            return Conditions(indexAge, docCount, size, cron, rolloverAge, noAlias, minStateAge)
         }
     }
 }

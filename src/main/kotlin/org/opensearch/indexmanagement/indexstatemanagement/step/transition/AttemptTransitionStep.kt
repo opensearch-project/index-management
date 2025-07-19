@@ -16,6 +16,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getOldestRolloverTime
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
+import org.opensearch.indexmanagement.indexstatemanagement.util.TransitionConditionContext
 import org.opensearch.indexmanagement.indexstatemanagement.util.evaluateConditions
 import org.opensearch.indexmanagement.indexstatemanagement.util.hasStatsConditions
 import org.opensearch.indexmanagement.opensearchapi.getUsefulCauseString
@@ -100,9 +101,22 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             }
 
             // Find the first transition that evaluates to true and get the state to transition to, otherwise return null if none are true
+            val indexAliasesCount = indexMetadata?.aliases?.size ?: 0
+            val stateStartTime = context.metadata.stateMetaData?.startTime
+            val stateStartInstant = stateStartTime?.let { Instant.ofEpochMilli(it) }
             stateName =
                 transitions.find {
-                    it.evaluateConditions(indexCreationDateInstant, numDocs, indexSize, stepStartTime, rolloverDate)
+                    it.evaluateConditions(
+                        TransitionConditionContext(
+                            indexCreationDate = indexCreationDateInstant,
+                            numDocs = numDocs,
+                            indexSize = indexSize,
+                            transitionStartTime = stepStartTime,
+                            rolloverDate = rolloverDate,
+                            indexAliasesCount = indexAliasesCount,
+                            stateStartTime = stateStartInstant,
+                        ),
+                    )
                 }?.stateName
             val message: String
             val stateName = stateName // shadowed on purpose to prevent var from changing
