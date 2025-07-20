@@ -52,7 +52,7 @@ open class SMStateMachineTests : MocksTestCase() {
             stateMachineSpy.currentState(currentState).next(creationTransitions)
             argumentCaptor<SMMetadata>().apply {
                 verify(stateMachineSpy).updateMetadata(capture())
-                assertEquals(nextStates!!.first(), firstValue.creation.currentState)
+                assertEquals(nextStates!!.first(), firstValue.creation?.currentState)
             }
         }
 
@@ -96,9 +96,9 @@ open class SMStateMachineTests : MocksTestCase() {
             stateMachineSpy.currentState(currentState).next(creationTransitions)
             argumentCaptor<SMMetadata>().apply {
                 verify(stateMachineSpy).updateMetadata(capture())
-                assertEquals(currentState, firstValue.creation.currentState)
-                assertNull(firstValue.creation.started)
-                assertEquals(3, firstValue.creation.retry!!.count)
+                assertEquals(currentState, firstValue.creation?.currentState)
+                assertNull(firstValue.creation?.started)
+                assertEquals(3, firstValue.creation?.retry!!.count)
             }
         }
 
@@ -301,5 +301,80 @@ open class SMStateMachineTests : MocksTestCase() {
 
         // Verify exception type and cause
         assertTrue(thrownException.cause is OpenSearchException)
+    }
+
+    fun `test state machine with deletion-only policy`() = runBlocking {
+        // Create deletion-only metadata manually
+        val metadata = SMMetadata(
+            policySeqNo = 1L,
+            policyPrimaryTerm = 1L,
+            creation = null, // No creation workflow
+            deletion = SMMetadata.WorkflowMetadata(
+                currentState = SMState.DELETION_START,
+                trigger = SMMetadata.Trigger(time = now()),
+            ),
+        )
+        val job = randomSMPolicy(
+            creationNull = true,
+            deletionMaxAge = TimeValue.timeValueDays(7),
+            deletionMinCount = 2,
+        )
+        val stateMachine = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
+
+        // Test that deletion-only policy properly initializes
+        assertNull("Creation should be null for deletion-only policy", job.creation)
+        assertNotNull("Deletion should exist", job.deletion)
+        assertNull("Metadata creation should be null", metadata.creation)
+        assertNotNull("Metadata deletion should exist", metadata.deletion)
+
+        // Test that metadata is properly structured for deletion-only workflow
+        assertEquals("Deletion state should be DELETION_START", SMState.DELETION_START, metadata.deletion?.currentState)
+    }
+
+    fun `test state machine with creation and deletion workflows`() = runBlocking {
+        val metadata = randomSMMetadata(
+            creationCurrentState = SMState.CREATION_START,
+            deletionCurrentState = SMState.DELETION_START,
+        )
+        val job = randomSMPolicy(
+            creationNull = false,
+            deletionMaxAge = TimeValue.timeValueDays(30),
+            deletionMinCount = 5,
+        )
+        val stateMachine = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
+
+        // Test that both workflows are properly initialized
+        assertNotNull("Creation should exist for policy with both workflows", job.creation)
+        assertNotNull("Deletion should exist for policy with both workflows", job.deletion)
+        assertNotNull("Metadata creation should exist", metadata.creation)
+        assertNotNull("Metadata deletion should exist", metadata.deletion)
+
+        assertEquals("Creation state should be CREATION_START", SMState.CREATION_START, metadata.creation?.currentState)
+        assertEquals("Deletion state should be DELETION_START", SMState.DELETION_START, metadata.deletion?.currentState)
+    }
+
+    fun `test state machine with snapshot pattern in deletion`() = runBlocking {
+        // Create deletion-only metadata manually
+        val metadata = SMMetadata(
+            policySeqNo = 1L,
+            policyPrimaryTerm = 1L,
+            creation = null, // No creation workflow
+            deletion = SMMetadata.WorkflowMetadata(
+                currentState = SMState.DELETION_START,
+                trigger = SMMetadata.Trigger(time = now()),
+            ),
+        )
+        val job = randomSMPolicy(
+            creationNull = true,
+            deletionMaxAge = TimeValue.timeValueDays(7),
+            deletionMinCount = 1,
+            snapshotPattern = "external-*",
+        )
+        val stateMachine = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
+
+        // Test that snapshot pattern is properly configured
+        assertEquals("Snapshot pattern should be set", "external-*", job.deletion?.snapshotPattern)
+        assertNull("Creation should be null for deletion-only policy with pattern", job.creation)
+        assertNotNull("Deletion should exist", job.deletion)
     }
 }
