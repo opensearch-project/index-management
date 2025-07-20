@@ -38,7 +38,14 @@ object CreatingState : State {
             SMMetadata.Builder(metadata)
                 .workflow(WorkflowType.CREATION)
 
-        var snapshotName: String? = metadata.creation.started?.first()
+        if (job.creation == null) {
+            log.warn("Policy creation config becomes null before trying to create snapshot. Reset.")
+            return SMResult.Fail(
+                metadataBuilder, WorkflowType.CREATION,
+            )
+        }
+
+        var snapshotName: String? = metadata.creation?.started?.first()
 
         // Check if there's already a snapshot created by SM in current execution period.
         // So that this State can be executed idempotent.
@@ -54,8 +61,8 @@ object CreatingState : State {
             }
             val getSnapshots = getSnapshotsResult.snapshots
 
-            val latestExecutionStartTime = job.creation.schedule.getPeriodStartingAt(null).v1()
-            snapshotName = checkCreatedSnapshots(latestExecutionStartTime, getSnapshots)
+            val latestExecutionStartTime = job.creation?.schedule?.getPeriodStartingAt(null)?.v1()
+            snapshotName = latestExecutionStartTime?.let { checkCreatedSnapshots(it, getSnapshots) }
             if (snapshotName != null) {
                 log.info("Already created snapshot [$snapshotName] during this execution period starting at $latestExecutionStartTime.")
                 metadataBuilder.setLatestExecution(

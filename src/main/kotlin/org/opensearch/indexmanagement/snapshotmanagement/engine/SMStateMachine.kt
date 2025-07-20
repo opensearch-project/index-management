@@ -162,7 +162,7 @@ class SMStateMachine(
         val retry =
             when (result.workflowType) {
                 WorkflowType.CREATION -> {
-                    metadata.creation.retry
+                    metadata.creation?.retry
                 }
                 WorkflowType.DELETION -> {
                     metadata.deletion?.retry
@@ -249,7 +249,11 @@ class SMStateMachine(
             val metadataToSave =
                 SMMetadata.Builder(metadata)
                     .setSeqNoPrimaryTerm(job.seqNo, job.primaryTerm)
-                    .setNextCreationTime(job.creation.schedule.getNextExecutionTime(now))
+
+            val creation = job.creation
+            creation?.let {
+                metadataToSave.setNextCreationTime(creation.schedule.getNextExecutionTime(now))
+            }
 
             val deletion = job.deletion
             deletion?.let {

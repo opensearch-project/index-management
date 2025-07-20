@@ -43,10 +43,10 @@ class CreationFinishedStateTests : MocksTestCase() {
             assertTrue("Execution results should be Next.", result is SMResult.Next)
             result as SMResult.Next
             val metadataToSave = result.metadataToSave.build()
-            assertNull("Started creation should be reset to null.", metadataToSave.creation.started)
-            assertEquals("Latest execution status is success", SMMetadata.LatestExecution.Status.SUCCESS, metadataToSave.creation.latestExecution!!.status)
-            assertNotNull("Latest execution status end_time should not be null", metadataToSave.creation.latestExecution!!.endTime)
-            assertNotNull("Latest execution status message should not be null", metadataToSave.creation.latestExecution!!.info!!.message)
+            assertNull("Started creation should be reset to null.", metadataToSave.creation?.started)
+            assertEquals("Latest execution status is success", SMMetadata.LatestExecution.Status.SUCCESS, metadataToSave.creation?.latestExecution!!.status)
+            assertNotNull("Latest execution status end_time should not be null", metadataToSave.creation?.latestExecution!!.endTime)
+            assertNotNull("Latest execution status message should not be null", metadataToSave.creation?.latestExecution!!.info!!.message)
         }
 
     fun `test creation still in progress`() =
@@ -71,7 +71,7 @@ class CreationFinishedStateTests : MocksTestCase() {
             assertTrue("Execution results should be Stay.", result is SMResult.Stay)
             result as SMResult.Stay
             val metadataToSave = result.metadataToSave.build()
-            assertEquals("Started creation should not be reset.", snapshotName, metadataToSave.creation.started!!.first())
+            assertEquals("Started creation should not be reset.", snapshotName, metadataToSave.creation?.started!!.first())
         }
 
     fun `test creation end not successful`() =
@@ -96,10 +96,10 @@ class CreationFinishedStateTests : MocksTestCase() {
             assertTrue("Execution results should be Fail.", result is SMResult.Fail)
             result as SMResult.Fail
             val metadataToSave = result.metadataToSave.build()
-            assertNull("Started creation should be reset to null.", metadataToSave.creation.started)
-            assertEquals("Latest execution status is failed", SMMetadata.LatestExecution.Status.FAILED, metadataToSave.creation.latestExecution!!.status)
-            assertNotNull("Latest execution status end_time should not be null", metadataToSave.creation.latestExecution!!.endTime)
-            assertNotNull("Latest execution status cause should not be null", metadataToSave.creation.latestExecution!!.info!!.cause)
+            assertNull("Started creation should be reset to null.", metadataToSave.creation?.started)
+            assertEquals("Latest execution status is failed", SMMetadata.LatestExecution.Status.FAILED, metadataToSave.creation?.latestExecution!!.status)
+            assertNotNull("Latest execution status end_time should not be null", metadataToSave.creation?.latestExecution!!.endTime)
+            assertNotNull("Latest execution status cause should not be null", metadataToSave.creation?.latestExecution!!.info!!.cause)
         }
 
     fun `test get snapshots exception in creation`() =
@@ -123,9 +123,9 @@ class CreationFinishedStateTests : MocksTestCase() {
             assertTrue("Execution results should be Failure.", result is SMResult.Fail)
             result as SMResult.Fail
             val metadataToSave = result.metadataToSave.build()
-            assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, metadataToSave.creation.latestExecution!!.status)
-            assertNull("Latest execution status end_time should be null", metadataToSave.creation.latestExecution!!.endTime)
-            assertNotNull("Latest execution status info should not be null", metadataToSave.creation.latestExecution!!.info)
+            assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, metadataToSave.creation?.latestExecution!!.status)
+            assertNull("Latest execution status end_time should be null", metadataToSave.creation?.latestExecution!!.endTime)
+            assertNotNull("Latest execution status info should not be null", metadataToSave.creation?.latestExecution!!.info)
         }
 
     fun `test get snapshots empty in creation`() =
@@ -149,9 +149,9 @@ class CreationFinishedStateTests : MocksTestCase() {
             assertTrue("Execution results should be Next.", result is SMResult.Next)
             result as SMResult.Next
             val metadataToSave = result.metadataToSave.build()
-            assertEquals("Latest execution status is success", SMMetadata.LatestExecution.Status.SUCCESS, metadataToSave.creation.latestExecution!!.status)
-            assertNotNull("Latest execution status end_time should not be null", metadataToSave.creation.latestExecution!!.endTime)
-            assertNotNull("Latest execution status message should not be null", metadataToSave.creation.latestExecution!!.info!!.message)
+            assertEquals("Latest execution status is success", SMMetadata.LatestExecution.Status.SUCCESS, metadataToSave.creation?.latestExecution!!.status)
+            assertNotNull("Latest execution status end_time should not be null", metadataToSave.creation?.latestExecution!!.endTime)
+            assertNotNull("Latest execution status message should not be null", metadataToSave.creation?.latestExecution!!.info!!.message)
         }
 
     fun `test creation time limit exceed`() =
@@ -181,8 +181,8 @@ class CreationFinishedStateTests : MocksTestCase() {
             result as SMResult.Fail
             val metadataToSave = result.metadataToSave.build()
             assertTrue(result.forceReset!!)
-            assertEquals("Latest execution status is time limit exceed", SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED, metadataToSave.creation.latestExecution!!.status)
-            assertNotNull("Latest execution status end_time should not be null", metadataToSave.creation.latestExecution!!.endTime)
-            assertNotNull("Latest execution status cause should not be null", metadataToSave.creation.latestExecution!!.info!!.cause)
+            assertEquals("Latest execution status is time limit exceed", SMMetadata.LatestExecution.Status.TIME_LIMIT_EXCEEDED, metadataToSave.creation?.latestExecution!!.status)
+            assertNotNull("Latest execution status end_time should not be null", metadataToSave.creation?.latestExecution!!.endTime)
+            assertNotNull("Latest execution status cause should not be null", metadataToSave.creation?.latestExecution!!.info!!.cause)
         }
 }
