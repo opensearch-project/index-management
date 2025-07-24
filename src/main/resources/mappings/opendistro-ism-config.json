@@ -1497,6 +1497,9 @@
                   "type": "integer"
                 }
               }
+            },
+            "snapshot_pattern": {
+              "type": "keyword"
             }
           }
         },
