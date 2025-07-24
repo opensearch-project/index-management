@@ -26,6 +26,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.tasks.Task
@@ -36,7 +37,7 @@ import java.lang.IllegalArgumentException
 
 private val log = LogManager.getLogger(TransportDeletePolicyAction::class.java)
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount", "LongParameterList")
 class TransportDeletePolicyAction
 @Inject
 constructor(
@@ -46,6 +47,7 @@ constructor(
     val clusterService: ClusterService,
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<DeletePolicyRequest, DeleteResponse>(
     DeletePolicyAction.NAME, transportService, actionFilters, ::DeletePolicyRequest,
 ) {
@@ -73,14 +75,12 @@ constructor(
                     ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
                 )}",
             )
-            client.threadPool().threadContext.stashContext().use {
-                getPolicy()
-            }
+            getPolicy()
         }
 
         private fun getPolicy() {
             val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.policyID)
-            client.get(
+            pluginClient.get(
                 getRequest,
                 object : ActionListener<GetResponse> {
                     override fun onResponse(response: GetResponse) {
@@ -115,9 +115,7 @@ constructor(
                 DeleteRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.policyID)
                     .setRefreshPolicy(request.refreshPolicy)
 
-            client.threadPool().threadContext.stashContext().use {
-                client.delete(deleteRequest, actionListener)
-            }
+            pluginClient.delete(deleteRequest, actionListener)
         }
     }
 }

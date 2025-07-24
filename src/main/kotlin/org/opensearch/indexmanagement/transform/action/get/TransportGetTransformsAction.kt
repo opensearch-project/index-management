@@ -25,6 +25,7 @@ import org.opensearch.index.query.ExistsQueryBuilder
 import org.opensearch.index.query.WildcardQueryBuilder
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.transform.model.Transform
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.addUserFilter
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.getJobs
@@ -34,6 +35,7 @@ import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import org.opensearch.transport.client.Client
 
+@Suppress("LongParameterList")
 class TransportGetTransformsAction
 @Inject
 constructor(
@@ -43,6 +45,7 @@ constructor(
     val clusterService: ClusterService,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<GetTransformsRequest, GetTransformsResponse>(
     GetTransformsAction.NAME, transportService, actionFilters, ::GetTransformsRequest,
 ) {
@@ -77,16 +80,14 @@ constructor(
             SearchSourceBuilder().query(boolQueryBuilder).from(from).size(size).seqNoAndPrimaryTerm(true)
                 .sort(sortField, SortOrder.fromString(sortDirection))
 
-        client.threadPool().threadContext.stashContext().use {
-            @Suppress("UNCHECKED_CAST")
-            getJobs(
-                client,
-                searchSourceBuilder,
-                listener as ActionListener<ActionResponse>,
-                Transform.TRANSFORM_TYPE,
-                ::contentParser,
-            )
-        }
+        @Suppress("UNCHECKED_CAST")
+        getJobs(
+            pluginClient,
+            searchSourceBuilder,
+            listener as ActionListener<ActionResponse>,
+            Transform.TRANSFORM_TYPE,
+            ::contentParser,
+        )
     }
 
     private fun contentParser(bytesReference: BytesReference): XContentParser = XContentHelper.createParser(

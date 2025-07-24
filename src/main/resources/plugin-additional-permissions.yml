@@ -1,0 +1,9 @@
+cluster_permissions:
+  - "cluster:monitor/state"
+  - "indices:data/read/mget"
+index_permissions:
+  - index_patterns:
+      - "*"
+    allowed_actions:
+      - "indices:data/read/search*"
+      - "indices:admin/delete"
