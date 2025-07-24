@@ -243,7 +243,15 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
         assertTrue(
             "No conditions should pass",
             emptyTransition
-                .evaluateConditions(indexCreationDate = Instant.now(), numDocs = null, indexSize = null, transitionStartTime = Instant.now(), rolloverDate = null),
+                .evaluateConditions(
+                    TransitionConditionContext(
+                        indexCreationDate = Instant.now(),
+                        numDocs = null,
+                        indexSize = null,
+                        transitionStartTime = Instant.now(),
+                        rolloverDate = null,
+                    ),
+                ),
         )
 
         val timeTransition =
@@ -254,17 +262,41 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
         assertFalse(
             "Index age that is too young should not pass",
             timeTransition
-                .evaluateConditions(indexCreationDate = Instant.now(), numDocs = null, indexSize = null, transitionStartTime = Instant.now(), rolloverDate = null),
+                .evaluateConditions(
+                    TransitionConditionContext(
+                        indexCreationDate = Instant.now(),
+                        numDocs = null,
+                        indexSize = null,
+                        transitionStartTime = Instant.now(),
+                        rolloverDate = null,
+                    ),
+                ),
         )
         assertTrue(
             "Index age that is older should pass",
             timeTransition
-                .evaluateConditions(indexCreationDate = Instant.now().minusSeconds(10), numDocs = null, indexSize = null, transitionStartTime = Instant.now(), rolloverDate = null),
+                .evaluateConditions(
+                    TransitionConditionContext(
+                        indexCreationDate = Instant.now().minusSeconds(10),
+                        numDocs = null,
+                        indexSize = null,
+                        transitionStartTime = Instant.now(),
+                        rolloverDate = null,
+                    ),
+                ),
         )
         assertFalse(
             "Index age that is -1L should not pass",
             timeTransition
-                .evaluateConditions(indexCreationDate = Instant.ofEpochMilli(-1L), numDocs = null, indexSize = null, transitionStartTime = Instant.now(), rolloverDate = null),
+                .evaluateConditions(
+                    TransitionConditionContext(
+                        indexCreationDate = Instant.ofEpochMilli(-1L),
+                        numDocs = null,
+                        indexSize = null,
+                        transitionStartTime = Instant.now(),
+                        rolloverDate = null,
+                    ),
+                ),
         )
 
         val rolloverTimeTransition =
@@ -275,17 +307,146 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
         assertFalse(
             "Rollover age that is too young should not pass",
             rolloverTimeTransition
-                .evaluateConditions(indexCreationDate = Instant.now(), numDocs = null, indexSize = null, transitionStartTime = Instant.now(), rolloverDate = Instant.now()),
+                .evaluateConditions(
+                    TransitionConditionContext(
+                        indexCreationDate = Instant.now(),
+                        numDocs = null,
+                        indexSize = null,
+                        transitionStartTime = Instant.now(),
+                        rolloverDate = Instant.now(),
+                    ),
+                ),
         )
         assertTrue(
             "Rollover age that is older should pass",
             rolloverTimeTransition
-                .evaluateConditions(indexCreationDate = Instant.now().minusSeconds(10), numDocs = null, indexSize = null, transitionStartTime = Instant.now(), rolloverDate = Instant.now().minusSeconds(10)),
+                .evaluateConditions(
+                    TransitionConditionContext(
+                        indexCreationDate = Instant.now().minusSeconds(10),
+                        numDocs = null,
+                        indexSize = null,
+                        transitionStartTime = Instant.now(),
+                        rolloverDate = Instant.now().minusSeconds(10),
+                    ),
+                ),
         )
         assertFalse(
             "Rollover age that is null should not pass",
             rolloverTimeTransition
-                .evaluateConditions(indexCreationDate = Instant.ofEpochMilli(-1L), numDocs = null, indexSize = null, transitionStartTime = Instant.now(), rolloverDate = null),
+                .evaluateConditions(
+                    TransitionConditionContext(
+                        indexCreationDate = Instant.ofEpochMilli(-1L),
+                        numDocs = null,
+                        indexSize = null,
+                        transitionStartTime = Instant.now(),
+                        rolloverDate = null,
+                    ),
+                ),
+        )
+
+        // Test noAlias = true: should only transition if there are no aliases
+        val noAliasTransition = Transition(
+            stateName = "next_state",
+            conditions = Conditions(noAlias = true),
+        )
+        assertTrue(
+            "Should transition when noAlias=true and indexAliasesCount=0",
+            noAliasTransition.evaluateConditions(
+                TransitionConditionContext(
+                    indexCreationDate = Instant.now(),
+                    numDocs = null,
+                    indexSize = null,
+                    transitionStartTime = Instant.now(),
+                    rolloverDate = null,
+                    indexAliasesCount = 0,
+                    stateStartTime = null,
+                ),
+            ),
+        )
+        assertFalse(
+            "Should not transition when noAlias=true and indexAliasesCount=1",
+            noAliasTransition.evaluateConditions(
+                TransitionConditionContext(
+                    indexCreationDate = Instant.now(),
+                    numDocs = null,
+                    indexSize = null,
+                    transitionStartTime = Instant.now(),
+                    rolloverDate = null,
+                    indexAliasesCount = 1,
+                    stateStartTime = null,
+                ),
+            ),
+        )
+
+        // Test noAlias = false: should only transition if there is at least one alias
+        val aliasTransition = Transition(
+            stateName = "next_state",
+            conditions = Conditions(noAlias = false),
+        )
+        assertFalse(
+            "Should not transition when noAlias=false and indexAliasesCount=0",
+            aliasTransition.evaluateConditions(
+                TransitionConditionContext(
+                    indexCreationDate = Instant.now(),
+                    numDocs = null,
+                    indexSize = null,
+                    transitionStartTime = Instant.now(),
+                    rolloverDate = null,
+                    indexAliasesCount = 0,
+                    stateStartTime = null,
+                ),
+            ),
+        )
+        assertTrue(
+            "Should transition when noAlias=false and indexAliasesCount=2",
+            aliasTransition.evaluateConditions(
+                TransitionConditionContext(
+                    indexCreationDate = Instant.now(),
+                    numDocs = null,
+                    indexSize = null,
+                    transitionStartTime = Instant.now(),
+                    rolloverDate = null,
+                    indexAliasesCount = 2,
+                    stateStartTime = null,
+                ),
+            ),
+        )
+
+        // Test minStateAge: should only transition if enough time has passed
+        val minStateAgeTransition = Transition(
+            stateName = "next_state",
+            conditions = Conditions(minStateAge = TimeValue.timeValueSeconds(2)),
+        )
+        val now = Instant.now()
+        assertFalse(
+            "Should not transition if state age is less than minStateAge",
+            minStateAgeTransition.evaluateConditions(
+                TransitionConditionContext(
+                    indexCreationDate = Instant.now(),
+                    numDocs = null,
+                    indexSize = null,
+                    transitionStartTime = Instant.now(),
+                    rolloverDate = null,
+                    indexAliasesCount = null,
+                    stateStartTime = now,
+                ),
+            ),
+        )
+        // Simulate stateStartTime 3 seconds ago
+        val threeSecondsAgo = now.minusSeconds(3)
+        assertTrue(
+            "Should transition if state age is greater than minStateAge",
+            minStateAgeTransition.evaluateConditions(
+                TransitionConditionContext(
+                    indexCreationDate = Instant.now(),
+                    numDocs = null,
+                    indexSize = null,
+                    transitionStartTime = Instant.now(),
+                    rolloverDate = null,
+                    indexAliasesCount = null,
+                    stateStartTime = threeSecondsAgo,
+                ),
+            ),
         )
     }
 

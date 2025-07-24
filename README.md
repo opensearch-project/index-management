@@ -50,6 +50,8 @@ The current supported transition conditions are:
 * Index size
 * Index age
 * Cron expression
+* Alias presence
+* ISM state age
 
 ## Contributing
 
