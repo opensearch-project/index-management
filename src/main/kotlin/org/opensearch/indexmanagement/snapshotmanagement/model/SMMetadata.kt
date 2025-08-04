@@ -510,6 +510,14 @@ data class SMMetadata(
             return this
         }
 
+        fun resetCreation(): Builder {
+            metadata =
+                metadata.copy(
+                    creation = null,
+                )
+            return this
+        }
+
         // Use this **first** to update metadata, because it depends on started field
         // So if you change started first, this could behave wrongly
         @Suppress("LongParameterList")

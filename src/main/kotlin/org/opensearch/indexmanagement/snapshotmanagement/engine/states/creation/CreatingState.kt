@@ -41,7 +41,7 @@ object CreatingState : State {
         if (job.creation == null) {
             log.warn("Policy creation config becomes null before trying to create snapshot. Reset.")
             return SMResult.Fail(
-                metadataBuilder, WorkflowType.CREATION,
+                metadataBuilder.resetCreation(), WorkflowType.CREATION, true,
             )
         }
 

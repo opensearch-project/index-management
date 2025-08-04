@@ -64,21 +64,12 @@ object DeletingState : State {
         val policySnapshots = getSnapshotsRes.snapshots
 
         // Get pattern-based snapshots if pattern is specified
-        val patternSnapshots = if (job.deletion.snapshotPattern != null) {
-            try {
-                client.getSnapshots(job.deletion.snapshotPattern, repository)
-            } catch (ex: Exception) {
-                log.error("Caught exception while getting snapshots for pattern ${job.deletion.snapshotPattern}.", ex)
-                metadataBuilder.setLatestExecution(
-                    status = SMMetadata.LatestExecution.Status.RETRYING,
-                    message = "Caught exception while getting snapshots for pattern ${job.deletion.snapshotPattern}.",
-                    cause = ex,
-                )
-                return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
-            }
-        } else {
-            emptyList()
+        val patternSnapshotsResult = DeletionStateUtils.getPatternSnapshots(context, metadataBuilder)
+        if (patternSnapshotsResult == null) {
+            return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
         }
+        val (patternSnapshots, updatedMetadataBuilder) = patternSnapshotsResult
+        metadataBuilder = updatedMetadataBuilder
 
         // Combine both sets of snapshots, removing duplicates by snapshot name
         val allSnapshots = (policySnapshots + patternSnapshots)
