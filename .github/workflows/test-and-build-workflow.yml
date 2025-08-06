@@ -150,6 +150,7 @@ jobs:
 
   report-coverage:
     needs: ["test-and-build-linux"]
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -162,7 +163,19 @@ jobs:
         run: ls -R
         working-directory: downloaded-artifacts
 
+      - name: Check if coverage files exist
+        id: check_coverage
+        run: |
+          if find downloaded-artifacts -name "*.xml" -type f | grep -q .; then
+            echo "Coverage XML files found"
+            echo "has_coverage=true" >> $GITHUB_OUTPUT
+          else
+            echo "No coverage XML files found"
+            echo "has_coverage=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Upload Coverage with retry
+        if: steps.check_coverage.outputs.has_coverage == 'true'
         uses: Wandalen/wretry.action@v3.8.0
         with:
           attempt_limit: 5
