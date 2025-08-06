@@ -15,6 +15,7 @@ jobs:
 
   test-and-build-linux:
     needs: Get-CI-Image-Tag
+    timeout-minutes: 25
     env:
       TEST_FILTER: ${{ matrix.test_filter }}
     strategy:
@@ -51,6 +52,7 @@ jobs:
       # This is a hack, but this step creates a link to the X: mounted drive, which makes the path
       # short enough to work on Windows
       - name: Build with Gradle
+        timeout-minutes: 20
         run: |
           chown -R 1000:1000 `pwd`
           su `id -un 1000` -c "./gradlew build ${{ env.TEST_FILTER }} || ./gradlew jacocoTestReport"
