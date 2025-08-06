@@ -155,7 +155,6 @@ jobs:
         with:
           path: downloaded-artifacts
           pattern: coverage-xml-*
-          merge-multiple: true
 
       - name: Display structure of downloaded files
         run: ls -R
