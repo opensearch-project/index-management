@@ -44,7 +44,6 @@ jacocoTestReport {
         html.destination file("${buildDir}/jacoco/")
     }
 }
-check.dependsOn jacocoTestReport
 
 repositories {
     mavenLocal()
