@@ -5,6 +5,7 @@
     - [Setup](#setup)  
     - [Build](#build)
         - [Building from the command line](#building-from-the-command-line)
+        - [Code Coverage](#code-coverage)
         - [Debugging](#debugging)
     - [Using IntelliJ IDEA](#using-intellij-idea)
     - [Submitting Changes](#submitting-changes)
@@ -62,6 +63,31 @@ However, to build the `index management` plugin project, we also use the OpenSea
 12. `./gradlew integTestRemote -Dtests.rest.cluster=localhost:9200 -Dtests.cluster=localhost:9200 -Dtests.clustername="docker-cluster" -Dhttps=true -Duser=admin -Dpassword=admin` launches integration tests against a local cluster and run tests with security
 
 When launching a cluster using one of the above commands, logs are placed in `build/testclusters/integTest-0/logs`. Though the logs are teed to the console, in practices it's best to check the actual log file.
+
+### Code Coverage
+
+The project supports generating code coverage reports using JaCoCo.
+
+#### Generating Coverage Reports
+
+To generate code coverage reports
+
+```bash
+./gradlew check -Dtests.coverage=true
+```
+
+Or run any tests, and generate test report
+
+```bash
+./gradlew test
+./gradlew jacocoTestReport
+```
+
+#### Coverage Report Locations
+
+After running with coverage enabled, reports are generated in:
+- **HTML Report**: `build/reports/jacoco/test/html/index.html` (human readable)
+- **XML Report**: `build/reports/jacoco/test/jacocoTestReport.xml` (for tools like Codecov)
 
 ### Debugging
 
