@@ -17,3 +17,5 @@ bin/
 spi/bin/
 src/test/resources/notifications*
 
+.claude
+CLAUDE.md

@@ -19,7 +19,7 @@
 
 // Get gradle to generate the required jvm agent arg for us using a dummy tasks of type Test. Unfortunately Elastic's
 // testing tasks don't derive from Test so the jacoco plugin can't do this automatically.
-def jacocoDir = "${buildDir}/jacoco"
+def jacocoDir = "${getLayout().getBuildDirectory()}/jacoco"
 
 tasks.register("dummyTest", Test) {
     enabled = false
@@ -46,8 +46,18 @@ integTest {
 }
 
 jacocoTestReport {
-    dependsOn integTest, test
-    executionData dummyTest.jacoco.destinationFile, dummyIntegTest.jacoco.destinationFile
+    // Use mustRunAfter instead of dependsOn to avoid re-running tests
+    // This ensures proper ordering without forcing test execution
+    mustRunAfter test, integTest
+    
+    // Configure execution data to use any available .exec files
+    executionData.setFrom(fileTree(dir: jacocoDir, include: '*.exec').files.findAll { it.exists() })
+    
+    // Make the task skip only if no execution data exists at all
+    onlyIf {
+        fileTree(dir: jacocoDir, include: '*.exec').files.any { it.exists() }
+    }
+    
     sourceDirectories.from = "src/main/kotlin"
     classDirectories.from = sourceSets.main.output
     reports {
@@ -58,8 +68,6 @@ jacocoTestReport {
 
 allprojects{
     afterEvaluate {
-        jacocoTestReport.dependsOn integTest
-
         testClusters.integTest {
             jvmArgs " ${dummyIntegTest.jacoco.getAsJvmArg()}".replace('javaagent:','javaagent:/')
             systemProperty 'com.sun.management.jmxremote', "true"
