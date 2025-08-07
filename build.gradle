@@ -134,7 +134,6 @@ def usingMultiNode = project.properties.containsKey('numNodes')
 if (!usingRemoteCluster && !usingMultiNode) {
     apply from: 'build-tools/coverage.gradle'
 }
-check.dependsOn jacocoTestReport
 
 opensearchplugin {
     name 'opensearch-index-management'
