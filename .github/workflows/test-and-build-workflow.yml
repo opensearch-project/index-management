@@ -57,12 +57,12 @@ jobs:
           chown -R 1000:1000 `pwd`
           su `id -un 1000` -c "./gradlew build ${{ env.TEST_FILTER }}"
       - name: Generate Jacoco Test Report
-        if: always()
+        if: always() && matrix.java == 21
         run: |
           su `id -un 1000` -c "./gradlew jacocoTestReport"
       - name: Upload coverage XML
         uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && matrix.java == 21
         with:
           name: coverage-xml-${{ matrix.java }}-${{ matrix.feature }}
           path: build/reports/jacoco/**/jacocoTestReport.xml
