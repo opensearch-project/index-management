@@ -59,7 +59,7 @@ jobs:
       - name: Generate Jacoco Test Report
         if: always()
         run: |
-          su `id -un 1000` -c "./gradlew jacocoTestReport
+          su `id -un 1000` -c "./gradlew jacocoTestReport"
       - name: Upload coverage XML
         uses: actions/upload-artifact@v4
         if: always()
