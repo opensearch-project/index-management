@@ -24,6 +24,7 @@ import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.IndicesOptions
+import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.cluster.service.ClusterService
@@ -57,6 +58,7 @@ import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
@@ -79,6 +81,7 @@ constructor(
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
     val indexMetadataProvider: IndexMetadataProvider,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<AddPolicyRequest, ISMStatusResponse>(
     AddPolicyAction.NAME, transportService, actionFilters, ::AddPolicyRequest,
 ) {
@@ -218,12 +221,10 @@ constructor(
         private fun getPolicy() {
             val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.policyID)
 
-            client.threadPool().threadContext.stashContext().use {
-                if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
-                    return
-                }
-                client.get(getRequest, ActionListener.wrap(::onGetPolicyResponse, ::onFailure))
+            if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
+                return
             }
+            pluginClient.get(getRequest, ActionListener.wrap(::onGetPolicyResponse, ::onFailure))
         }
 
         private fun onGetPolicyResponse(response: GetResponse) {
@@ -243,7 +244,7 @@ constructor(
 
             IndexUtils.checkAndUpdateConfigIndexMapping(
                 clusterService.state(),
-                client.admin().indices(),
+                pluginClient.admin().indices(),
                 ActionListener.wrap(::onUpdateMapping, ::onFailure),
             )
         }
@@ -281,7 +282,7 @@ constructor(
             val multiGetReq = MultiGetRequest()
             indicesToAdd.forEach { multiGetReq.add(INDEX_MANAGEMENT_INDEX, it.key) }
 
-            client.multiGet(
+            pluginClient.multiGet(
                 multiGetReq,
                 object : ActionListener<MultiGetResponse> {
                     override fun onResponse(response: MultiGetResponse) {
@@ -329,7 +330,9 @@ constructor(
                     )
                 }
 
-                client.bulk(
+                bulkReq.refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
+
+                pluginClient.bulk(
                     bulkReq,
                     object : ActionListener<BulkResponse> {
                         override fun onResponse(response: BulkResponse) {
@@ -375,7 +378,8 @@ constructor(
         fun removeMetadatas(indices: List<Index>) {
             val request = indices.map { deleteManagedIndexMetadataRequest(it.uuid) }
             val bulkReq = BulkRequest().add(request)
-            client.bulk(
+            bulkReq.refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
+            pluginClient.bulk(
                 bulkReq,
                 object : ActionListener<BulkResponse> {
                     override fun onResponse(response: BulkResponse) {

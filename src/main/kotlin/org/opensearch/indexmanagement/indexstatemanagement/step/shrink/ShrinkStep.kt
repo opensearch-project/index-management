@@ -131,13 +131,12 @@ abstract class ShrinkStep(
         try {
             if (client != null) {
                 // Use plugin level permissions when deleting the failed target shrink index after a failure
-                client.threadPool().threadContext.stashContext().use {
-                    val deleteRequest = DeleteIndexRequest(targetIndexName)
-                    val response: AcknowledgedResponse =
-                        client.admin().indices().suspendUntil { delete(deleteRequest, it) }
-                    if (!response.isAcknowledged) {
-                        logger.error("Shrink action failed to delete target index [$targetIndexName] during cleanup after a failure")
-                    }
+                // TODO should this use case be supported or is it ok to use user's privileges?
+                val deleteRequest = DeleteIndexRequest(targetIndexName)
+                val response: AcknowledgedResponse =
+                    client.admin().indices().suspendUntil { delete(deleteRequest, it) }
+                if (!response.isAcknowledged) {
+                    logger.error("Shrink action failed to delete target index [$targetIndexName] during cleanup after a failure")
                 }
             } else {
                 logger.error(
