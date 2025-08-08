@@ -1,15 +1,9 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
  */
 
-package org.opensearch.indexmanagement
+package org.opensearch.indexmanagement.security
 
 import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.HttpHeaders
@@ -23,6 +17,8 @@ import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.common.Strings
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.IndexManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -31,6 +27,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.toJsonString
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
+import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.RollupRestTestCase
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
@@ -40,7 +37,6 @@ import org.opensearch.indexmanagement.transform.TransformRestTestCase
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.toJsonString
 import org.opensearch.rest.RestRequest
-import org.opensearch.test.OpenSearchTestCase
 import java.util.Locale
 
 abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
@@ -71,7 +67,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
     private object IndexStateManagementRestTestCaseExt : IndexStateManagementRestTestCase() {
         fun createPolicyExt(
             policy: Policy,
-            policyId: String = OpenSearchTestCase.randomAlphaOfLength(10),
+            policyId: String = randomAlphaOfLength(10),
             refresh: Boolean = true,
             client: RestClient?,
         ) = super.createPolicy(policy, policyId, refresh, client)
@@ -145,7 +141,8 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         expectedStatus: RestStatus,
         client: RestClient,
     ): Response {
-        val request = Request("PUT", "${IndexManagementPlugin.ROLLUP_JOBS_BASE_URI}/${rollup.id}?refresh=true")
+        val request =
+            Request("PUT", "${IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI}/${rollup.id}?refresh=true")
         request.setJsonEntity(rollup.toJsonString())
         return executeRequest(request, expectedStatus, client)
     }
@@ -162,7 +159,8 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
     ): Rollup = RollupRestTestCaseSecurityExtension.getRollupExt(rollupId, header)
 
     protected fun deleteRollup(rollupId: String, client: RestClient, expectedStatus: RestStatus) {
-        val request = Request(RestRequest.Method.DELETE.name, "${IndexManagementPlugin.ROLLUP_JOBS_BASE_URI}/$rollupId")
+        val request =
+            Request(RestRequest.Method.DELETE.name, "${IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI}/$rollupId")
         executeRequest(request, expectedStatus, client)
     }
 
@@ -180,7 +178,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
 
     protected fun createPolicy(
         policy: Policy,
-        policyId: String = OpenSearchTestCase.randomAlphaOfLength(10),
+        policyId: String = randomAlphaOfLength(10),
         refresh: Boolean = true,
         client: RestClient?,
     ): Policy = IndexStateManagementRestTestCaseExt.createPolicyExt(policy, policyId, refresh, client)
@@ -188,7 +186,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
     protected fun managedIndexExplainAllAsMap(
         client: RestClient?,
     ): Map<*, *> {
-        val request = Request("GET", "${RestExplainAction.EXPLAIN_BASE_URI}")
+        val request = Request("GET", "${RestExplainAction.Companion.EXPLAIN_BASE_URI}")
         return entityAsMap(executeRequest(request, RestStatus.OK, client!!))
     }
 
@@ -202,7 +200,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
     ): Response = IndexStateManagementRestTestCaseExt.createPolicyJsonExt(policyString, policyId, refresh, client)
 
     protected fun deletePolicy(policyId: String, client: RestClient, expectedStatus: RestStatus) {
-        val request = Request("DELETE", "${IndexManagementPlugin.POLICY_BASE_URI}/$policyId")
+        val request = Request("DELETE", "${IndexManagementPlugin.Companion.POLICY_BASE_URI}/$policyId")
         executeRequest(request, expectedStatus, client)
     }
 
@@ -224,7 +222,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         val waitForActiveShards = if (isMultiNode) "all" else "1"
         val builtSettings =
             Settings.builder().let {
-                it.putNull(ManagedIndexSettings.ROLLOVER_ALIAS.key)
+                it.putNull(ManagedIndexSettings.Companion.ROLLOVER_ALIAS.key)
                 it.put(INDEX_NUMBER_OF_REPLICAS, "1")
                 it.put(INDEX_NUMBER_OF_SHARDS, "1")
                 it.put("index.write.wait_for_active_shards", waitForActiveShards)
@@ -257,7 +255,13 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         expectedNumberOfPolicies: Int?,
         expectedStatus: RestStatus = RestStatus.OK,
     ): Response? {
-        val response = executeRequest(request = Request(RestRequest.Method.GET.name, IndexManagementPlugin.POLICY_BASE_URI), expectedStatus, userClient)
+        val response = executeRequest(
+            request = Request(
+                RestRequest.Method.GET.name,
+                IndexManagementPlugin.Companion.POLICY_BASE_URI,
+            ),
+            expectedStatus, userClient,
+        )
         assertEquals(
             "User $user not able to see all policies", expectedNumberOfPolicies, response.asMap()["total_policies"],
         )
@@ -270,17 +274,22 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
     }
 
     protected fun checkPolicyGet(policyId: String, userClient: RestClient, expectedStatus: RestStatus): Response {
-        val request = Request(RestRequest.Method.GET.name, IndexManagementPlugin.POLICY_BASE_URI + "/$policyId")
+        val request =
+            Request(RestRequest.Method.GET.name, IndexManagementPlugin.Companion.POLICY_BASE_URI + "/$policyId")
         return executeRequest(request, expectedStatus, userClient)
     }
 
     protected fun checkRollupExplain(rollupId: String, userClient: RestClient, expectedStatus: RestStatus) {
-        val request = Request(RestRequest.Method.GET.name, "${IndexManagementPlugin.ROLLUP_JOBS_BASE_URI}/$rollupId/_explain")
+        val request = Request(
+            RestRequest.Method.GET.name,
+            "${IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI}/$rollupId/_explain",
+        )
         executeRequest(request, expectedStatus, userClient)
     }
 
     protected fun checkRollupGet(rollupId: String, userClient: RestClient, expectedStatus: RestStatus) {
-        val request = Request(RestRequest.Method.GET.name, "${IndexManagementPlugin.ROLLUP_JOBS_BASE_URI}/$rollupId")
+        val request =
+            Request(RestRequest.Method.GET.name, "${IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI}/$rollupId")
         executeRequest(request, expectedStatus, userClient)
     }
 
@@ -296,7 +305,10 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         expectedStatus: RestStatus,
         client: RestClient,
     ): Response {
-        val request = Request(RestRequest.Method.PUT.name, "${IndexManagementPlugin.TRANSFORM_BASE_URI}/${transform.id}?refresh=true")
+        val request = Request(
+            RestRequest.Method.PUT.name,
+            "${IndexManagementPlugin.Companion.TRANSFORM_BASE_URI}/${transform.id}?refresh=true",
+        )
         request.setJsonEntity(transform.toJsonString())
         return executeRequest(request, expectedStatus, client)
     }
@@ -306,7 +318,7 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
         expectedStatus: RestStatus,
         client: RestClient,
     ): Response {
-        val request = Request("PUT", "${IndexManagementPlugin.POLICY_BASE_URI}/${policy.id}?refresh=true")
+        val request = Request("PUT", "${IndexManagementPlugin.Companion.POLICY_BASE_URI}/${policy.id}?refresh=true")
         request.setJsonEntity(policy.toJsonString())
         return executeRequest(request, expectedStatus, client)
     }
@@ -320,27 +332,35 @@ abstract class SecurityRestTestCase : IndexManagementRestTestCase() {
     protected fun getTransformMetadata(metadataId: String) = TransformRestTestCaseExt.getTransformMetadataExt(metadataId)
 
     protected fun checkTransformExplain(transformId: String, userClient: RestClient, expectedStatus: RestStatus): Response {
-        val request = Request(RestRequest.Method.GET.name, IndexManagementPlugin.TRANSFORM_BASE_URI + "/$transformId/_explain")
+        val request = Request(
+            RestRequest.Method.GET.name,
+            IndexManagementPlugin.Companion.TRANSFORM_BASE_URI + "/$transformId/_explain",
+        )
         return executeRequest(request, expectedStatus, userClient)
     }
 
     protected fun checkTransformGet(transformId: String, userClient: RestClient, expectedStatus: RestStatus): Response {
-        val request = Request(RestRequest.Method.GET.name, IndexManagementPlugin.TRANSFORM_BASE_URI + "/$transformId")
+        val request =
+            Request(RestRequest.Method.GET.name, IndexManagementPlugin.Companion.TRANSFORM_BASE_URI + "/$transformId")
         return executeRequest(request, expectedStatus, userClient)
     }
 
     protected fun stopTransform(transformId: String, client: RestClient, expectedStatus: RestStatus) {
-        val request = Request(RestRequest.Method.POST.name, "${IndexManagementPlugin.TRANSFORM_BASE_URI}/$transformId/_stop")
+        val request = Request(
+            RestRequest.Method.POST.name,
+            "${IndexManagementPlugin.Companion.TRANSFORM_BASE_URI}/$transformId/_stop",
+        )
         executeRequest(request, expectedStatus, client)
     }
 
     protected fun deleteTransform(transformId: String, client: RestClient, expectedStatus: RestStatus) {
-        val request = Request("DELETE", "${IndexManagementPlugin.TRANSFORM_BASE_URI}/$transformId")
+        val request = Request("DELETE", "${IndexManagementPlugin.Companion.TRANSFORM_BASE_URI}/$transformId")
         executeRequest(request, expectedStatus, client)
     }
 
     protected fun checkTransformPreview(userClient: RestClient, expectedStatus: RestStatus): Response {
-        val request = Request(RestRequest.Method.GET.name, "${IndexManagementPlugin.TRANSFORM_BASE_URI}/_preview")
+        val request =
+            Request(RestRequest.Method.GET.name, "${IndexManagementPlugin.Companion.TRANSFORM_BASE_URI}/_preview")
         return executeRequest(request, expectedStatus, userClient)
     }
 
