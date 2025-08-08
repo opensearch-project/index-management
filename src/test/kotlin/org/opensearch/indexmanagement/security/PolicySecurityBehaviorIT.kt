@@ -24,6 +24,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.AliasAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy.AddPolicyAction
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
@@ -43,7 +44,7 @@ class PolicySecurityBehaviorIT : SecurityRestTestCase() {
 
     @Before
     fun setupUsersAndRoles() {
-//        updateClusterSetting(ManagedIndexSettings.JITTER.key, "0.0", false)
+        updateClusterSetting(ManagedIndexSettings.Companion.JITTER.key, "0.0", false)
 
         val custerPermissions =
             listOf(
