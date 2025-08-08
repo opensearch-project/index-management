@@ -22,6 +22,7 @@ import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.client.AdminClient
 import org.opensearch.transport.client.Client
 import org.opensearch.transport.client.ClusterAdminClient
+import java.util.concurrent.atomic.AtomicInteger
 
 abstract class MocksTestCase : OpenSearchTestCase() {
     val client: Client = mock()
@@ -105,6 +106,24 @@ abstract class MocksTestCase : OpenSearchTestCase() {
             } else {
                 listener.onFailure(exception)
             }
+        }.whenever(clusterAdminClient).getSnapshots(any(), any())
+    }
+
+    fun mockGetSnapshotsCallFirstSuccessThenFailure(
+        firstResponse: ActionResponse,
+        secondException: Exception,
+    ) {
+        whenever(client.admin()).thenReturn(adminClient)
+        whenever(adminClient.cluster()).thenReturn(clusterAdminClient)
+        val callCount = AtomicInteger(0)
+        doAnswer {
+            val listener = it.getArgument<ActionListener<ActionResponse>>(1)
+            if (callCount.getAndIncrement() == 0) {
+                listener.onResponse(firstResponse)
+            } else {
+                listener.onFailure(secondException)
+            }
+            null
         }.whenever(clusterAdminClient).getSnapshots(any(), any())
     }
 }
