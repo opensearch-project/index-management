@@ -22,6 +22,41 @@ import java.time.Instant
 import java.time.Instant.now
 
 class DeletionFinishedStateTests : MocksTestCase() {
+    fun `test pattern snapshots retrieval failure in finished state sets retry and fails`() =
+        runBlocking {
+            val startedSnapshot = "policy-snapshot-1"
+            // First call (policy snapshots) succeeds with an empty list, second call (pattern) fails
+            mockGetSnapshotsCallFirstSuccessThenFailure(
+                firstResponse = mockGetSnapshotResponse(0),
+                secondException = Exception("pattern getSnapshots failure"),
+            )
+
+            val metadata = SMMetadata(
+                policySeqNo = 1L,
+                policyPrimaryTerm = 1L,
+                creation = null,
+                deletion = SMMetadata.WorkflowMetadata(
+                    currentState = SMState.DELETING,
+                    trigger = SMMetadata.Trigger(time = now()),
+                    started = listOf(startedSnapshot),
+                    latestExecution = randomLatestExecution(
+                        startTime = Instant.now(),
+                    ),
+                ),
+            )
+            val job = randomSMPolicy(
+                policyName = "test-policy",
+                creationNull = true,
+                snapshotPattern = "external-*",
+            )
+            val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
+
+            val result = SMState.DELETION_FINISHED.instance.execute(context)
+            assertTrue("Execution results should be Failure.", result is SMResult.Fail)
+            result as SMResult.Fail
+            val metadataToSave = result.metadataToSave.build()
+            assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, metadataToSave.deletion!!.latestExecution!!.status)
+        }
     fun `test deletion succeed`() =
         runBlocking {
             val snapshotName = "test_deletion_success"

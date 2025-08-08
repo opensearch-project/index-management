@@ -140,4 +140,148 @@ class SMPolicyTests : OpenSearchTestCase() {
     private fun randomCronSchedule() = org.opensearch.jobscheduler.spi.schedule.CronSchedule("0 0 * * *", java.time.ZoneId.of("UTC"))
 
     private fun randomInstant() = java.time.Instant.now()
+
+    fun `test policy validation with null repository should throw exception`() {
+        val jsonWithNullRepository = """
+        {
+            "name": "test-policy",
+            "creation": {
+                "schedule": {
+                    "cron": {
+                        "expression": "0 0 * * *",
+                        "timezone": "UTC"
+                    }
+                }
+            },
+            "snapshot_config": {
+                "repository": null
+            },
+            "enabled": true
+        }
+        """.trimIndent()
+
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            SMPolicy.parse(createParser(XContentType.JSON.xContent(), jsonWithNullRepository), "test-policy-id")
+        }
+        assertTrue("Exception should mention repository", exception.message?.contains("repository") == true)
+    }
+
+    fun `test policy validation with empty repository should throw exception`() {
+        val jsonWithEmptyRepository = """
+        {
+            "name": "test-policy",
+            "creation": {
+                "schedule": {
+                    "cron": {
+                        "expression": "0 0 * * *",
+                        "timezone": "UTC"
+                    }
+                }
+            },
+            "snapshot_config": {
+                "repository": ""
+            },
+            "enabled": true
+        }
+        """.trimIndent()
+
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            SMPolicy.parse(createParser(XContentType.JSON.xContent(), jsonWithEmptyRepository), "test-policy-id")
+        }
+        assertTrue("Exception should mention repository", exception.message?.contains("repository") == true)
+    }
+
+    fun `test policy validation with null creation schedule should throw exception`() {
+        val jsonWithNullSchedule = """
+        {
+            "name": "test-policy",
+            "creation": {
+                "schedule": {
+                    "cron": {
+                        "expression": "invalid-cron",
+                        "timezone": "UTC"
+                    }
+                }
+            },
+            "snapshot_config": {
+                "repository": "test-repo"
+            },
+            "enabled": true
+        }
+        """.trimIndent()
+
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            SMPolicy.parse(createParser(XContentType.JSON.xContent(), jsonWithNullSchedule), "test-policy-id")
+        }
+        assertTrue("Exception should mention cron expression", exception.message?.contains("Cron expression") == true)
+    }
+
+    fun `test policy with deletion using creation schedule when deletion schedule not provided`() {
+        val jsonWithDeletionUsingCreationSchedule = """
+        {
+            "name": "test-policy",
+            "creation": {
+                "schedule": {
+                    "cron": {
+                        "expression": "0 0 * * *",
+                        "timezone": "UTC"
+                    }
+                }
+            },
+            "deletion": {
+                "condition": {
+                    "max_age": "7d",
+                    "min_count": 3
+                }
+            },
+            "snapshot_config": {
+                "repository": "test-repo"
+            },
+            "enabled": true
+        }
+        """.trimIndent()
+
+        val policy = SMPolicy.parse(createParser(XContentType.JSON.xContent(), jsonWithDeletionUsingCreationSchedule), "test-policy-id")
+
+        assertNotNull("Creation should not be null", policy.creation)
+        assertNotNull("Deletion should not be null", policy.deletion)
+        assertEquals("Deletion should use creation schedule", policy.creation?.schedule, policy.deletion?.schedule)
+    }
+
+    fun `test policy with deletion but no creation should throw exception when deletion schedule not provided`() {
+        val jsonWithDeletionOnlyNoSchedule = """
+        {
+            "name": "test-policy",
+            "deletion": {
+                "condition": {
+                    "max_age": "7d",
+                    "min_count": 3
+                }
+            },
+            "snapshot_config": {
+                "repository": "test-repo"
+            },
+            "enabled": true
+        }
+        """.trimIndent()
+
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            SMPolicy.parse(createParser(XContentType.JSON.xContent(), jsonWithDeletionOnlyNoSchedule), "test-policy-id")
+        }
+        assertTrue("Exception should mention schedule not provided", exception.message?.contains("Schedule not provided") == true)
+    }
+
+    fun `test policy serialization with older version requires creation`() {
+        val policy = randomSMPolicy(creationNull = false)
+
+        val out = BytesStreamOutput()
+        out.version = org.opensearch.Version.V_3_1_0
+        policy.writeTo(out)
+
+        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
+        sin.version = org.opensearch.Version.V_3_1_0
+        val deserializedPolicy = SMPolicy(sin)
+
+        assertNotNull("Deserialized creation should not be null for older version", deserializedPolicy.creation)
+    }
 }
