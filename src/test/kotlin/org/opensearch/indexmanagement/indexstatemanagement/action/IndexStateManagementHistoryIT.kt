@@ -6,7 +6,9 @@
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
 import org.opensearch.action.search.SearchResponse
+import org.opensearch.client.Request
 import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_ALL
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
@@ -164,7 +166,8 @@ class IndexStateManagementHistoryIT : IndexStateManagementRestTestCase() {
     }
 
     fun `test history shard settings`() {
-        deleteIndex(IndexManagementIndices.HISTORY_ALL)
+        val deleteISMHistoryIndexRequest = Request("DELETE", "/$HISTORY_ALL")
+        adminClient().performRequest(deleteISMHistoryIndexRequest)
         val indexName = "${testIndexName}_shard_settings"
         val policyID = "${testIndexName}_shard_settings_1"
         val actionConfig = ReadOnlyAction(0)
