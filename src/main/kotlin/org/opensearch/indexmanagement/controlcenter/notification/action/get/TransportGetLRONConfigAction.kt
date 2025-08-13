@@ -30,16 +30,14 @@ import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import org.opensearch.transport.client.node.NodeClient
 
 class TransportGetLRONConfigAction
 @Inject
 constructor(
-    val client: NodeClient,
+    val client: PluginClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
-    val pluginClient: PluginClient,
 ) : HandledTransportAction<GetLRONConfigRequest, GetLRONConfigResponse>(
     GetLRONConfigAction.NAME, transportService, actionFilters, ::GetLRONConfigRequest,
 ) {
@@ -50,7 +48,7 @@ constructor(
     }
 
     inner class GetLRONConfigHandler(
-        private val client: NodeClient,
+        private val client: PluginClient,
         private val actionListener: ActionListener<GetLRONConfigResponse>,
         private val request: GetLRONConfigRequest,
     ) {
@@ -62,7 +60,7 @@ constructor(
             )
             if (null != request.docId) {
                 getLRONConfigAndParse(
-                    pluginClient,
+                    client,
                     request.docId,
                     xContentRegistry,
                     object : ActionListener<LRONConfigResponse> {
@@ -101,7 +99,7 @@ constructor(
                     .indices(IndexManagementPlugin.CONTROL_CENTER_INDEX)
                     .preference(Preference.PRIMARY_FIRST.type())
 
-            pluginClient.search(
+            client.search(
                 searchRequest,
                 object : ActionListener<SearchResponse> {
                     override fun onResponse(response: SearchResponse) {

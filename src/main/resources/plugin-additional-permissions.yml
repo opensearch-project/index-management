@@ -6,4 +6,4 @@ index_permissions:
       - "*"
     allowed_actions:
       - "indices:data/read/search*"
-      - "indices:admin/delete"
+      # - "indices:admin/delete"

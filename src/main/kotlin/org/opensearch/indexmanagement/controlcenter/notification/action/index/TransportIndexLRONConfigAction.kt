@@ -32,19 +32,17 @@ import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import org.opensearch.transport.client.node.NodeClient
 
 @Suppress("LongParameterList")
 class TransportIndexLRONConfigAction
 @Inject
 constructor(
-    val client: NodeClient,
+    val client: PluginClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val controlCenterIndices: ControlCenterIndices,
     val xContentRegistry: NamedXContentRegistry,
-    val pluginClient: PluginClient,
 ) : HandledTransportAction<IndexLRONConfigRequest, LRONConfigResponse>(
     IndexLRONConfigAction.NAME, transportService, actionFilters, ::IndexLRONConfigRequest,
 ) {
@@ -55,7 +53,7 @@ constructor(
     }
 
     inner class IndexLRONConfigHandler(
-        private val client: NodeClient,
+        private val client: PluginClient,
         private val actionListener: ActionListener<LRONConfigResponse>,
         private val request: IndexLRONConfigRequest,
         private val user: User? = SecurityUtils.buildUser(client.threadPool().threadContext),
@@ -119,7 +117,7 @@ constructor(
                 indexRequest.opType(DocWriteRequest.OpType.CREATE)
             }
 
-            pluginClient.index(
+            client.index(
                 indexRequest,
                 object : ActionListener<IndexResponse> {
                     override fun onResponse(response: IndexResponse) {
