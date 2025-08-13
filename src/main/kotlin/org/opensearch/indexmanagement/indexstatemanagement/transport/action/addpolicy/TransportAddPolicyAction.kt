@@ -64,7 +64,7 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermis
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import org.opensearch.transport.client.node.NodeClient
+import org.opensearch.transport.client.Client
 import java.time.Duration
 import java.time.Instant
 
@@ -108,7 +108,7 @@ constructor(
 
     @Suppress("TooManyFunctions")
     inner class AddPolicyHandler(
-        private val client: NodeClient,
+        private val client: Client,
         private val actionListener: ActionListener<ISMStatusResponse>,
         private val request: AddPolicyRequest,
         private val user: User? = buildUser(client.threadPool().threadContext),
