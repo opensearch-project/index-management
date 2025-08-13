@@ -108,13 +108,12 @@ import org.opensearch.transport.client.Client
 @OpenForTesting
 class ManagedIndexCoordinator(
     private val settings: Settings,
-    private val client: Client,
+    private val client: PluginClient,
     private val clusterService: ClusterService,
     private val threadPool: ThreadPool,
     indexManagementIndices: IndexManagementIndices,
     private val indexMetadataProvider: IndexMetadataProvider,
     private val xContentRegistry: NamedXContentRegistry,
-    private val pluginClient: PluginClient,
 ) : LifecycleListener(),
     ClusterStateListener,
     CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ManagedIndexCoordinator")) {
@@ -432,7 +431,7 @@ class ManagedIndexCoordinator(
                 .preference(Preference.PRIMARY_FIRST.type())
 
         return try {
-            val response: SearchResponse = pluginClient.suspendUntil { search(searchRequest, it) }
+            val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
             parseFromSearchResponse(response, xContentRegistry, Policy.Companion::parse)
         } catch (ex: IndexNotFoundException) {
             emptyList()

@@ -29,20 +29,18 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import org.opensearch.transport.client.node.NodeClient
 import java.lang.IllegalArgumentException
 
 @Suppress("ReturnCount", "LongParameterList")
 class TransportGetPolicyAction
 @Inject
 constructor(
-    val client: NodeClient,
+    val client: PluginClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
-    val pluginClient: PluginClient,
 ) : HandledTransportAction<GetPolicyRequest, GetPolicyResponse>(
     GetPolicyAction.NAME, transportService, actionFilters, ::GetPolicyRequest,
 ) {
@@ -60,7 +58,7 @@ constructor(
     }
 
     inner class GetPolicyHandler(
-        private val client: NodeClient,
+        private val client: PluginClient,
         private val actionListener: ActionListener<GetPolicyResponse>,
         private val request: GetPolicyRequest,
         private val user: User? = buildUser(client.threadPool().threadContext),
@@ -75,7 +73,7 @@ constructor(
                 GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.policyID)
                     .version(request.version)
 
-            pluginClient.get(
+            client.get(
                 getRequest,
                 object : ActionListener<GetResponse> {
                     override fun onResponse(response: GetResponse) {

@@ -31,7 +31,6 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import org.opensearch.transport.client.Client
 
 private val log = LogManager.getLogger(TransportGetPoliciesAction::class.java)
 
@@ -40,12 +39,11 @@ class TransportGetPoliciesAction
 @Inject
 constructor(
     transportService: TransportService,
-    val client: Client,
+    val client: PluginClient,
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
-    val pluginClient: PluginClient,
 ) : HandledTransportAction<GetPoliciesRequest, GetPoliciesResponse>(
     GetPoliciesAction.NAME, transportService, actionFilters, ::GetPoliciesRequest,
 ) {
@@ -100,7 +98,7 @@ constructor(
                 .indices(INDEX_MANAGEMENT_INDEX)
                 .preference(Preference.PRIMARY_FIRST.type())
 
-        pluginClient.search(
+        client.search(
             searchRequest,
             object : ActionListener<SearchResponse> {
                 override fun onResponse(response: SearchResponse) {

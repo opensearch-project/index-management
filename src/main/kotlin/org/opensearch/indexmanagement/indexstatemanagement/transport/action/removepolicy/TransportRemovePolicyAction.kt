@@ -54,17 +54,15 @@ import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import org.opensearch.transport.client.node.NodeClient
 
 @Suppress("SpreadOperator")
 class TransportRemovePolicyAction
 @Inject
 constructor(
-    val client: NodeClient,
+    val client: PluginClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val indexMetadataProvider: IndexMetadataProvider,
-    val pluginClient: PluginClient,
 ) : HandledTransportAction<RemovePolicyRequest, ISMStatusResponse>(
     RemovePolicyAction.NAME, transportService, actionFilters, ::RemovePolicyRequest,
 ) {
@@ -75,7 +73,7 @@ constructor(
     }
 
     inner class RemovePolicyHandler(
-        private val client: NodeClient,
+        private val client: PluginClient,
         private val actionListener: ActionListener<ISMStatusResponse>,
         private val request: RemovePolicyRequest,
         private val user: User? = buildUser(client.threadPool().threadContext),
@@ -157,7 +155,7 @@ constructor(
                     .metadata(true)
                     .local(false)
                     .indicesOptions(strictExpandOptions)
-            pluginClient.admin()
+            client.admin()
                 .cluster()
                 .state(
                     clusterStateRequest,

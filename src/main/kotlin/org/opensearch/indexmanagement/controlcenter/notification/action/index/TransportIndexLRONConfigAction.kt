@@ -32,6 +32,7 @@ import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 
 @Suppress("LongParameterList")
 class TransportIndexLRONConfigAction
@@ -53,7 +54,7 @@ constructor(
     }
 
     inner class IndexLRONConfigHandler(
-        private val client: PluginClient,
+        private val client: Client,
         private val actionListener: ActionListener<LRONConfigResponse>,
         private val request: IndexLRONConfigRequest,
         private val user: User? = SecurityUtils.buildUser(client.threadPool().threadContext),

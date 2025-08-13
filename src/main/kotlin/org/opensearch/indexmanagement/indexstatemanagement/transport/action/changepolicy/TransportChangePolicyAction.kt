@@ -67,7 +67,7 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserC
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import org.opensearch.transport.client.node.NodeClient
+import org.opensearch.transport.client.Client
 import java.lang.IllegalArgumentException
 
 private val log = LogManager.getLogger(TransportChangePolicyAction::class.java)
@@ -76,14 +76,13 @@ private val log = LogManager.getLogger(TransportChangePolicyAction::class.java)
 class TransportChangePolicyAction
 @Inject
 constructor(
-    val client: NodeClient,
+    val client: PluginClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
     val indexMetadataProvider: IndexMetadataProvider,
-    val pluginClient: PluginClient,
 ) : HandledTransportAction<ChangePolicyRequest, ISMStatusResponse>(
     ChangePolicyAction.NAME, transportService, actionFilters, ::ChangePolicyRequest,
 ) {
@@ -100,7 +99,7 @@ constructor(
     }
 
     inner class ChangePolicyHandler(
-        private val client: NodeClient,
+        private val client: Client,
         private val actionListener: ActionListener<ISMStatusResponse>,
         private val request: ChangePolicyRequest,
         private val user: User? = buildUser(client.threadPool().threadContext),
@@ -161,7 +160,7 @@ constructor(
             if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
                 return
             }
-            pluginClient.get(getRequest, ActionListener.wrap(::onGetPolicyResponse, ::onFailure))
+            client.get(getRequest, ActionListener.wrap(::onGetPolicyResponse, ::onFailure))
         }
 
         @Suppress("ReturnCount")
@@ -182,7 +181,7 @@ constructor(
 
             IndexUtils.checkAndUpdateConfigIndexMapping(
                 clusterService.state(),
-                pluginClient.admin().indices(),
+                client.admin().indices(),
                 ActionListener.wrap(::onUpdateMapping, ::onFailure),
             )
         }

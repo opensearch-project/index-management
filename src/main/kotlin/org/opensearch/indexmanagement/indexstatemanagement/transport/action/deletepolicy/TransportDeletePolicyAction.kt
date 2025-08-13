@@ -32,7 +32,6 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermis
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import org.opensearch.transport.client.Client
-import org.opensearch.transport.client.node.NodeClient
 import java.lang.IllegalArgumentException
 
 private val log = LogManager.getLogger(TransportDeletePolicyAction::class.java)
@@ -41,13 +40,12 @@ private val log = LogManager.getLogger(TransportDeletePolicyAction::class.java)
 class TransportDeletePolicyAction
 @Inject
 constructor(
-    val client: NodeClient,
+    val client: PluginClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
-    val pluginClient: PluginClient,
 ) : HandledTransportAction<DeletePolicyRequest, DeleteResponse>(
     DeletePolicyAction.NAME, transportService, actionFilters, ::DeletePolicyRequest,
 ) {
@@ -80,7 +78,7 @@ constructor(
 
         private fun getPolicy() {
             val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.policyID)
-            pluginClient.get(
+            client.get(
                 getRequest,
                 object : ActionListener<GetResponse> {
                     override fun onResponse(response: GetResponse) {
@@ -115,7 +113,7 @@ constructor(
                 DeleteRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.policyID)
                     .setRefreshPolicy(request.refreshPolicy)
 
-            pluginClient.delete(deleteRequest, actionListener)
+            client.delete(deleteRequest, actionListener)
         }
     }
 }

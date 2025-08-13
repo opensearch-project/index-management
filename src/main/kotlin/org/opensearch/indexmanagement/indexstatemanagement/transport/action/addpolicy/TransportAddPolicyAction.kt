@@ -74,14 +74,13 @@ private val log = LogManager.getLogger(TransportAddPolicyAction::class.java)
 class TransportAddPolicyAction
 @Inject
 constructor(
-    val client: NodeClient,
+    val client: PluginClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val settings: Settings,
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
     val indexMetadataProvider: IndexMetadataProvider,
-    val pluginClient: PluginClient,
 ) : HandledTransportAction<AddPolicyRequest, ISMStatusResponse>(
     AddPolicyAction.NAME, transportService, actionFilters, ::AddPolicyRequest,
 ) {
@@ -224,7 +223,7 @@ constructor(
             if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
                 return
             }
-            pluginClient.get(getRequest, ActionListener.wrap(::onGetPolicyResponse, ::onFailure))
+            client.get(getRequest, ActionListener.wrap(::onGetPolicyResponse, ::onFailure))
         }
 
         private fun onGetPolicyResponse(response: GetResponse) {
@@ -244,7 +243,7 @@ constructor(
 
             IndexUtils.checkAndUpdateConfigIndexMapping(
                 clusterService.state(),
-                pluginClient.admin().indices(),
+                client.admin().indices(),
                 ActionListener.wrap(::onUpdateMapping, ::onFailure),
             )
         }
@@ -282,7 +281,7 @@ constructor(
             val multiGetReq = MultiGetRequest()
             indicesToAdd.forEach { multiGetReq.add(INDEX_MANAGEMENT_INDEX, it.key) }
 
-            pluginClient.multiGet(
+            client.multiGet(
                 multiGetReq,
                 object : ActionListener<MultiGetResponse> {
                     override fun onResponse(response: MultiGetResponse) {
@@ -332,7 +331,7 @@ constructor(
 
                 bulkReq.refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
 
-                pluginClient.bulk(
+                client.bulk(
                     bulkReq,
                     object : ActionListener<BulkResponse> {
                         override fun onResponse(response: BulkResponse) {
@@ -379,7 +378,7 @@ constructor(
             val request = indices.map { deleteManagedIndexMetadataRequest(it.uuid) }
             val bulkReq = BulkRequest().add(request)
             bulkReq.refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
-            pluginClient.bulk(
+            client.bulk(
                 bulkReq,
                 object : ActionListener<BulkResponse> {
                     override fun onResponse(response: BulkResponse) {

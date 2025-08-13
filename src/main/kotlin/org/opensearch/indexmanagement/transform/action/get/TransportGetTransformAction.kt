@@ -28,19 +28,17 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import org.opensearch.transport.client.Client
 
 @Suppress("LongParameterList")
 class TransportGetTransformAction
 @Inject
 constructor(
     transportService: TransportService,
-    val client: Client,
+    val client: PluginClient,
     val settings: Settings,
     val clusterService: ClusterService,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
-    val pluginClient: PluginClient,
 ) : HandledTransportAction<GetTransformRequest, GetTransformResponse>(
     GetTransformAction.NAME, transportService, actionFilters, ::GetTransformRequest,
 ) {
@@ -62,7 +60,7 @@ constructor(
         )
         val user = buildUser(client.threadPool().threadContext)
         val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id).preference(request.preference)
-        pluginClient.get(
+        client.get(
             getRequest,
             object : ActionListener<GetResponse> {
                 override fun onResponse(response: GetResponse) {

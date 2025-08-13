@@ -18,6 +18,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 
 class TransportDeleteLRONConfigAction
 @Inject
@@ -35,7 +36,7 @@ constructor(
     }
 
     inner class DeleteLRONConfigHandler(
-        private val client: PluginClient,
+        private val client: Client,
         private val actionListener: ActionListener<DeleteResponse>,
         private val request: DeleteLRONConfigRequest,
         private val docId: String = request.docId,

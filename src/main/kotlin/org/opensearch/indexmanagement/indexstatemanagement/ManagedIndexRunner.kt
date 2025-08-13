@@ -103,7 +103,6 @@ import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
 import org.opensearch.threadpool.ThreadPool
-import org.opensearch.transport.client.Client
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -114,8 +113,7 @@ object ManagedIndexRunner :
     private val logger = LogManager.getLogger(javaClass)
 
     private lateinit var clusterService: ClusterService
-    private lateinit var client: Client
-    private lateinit var pluginClient: PluginClient
+    private lateinit var client: PluginClient
     private lateinit var xContentRegistry: NamedXContentRegistry
     private lateinit var scriptService: ScriptService
     private lateinit var settings: Settings
@@ -146,13 +144,8 @@ object ManagedIndexRunner :
         return this
     }
 
-    fun registerClient(client: Client): ManagedIndexRunner {
+    fun registerClient(client: PluginClient): ManagedIndexRunner {
         this.client = client
-        return this
-    }
-
-    fun registerPluginClient(pluginClient: PluginClient): ManagedIndexRunner {
-        this.pluginClient = pluginClient
         return this
     }
 

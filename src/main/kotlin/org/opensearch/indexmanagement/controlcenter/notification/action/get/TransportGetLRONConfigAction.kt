@@ -30,6 +30,7 @@ import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 
 class TransportGetLRONConfigAction
 @Inject
@@ -48,7 +49,7 @@ constructor(
     }
 
     inner class GetLRONConfigHandler(
-        private val client: PluginClient,
+        private val client: Client,
         private val actionListener: ActionListener<GetLRONConfigResponse>,
         private val request: GetLRONConfigRequest,
     ) {

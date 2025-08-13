@@ -461,8 +461,7 @@ class IndexManagementPlugin :
         val extensionChecker = ExtensionStatusChecker(extensionCheckerMap, clusterService)
         val managedIndexRunner =
             ManagedIndexRunner
-                .registerClient(client)
-                .registerPluginClient(pluginClient)
+                .registerClient(pluginClient)
                 .registerClusterService(clusterService)
                 .registerValidationService(actionValidation)
                 .registerNamedXContentRegistry(xContentRegistry)
@@ -480,7 +479,7 @@ class IndexManagementPlugin :
         val managedIndexCoordinator =
             ManagedIndexCoordinator(
                 environment.settings(),
-                client, clusterService, threadPool, indexManagementIndices, indexMetadataProvider, xContentRegistry, pluginClient,
+                pluginClient, clusterService, threadPool, indexManagementIndices, indexMetadataProvider, xContentRegistry,
             )
 
         val smRunner = SMRunner.init(client, threadPool, settings, indexManagementIndices, clusterService)
