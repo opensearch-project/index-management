@@ -72,8 +72,8 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
         indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
         coordinator =
             ManagedIndexCoordinator(
-                settings, client, clusterService, threadPool, indexManagementIndices, indexMetadataProvider,
-                NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents), pluginClient,
+                settings, pluginClient, clusterService, threadPool, indexManagementIndices, indexMetadataProvider,
+                NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents),
             )
     }
 
