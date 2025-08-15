@@ -15,6 +15,7 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
+import org.opensearch.action.support.WriteRequest
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
@@ -84,7 +85,7 @@ class TransformMetadataService(private val client: Client, val xContentRegistry:
                 IndexRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX)
                     .source(builder)
                     .id(metadata.id)
-                    .routing(metadata.transformId)
+                    .routing(metadata.transformId).setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE)
             if (updating) {
                 indexRequest.setIfSeqNo(metadata.seqNo).setIfPrimaryTerm(metadata.primaryTerm)
             } else {

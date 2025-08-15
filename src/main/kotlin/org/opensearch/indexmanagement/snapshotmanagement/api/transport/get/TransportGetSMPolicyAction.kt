@@ -23,6 +23,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTrans
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.GET_SM_POLICY_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.parseSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.verifyUserHasPermissionForResource
 import org.opensearch.transport.TransportService
 import org.opensearch.transport.client.Client
@@ -35,8 +36,9 @@ constructor(
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
+    pluginClient: PluginClient,
 ) : BaseTransportAction<GetSMPolicyRequest, GetSMPolicyResponse>(
-    GET_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::GetSMPolicyRequest,
+    GET_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::GetSMPolicyRequest, pluginClient,
 ) {
     private val log = LogManager.getLogger(javaClass)
 
@@ -56,7 +58,7 @@ constructor(
         val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.policyID)
         val getResponse: GetResponse =
             try {
-                client.suspendUntil { get(getRequest, it) }
+                pluginClient.suspendUntil { get(getRequest, it) }
             } catch (e: IndexNotFoundException) {
                 throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
             }

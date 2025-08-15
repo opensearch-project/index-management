@@ -21,6 +21,7 @@ import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.IndicesOptions
+import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.cluster.block.ClusterBlockException
@@ -51,6 +52,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMet
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.util.IndexManagementException
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -66,6 +68,7 @@ constructor(
     transportService: TransportService,
     actionFilters: ActionFilters,
     val indexMetadataProvider: IndexMetadataProvider,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<RetryFailedManagedIndexRequest, ISMStatusResponse>(
     RetryFailedManagedIndexAction.NAME, transportService, actionFilters, ::RetryFailedManagedIndexRequest,
 ) {
@@ -161,34 +164,32 @@ constructor(
                 .clusterManagerNodeTimeout(request.clusterManagerTimeout)
                 .indicesOptions(strictExpandIndicesOptions)
 
-            client.threadPool().threadContext.stashContext().use {
-                client.admin()
-                    .cluster()
-                    .state(
-                        clusterStateRequest,
-                        object : ActionListener<ClusterStateResponse> {
-                            override fun onResponse(response: ClusterStateResponse) {
-                                val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
-                                response.state.metadata.indices.forEach {
-                                    val indexUUID = defaultIndexMetadataService.getIndexUUID(it.value)
-                                    indexUuidToIndexMetadata[indexUUID] = it.value
-                                }
-                                processResponse()
+            pluginClient.admin()
+                .cluster()
+                .state(
+                    clusterStateRequest,
+                    object : ActionListener<ClusterStateResponse> {
+                        override fun onResponse(response: ClusterStateResponse) {
+                            val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
+                            response.state.metadata.indices.forEach {
+                                val indexUUID = defaultIndexMetadataService.getIndexUUID(it.value)
+                                indexUuidToIndexMetadata[indexUUID] = it.value
                             }
+                            processResponse()
+                        }
 
-                            override fun onFailure(t: Exception) {
-                                actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
-                            }
-                        },
-                    )
-            }
+                        override fun onFailure(t: Exception) {
+                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                        }
+                    },
+                )
         }
 
         private fun processResponse() {
             val mReq = MultiGetRequest()
             indicesToRetry.map { it.key }.forEach { mReq.add(INDEX_MANAGEMENT_INDEX, it) }
 
-            client.multiGet(
+            pluginClient.multiGet(
                 mReq,
                 object : ActionListener<MultiGetResponse> {
                     override fun onResponse(response: MultiGetResponse) {
@@ -207,7 +208,7 @@ constructor(
                         }
 
                         // get back metadata from config index
-                        client.multiGet(
+                        pluginClient.multiGet(
                             buildMgetMetadataRequest(indicesToRetry.toList().map { it.first }),
                             ActionListener.wrap(::onMgetMetadataResponse, ::onFailure),
                         )
@@ -293,8 +294,9 @@ constructor(
                         UpdateRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(index.uuid)).routing(index.uuid).doc(builder)
                     }
                 val bulkUpdateMetadataRequest = BulkRequest().add(updateMetadataRequests)
+                bulkUpdateMetadataRequest.refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
 
-                client.bulk(bulkUpdateMetadataRequest, ActionListener.wrap(::onBulkUpdateMetadataResponse, ::onFailure))
+                pluginClient.bulk(bulkUpdateMetadataRequest, ActionListener.wrap(::onBulkUpdateMetadataResponse, ::onFailure))
             } else {
                 actionListener.onResponse(ISMStatusResponse(0, failedIndices))
             }
