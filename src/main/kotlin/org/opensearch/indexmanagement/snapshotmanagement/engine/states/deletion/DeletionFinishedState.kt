@@ -38,6 +38,9 @@ object DeletionFinishedState : State {
                 return@let
             }
 
+            val repository = job.snapshotConfig["repository"] as String
+
+            // Get policy-created snapshots (always)
             val getSnapshotsRes =
                 client.getSnapshots(
                     job, "${job.policyName}*", metadataBuilder, log,
@@ -48,7 +51,18 @@ object DeletionFinishedState : State {
             if (getSnapshotsRes.failed) {
                 return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
             }
-            val getSnapshots = getSnapshotsRes.snapshots
+            val policySnapshots = getSnapshotsRes.snapshots
+
+            // Get pattern-based snapshots if pattern is specified
+            val patternSnapshotsResult = DeletionStateUtils.getPatternSnapshots(context, metadataBuilder)
+            if (patternSnapshotsResult == null) {
+                return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
+            }
+            val (patternSnapshots, updatedMetadataBuilder) = patternSnapshotsResult
+            metadataBuilder = updatedMetadataBuilder
+
+            // Combine both sets of snapshots, removing duplicates by snapshot name
+            val getSnapshots = (policySnapshots + patternSnapshots).distinctBy { it.snapshotId().name }
 
             val existingSnapshotsNameSet = getSnapshots.map { it.snapshotId().name }.toSet()
             val remainingSnapshotsName = existingSnapshotsNameSet intersect snapshotsStartedDeletion.toSet()

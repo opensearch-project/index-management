@@ -21,7 +21,7 @@ import java.time.Instant.now
 object CreationFinishedState : State {
     override val continuous = true
 
-    @Suppress("ReturnCount", "LongMethod", "NestedBlockDepth")
+    @Suppress("ReturnCount", "LongMethod", "NestedBlockDepth", "CyclomaticComplexMethod")
     override suspend fun execute(context: SMStateMachine): SMResult {
         val client = context.client
         val job = context.job
@@ -32,8 +32,8 @@ object CreationFinishedState : State {
             SMMetadata.Builder(metadata)
                 .workflow(WorkflowType.CREATION)
 
-        metadata.creation.started?.first()?.let { snapshotName ->
-            if (metadata.creation.latestExecution == null) {
+        metadata.creation?.started?.first()?.let { snapshotName ->
+            if (metadata.creation?.latestExecution == null) {
                 // This should not happen
                 log.error("latest_execution is null while checking if snapshot [$snapshotName] creation has finished. Reset.")
                 metadataBuilder.resetWorkflow()
@@ -75,8 +75,8 @@ object CreationFinishedState : State {
                     job.notificationConfig?.sendCreationNotification(client, job.policyName, creationMessage, job.user, log)
                 }
                 SnapshotState.IN_PROGRESS -> {
-                    job.creation.timeLimit?.let { timeLimit ->
-                        if (timeLimit.isExceed(metadata.creation.latestExecution.startTime)) {
+                    job.creation?.timeLimit?.let { timeLimit ->
+                        if (timeLimit.isExceed(metadata.creation?.latestExecution?.startTime)) {
                             return timeLimitExceeded(
                                 timeLimit, metadataBuilder, WorkflowType.CREATION, log,
                             )
@@ -98,18 +98,22 @@ object CreationFinishedState : State {
 
             // if now is after next creation time, update nextCreationTime to next execution schedule
             // TODO may want to notify user that we skipped the execution because snapshot creation time is longer than execution schedule
-            val result =
-                tryUpdatingNextExecutionTime(
-                    metadataBuilder, metadata.creation.trigger.time, job.creation.schedule,
-                    WorkflowType.CREATION, log,
-                )
-            if (result.updated) {
-                metadataBuilder = result.metadataBuilder
+            metadata.creation?.trigger?.time?.let { triggerTime ->
+                job.creation?.schedule?.let { schedule ->
+                    val result =
+                        tryUpdatingNextExecutionTime(
+                            metadataBuilder, triggerTime, schedule,
+                            WorkflowType.CREATION, log,
+                        )
+                    if (result.updated) {
+                        metadataBuilder = result.metadataBuilder
+                    }
+                }
             }
         }
 
         val metadataToSave = metadataBuilder.build()
-        if (metadataToSave.creation.started != null) {
+        if (metadataToSave.creation?.started != null) {
             return SMResult.Stay(metadataBuilder)
         }
         return SMResult.Next(metadataBuilder)
