@@ -57,6 +57,8 @@ class PluginClient : FilterClient {
         }
     }
 
+    fun innerClient(): Client = super.`in`()
+
     companion object {
         private val logger: Logger = LogManager.getLogger(
             PluginClient::class.java,
