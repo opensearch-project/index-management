@@ -644,6 +644,11 @@
                   "type" : "keyword"
                 }
               }
+            },
+            "custom_attributes": {
+              "type": "object",
+              "properties": {},
+              "dynamic": "true"
             }
           }
         }
