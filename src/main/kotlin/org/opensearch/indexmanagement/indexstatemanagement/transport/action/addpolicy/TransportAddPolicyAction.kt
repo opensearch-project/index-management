@@ -58,13 +58,13 @@ import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.util.IndexUtils
-import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import org.opensearch.transport.client.Client
+import org.opensearch.transport.client.node.NodeClient
 import java.time.Duration
 import java.time.Instant
 
@@ -74,7 +74,7 @@ private val log = LogManager.getLogger(TransportAddPolicyAction::class.java)
 class TransportAddPolicyAction
 @Inject
 constructor(
-    val client: PluginClient,
+    val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val settings: Settings,

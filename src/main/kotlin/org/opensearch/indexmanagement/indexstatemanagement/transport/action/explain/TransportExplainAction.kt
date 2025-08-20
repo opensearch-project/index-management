@@ -388,12 +388,11 @@ constructor(
             if (user == null || indexNames.isEmpty()) {
                 sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies, validationResults)
             } else {
-                filterAndSendResponse(threadContext)
+                filterAndSendResponse()
             }
         }
 
-        private fun filterAndSendResponse(threadContext: ThreadContext.StoredContext) {
-            threadContext.restore()
+        private fun filterAndSendResponse() {
             val filteredIndices = mutableListOf<String>()
             val filteredMetadata = mutableListOf<ManagedIndexMetaData?>()
             val filteredValidationResult = mutableListOf<ValidationResult?>()
