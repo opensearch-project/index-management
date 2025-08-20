@@ -375,7 +375,6 @@ afterEvaluate {
             node.extraConfigFile("esnode.pem", file("build/resources/main/esnode.pem"))
             node.extraConfigFile("esnode-key.pem", file("build/resources/main/esnode-key.pem"))
             node.extraConfigFile("root-ca.pem", file("build/resources/main/root-ca.pem"))
-            node.extraConfigFile("opensearch-security/internal_users.yml", file("build/resources/test/security/internal_users.yml"))
             node.setting("plugins.security.ssl.transport.pemcert_filepath", "esnode.pem")
             node.setting("plugins.security.ssl.transport.pemkey_filepath", "esnode-key.pem")
             node.setting("plugins.security.ssl.transport.pemtrustedcas_filepath", "root-ca.pem")

@@ -89,6 +89,78 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
     val explainResponseOpenSearchPolicyIdSetting = "index.plugins.index_state_management.policy_id"
 
     @Before
+    protected fun attemptAddAttributesToAdmin() {
+        // Attributes your tests may read
+        val attrs = mapOf(
+            "department" to "engineering",
+            "env" to "itest",
+        )
+        try {
+            addAttributesToAdmin(attrs)
+        } catch (e: Exception) {
+            logger.warn("Skipping admin attribute setup: ${e.message}")
+        }
+    }
+
+    protected fun addAttributesToAdmin(attributes: Map<String, String>) {
+        fun jsonPatch(op: String) = buildString {
+            append("[{\"op\":\"").append(op).append("\",\"path\":\"/attributes\",\"value\":{")
+            append(
+                attributes.entries.joinToString(",") { (k, v) ->
+                    "\"${k.replace("\"", "\\\"")}\":\"${v.replace("\"", "\\\"")}\""
+                },
+            )
+            append("}}]")
+        }
+
+        val endpoints = listOf("/_plugins/_security/api/internalusers/admin", "/_opendistro/_security/api/internalusers/admin")
+
+        // Try add first (creates /attributes if missing), then replace (updates when it exists)
+        for (endpoint in endpoints) {
+            // 1) Try ADD
+            try {
+                val resp = adminClient().makeRequest(
+                    "PATCH",
+                    endpoint,
+                    emptyMap(),
+                    StringEntity(jsonPatch("add"), ContentType.APPLICATION_JSON),
+                )
+                if (resp.restStatus().status in 200..299) return
+            } catch (e: ResponseException) {
+                // If add fails because it already exists, we’ll try replace below.
+                when (e.response.restStatus()) {
+                    RestStatus.NOT_FOUND, RestStatus.METHOD_NOT_ALLOWED, RestStatus.FORBIDDEN, RestStatus.UNAUTHORIZED -> continue
+                    else -> {
+                        // fall through to try replace if it’s a 400 due to existing field or similar
+                    }
+                }
+            } catch (_: Exception) {
+                // If admin client can’t reach security, try the next route
+                continue
+            }
+
+            // 2) Try REPLACE (for clusters where /attributes already exists)
+            try {
+                val resp = adminClient().makeRequest(
+                    "PATCH",
+                    endpoint,
+                    emptyMap(),
+                    StringEntity(jsonPatch("replace"), ContentType.APPLICATION_JSON),
+                )
+                if (resp.restStatus().status in 200..299) return
+            } catch (e: ResponseException) {
+                // If this route doesn't exist or we’re blocked, keep trying the next route.
+                when (e.response.restStatus()) {
+                    RestStatus.NOT_FOUND, RestStatus.METHOD_NOT_ALLOWED, RestStatus.FORBIDDEN, RestStatus.UNAUTHORIZED -> continue
+                    else -> throw e
+                }
+            }
+        }
+
+        logger.info("Could not set admin attributes via any Security route; continuing without attributes.")
+    }
+
+    @Before
     protected fun disableIndexStateManagementJitter() {
         // jitter would add a test-breaking delay to the integration tests
         updateIndexStateManagementJitterSetting(0.0)
