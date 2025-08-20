@@ -9,5 +9,5 @@ index_permissions:
     allowed_actions:
       - "indices:data/read/search*"
       - "indices:admin/settings/update"
-      # - "indices:admin/opensearch/ism/managedindex"
+      - "indices:admin/opensearch/ism/managedindex"
       # - "indices:admin/delete"

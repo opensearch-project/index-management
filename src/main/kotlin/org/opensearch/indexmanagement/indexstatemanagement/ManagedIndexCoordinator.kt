@@ -404,6 +404,7 @@ class ManagedIndexCoordinator(
         if (policy.user != null) {
             try {
                 val request = ManagedIndexRequest().indices(indexName)
+                // TODO Do we need to continue to support injected user?
                 withClosableContext(IndexManagementSecurityContext("ApplyPolicyOnIndexCreation", settings, threadPool.threadContext, policy.user)) {
                     client.suspendUntil<Client, AcknowledgedResponse> { execute(ManagedIndexAction.INSTANCE, request, it) }
                 }
