@@ -22,10 +22,12 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTrans
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.INDEX_SM_POLICY_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.transport.TransportService
 import org.opensearch.transport.client.Client
 
+@Suppress("LongParameterList")
 class TransportIndexSMPolicyAction
 @Inject
 constructor(
@@ -35,8 +37,9 @@ constructor(
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
+    pluginClient: PluginClient,
 ) : BaseTransportAction<IndexSMPolicyRequest, IndexSMPolicyResponse>(
-    INDEX_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::IndexSMPolicyRequest,
+    INDEX_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::IndexSMPolicyRequest, pluginClient,
 ) {
     private val log = LogManager.getLogger(javaClass)
 
@@ -69,7 +72,7 @@ constructor(
                 .source(policy.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
                 .id(policy.id)
                 .routing(policy.id) // by default routed by id
-        val indexRes: IndexResponse = client.suspendUntil { index(indexReq, it) }
+        val indexRes: IndexResponse = pluginClient.suspendUntil { index(indexReq, it) }
 
         return IndexSMPolicyResponse(indexRes.id, indexRes.version, indexRes.seqNo, indexRes.primaryTerm, policy, indexRes.status())
     }

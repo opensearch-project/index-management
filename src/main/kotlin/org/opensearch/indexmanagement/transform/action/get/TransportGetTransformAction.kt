@@ -23,17 +23,18 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.transform.model.Transform
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import org.opensearch.transport.client.Client
 
+@Suppress("LongParameterList")
 class TransportGetTransformAction
 @Inject
 constructor(
     transportService: TransportService,
-    val client: Client,
+    val client: PluginClient,
     val settings: Settings,
     val clusterService: ClusterService,
     actionFilters: ActionFilters,
@@ -59,52 +60,50 @@ constructor(
         )
         val user = buildUser(client.threadPool().threadContext)
         val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id).preference(request.preference)
-        client.threadPool().threadContext.stashContext().use {
-            client.get(
-                getRequest,
-                object : ActionListener<GetResponse> {
-                    override fun onResponse(response: GetResponse) {
-                        if (!response.isExists) {
+        client.get(
+            getRequest,
+            object : ActionListener<GetResponse> {
+                override fun onResponse(response: GetResponse) {
+                    if (!response.isExists) {
+                        listener.onFailure(OpenSearchStatusException("Transform not found", RestStatus.NOT_FOUND))
+                        return
+                    }
+
+                    try {
+                        val transform: Transform?
+                        try {
+                            transform = parseFromGetResponse(response, xContentRegistry, Transform.Companion::parse)
+                        } catch (e: IllegalArgumentException) {
                             listener.onFailure(OpenSearchStatusException("Transform not found", RestStatus.NOT_FOUND))
                             return
                         }
-
-                        try {
-                            val transform: Transform?
-                            try {
-                                transform = parseFromGetResponse(response, xContentRegistry, Transform.Companion::parse)
-                            } catch (e: IllegalArgumentException) {
-                                listener.onFailure(OpenSearchStatusException("Transform not found", RestStatus.NOT_FOUND))
-                                return
-                            }
-                            if (!userHasPermissionForResource(user, transform.user, filterByEnabled, "transform", request.id, listener)) {
-                                return
-                            }
-
-                            // if HEAD request don't return the transform
-                            val transformResponse =
-                                if (request.srcContext != null && !request.srcContext.fetchSource()) {
-                                    GetTransformResponse(response.id, response.version, response.seqNo, response.primaryTerm, RestStatus.OK, null)
-                                } else {
-                                    GetTransformResponse(response.id, response.version, response.seqNo, response.primaryTerm, RestStatus.OK, transform)
-                                }
-                            listener.onResponse(transformResponse)
-                        } catch (e: Exception) {
-                            listener.onFailure(
-                                OpenSearchStatusException(
-                                    "Failed to parse transform",
-                                    RestStatus.INTERNAL_SERVER_ERROR,
-                                    ExceptionsHelper.unwrapCause(e),
-                                ),
-                            )
+                        if (!userHasPermissionForResource(user, transform.user, filterByEnabled, "transform", request.id, listener)) {
+                            return
                         }
-                    }
 
-                    override fun onFailure(e: Exception) {
-                        listener.onFailure(e)
+                        // if HEAD request don't return the transform
+                        val transformResponse =
+                            if (request.srcContext != null && !request.srcContext.fetchSource()) {
+                                GetTransformResponse(response.id, response.version, response.seqNo, response.primaryTerm, RestStatus.OK, null)
+                            } else {
+                                GetTransformResponse(response.id, response.version, response.seqNo, response.primaryTerm, RestStatus.OK, transform)
+                            }
+                        listener.onResponse(transformResponse)
+                    } catch (e: Exception) {
+                        listener.onFailure(
+                            OpenSearchStatusException(
+                                "Failed to parse transform",
+                                RestStatus.INTERNAL_SERVER_ERROR,
+                                ExceptionsHelper.unwrapCause(e),
+                            ),
+                        )
                     }
-                },
-            )
-        }
+                }
+
+                override fun onFailure(e: Exception) {
+                    listener.onFailure(e)
+                }
+            },
+        )
     }
 }

@@ -1,0 +1,13 @@
+cluster_permissions:
+  - "cluster:monitor/state"
+  - "cluster:admin/opendistro/rollup/explain"
+  - "cluster:admin/opendistro/rollup/index"
+  - "indices:data/read/mget"
+index_permissions:
+  - index_patterns:
+      - "*"
+    allowed_actions:
+      - "indices:data/read/search*"
+      - "indices:admin/settings/update"
+      - "indices:admin/opensearch/ism/managedindex"
+      # - "indices:admin/delete"

@@ -19,6 +19,7 @@ import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.search.SearchModule
 import org.opensearch.test.ClusterServiceUtils
 import org.opensearch.test.OpenSearchTestCase
@@ -38,11 +39,13 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
     private lateinit var indexMetadataProvider: IndexMetadataProvider
 
     private lateinit var discoveryNode: DiscoveryNode
+    private lateinit var pluginClient: PluginClient
 
     @Before
     @Throws(Exception::class)
     fun setup() {
         client = Mockito.mock(Client::class.java)
+        pluginClient = Mockito.mock(PluginClient::class.java)
         threadPool = Mockito.mock(ThreadPool::class.java)
         indexManagementIndices = Mockito.mock(IndexManagementIndices::class.java)
 
@@ -69,7 +72,7 @@ class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
         indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
         coordinator =
             ManagedIndexCoordinator(
-                settings, client, clusterService, threadPool, indexManagementIndices, indexMetadataProvider,
+                settings, pluginClient, clusterService, threadPool, indexManagementIndices, indexMetadataProvider,
                 NamedXContentRegistry(SearchModule(Settings.EMPTY, emptyList()).namedXContents),
             )
     }
