@@ -117,7 +117,7 @@ configurations.all {
         force 'commons-beanutils:commons-beanutils:1.10.1'
         force 'com.google.guava:guava:30.1.1-jre'
         force 'com.puppycrawl.tools:checkstyle:8.45.1'
-        force 'commons-codec:commons-codec:1.17.2'
+        force 'commons-codec:commons-codec:1.19.0'
         force "com.fasterxml.jackson.core:jackson-databind:${versions.jackson_databind}"
         force "org.yaml:snakeyaml:${versions.snakeyaml}"
         force 'org.codehaus.plexus:plexus-utils:3.6.0'
