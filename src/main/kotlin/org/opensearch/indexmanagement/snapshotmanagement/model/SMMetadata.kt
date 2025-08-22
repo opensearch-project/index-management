@@ -113,7 +113,7 @@ data class SMMetadata(
     constructor(sin: StreamInput) : this(
         policySeqNo = sin.readLong(),
         policyPrimaryTerm = sin.readLong(),
-        creation = if (sin.version.onOrAfter(Version.V_3_2_0)) {
+        creation = if (sin.version.onOrAfter(Version.V_3_3_0)) {
             sin.readOptionalWriteable { WorkflowMetadata(it) }
         } else {
             // For older versions, creation will always exist
@@ -128,7 +128,7 @@ data class SMMetadata(
     override fun writeTo(out: StreamOutput) {
         out.writeLong(policySeqNo)
         out.writeLong(policyPrimaryTerm)
-        if (out.version.onOrAfter(Version.V_3_2_0)) {
+        if (out.version.onOrAfter(Version.V_3_3_0)) {
             out.writeOptionalWriteable(creation)
         } else {
             // For older versions, always creation will be present

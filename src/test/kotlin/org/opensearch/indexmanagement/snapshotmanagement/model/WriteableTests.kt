@@ -56,10 +56,10 @@ class WriteableTests : OpenSearchTestCase() {
             ),
         )
         val out = BytesStreamOutput().also {
-            it.version = Version.V_3_2_0
+            it.version = Version.V_3_3_0
             smMetadata.writeTo(it)
         }
-        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes).also { it.version = Version.V_3_2_0 }
+        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes).also { it.version = Version.V_3_3_0 }
         val streamedSMMetadata = SMMetadata(sin)
         assertEquals("Round tripping sm metadata (newer version) doesn't work", smMetadata, streamedSMMetadata)
     }

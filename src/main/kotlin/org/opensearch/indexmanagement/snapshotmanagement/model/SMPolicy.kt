@@ -225,10 +225,10 @@ data class SMPolicy(
     constructor(sin: StreamInput) : this(
         description = sin.readOptionalString(),
         schemaVersion = sin.readLong(),
-        creation = if (sin.version.onOrAfter(Version.V_3_2_0)) {
+        creation = if (sin.version.onOrAfter(Version.V_3_3_0)) {
             sin.readOptionalWriteable { Creation(it) }
         } else {
-            // Before V_3_2_0, creation was always required
+            // Before V_3_3_0, creation was always required
             Creation(sin)
         },
         deletion = sin.readOptionalWriteable { Deletion(it) },
@@ -247,11 +247,11 @@ data class SMPolicy(
     override fun writeTo(out: StreamOutput) {
         out.writeOptionalString(description)
         out.writeLong(schemaVersion)
-        if (out.version.onOrAfter(Version.V_3_2_0)) {
+        if (out.version.onOrAfter(Version.V_3_3_0)) {
             out.writeOptionalWriteable(creation)
         } else {
-            // Before V_3_2_0, creation was always required
-            creation?.writeTo(out) ?: error("Creation cannot be null for versions before V_3_2_0")
+            // Before V_3_3_0, creation was always required
+            creation?.writeTo(out) ?: error("Creation cannot be null for versions before V_3_3_0")
         }
         out.writeOptionalWriteable(deletion)
         out.writeMap(snapshotConfig)
@@ -372,14 +372,14 @@ data class SMPolicy(
             schedule = CronSchedule(sin),
             timeLimit = sin.readOptionalTimeValue(),
             condition = DeleteCondition(sin),
-            snapshotPattern = if (sin.version.onOrAfter(Version.V_3_2_0)) sin.readOptionalString() else null,
+            snapshotPattern = if (sin.version.onOrAfter(Version.V_3_3_0)) sin.readOptionalString() else null,
         )
 
         override fun writeTo(out: StreamOutput) {
             schedule.writeTo(out)
             out.writeOptionalTimeValue(timeLimit)
             condition.writeTo(out)
-            if (out.version.onOrAfter(Version.V_3_2_0)) {
+            if (out.version.onOrAfter(Version.V_3_3_0)) {
                 out.writeOptionalString(snapshotPattern)
             }
         }
