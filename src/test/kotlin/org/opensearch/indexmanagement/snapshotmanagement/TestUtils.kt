@@ -107,6 +107,8 @@ fun randomSMPolicy(
     deletionMaxAge: TimeValue? = null,
     deletionMinCount: Int = randomIntBetween(1, 5),
     deletionNull: Boolean = false,
+    creationNull: Boolean = false,
+    snapshotPattern: String? = null,
     snapshotConfig: MutableMap<String, Any> =
         mutableMapOf(
             "repository" to "repo",
@@ -126,11 +128,14 @@ fun randomSMPolicy(
         schemaVersion = schemaVersion,
         jobEnabled = jobEnabled,
         jobLastUpdateTime = jobLastUpdateTime,
-        creation =
-        SMPolicy.Creation(
-            schedule = creationSchedule,
-            timeLimit = creationTimeLimit,
-        ),
+        creation = if (creationNull) {
+            null
+        } else {
+            SMPolicy.Creation(
+                schedule = creationSchedule,
+                timeLimit = creationTimeLimit,
+            )
+        },
         deletion =
         randomPolicyDeletion(
             deletionSchedule,
@@ -139,6 +144,7 @@ fun randomSMPolicy(
             deletionMaxAge,
             deletionMinCount,
             deletionNull,
+            snapshotPattern,
         ),
         snapshotConfig = snapshotConfig,
         jobEnabledTime = if (jobEnabled) jobEnabledTime else null,
@@ -156,6 +162,7 @@ fun randomPolicyDeletion(
     deletionMaxAge: TimeValue? = null,
     deletionMinCount: Int = randomIntBetween(1, 5),
     deletionNull: Boolean = false,
+    snapshotPattern: String? = null,
 ): SMPolicy.Deletion? {
     if (deletionNull) return null
     return SMPolicy.Deletion(
@@ -167,6 +174,7 @@ fun randomPolicyDeletion(
             maxAge = deletionMaxAge,
             minCount = deletionMinCount,
         ),
+        snapshotPattern = snapshotPattern,
     )
 }
 
