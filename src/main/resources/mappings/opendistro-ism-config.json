@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 24
+    "schema_version": 25
   },
   "dynamic": "strict",
   "properties": {
@@ -647,7 +647,6 @@
             },
             "custom_attributes": {
               "type": "object",
-              "properties": {},
               "dynamic": "true"
             }
           }
