@@ -90,7 +90,6 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
     @Before
     protected fun attemptAddAttributesToAdmin() {
-        // Attributes your tests may read
         val attrs = mapOf(
             "department" to "engineering",
             "env" to "itest",
@@ -102,8 +101,8 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
         }
     }
 
-    protected fun addAttributesToAdmin(attributes: Map<String, String>) {
-        fun jsonPatch(op: String) = buildString {
+    private fun buildAttributesPatch(op: String, attributes: Map<String, String>): StringEntity {
+        val payload = buildString {
             append("[{\"op\":\"").append(op).append("\",\"path\":\"/attributes\",\"value\":{")
             append(
                 attributes.entries.joinToString(",") { (k, v) ->
@@ -112,49 +111,38 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
             )
             append("}}]")
         }
+        return StringEntity(payload, ContentType.APPLICATION_JSON)
+    }
 
-        val endpoints = listOf("/_plugins/_security/api/internalusers/admin", "/_opendistro/_security/api/internalusers/admin")
+    /** Returns true if the PATCH succeeded (2xx), false if the route isn’t usable, and throws on fatal errors. */
+    private fun tryPatchAttributes(endpoint: String, entity: StringEntity): Boolean = try {
+        val resp = adminClient().makeRequest("PATCH", endpoint, emptyMap(), entity)
+        resp.restStatus().status in 200..299
+    } catch (e: ResponseException) {
+        // Treat common “route not usable / blocked” statuses as a soft failure (false), rethrow other errors.
+        val softStatuses = setOf(
+            RestStatus.NOT_FOUND, RestStatus.METHOD_NOT_ALLOWED, RestStatus.FORBIDDEN, RestStatus.UNAUTHORIZED, RestStatus.BAD_REQUEST,
+        )
+        if (e.response.restStatus() in softStatuses) false else throw e
+    } catch (_: Exception) {
+        // admin client couldn't reach security, treat as soft failure to try the next route
+        false
+    }
 
-        // Try add first (creates /attributes if missing), then replace (updates when it exists)
+    protected fun addAttributesToAdmin(attributes: Map<String, String>) {
+        val endpoints = listOf(
+            "/_plugins/_security/api/internalusers/admin",
+            "/_opendistro/_security/api/internalusers/admin",
+        )
+
+        val addBody = buildAttributesPatch("add", attributes)
+        val replaceBody = buildAttributesPatch("replace", attributes)
+
         for (endpoint in endpoints) {
-            // 1) Try ADD
-            try {
-                val resp = adminClient().makeRequest(
-                    "PATCH",
-                    endpoint,
-                    emptyMap(),
-                    StringEntity(jsonPatch("add"), ContentType.APPLICATION_JSON),
-                )
-                if (resp.restStatus().status in 200..299) return
-            } catch (e: ResponseException) {
-                // If add fails because it already exists, we’ll try replace below.
-                when (e.response.restStatus()) {
-                    RestStatus.NOT_FOUND, RestStatus.METHOD_NOT_ALLOWED, RestStatus.FORBIDDEN, RestStatus.UNAUTHORIZED -> continue
-                    else -> {
-                        // fall through to try replace if it’s a 400 due to existing field or similar
-                    }
-                }
-            } catch (_: Exception) {
-                // If admin client can’t reach security, try the next route
-                continue
-            }
-
-            // 2) Try REPLACE (for clusters where /attributes already exists)
-            try {
-                val resp = adminClient().makeRequest(
-                    "PATCH",
-                    endpoint,
-                    emptyMap(),
-                    StringEntity(jsonPatch("replace"), ContentType.APPLICATION_JSON),
-                )
-                if (resp.restStatus().status in 200..299) return
-            } catch (e: ResponseException) {
-                // If this route doesn't exist or we’re blocked, keep trying the next route.
-                when (e.response.restStatus()) {
-                    RestStatus.NOT_FOUND, RestStatus.METHOD_NOT_ALLOWED, RestStatus.FORBIDDEN, RestStatus.UNAUTHORIZED -> continue
-                    else -> throw e
-                }
-            }
+            // First try ADD (creates /attributes if missing)
+            if (tryPatchAttributes(endpoint, addBody)) return
+            // Then try REPLACE (updates if it already exists)
+            if (tryPatchAttributes(endpoint, replaceBody)) return
         }
 
         logger.info("Could not set admin attributes via any Security route; continuing without attributes.")
