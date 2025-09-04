@@ -391,6 +391,7 @@ afterEvaluate {
             node.setting("plugins.security.check_snapshot_restore_write_privileges", "true")
             node.setting("plugins.security.restapi.roles_enabled", "[\"all_access\", \"security_rest_api_access\"]")
             node.setting("plugins.security.system_indices.enabled", "true")
+            node.setting("plugins.security.user_attribute_serialization.enabled", "true")
             // node.setting("plugins.security.system_indices.indices", "[\".opendistro-ism-config\"]")
         }
     }
