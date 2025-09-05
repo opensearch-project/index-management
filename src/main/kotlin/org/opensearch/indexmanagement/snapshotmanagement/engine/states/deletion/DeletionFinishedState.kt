@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion
 
+import org.opensearch.indexmanagement.snapshotmanagement.GetSnapshotsResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State
@@ -46,6 +47,7 @@ object DeletionFinishedState : State {
                     job, "${job.policyName}*", metadataBuilder, log,
                     getSnapshotMissingMessageInDeletionWorkflow(),
                     getSnapshotExceptionInDeletionWorkflow(snapshotsStartedDeletion),
+                    true,
                 )
             metadataBuilder = getSnapshotsRes.metadataBuilder
             if (getSnapshotsRes.failed) {
@@ -54,12 +56,25 @@ object DeletionFinishedState : State {
             val policySnapshots = getSnapshotsRes.snapshots
 
             // Get pattern-based snapshots if pattern is specified
-            val patternSnapshotsResult = DeletionStateUtils.getPatternSnapshots(context, metadataBuilder)
-            if (patternSnapshotsResult == null) {
+            // initialise as empty list, and only call getSnapshots if pattern is not null
+            var patternSnapshotsResult =
+                GetSnapshotsResult(false, emptyList(), metadataBuilder)
+
+            if (job.deletion?.snapshotPattern != null) {
+                patternSnapshotsResult =
+                    client.getSnapshots(
+                        job, job.deletion.snapshotPattern, metadataBuilder, log,
+                        getSnapshotMissingMessageInDeletionWorkflow(),
+                        getSnapshotExceptionInDeletionWorkflow(snapshotsStartedDeletion),
+                        false,
+                    )
+            }
+            if (patternSnapshotsResult.failed) {
                 return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
             }
-            val (patternSnapshots, updatedMetadataBuilder) = patternSnapshotsResult
-            metadataBuilder = updatedMetadataBuilder
+            val patternSnapshots = patternSnapshotsResult.snapshots
+
+            metadataBuilder = patternSnapshotsResult.metadataBuilder
 
             // Combine both sets of snapshots, removing duplicates by snapshot name
             val getSnapshots = (policySnapshots + patternSnapshots).distinctBy { it.snapshotId().name }

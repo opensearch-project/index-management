@@ -662,30 +662,16 @@ data class SMMetadata(
         }
 
         fun setNextCreationTime(time: Instant): Builder {
-            val creation = metadata.creation
-            if (creation != null) {
-                metadata =
-                    metadata.copy(
-                        creation =
-                        creation.copy(
-                            trigger =
-                            creation.trigger.copy(
-                                time = time,
-                            ),
-                        ),
+            metadata = metadata.copy(
+                creation = metadata.creation?.let { creation ->
+                    creation.copy(
+                        trigger = creation.trigger.copy(time = time),
                     )
-            } else {
-                metadata =
-                    metadata.copy(
-                        creation =
-                        WorkflowMetadata(
-                            SMState.CREATION_START,
-                            Trigger(
-                                time = time,
-                            ),
-                        ),
-                    )
-            }
+                } ?: WorkflowMetadata(
+                    SMState.CREATION_START,
+                    Trigger(time = time),
+                ),
+            )
             return this
         }
 

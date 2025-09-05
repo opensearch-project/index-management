@@ -239,8 +239,9 @@ suspend fun Client.getSnapshots(
     log: Logger,
     snapshotMissingMsg: String?,
     exceptionMsg: String,
+    filterByPolicy: Boolean,
 ): GetSnapshotsResult {
-    val snapshots =
+    var snapshots =
         try {
             getSnapshots(
                 name,
@@ -257,7 +258,11 @@ suspend fun Client.getSnapshots(
                 cause = ex,
             )
             return GetSnapshotsResult(true, emptyList(), metadataBuilder)
-        }.filterBySMPolicyInSnapshotMetadata(job.policyName)
+        }
+
+    if (filterByPolicy) {
+        snapshots = snapshots.filterBySMPolicyInSnapshotMetadata(job.policyName)
+    }
 
     return GetSnapshotsResult(false, snapshots, metadataBuilder)
 }

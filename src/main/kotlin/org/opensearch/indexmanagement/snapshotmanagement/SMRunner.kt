@@ -110,17 +110,10 @@ object SMRunner :
                 if (metadata.creation != null) {
                     stateMachine.currentState(metadata.creation.currentState)
                         .next(creationTransitions)
-                        .apply {
-                            val deleteMetadata = metadata.deletion
-                            if (deleteMetadata != null) {
-                                this.currentState(deleteMetadata.currentState)
-                                    .next(deletionTransitions)
-                            }
-                        }
                 }
 
-                // Execute deletion workflow if it exists and creation workflow is not executed
-                if (metadata.creation == null && metadata.deletion != null) {
+                // Execute deletion workflow if it exists
+                if (metadata.deletion != null) {
                     stateMachine.currentState(metadata.deletion.currentState)
                         .next(deletionTransitions)
                 }

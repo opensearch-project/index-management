@@ -29,22 +29,22 @@ object CreationConditionMetState : State {
         if (job.creation == null) {
             log.warn("Policy creation config becomes null before trying to create snapshot. Reset.")
             return SMResult.Fail(
-                metadataBuilder, WorkflowType.CREATION,
+                metadataBuilder.resetCreation(), WorkflowType.CREATION, true,
             )
         }
 
         // if job.creation != null, then metadata.creation.trigger.time should already be
         // initialized or handled in handlePolicyChange before executing this state.
         val nextCreationTime = if (metadata.creation == null) {
-            val nextTime = job.creation?.schedule?.getNextExecutionTime(now())
+            val nextTime = job.creation.schedule.getNextExecutionTime(now())
             nextTime?.let { metadataBuilder.setNextCreationTime(it) }
             nextTime
         } else {
-            metadata.creation?.trigger?.time
+            metadata.creation.trigger.time
         }
 
         nextCreationTime?.let { creationTime ->
-            job.creation?.schedule?.let { schedule ->
+            job.creation.schedule.let { schedule ->
                 val updateNextTimeResult =
                     tryUpdatingNextExecutionTime(
                         metadataBuilder, creationTime, schedule, WorkflowType.CREATION, log,
