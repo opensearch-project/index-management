@@ -10,7 +10,6 @@ import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
 import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.snapshotmanagement.GetSnapshotsResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State
@@ -50,49 +49,30 @@ object DeletingState : State {
 
         val snapshotsToDelete: List<String>
 
+        var snapshotPattern = job.policyName + "*"
+
+        if (job.deletion?.snapshotPattern != null) {
+            snapshotPattern += "," + job.deletion.snapshotPattern
+        }
+
         // Get policy-created snapshots (always)
         val getSnapshotsRes =
             client.getSnapshots(
-                job, job.policyName + "*", metadataBuilder, log,
+                job, snapshotPattern, metadataBuilder, log,
                 getSnapshotsMissingMessage(),
                 getSnapshotsErrorMessage(),
-                true,
             )
         metadataBuilder = getSnapshotsRes.metadataBuilder
         if (getSnapshotsRes.failed) {
             return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
         }
-        val policySnapshots = getSnapshotsRes.snapshots
-
-        // Get pattern-based snapshots if pattern is specified
-        // initialise as empty list, and only call getSnapshots if pattern is not null
-        var patternSnapshotsResult =
-            GetSnapshotsResult(false, emptyList(), metadataBuilder)
-
-        if (job.deletion?.snapshotPattern != null) {
-            patternSnapshotsResult =
-                client.getSnapshots(
-                    job, job.deletion.snapshotPattern, metadataBuilder, log,
-                    getSnapshotsMissingMessage(),
-                    getSnapshotsErrorMessage(),
-                    false,
-                )
-        }
-        if (patternSnapshotsResult.failed) {
-            return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
-        }
-        val patternSnapshots = patternSnapshotsResult.snapshots
-
-        metadataBuilder = patternSnapshotsResult.metadataBuilder
-
-        // Combine both sets of snapshots, removing duplicates by snapshot name
-        val allSnapshots = (policySnapshots + patternSnapshots)
+        val snapshots = getSnapshotsRes.snapshots
             .distinctBy { it.snapshotId().name }
             .filter { it.state() != SnapshotState.IN_PROGRESS }
 
         snapshotsToDelete =
             filterByDeleteCondition(
-                allSnapshots,
+                snapshots,
                 job.deletion.condition, log,
             )
         if (snapshotsToDelete.isNotEmpty()) {

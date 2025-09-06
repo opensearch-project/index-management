@@ -45,7 +45,6 @@ object CreationFinishedState : State {
                     job, snapshotName, metadataBuilder, log,
                     getSnapshotMissingMessageInCreationWorkflow(snapshotName),
                     getSnapshotExceptionInCreationWorkflow(snapshotName),
-                    true,
                 )
             metadataBuilder = getSnapshotsResult.metadataBuilder
             if (getSnapshotsResult.failed) {

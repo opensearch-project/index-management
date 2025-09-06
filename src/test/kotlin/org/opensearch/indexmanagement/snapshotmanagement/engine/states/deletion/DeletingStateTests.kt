@@ -23,39 +23,6 @@ import org.opensearch.indexmanagement.snapshotmanagement.randomSnapshotName
 import java.time.Instant.now
 
 class DeletingStateTests : MocksTestCase() {
-    fun `test pattern snapshots retrieval failure sets retry and fails`() =
-        runBlocking {
-            val policySnapshot = mockSnapshotInfo(name = "policy-snapshot-1", startTime = now().minusSeconds(8 * 24 * 3600).toEpochMilli(), policyName = "test-policy")
-            // First getSnapshots (policy-created snapshots) succeeds, second (pattern) fails
-            mockGetSnapshotsCallFirstSuccessThenFailure(
-                firstResponse = mockGetSnapshotsResponse(listOf(policySnapshot)),
-                secondException = Exception("pattern getSnapshots failure"),
-            )
-
-            val metadata = SMMetadata(
-                policySeqNo = 1L,
-                policyPrimaryTerm = 1L,
-                creation = null,
-                deletion = SMMetadata.WorkflowMetadata(
-                    currentState = SMState.DELETION_CONDITION_MET,
-                    trigger = SMMetadata.Trigger(time = now()),
-                ),
-            )
-            val job = randomSMPolicy(
-                policyName = "test-policy",
-                creationNull = true,
-                deletionMaxAge = org.opensearch.common.unit.TimeValue.timeValueDays(7),
-                deletionMinCount = 1,
-                snapshotPattern = "external-*",
-            )
-            val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
-
-            val result = SMState.DELETING.instance.execute(context)
-            assertTrue("Execution result should be Fail.", result is SMResult.Fail)
-            result as SMResult.Fail
-            val metadataToSave = result.metadataToSave.build()
-            assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, metadataToSave.deletion!!.latestExecution!!.status)
-        }
     fun `test snapshots exceed max count`() =
         runBlocking {
             mockGetSnapshotsCall(response = mockGetSnapshotResponse(11))

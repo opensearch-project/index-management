@@ -248,6 +248,75 @@ class SMPolicyTests : OpenSearchTestCase() {
         assertEquals("Deletion should use creation schedule", policy.creation?.schedule, policy.deletion?.schedule)
     }
 
+    fun `test policy serialization with older version requires creation`() {
+        val policy = randomSMPolicy(creationNull = false)
+
+        val out = BytesStreamOutput()
+        out.version = org.opensearch.Version.V_3_1_0
+        policy.writeTo(out)
+
+        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
+        sin.version = org.opensearch.Version.V_3_1_0
+        val deserializedPolicy = SMPolicy(sin)
+
+        assertNotNull("Deserialized creation should not be null for older version", deserializedPolicy.creation)
+    }
+
+    fun `test policy validation with null creation schedule when creation is null should pass`() {
+        val deletionOnlyPolicy = randomSMPolicy(
+            creationNull = true,
+            deletionMaxAge = TimeValue.timeValueDays(7),
+            deletionMinCount = 3,
+        )
+
+        // This should not throw an exception because creation is null
+        assertNull("Creation should be null", deletionOnlyPolicy.creation)
+        assertNotNull("Deletion should not be null", deletionOnlyPolicy.deletion)
+    }
+
+    fun `test policy validation with null deletion schedule when deletion is null should pass`() {
+        val creationOnlyPolicy = randomSMPolicy(
+            creationNull = false,
+            deletionNull = true,
+        )
+
+        // This should not throw an exception because deletion is null
+        assertNotNull("Creation should not be null", creationOnlyPolicy.creation)
+        assertNull("Deletion should be null", creationOnlyPolicy.deletion)
+    }
+
+    fun `test policy with deletion using creation schedule when both creation and deletion are provided but deletion schedule is missing`() {
+        val jsonWithBothCreationAndDeletionButDeletionScheduleMissing = """
+        {
+            "name": "test-policy",
+            "creation": {
+                "schedule": {
+                    "cron": {
+                        "expression": "0 0 * * *",
+                        "timezone": "UTC"
+                    }
+                }
+            },
+            "deletion": {
+                "condition": {
+                    "max_age": "7d",
+                    "min_count": 3
+                }
+            },
+            "snapshot_config": {
+                "repository": "test-repo"
+            },
+            "enabled": true
+        }
+        """.trimIndent()
+
+        val policy = SMPolicy.parse(createParser(XContentType.JSON.xContent(), jsonWithBothCreationAndDeletionButDeletionScheduleMissing), "test-policy-id")
+
+        assertNotNull("Creation should not be null", policy.creation)
+        assertNotNull("Deletion should not be null", policy.deletion)
+        assertEquals("Deletion should use creation schedule when deletion schedule is not provided", policy.creation?.schedule, policy.deletion?.schedule)
+    }
+
     fun `test policy with deletion but no creation should throw exception when deletion schedule not provided`() {
         val jsonWithDeletionOnlyNoSchedule = """
         {
@@ -268,20 +337,9 @@ class SMPolicyTests : OpenSearchTestCase() {
         val exception = assertThrows(IllegalArgumentException::class.java) {
             SMPolicy.parse(createParser(XContentType.JSON.xContent(), jsonWithDeletionOnlyNoSchedule), "test-policy-id")
         }
-        assertTrue("Exception should mention schedule not provided", exception.message?.contains("Schedule not provided") == true)
-    }
-
-    fun `test policy serialization with older version requires creation`() {
-        val policy = randomSMPolicy(creationNull = false)
-
-        val out = BytesStreamOutput()
-        out.version = org.opensearch.Version.V_3_1_0
-        policy.writeTo(out)
-
-        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
-        sin.version = org.opensearch.Version.V_3_1_0
-        val deserializedPolicy = SMPolicy(sin)
-
-        assertNotNull("Deserialized creation should not be null for older version", deserializedPolicy.creation)
+        assertTrue(
+            "Exception should mention schedule not provided for neither deletion nor creation policy",
+            exception.message?.contains("Schedule not provided for neither deletion policy nor creation policy") == true,
+        )
     }
 }

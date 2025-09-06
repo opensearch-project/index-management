@@ -17,6 +17,7 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
+import org.opensearch.common.regex.Regex
 import org.opensearch.common.time.DateFormatter
 import org.opensearch.common.time.DateFormatters
 import org.opensearch.common.unit.TimeValue
@@ -239,7 +240,6 @@ suspend fun Client.getSnapshots(
     log: Logger,
     snapshotMissingMsg: String?,
     exceptionMsg: String,
-    filterByPolicy: Boolean,
 ): GetSnapshotsResult {
     var snapshots =
         try {
@@ -260,9 +260,22 @@ suspend fun Client.getSnapshots(
             return GetSnapshotsResult(true, emptyList(), metadataBuilder)
         }
 
-    if (filterByPolicy) {
-        snapshots = snapshots.filterBySMPolicyInSnapshotMetadata(job.policyName)
+    // Parse CSV patterns from name and implement pattern-based filtering
+    val patterns = name.split(",").map { it.trim() }
+    val hasPolicyNamePattern = patterns.any { it == "${job.policyName}*" }
+
+    val policyNamePattern = "${job.policyName}*"
+
+    // Filter other snapshots by policy metadata
+    val otherPatternSnapshots = snapshots.filter { snapshot ->
+        patterns.any { pattern ->
+            pattern != policyNamePattern && Regex.simpleMatch(pattern, snapshot.snapshotId().name)
+        }
     }
+
+    val filteredSnapshot = snapshots.filterBySMPolicyInSnapshotMetadata(job.policyName)
+
+    snapshots = filteredSnapshot + otherPatternSnapshots
 
     return GetSnapshotsResult(false, snapshots, metadataBuilder)
 }

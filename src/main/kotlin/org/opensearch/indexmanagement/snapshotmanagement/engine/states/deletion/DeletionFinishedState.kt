@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion
 
-import org.opensearch.indexmanagement.snapshotmanagement.GetSnapshotsResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.State
@@ -39,47 +38,28 @@ object DeletionFinishedState : State {
                 return@let
             }
 
-            val repository = job.snapshotConfig["repository"] as String
+            var snapshotPattern = job.policyName + "*"
+
+            if (job.deletion?.snapshotPattern != null) {
+                snapshotPattern += "," + job.deletion.snapshotPattern
+            }
+
+            // Get policy-created snapshots (always)
 
             // Get policy-created snapshots (always)
             val getSnapshotsRes =
                 client.getSnapshots(
-                    job, "${job.policyName}*", metadataBuilder, log,
+                    job, snapshotPattern, metadataBuilder, log,
                     getSnapshotMissingMessageInDeletionWorkflow(),
                     getSnapshotExceptionInDeletionWorkflow(snapshotsStartedDeletion),
-                    true,
                 )
             metadataBuilder = getSnapshotsRes.metadataBuilder
             if (getSnapshotsRes.failed) {
                 return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
             }
-            val policySnapshots = getSnapshotsRes.snapshots
+            val snapshots = getSnapshotsRes.snapshots.distinctBy { it.snapshotId().name }
 
-            // Get pattern-based snapshots if pattern is specified
-            // initialise as empty list, and only call getSnapshots if pattern is not null
-            var patternSnapshotsResult =
-                GetSnapshotsResult(false, emptyList(), metadataBuilder)
-
-            if (job.deletion?.snapshotPattern != null) {
-                patternSnapshotsResult =
-                    client.getSnapshots(
-                        job, job.deletion.snapshotPattern, metadataBuilder, log,
-                        getSnapshotMissingMessageInDeletionWorkflow(),
-                        getSnapshotExceptionInDeletionWorkflow(snapshotsStartedDeletion),
-                        false,
-                    )
-            }
-            if (patternSnapshotsResult.failed) {
-                return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
-            }
-            val patternSnapshots = patternSnapshotsResult.snapshots
-
-            metadataBuilder = patternSnapshotsResult.metadataBuilder
-
-            // Combine both sets of snapshots, removing duplicates by snapshot name
-            val getSnapshots = (policySnapshots + patternSnapshots).distinctBy { it.snapshotId().name }
-
-            val existingSnapshotsNameSet = getSnapshots.map { it.snapshotId().name }.toSet()
+            val existingSnapshotsNameSet = snapshots.map { it.snapshotId().name }.toSet()
             val remainingSnapshotsName = existingSnapshotsNameSet intersect snapshotsStartedDeletion.toSet()
             if (remainingSnapshotsName.isEmpty()) {
                 val deletionMessage = "Snapshot(s) $snapshotsStartedDeletion deletion has finished."

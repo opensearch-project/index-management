@@ -53,7 +53,7 @@ object CreatingState : State {
             val getSnapshotsResult =
                 client.getSnapshots(
                     job, job.policyName + "*", metadataBuilder,
-                    log, null, SNAPSHOT_ERROR_MESSAGE, true,
+                    log, null, SNAPSHOT_ERROR_MESSAGE,
                 )
             metadataBuilder = getSnapshotsResult.metadataBuilder
             if (getSnapshotsResult.failed) {
