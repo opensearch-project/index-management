@@ -35,8 +35,8 @@ class CreatingStateTests : MocksTestCase() {
             val result = SMState.CREATING.instance.execute(context)
             assertTrue("Execution result should be Next.", result is SMResult.Next)
             result as SMResult.Next
-            assertNotNull("Creation started field is initialized.", result.metadataToSave.build().creation.started)
-            assertEquals("Latest execution status is in_progress", SMMetadata.LatestExecution.Status.IN_PROGRESS, result.metadataToSave.build().creation.latestExecution!!.status)
+            assertNotNull("Creation started field is initialized.", result.metadataToSave.build().creation?.started)
+            assertEquals("Latest execution status is in_progress", SMMetadata.LatestExecution.Status.IN_PROGRESS, result.metadataToSave.build().creation?.latestExecution!!.status)
         }
 
     fun `test create snapshot exception`() =
@@ -55,9 +55,9 @@ class CreatingStateTests : MocksTestCase() {
             val result = SMState.CREATING.instance.execute(context)
             assertTrue("Execution result should be Failure.", result is SMResult.Fail)
             result as SMResult.Fail
-            assertNull("Creation started field should not be initialized.", result.metadataToSave.build().creation.started)
-            assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, result.metadataToSave.build().creation.latestExecution!!.status)
-            assertNotNull("Latest execution info should not be null", result.metadataToSave.build().creation.latestExecution!!.info)
+            assertNull("Creation started field should not be initialized.", result.metadataToSave.build().creation?.started)
+            assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, result.metadataToSave.build().creation?.latestExecution!!.status)
+            assertNotNull("Latest execution info should not be null", result.metadataToSave.build().creation?.latestExecution!!.info)
         }
 
     fun `test snapshot already created in previous schedule`() =
@@ -77,8 +77,8 @@ class CreatingStateTests : MocksTestCase() {
             val result = SMState.CREATING.instance.execute(context)
             assertTrue("Execution result should be Next.", result is SMResult.Next)
             result as SMResult.Next
-            assertEquals("Started create snapshot name is $snapshotName.", snapshotName, result.metadataToSave.build().creation.started!!.first())
-            assertEquals("Latest execution status is in_progress", SMMetadata.LatestExecution.Status.IN_PROGRESS, result.metadataToSave.build().creation.latestExecution!!.status)
+            assertEquals("Started create snapshot name is $snapshotName.", snapshotName, result.metadataToSave.build().creation?.started!!.first())
+            assertEquals("Latest execution status is in_progress", SMMetadata.LatestExecution.Status.IN_PROGRESS, result.metadataToSave.build().creation?.latestExecution!!.status)
         }
 
     fun `test snapshot already created but not in previous schedule`() =
@@ -99,7 +99,7 @@ class CreatingStateTests : MocksTestCase() {
             val result = SMState.CREATING.instance.execute(context)
             assertTrue("Execution result should be Next.", result is SMResult.Next)
             result as SMResult.Next
-            assertNotEquals("Started create snapshot name should not be $snapshotName.", snapshotName, result.metadataToSave.build().creation.started!!.first())
+            assertNotEquals("Started create snapshot name should not be $snapshotName.", snapshotName, result.metadataToSave.build().creation?.started!!.first())
         }
 
     fun `test get snapshots exception while checking if snapshot already created`() =
@@ -117,8 +117,8 @@ class CreatingStateTests : MocksTestCase() {
             val result = SMState.CREATING.instance.execute(context)
             assertTrue("Execution result should be Failure.", result is SMResult.Fail)
             result as SMResult.Fail
-            assertNull("Creation started field should not be initialized.", result.metadataToSave.build().creation.started)
-            assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, result.metadataToSave.build().creation.latestExecution!!.status)
-            assertNotNull("Latest execution info should not be null", result.metadataToSave.build().creation.latestExecution!!.info)
+            assertNull("Creation started field should not be initialized.", result.metadataToSave.build().creation?.started)
+            assertEquals("Latest execution status is retrying", SMMetadata.LatestExecution.Status.RETRYING, result.metadataToSave.build().creation?.latestExecution!!.status)
+            assertNotNull("Latest execution info should not be null", result.metadataToSave.build().creation?.latestExecution!!.info)
         }
 }

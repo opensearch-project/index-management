@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.model
 
+import org.opensearch.Version
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.io.stream.Writeable
@@ -38,7 +39,7 @@ typealias InfoType = Map<String, Any>
 data class SMMetadata(
     val policySeqNo: Long,
     val policyPrimaryTerm: Long,
-    val creation: WorkflowMetadata,
+    val creation: WorkflowMetadata?,
     val deletion: WorkflowMetadata?,
     val id: String = NO_ID,
     val seqNo: Long = SequenceNumbers.UNASSIGNED_SEQ_NO,
@@ -51,7 +52,7 @@ data class SMMetadata(
         builder.field(NAME_FIELD, smMetadataDocIdToPolicyName(id))
             .field(POLICY_SEQ_NO_FIELD, policySeqNo)
             .field(POLICY_PRIMARY_TERM_FIELD, policyPrimaryTerm)
-            .field(CREATION_FIELD, creation)
+            .optionalField(CREATION_FIELD, creation)
             .optionalField(DELETION_FIELD, deletion)
         if (params.paramAsBoolean(WITH_TYPE, true)) builder.endObject()
         return builder.endObject()
@@ -92,7 +93,7 @@ data class SMMetadata(
             return SMMetadata(
                 policySeqNo = requireNotNull(policySeqNo) { "policy_seq_no field must not be null" },
                 policyPrimaryTerm = requireNotNull(policyPrimaryTerm) { "policy_primary_term field must not be null" },
-                creation = requireNotNull(creation) { "creation field must not be null" },
+                creation = creation,
                 deletion = deletion,
                 id = id,
                 seqNo = seqNo,
@@ -112,7 +113,12 @@ data class SMMetadata(
     constructor(sin: StreamInput) : this(
         policySeqNo = sin.readLong(),
         policyPrimaryTerm = sin.readLong(),
-        creation = WorkflowMetadata(sin),
+        creation = if (sin.version.onOrAfter(Version.V_3_3_0)) {
+            sin.readOptionalWriteable { WorkflowMetadata(it) }
+        } else {
+            // For older versions, creation will always exist
+            WorkflowMetadata(sin)
+        },
         deletion = sin.readOptionalWriteable { WorkflowMetadata(it) },
         id = sin.readString(),
         seqNo = sin.readLong(),
@@ -122,7 +128,12 @@ data class SMMetadata(
     override fun writeTo(out: StreamOutput) {
         out.writeLong(policySeqNo)
         out.writeLong(policyPrimaryTerm)
-        creation.writeTo(out)
+        if (out.version.onOrAfter(Version.V_3_3_0)) {
+            out.writeOptionalWriteable(creation)
+        } else {
+            // For older versions, always creation will be present
+            requireNotNull(creation) { "creation must not be null for versions before 3.2.0" }.writeTo(out)
+        }
         out.writeOptionalWriteable(deletion)
         out.writeString(id)
         out.writeLong(seqNo)
@@ -431,7 +442,7 @@ data class SMMetadata(
                     metadata =
                         metadata.copy(
                             creation =
-                            metadata.creation.copy(
+                            metadata.creation?.copy(
                                 currentState = state,
                             ),
                         )
@@ -452,9 +463,9 @@ data class SMMetadata(
         // Reset the workflow of this execution period so SM can
         // go to execute the next
         fun resetWorkflow(): Builder {
-            var creationCurrentState = metadata.creation.currentState
-            var startedCreation = metadata.creation.started
-            var creationRetry = metadata.creation.retry
+            var creationCurrentState = metadata.creation?.currentState
+            var startedCreation = metadata.creation?.started
+            var creationRetry = metadata.creation?.retry
             var deletionCurrentState = metadata.deletion?.currentState
             var startedDeletion = metadata.deletion?.started
             var deletionRetry = metadata.deletion?.retry
@@ -474,8 +485,8 @@ data class SMMetadata(
             metadata =
                 metadata.copy(
                     creation =
-                    metadata.creation.copy(
-                        currentState = creationCurrentState,
+                    metadata.creation?.copy(
+                        currentState = creationCurrentState!!,
                         started = startedCreation,
                         retry = creationRetry,
                     ),
@@ -495,6 +506,14 @@ data class SMMetadata(
             metadata =
                 metadata.copy(
                     deletion = null,
+                )
+            return this
+        }
+
+        fun resetCreation(): Builder {
+            metadata =
+                metadata.copy(
+                    creation = null,
                 )
             return this
         }
@@ -536,8 +555,8 @@ data class SMMetadata(
                             status = status,
                             info =
                             Info(
-                                message = if (updateMessage) messageWithTime else metadata.creation.latestExecution?.info?.message,
-                                cause = if (updateCause) causeWithTime else metadata.creation.latestExecution?.info?.cause,
+                                message = if (updateMessage) messageWithTime else metadata.creation?.latestExecution?.info?.message,
+                                cause = if (updateCause) causeWithTime else metadata.creation?.latestExecution?.info?.cause,
                             ),
                             endTime = endTime,
                         ),
@@ -548,7 +567,7 @@ data class SMMetadata(
                 when (workflowType) {
                     WorkflowType.CREATION -> {
                         metadata.copy(
-                            creation = getUpdatedWorkflowMetadata(metadata.creation),
+                            creation = metadata.creation?.let { getUpdatedWorkflowMetadata(it) },
                         )
                     }
                     WorkflowType.DELETION -> {
@@ -573,7 +592,7 @@ data class SMMetadata(
 
         fun getStartedSnapshots(): List<String>? = when (workflowType) {
             WorkflowType.CREATION -> {
-                metadata.creation.started
+                metadata.creation?.started
             }
             WorkflowType.DELETION -> {
                 metadata.deletion?.started
@@ -586,7 +605,7 @@ data class SMMetadata(
                     metadata =
                         metadata.copy(
                             creation =
-                            metadata.creation.copy(
+                            metadata.creation?.copy(
                                 retry = Retry(count = count),
                             ),
                         )
@@ -608,11 +627,11 @@ data class SMMetadata(
         fun resetRetry(): Builder {
             when (workflowType) {
                 WorkflowType.CREATION -> {
-                    if (metadata.creation.retry != null) {
+                    if (metadata.creation?.retry != null) {
                         metadata =
                             metadata.copy(
                                 creation =
-                                metadata.creation.copy(
+                                metadata.creation?.copy(
                                     retry = null,
                                 ),
                             )
@@ -643,16 +662,16 @@ data class SMMetadata(
         }
 
         fun setNextCreationTime(time: Instant): Builder {
-            metadata =
-                metadata.copy(
-                    creation =
-                    metadata.creation.copy(
-                        trigger =
-                        metadata.creation.trigger.copy(
-                            time = time,
-                        ),
-                    ),
-                )
+            metadata = metadata.copy(
+                creation = metadata.creation?.let { creation ->
+                    creation.copy(
+                        trigger = creation.trigger.copy(time = time),
+                    )
+                } ?: WorkflowMetadata(
+                    SMState.CREATION_START,
+                    Trigger(time = time),
+                ),
+            )
             return this
         }
 
@@ -660,7 +679,7 @@ data class SMMetadata(
             metadata =
                 metadata.copy(
                     creation =
-                    metadata.creation.copy(
+                    metadata.creation?.copy(
                         started = if (snapshot == null) null else listOf(snapshot),
                     ),
                 )
