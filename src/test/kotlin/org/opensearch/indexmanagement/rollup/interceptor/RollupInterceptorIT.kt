@@ -1103,7 +1103,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 },
                 "aggs": {
                     "sum_passenger_count": { "sum": { "field": "passenger_count" } },
-                    "max_passenger_count": { "max": { "field": "passenger_count" } }
+                    "max_passenger_count": { "max": { "field": "passenger_count" } },
+                    "value_count_passenger_count": { "value_count": { "field": "passenger_count" } }
                 }
             }
             """.trimIndent()

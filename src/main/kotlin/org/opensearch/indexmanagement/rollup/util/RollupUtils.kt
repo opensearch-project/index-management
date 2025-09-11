@@ -240,13 +240,13 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
                 .combineScript(
                     Script(
                         ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
-                        "def d = new double[2]; d[0] = state.sums; d[1] = state.counts; return d", emptyMap(),
+                        "def d = new org.opensearch.search.aggregations.metrics.ScriptedAvg(state.sums, state.counts); return d", emptyMap(),
                     ),
                 )
                 .reduceScript(
                     Script(
                         ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
-                        "double sum = 0; double count = 0; for (a in states) { sum += a[0]; count += a[1]; } return sum/count", emptyMap(),
+                        "double sum = 0; double count = 0; for (a in states) { sum += a.getSum(); count += a.getCount(); } return sum/count", emptyMap(),
                     ),
                 )
         }
