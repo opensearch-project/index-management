@@ -74,7 +74,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock { on { state() } doReturn clusterState }
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
-    private val lockService: LockService = LockService(mock(), clusterService)
+    private val lockService: LockService = mock()
 
     private val docsStats: DocsStats = mock()
     private val primaries: CommonStats = mock { on { getDocs() } doReturn docsStats }

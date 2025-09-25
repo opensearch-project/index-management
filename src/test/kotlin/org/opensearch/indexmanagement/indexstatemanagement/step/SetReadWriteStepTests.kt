@@ -31,7 +31,7 @@ class SetReadWriteStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
-    private val lockService: LockService = LockService(mock(), clusterService)
+    private val lockService: LockService = mock()
 
     fun `test read write step sets step status to failed when not acknowledged`() {
         val setReadWriteResponse = AcknowledgedResponse(false)

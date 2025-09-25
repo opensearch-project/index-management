@@ -42,7 +42,7 @@ class WaitForShrinkStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock { on { state() } doReturn clusterState }
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
-    private val lockService: LockService = LockService(mock(), clusterService)
+    private val lockService: LockService = mock()
     private val ackedResponse = AcknowledgedResponse(true)
     private val unAckedResponse = AcknowledgedResponse(false)
 
