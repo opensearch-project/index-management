@@ -58,6 +58,7 @@ configurations.configureEach {
     resolutionStrategy {
         force "org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}"
         force "org.jetbrains.kotlin:kotlin-stdlib-common:${kotlin_version}"
+        force "com.google.errorprone:error_prone_annotations:${versions.error_prone_annotations}"
     }
 }
 
@@ -71,7 +72,6 @@ dependencies {
     compileOnly "org.opensearch:common-utils:${common_utils_version}"
 
     testImplementation "org.opensearch.test:framework:${opensearch_version}"
-    testImplementation "org.apache.logging.log4j:log4j-core:${versions.log4j}"
 }
 
 idea.module {

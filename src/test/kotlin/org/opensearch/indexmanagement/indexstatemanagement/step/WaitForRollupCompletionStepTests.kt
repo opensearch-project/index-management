@@ -43,7 +43,7 @@ class WaitForRollupCompletionStepTests : OpenSearchTestCase() {
         )
     private val client: Client = mock()
     private val step = WaitForRollupCompletionStep()
-    private val lockService: LockService = LockService(mock(), clusterService)
+    private val lockService: LockService = mock()
 
     fun `test wait for rollup when missing rollup id`() {
         val actionMetadata = metadata.actionMetaData!!.copy(actionProperties = ActionProperties())

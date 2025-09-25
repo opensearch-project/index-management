@@ -28,7 +28,7 @@ class AttemptStopReplicationStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
-    private val lockService: LockService = LockService(mock(), clusterService)
+    private val lockService: LockService = mock()
 
     fun `test stop replication step sets step status to completed when successful`() {
         val client = getClient(true, false) // Simulate a successful response

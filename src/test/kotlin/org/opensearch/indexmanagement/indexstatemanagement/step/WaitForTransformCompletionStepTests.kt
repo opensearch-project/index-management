@@ -62,7 +62,7 @@ class WaitForTransformCompletionStepTests : OpenSearchTestCase() {
         )
     private val client: Client = mock()
     private val step = WaitForTransformCompletionStep()
-    private val lockService: LockService = LockService(mock(), clusterService)
+    private val lockService: LockService = mock()
 
     fun `test wait for transform when missing transform id`() {
         val actionMetadata = metadata.actionMetaData!!.copy(actionProperties = ActionProperties())
