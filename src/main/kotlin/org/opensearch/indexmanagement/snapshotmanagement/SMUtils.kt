@@ -262,20 +262,15 @@ suspend fun Client.getSnapshots(
 
     // Parse CSV patterns from name and implement pattern-based filtering
     val patterns = name.split(",").map { it.trim() }
-    val hasPolicyNamePattern = patterns.any { it == "${job.policyName}*" }
-
     val policyNamePattern = "${job.policyName}*"
-
     // Filter other snapshots by policy metadata
     val otherPatternSnapshots = snapshots.filter { snapshot ->
         patterns.any { pattern ->
             pattern != policyNamePattern && Regex.simpleMatch(pattern, snapshot.snapshotId().name)
         }
     }
-
-    val filteredSnapshot = snapshots.filterBySMPolicyInSnapshotMetadata(job.policyName)
-
-    snapshots = filteredSnapshot + otherPatternSnapshots
+    val policySnapshots = snapshots.filterBySMPolicyInSnapshotMetadata(job.policyName)
+    snapshots = policySnapshots + otherPatternSnapshots
 
     return GetSnapshotsResult(false, snapshots, metadataBuilder)
 }

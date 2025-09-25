@@ -43,10 +43,6 @@ object DeletionFinishedState : State {
             if (job.deletion?.snapshotPattern != null) {
                 snapshotPattern += "," + job.deletion.snapshotPattern
             }
-
-            // Get policy-created snapshots (always)
-
-            // Get policy-created snapshots (always)
             val getSnapshotsRes =
                 client.getSnapshots(
                     job, snapshotPattern, metadataBuilder, log,
