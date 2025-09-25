@@ -38,7 +38,7 @@ class WaitForSnapshotStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
-    private val lockService: LockService = LockService(mock(), clusterService)
+    private val lockService: LockService = mock()
     val snapshot = "snapshot-name"
 
     fun `test snapshot missing snapshot name in action properties`() {

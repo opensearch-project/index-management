@@ -74,7 +74,7 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
         null,
         null,
     )
-    private val lockService: LockService = LockService(mock(), clusterService)
+    private val lockService: LockService = mock()
 
     @Before
     fun setup() {
