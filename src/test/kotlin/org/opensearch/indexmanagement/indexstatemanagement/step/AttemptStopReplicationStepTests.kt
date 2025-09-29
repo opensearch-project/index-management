@@ -7,6 +7,7 @@ package org.opensearch.indexmanagement.indexstatemanagement.step
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doAnswer
+import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
@@ -19,6 +20,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.step.stopreplication.
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
@@ -151,15 +153,32 @@ class AttemptStopReplicationStepTests : OpenSearchTestCase() {
     }
 
     // Returns a mocked instance of NodeClient and customizes the behavior of execute()
-    private fun getClient(ack: Boolean, exception: Boolean): NodeClient = mock<NodeClient> {
-        doAnswer { invocationOnMock ->
-            val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(2)
-            if (exception) {
-                listener.onFailure(java.lang.Exception())
-            } else {
-                listener.onResponse(AcknowledgedResponse(ack))
-            }
-            null
-        }.whenever(this.mock).execute<StopIndexReplicationRequest, AcknowledgedResponse>(any(), any(), any())
+    private fun getClient(ack: Boolean, exception: Boolean): PluginClient = mock<PluginClient> {
+        // Mock the NodeClient that innerClient should return
+        val inner: NodeClient = mock {
+            doAnswer { inv ->
+                val listener = inv.getArgument<ActionListener<AcknowledgedResponse>>(2)
+                if (exception) {
+                    listener.onFailure(Exception())
+                } else {
+                    listener.onResponse(AcknowledgedResponse(ack))
+                }
+                null
+            }.whenever(this.mock).execute<StopIndexReplicationRequest, AcknowledgedResponse>(any(), any(), any())
+        }
+
+        // Mock PluginClient, return the inner NodeClient, and (optionally) also stub execute here
+        return mock {
+            on { innerClient() } doReturn inner
+            doAnswer { inv ->
+                val listener = inv.getArgument<ActionListener<AcknowledgedResponse>>(2)
+                if (exception) {
+                    listener.onFailure(Exception())
+                } else {
+                    listener.onResponse(AcknowledgedResponse(ack))
+                }
+                null
+            }.whenever(this.mock).execute<StopIndexReplicationRequest, AcknowledgedResponse>(any(), any(), any())
+        }
     }
 }

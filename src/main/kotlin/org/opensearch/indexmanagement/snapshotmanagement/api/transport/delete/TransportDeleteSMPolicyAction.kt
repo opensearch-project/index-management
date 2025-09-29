@@ -22,6 +22,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.BaseTrans
 import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions.DELETE_SM_POLICY_ACTION_NAME
 import org.opensearch.indexmanagement.snapshotmanagement.getSMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.verifyUserHasPermissionForResource
 import org.opensearch.transport.TransportService
 import org.opensearch.transport.client.Client
@@ -34,8 +35,9 @@ constructor(
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
+    pluginClient: PluginClient,
 ) : BaseTransportAction<DeleteSMPolicyRequest, DeleteResponse>(
-    DELETE_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::DeleteSMPolicyRequest,
+    DELETE_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::DeleteSMPolicyRequest, pluginClient,
 ) {
     private val log = LogManager.getLogger(javaClass)
 
@@ -52,14 +54,14 @@ constructor(
         user: User?,
         threadContext: ThreadContext.StoredContext,
     ): DeleteResponse {
-        val smPolicy = client.getSMPolicy(request.id())
+        val smPolicy = pluginClient.getSMPolicy(request.id())
 
         // Check if the requested user has permission on the resource, throwing an exception if the user does not
         verifyUserHasPermissionForResource(user, smPolicy.user, filterByEnabled, "snapshot management policy", smPolicy.policyName)
 
         val deleteReq = request.index(INDEX_MANAGEMENT_INDEX)
         try {
-            return client.suspendUntil { delete(deleteReq, it) }
+            return pluginClient.suspendUntil { delete(deleteReq, it) }
         } catch (e: VersionConflictEngineException) {
             log.error("VersionConflictEngineException while trying to delete snapshot management policy id [${deleteReq.id()}]: $e")
             throw OpenSearchStatusException(conflictExceptionMessage, RestStatus.INTERNAL_SERVER_ERROR)

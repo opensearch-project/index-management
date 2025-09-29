@@ -12,6 +12,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.CronSchedule
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
+import java.time.Instant
 import java.time.Instant.now
 import java.time.temporal.ChronoUnit
 
@@ -40,7 +41,7 @@ class SMRunnerIT : SnapshotManagementRestTestCase() {
         // Create condition met
         updateSMPolicyStartTime(smPolicy)
         updateSMMetadata(getSMPolicy(smPolicy.policyName))
-        waitFor {
+        waitFor(timeout = Instant.ofEpochSecond(180)) {
             val explainMetadata = parseExplainResponse(explainSMPolicy(policyName).entity.content).first()
             assertNotNull(explainMetadata.creation!!.started)
             assertEquals(SMMetadata.LatestExecution.Status.IN_PROGRESS, explainMetadata.creation.latestExecution!!.status)
