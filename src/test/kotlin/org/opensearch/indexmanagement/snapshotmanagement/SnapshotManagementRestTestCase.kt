@@ -38,7 +38,7 @@ import java.time.Instant.now
 abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
     @After
     fun clearIndicesAfterEachTest() {
-        wipeAllIndices()
+        wipeAllIndices(skip = isBWCTest)
     }
 
     var timeout: Instant = Instant.ofEpochSecond(20)

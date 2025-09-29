@@ -63,7 +63,7 @@ class DeletingStateTests : MocksTestCase() {
                 randomSMPolicy(
                     policyName = "daily-snapshot",
                     deletionMaxAge = TimeValue.timeValueMinutes(1),
-                    deletionMinCount = 2,
+                    deletionMinCount = 1, // to ensure at least one snapshot remains, as we have only two unique snapshot in mock response
                 )
             val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
 
@@ -193,5 +193,158 @@ class DeletingStateTests : MocksTestCase() {
             result as SMResult.Fail
             val metadataToSave = result.metadataToSave.build()
             assertNull("Deletion metadata should be null.", metadataToSave.deletion)
+        }
+
+    fun `test deletion with snapshot pattern combines policy and pattern snapshots`() =
+        runBlocking {
+            // Create policy snapshots and external pattern snapshots
+            val policySnapshot1 = mockSnapshotInfo(name = "daily-policy-snapshot-1", startTime = now().minusSeconds(8 * 24 * 3600).toEpochMilli(), policyName = "daily-policy")
+            val policySnapshot2 = mockSnapshotInfo(name = "daily-policy-snapshot-2", startTime = now().minusSeconds(2 * 24 * 3600).toEpochMilli(), policyName = "daily-policy")
+            val patternSnapshot1 = mockSnapshotInfo(name = "external-backup-1", startTime = now().minusSeconds(10 * 24 * 3600).toEpochMilli(), policyName = "some-other-policy")
+            val patternSnapshot2 = mockSnapshotInfo(name = "external-backup-2", startTime = now().minusSeconds(1 * 24 * 3600).toEpochMilli(), policyName = "some-other-policy")
+
+            // Mock single call that returns all snapshots (both policy and pattern)
+            // The actual implementation makes 2 calls but combines results, so we mock with all snapshots
+            mockGetSnapshotsCall(response = mockGetSnapshotsResponse(listOf(policySnapshot1, policySnapshot2, patternSnapshot1, patternSnapshot2)))
+            mockDeleteSnapshotCall(response = AcknowledgedResponse(true))
+
+            val metadata = SMMetadata(
+                policySeqNo = 1L,
+                policyPrimaryTerm = 1L,
+                creation = null, // No creation workflow
+                deletion = SMMetadata.WorkflowMetadata(
+                    currentState = SMState.DELETION_CONDITION_MET,
+                    trigger = SMMetadata.Trigger(time = now()),
+                ),
+            )
+            val job = randomSMPolicy(
+                policyName = "daily-policy",
+                creationNull = true,
+                deletionMaxAge = TimeValue.timeValueDays(7),
+                deletionMinCount = 2,
+                snapshotPattern = "external-*",
+            )
+            val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
+
+            val result = SMState.DELETING.instance.execute(context)
+            assertTrue("Execution result should be Next.", result is SMResult.Next)
+            result as SMResult.Next
+            val metadataToSave = result.metadataToSave.build()
+
+            // Should delete old snapshots from both policy and pattern that exceed max age
+            val deletedSnapshots = metadataToSave.deletion?.started
+            assertNotNull("Deletion started field should be initialized.", deletedSnapshots)
+            assertTrue("Should delete old policy snapshot", deletedSnapshots?.contains("daily-policy-snapshot-1") == true)
+            assertTrue("Should delete old pattern snapshot", deletedSnapshots?.contains("external-backup-1") == true)
+        }
+
+    fun `test deletion without pattern only processes policy snapshots`() =
+        runBlocking {
+            val policySnapshot1 = mockSnapshotInfo(name = "policy-snapshot-1", startTime = now().minusSeconds(8 * 24 * 3600).toEpochMilli(), policyName = "test-policy")
+            val policySnapshot2 = mockSnapshotInfo(name = "policy-snapshot-2", startTime = now().minusSeconds(1 * 24 * 3600).toEpochMilli(), policyName = "test-policy")
+
+            mockGetSnapshotsCall(response = mockGetSnapshotsResponse(listOf(policySnapshot1, policySnapshot2)))
+            mockDeleteSnapshotCall(response = AcknowledgedResponse(true))
+
+            val metadata = SMMetadata(
+                policySeqNo = 1L,
+                policyPrimaryTerm = 1L,
+                creation = null, // No creation workflow
+                deletion = SMMetadata.WorkflowMetadata(
+                    currentState = SMState.DELETION_CONDITION_MET,
+                    trigger = SMMetadata.Trigger(time = now()),
+                ),
+            )
+            val job = randomSMPolicy(
+                policyName = "test-policy",
+                creationNull = true,
+                deletionMaxAge = TimeValue.timeValueDays(7),
+                deletionMinCount = 1,
+                snapshotPattern = null, // No pattern
+            )
+            val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
+
+            val result = SMState.DELETING.instance.execute(context)
+            assertTrue("Execution result should be Next.", result is SMResult.Next)
+            result as SMResult.Next
+            val metadataToSave = result.metadataToSave.build()
+
+            // Should only delete old policy snapshot
+            val deletedSnapshots = metadataToSave.deletion?.started
+            assertNotNull("Deletion started field should be initialized.", deletedSnapshots)
+            assertEquals("Should delete 1 snapshot", 1, deletedSnapshots?.size)
+            assertTrue("Should delete old policy snapshot", deletedSnapshots?.contains("policy-snapshot-1") == true)
+        }
+
+    fun `test deletion with pattern respects conditions across combined snapshots`() =
+        runBlocking {
+            val policySnapshot = mockSnapshotInfo(name = "policy-snapshot-1", startTime = now().minusSeconds(8 * 24 * 3600).toEpochMilli(), policyName = "test-policy")
+            val patternSnapshot = mockSnapshotInfo(name = "external-backup-1", startTime = now().minusSeconds(10 * 24 * 3600).toEpochMilli(), policyName = "some-other-policy")
+
+            // Mock single call that returns all snapshots (both policy and pattern)
+            mockGetSnapshotsCall(response = mockGetSnapshotsResponse(listOf(policySnapshot, patternSnapshot)))
+
+            val metadata = SMMetadata(
+                policySeqNo = 1L,
+                policyPrimaryTerm = 1L,
+                creation = null, // No creation workflow
+                deletion = SMMetadata.WorkflowMetadata(
+                    currentState = SMState.DELETION_CONDITION_MET,
+                    trigger = SMMetadata.Trigger(time = now()),
+                ),
+            )
+            val job = randomSMPolicy(
+                policyName = "test-policy",
+                creationNull = true,
+                deletionMaxAge = TimeValue.timeValueDays(7),
+                deletionMinCount = 2, // Require keeping 2 snapshots total
+                snapshotPattern = "external-*",
+            )
+            val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
+
+            val result = SMState.DELETING.instance.execute(context)
+            assertTrue("Execution result should be Next.", result is SMResult.Next)
+            result as SMResult.Next
+            val metadataToSave = result.metadataToSave.build()
+
+            // Should not delete any snapshots to maintain min count
+            assertNull("Should not delete snapshots due to min count constraint", metadataToSave.deletion?.started)
+        }
+
+    fun `test deletion-only policy works without creation workflow`() =
+        runBlocking {
+            val oldSnapshot = mockSnapshotInfo(name = "old_snapshot", startTime = now().minusSeconds(8 * 24 * 3600).toEpochMilli(), policyName = "deletion-only-policy")
+            val newSnapshot = mockSnapshotInfo(name = "new_snapshot", startTime = now().toEpochMilli(), policyName = "deletion-only-policy")
+            mockGetSnapshotsCall(response = mockGetSnapshotsResponse(listOf(oldSnapshot, newSnapshot)))
+            mockDeleteSnapshotCall(response = AcknowledgedResponse(true))
+
+            val metadata = SMMetadata(
+                policySeqNo = 1L,
+                policyPrimaryTerm = 1L,
+                creation = null, // No creation workflow
+                deletion = SMMetadata.WorkflowMetadata(
+                    currentState = SMState.DELETION_CONDITION_MET,
+                    trigger = SMMetadata.Trigger(time = now()),
+                ),
+            )
+            val job = randomSMPolicy(
+                policyName = "deletion-only-policy",
+                creationNull = true, // No creation
+                deletionMaxAge = TimeValue.timeValueDays(7),
+                deletionMinCount = 1,
+            )
+            val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
+
+            val result = SMState.DELETING.instance.execute(context)
+            assertTrue("Execution result should be Next.", result is SMResult.Next)
+            result as SMResult.Next
+            val metadataToSave = result.metadataToSave.build()
+
+            // Should work fine without creation workflow
+            assertNull("Creation workflow should be null", metadataToSave.creation)
+            assertNotNull("Deletion workflow should exist", metadataToSave.deletion)
+            val deletedSnapshots = metadataToSave.deletion?.started
+            assertNotNull("Should delete old snapshot", deletedSnapshots)
+            assertTrue("Should delete old snapshot", deletedSnapshots?.contains("old_snapshot") == true)
         }
 }
