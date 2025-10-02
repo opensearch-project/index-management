@@ -48,7 +48,7 @@ jobs:
           java-version: ${{ matrix.java }}
       # build index management
       - name: Checkout Branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       # This is a hack, but this step creates a link to the X: mounted drive, which makes the path
       # short enough to work on Windows
       - name: Build with Gradle
@@ -129,7 +129,7 @@ jobs:
           java-version: ${{ matrix.java }}
       # build index management
       - name: Checkout Branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       # This is a hack, but this step creates a link to the X: mounted drive, which makes the path
       # short enough to work on Windows
       - name: Shorten Path
@@ -157,7 +157,7 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/download-artifact@v5
         with:
           path: downloaded-artifacts
