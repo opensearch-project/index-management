@@ -36,7 +36,7 @@ data class ExplainSMPolicy(
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         metadata?.let {
             builder
-                .field(SMMetadata.CREATION_FIELD, it.creation)
+                .optionalField(SMMetadata.CREATION_FIELD, it.creation)
                 .optionalField(SMMetadata.DELETION_FIELD, it.deletion)
                 .field(SMMetadata.POLICY_SEQ_NO_FIELD, it.policySeqNo)
                 .field(SMMetadata.POLICY_PRIMARY_TERM_FIELD, it.policyPrimaryTerm)
