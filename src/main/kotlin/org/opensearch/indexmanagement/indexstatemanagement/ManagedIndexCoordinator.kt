@@ -366,14 +366,13 @@ class ManagedIndexCoordinator(
      * the policy has user, ensure that the user can manage the index if not find the one that can.
      * */
     private suspend fun findMatchingPolicy(indexName: String, creationDate: Long, policies: List<Policy>): Policy? {
-        val patternMatchPredicate = { pattern: String -> Regex.simpleMatch(pattern, indexName) }
         val priorityPolicyMap = mutableMapOf<Int, Policy>()
         policies.forEach { policy ->
             var highestPriorityForPolicy = -1
             policy.ismTemplate?.filter { template ->
                 template.lastUpdatedTime.toEpochMilli() < creationDate
             }?.forEach { template ->
-                if (template.indexPatterns.stream().anyMatch(patternMatchPredicate)) {
+                if (matchesIndexPatterns(indexName, template.indexPatterns)) {
                     if (highestPriorityForPolicy < template.priority) {
                         highestPriorityForPolicy = template.priority
                     }
@@ -397,6 +396,50 @@ class ManagedIndexCoordinator(
 
         logger.debug("Couldn't find any matching policy with appropriate permissions that can manage index $indexName")
         return null
+    }
+
+    /**
+     * Checks if an index name matches the given index patterns, supporting exclusion patterns prefixed with `-`.
+     * The index must match at least one inclusion pattern and must not match any exclusion patterns.
+     *
+     * @param indexName The name of the index to check
+     * @param patterns List of index patterns, where patterns starting with `-` are exclusion patterns
+     * @return true if the index matches (included and not excluded), false otherwise
+     */
+    private fun matchesIndexPatterns(indexName: String, patterns: List<String>): Boolean {
+        val inclusionPatterns = mutableListOf<String>()
+        val exclusionPatterns = mutableListOf<String>()
+
+        // Separate inclusion and exclusion patterns
+        patterns.forEach { pattern ->
+            if (pattern.startsWith("-")) {
+                exclusionPatterns.add(pattern.substring(1))
+            } else {
+                inclusionPatterns.add(pattern)
+            }
+        }
+
+        // If there are no inclusion patterns, treat it as no match
+        if (inclusionPatterns.isEmpty()) {
+            return false
+        }
+
+        // Check if index matches any inclusion pattern
+        val matchesInclusion = inclusionPatterns.any { pattern ->
+            Regex.simpleMatch(pattern, indexName)
+        }
+
+        if (!matchesInclusion) {
+            return false
+        }
+
+        // Check if index matches any exclusion pattern
+        val matchesExclusion = exclusionPatterns.any { pattern ->
+            Regex.simpleMatch(pattern, indexName)
+        }
+
+        // Return true only if matches inclusion and does not match exclusion
+        return !matchesExclusion
     }
 
     private suspend fun canPolicyManagedIndex(policy: Policy, indexName: String): Boolean {

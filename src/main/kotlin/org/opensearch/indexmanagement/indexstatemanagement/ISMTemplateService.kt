@@ -23,16 +23,26 @@ import org.opensearch.indexmanagement.util.IndexManagementException
 fun validateFormat(indexPatterns: List<String>): OpenSearchException? {
     val indexPatternFormatErrors = mutableListOf<String>()
     for (indexPattern in indexPatterns) {
-        if (indexPattern.contains("#")) {
+        // Strip the exclusion prefix (-) if present for validation
+        val patternToValidate = if (indexPattern.startsWith("-")) {
+            indexPattern.substring(1)
+        } else {
+            indexPattern
+        }
+
+        if (patternToValidate.isEmpty()) {
+            indexPatternFormatErrors.add("index_pattern [$indexPattern] must have content after '-' exclusion prefix")
+        }
+        if (patternToValidate.contains("#")) {
             indexPatternFormatErrors.add("index_pattern [$indexPattern] must not contain a '#'")
         }
-        if (indexPattern.contains(":")) {
+        if (patternToValidate.contains(":")) {
             indexPatternFormatErrors.add("index_pattern [$indexPattern] must not contain a ':'")
         }
-        if (indexPattern.startsWith("_")) {
-            indexPatternFormatErrors.add("index_pattern [$indexPattern] must not start with '_'")
+        if (patternToValidate.startsWith("_")) {
+            indexPatternFormatErrors.add("index_pattern [$indexPattern] must not start with '_' (after exclusion prefix if present)")
         }
-        if (!Strings.validFileNameExcludingAstrix(indexPattern)) {
+        if (!Strings.validFileNameExcludingAstrix(patternToValidate)) {
             indexPatternFormatErrors.add(
                 "index_pattern [" + indexPattern + "] must not contain the following characters " +
                     Strings.INVALID_FILENAME_CHARS,
