@@ -419,12 +419,8 @@ class ManagedIndexCoordinator(
             }
         }
 
-        // If there are no inclusion patterns, treat it as no match
-        if (inclusionPatterns.isEmpty()) {
-            return false
-        }
-
         // Check if index matches any inclusion pattern
+        // Note: inclusionPatterns.isEmpty() is prevented by validation in ISMTemplateService
         val matchesInclusion = inclusionPatterns.any { pattern ->
             Regex.simpleMatch(pattern, indexName)
         }

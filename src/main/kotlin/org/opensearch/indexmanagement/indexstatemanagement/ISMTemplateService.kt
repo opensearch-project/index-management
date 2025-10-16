@@ -22,9 +22,14 @@ import org.opensearch.indexmanagement.util.IndexManagementException
 @Suppress("ComplexMethod")
 fun validateFormat(indexPatterns: List<String>): OpenSearchException? {
     val indexPatternFormatErrors = mutableListOf<String>()
+    var hasInclusionPattern = false
+
     for (indexPattern in indexPatterns) {
         // Strip the exclusion prefix (-) if present for validation
         val isExclusionPattern = indexPattern.startsWith("-")
+        if (!isExclusionPattern) {
+            hasInclusionPattern = true
+        }
         val patternToValidate = if (isExclusionPattern) {
             indexPattern.substring(1)
         } else {
@@ -50,6 +55,11 @@ fun validateFormat(indexPatterns: List<String>): OpenSearchException? {
                     Strings.INVALID_FILENAME_CHARS,
             )
         }
+    }
+
+    // Check if there's at least one inclusion pattern
+    if (!hasInclusionPattern) {
+        indexPatternFormatErrors.add("index_patterns must contain at least one inclusion pattern (patterns cannot be all exclusions)")
     }
 
     if (indexPatternFormatErrors.size > 0) {
