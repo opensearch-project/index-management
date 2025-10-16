@@ -24,13 +24,15 @@ fun validateFormat(indexPatterns: List<String>): OpenSearchException? {
     val indexPatternFormatErrors = mutableListOf<String>()
     for (indexPattern in indexPatterns) {
         // Strip the exclusion prefix (-) if present for validation
-        val patternToValidate = if (indexPattern.startsWith("-")) {
+        val isExclusionPattern = indexPattern.startsWith("-")
+        val patternToValidate = if (isExclusionPattern) {
             indexPattern.substring(1)
         } else {
             indexPattern
         }
 
-        if (patternToValidate.isEmpty()) {
+        // Check if exclusion pattern is empty after removing the prefix
+        if (isExclusionPattern && patternToValidate.isEmpty()) {
             indexPatternFormatErrors.add("index_pattern [$indexPattern] must have content after '-' exclusion prefix")
         }
         if (patternToValidate.contains("#")) {
