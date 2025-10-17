@@ -273,4 +273,49 @@ abstract class SnapshotManagementRestTestCase : IndexManagementRestTestCase() {
                 )
         assertEquals("Unable to create a new repository", RestStatus.OK, response.restStatus())
     }
+
+    protected fun createSnapshot(
+        repository: String,
+        snapshotName: String,
+        indices: String,
+        metadata: Map<String, String>? = null,
+    ) {
+        val metadataJson = metadata?.let {
+            ", \"metadata\": {${it.entries.joinToString(", ") { "\"${it.key}\": \"${it.value}\"" }}}"
+        } ?: ""
+
+        val requestBody = StringEntity(
+            """{"indices": "$indices"$metadataJson}""",
+            ContentType.APPLICATION_JSON,
+        )
+
+        val response = client().makeRequest(
+            "PUT",
+            "/_snapshot/$repository/$snapshotName?wait_for_completion=true",
+            emptyMap(),
+            requestBody,
+        )
+        assertEquals("Snapshot creation failed for $snapshotName", RestStatus.OK, response.restStatus())
+    }
+
+    protected fun getSnapshotsInRepository(repoName: String): List<String> {
+        val response = client().makeRequest("GET", "/_snapshot/$repoName/_all")
+        val responseMap = response.asMap()
+
+        @Suppress("UNCHECKED_CAST")
+        val snapshots = responseMap["snapshots"] as? List<Map<String, Any>> ?: emptyList()
+        return snapshots.mapNotNull { it["snapshot"] as? String }
+    }
+
+    protected fun deleteAllSnapshotsInRepository(repoName: String) {
+        val existingSnapshots = getSnapshotsInRepository(repoName)
+        existingSnapshots.forEach { snapshotName ->
+            try {
+                client().makeRequest("DELETE", "/_snapshot/$repoName/$snapshotName")
+                logger.info("Deleted existing snapshot: $snapshotName")
+            } catch (e: Exception) {
+                logger.warn("Failed to delete snapshot $snapshotName: ${e.message}")
+            }
+        }
+    }
 }
