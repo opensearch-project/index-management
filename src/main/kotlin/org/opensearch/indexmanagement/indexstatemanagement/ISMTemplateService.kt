@@ -47,7 +47,7 @@ fun validateFormat(indexPatterns: List<String>): OpenSearchException? {
             indexPatternFormatErrors.add("index_pattern [$indexPattern] must not contain a ':'")
         }
         if (patternToValidate.startsWith("_")) {
-            indexPatternFormatErrors.add("index_pattern [$indexPattern] must not start with '_'
+            indexPatternFormatErrors.add("index_pattern [$indexPattern] must not start with '_'")
         }
         if (!Strings.validFileNameExcludingAstrix(patternToValidate)) {
             indexPatternFormatErrors.add(
