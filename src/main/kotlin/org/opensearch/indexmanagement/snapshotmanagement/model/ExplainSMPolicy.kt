@@ -41,7 +41,7 @@ data class ExplainSMPolicy(
                 .field(SMMetadata.POLICY_SEQ_NO_FIELD, it.policySeqNo)
                 .field(SMMetadata.POLICY_PRIMARY_TERM_FIELD, it.policyPrimaryTerm)
 
-            if (Version.CURRENT.onOrAfter(Version.V_3_3_0)) {
+            if (Version.CURRENT.after(Version.V_3_3_0)) {
                 builder.optionalField(SMMetadata.CREATION_FIELD, it.creation)
             } else {
                 builder.field(SMMetadata.CREATION_FIELD, it.creation)
