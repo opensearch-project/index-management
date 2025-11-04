@@ -12,6 +12,7 @@ import org.opensearch.action.fieldcaps.FieldCapabilitiesRequest
 import org.opensearch.action.fieldcaps.FieldCapabilitiesResponse
 import org.opensearch.action.support.ActionFilter
 import org.opensearch.action.support.ActionFilterChain
+import org.opensearch.action.support.ActionRequestMetadata
 import org.opensearch.action.support.IndicesOptions
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
@@ -49,6 +50,7 @@ class FieldCapsFilter(
         task: Task,
         action: String,
         request: Request,
+        actionRequestMetadata: ActionRequestMetadata<Request, Response>,
         listener: ActionListener<Response>,
         chain: ActionFilterChain<Request, Response>,
     ) {
