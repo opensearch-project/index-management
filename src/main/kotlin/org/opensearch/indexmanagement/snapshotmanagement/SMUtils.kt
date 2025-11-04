@@ -217,9 +217,11 @@ fun List<SnapshotInfo>.filterBySMPolicyInSnapshotMetadata(policyName: String): L
  */
 suspend fun Client.getSnapshots(name: String, repo: String): List<SnapshotInfo> {
     try {
+        val patterns = name.split(",").map { it.trim() }.toTypedArray()
+
         val req =
             GetSnapshotsRequest()
-                .snapshots(arrayOf(name))
+                .snapshots(patterns)
                 .repository(repo)
         val res: GetSnapshotsResponse = admin().cluster().suspendUntil { getSnapshots(req, it) }
         return res.snapshots
