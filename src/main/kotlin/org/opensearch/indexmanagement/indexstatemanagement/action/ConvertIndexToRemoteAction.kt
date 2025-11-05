@@ -16,6 +16,9 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 class ConvertIndexToRemoteAction(
     val repository: String,
     val snapshot: String,
+    val includeAliases: Boolean = false,
+    val ignoreIndexSettings: String = "",
+    val numberOfReplicas: Int = 0,
     index: Int,
 ) : Action(name, index) {
 
@@ -23,6 +26,9 @@ class ConvertIndexToRemoteAction(
         const val name = "convert_index_to_remote"
         const val REPOSITORY_FIELD = "repository"
         const val SNAPSHOT_FIELD = "snapshot"
+        const val INCLUDE_ALIASES_FIELD = "include_aliases"
+        const val IGNORE_INDEX_SETTINGS_FIELD = "ignore_index_settings"
+        const val NUMBER_OF_REPLICAS_FIELD = "number_of_replicas"
     }
 
     private val attemptRestoreStep = AttemptRestoreStep(this)
@@ -37,12 +43,20 @@ class ConvertIndexToRemoteAction(
         builder.startObject(type)
         builder.field(REPOSITORY_FIELD, repository)
         builder.field(SNAPSHOT_FIELD, snapshot)
+        builder.field(INCLUDE_ALIASES_FIELD, includeAliases)
+        builder.field(IGNORE_INDEX_SETTINGS_FIELD, ignoreIndexSettings)
+        if (numberOfReplicas != 0) {
+            builder.field(NUMBER_OF_REPLICAS_FIELD, numberOfReplicas)
+        }
         builder.endObject()
     }
 
     override fun populateAction(out: StreamOutput) {
         out.writeString(repository)
         out.writeString(snapshot)
+        out.writeBoolean(includeAliases)
+        out.writeString(ignoreIndexSettings)
+        out.writeInt(numberOfReplicas)
         out.writeInt(actionIndex)
     }
 }
