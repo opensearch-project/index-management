@@ -131,36 +131,17 @@ class ConvertIndexToRemoteActionIT : IndexStateManagementRestTestCase() {
                             explainMetaData.info?.get("message"),
                         )
                     } catch (e: ResponseException) {
-                        // If we get a 400 "no documents to get", the index was deleted (expected after restore)
-                        if (e.response.restStatus() == RestStatus.BAD_REQUEST) {
-                            val errorBody = e.response.asMap()
-                            val error = errorBody["error"] as? Map<*, *>
-                            val reason = error?.get("reason") as? String
-                            if (reason?.contains("no documents to get") == true) {
-                                // Index was deleted, which is expected - restore succeeded
-                                // Just verify remote index exists below
-                                return@waitFor
-                            }
-                        }
-                        throw e // Re-throw if it's a different error
+                        handleIndexDeletedException(e)
+                        // Index was deleted, which is expected - restore succeeded
+                        // Just verify remote index exists below
+                        return@waitFor
                     }
                 }
             }
         } catch (e: ResponseException) {
-            // If we get a 400 "no documents to get", the index was deleted (expected after restore)
-            if (e.response.restStatus() == RestStatus.BAD_REQUEST) {
-                val errorBody = e.response.asMap()
-                val error = errorBody["error"] as? Map<*, *>
-                val reason = error?.get("reason") as? String
-                if (reason?.contains("no documents to get") == true) {
-                    // Index was deleted, which is expected - restore succeeded
-                    // Continue to verify remote index exists
-                } else {
-                    throw e // Re-throw if it's a different error
-                }
-            } else {
-                throw e // Re-throw if it's not a 400
-            }
+            handleIndexDeletedException(e)
+            // Index was deleted, which is expected - restore succeeded
+            // Continue to verify remote index exists
         }
 
         val remoteIndexName = "${indexName}_remote"
@@ -168,5 +149,19 @@ class ConvertIndexToRemoteActionIT : IndexStateManagementRestTestCase() {
 
         val isRemote = isIndexRemote(remoteIndexName)
         assertTrue("Index $remoteIndexName is not a remote index", isRemote)
+    }
+
+    private fun handleIndexDeletedException(e: ResponseException) {
+        // If we get a 400 "no documents to get", the index was deleted (expected after restore)
+        if (e.response.restStatus() == RestStatus.BAD_REQUEST) {
+            val errorBody = e.response.asMap()
+            val error = errorBody["error"] as? Map<*, *>
+            val reason = error?.get("reason") as? String
+            if (reason?.contains("no documents to get") != true) {
+                throw e // Re-throw if it's a different error
+            }
+        } else {
+            throw e // Re-throw if it's not a 400
+        }
     }
 }

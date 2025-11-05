@@ -45,9 +45,7 @@ class ConvertIndexToRemoteAction(
         builder.field(SNAPSHOT_FIELD, snapshot)
         builder.field(INCLUDE_ALIASES_FIELD, includeAliases)
         builder.field(IGNORE_INDEX_SETTINGS_FIELD, ignoreIndexSettings)
-        if (numberOfReplicas != 0) {
-            builder.field(NUMBER_OF_REPLICAS_FIELD, numberOfReplicas)
-        }
+        builder.field(NUMBER_OF_REPLICAS_FIELD, numberOfReplicas)
         builder.endObject()
     }
 

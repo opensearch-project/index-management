@@ -24,6 +24,7 @@ import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
@@ -40,7 +41,7 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
     private var info: Map<String, Any>? = null
     private var snapshotName: String? = null
 
-    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "LongMethod")
+    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "LongMethod", "NestedBlockDepth")
     override suspend fun execute(): Step {
         val context = this.context ?: return this
         val managedIndexMetadata = context.metadata
@@ -95,74 +96,14 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
             val remoteIndexName = "${indexName}_remote"
 
             // Check if remote index exists
-            var remoteIndexExists = false
-            try {
-                val existsResponse: IndicesExistsResponse = context.client.admin().indices().suspendUntil {
-                    exists(IndicesExistsRequest(remoteIndexName), it)
-                }
-                remoteIndexExists = existsResponse.isExists
-            } catch (e: Exception) {
-                // Index doesn't exist yet
-            }
+            val remoteIndexExists = checkRemoteIndexExists(context, remoteIndexName)
 
             if (remoteIndexExists) {
                 // Restore completed, mark as completed
                 stepStatus = StepStatus.COMPLETED
                 mutableInfo["message"] = getSuccessMessage(indexName)
             } else {
-                // Proceed with the restore operation
-                val restoreSnapshotRequest = RestoreSnapshotRequest(repository, snapshotName)
-                    .indices(indexName)
-                    .storageType(RestoreSnapshotRequest.StorageType.REMOTE_SNAPSHOT)
-                    .renamePattern("^(.*)\$")
-                    .renameReplacement("$1_remote")
-                    .waitForCompletion(false)
-                    .includeAliases(action.includeAliases)
-                    .ignoreIndexSettings(action.ignoreIndexSettings)
-
-                // Set number_of_replicas (defaults to 0 if not specified)
-                val indexSettings = Settings.builder()
-                    .put(SETTING_NUMBER_OF_REPLICAS, action.numberOfReplicas)
-                    .build()
-                restoreSnapshotRequest.indexSettings(indexSettings)
-
-                val response: RestoreSnapshotResponse = context.client.admin().cluster().suspendUntil {
-                    restoreSnapshot(restoreSnapshotRequest, it)
-                }
-
-                when (response.status()) {
-                    RestStatus.ACCEPTED, RestStatus.OK -> {
-                        // Restore accepted, delete original index
-                        try {
-                            val deleteResponse: AcknowledgedResponse = context.client.admin().indices().suspendUntil {
-                                delete(DeleteIndexRequest(indexName), it)
-                            }
-                            if (deleteResponse.isAcknowledged) {
-                                logger.info("Successfully deleted original index [$indexName] after restore was accepted")
-                                mutableInfo["deleted_original_index"] = true
-                            } else {
-                                logger.warn("Delete request for original index [$indexName] was not acknowledged")
-                                mutableInfo["deleted_original_index"] = false
-                            }
-                        } catch (e: Exception) {
-                            logger.warn("Failed to delete original index [$indexName] after restore was accepted: ${e.message}", e)
-                            mutableInfo["deleted_original_index"] = false
-                            mutableInfo["delete_error"] = e.message ?: "Unknown error"
-                        }
-
-                        // Mark as waiting for completion
-                        stepStatus = StepStatus.CONDITION_NOT_MET
-                        mutableInfo["message"] = "Waiting for remote index [$remoteIndexName] to be created"
-                        logger.info("Restore accepted for snapshot [$snapshotName], waiting for remote index [$remoteIndexName] to be created")
-                    }
-                    else -> {
-                        val message = getFailedMessage(indexName, "Unexpected response status: ${response.status()}")
-                        logger.warn("$message - $response")
-                        stepStatus = StepStatus.FAILED
-                        mutableInfo["message"] = message
-                        mutableInfo["cause"] = response.toString()
-                    }
-                }
+                performRestore(context, indexName, remoteIndexName, repository, snapshotName, mutableInfo)
             }
             info = mutableInfo.toMap()
         } catch (e: RemoteTransportException) {
@@ -179,6 +120,87 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
         }
 
         return this
+    }
+
+    private suspend fun checkRemoteIndexExists(context: StepContext, remoteIndexName: String): Boolean =
+        try {
+            val existsResponse: IndicesExistsResponse = context.client.admin().indices().suspendUntil {
+                exists(IndicesExistsRequest(remoteIndexName), it)
+            }
+            existsResponse.isExists
+        } catch (e: Exception) {
+            // Index doesn't exist yet
+            false
+        }
+
+    private suspend fun performRestore(
+        context: StepContext,
+        indexName: String,
+        remoteIndexName: String,
+        repository: String,
+        snapshotName: String?,
+        mutableInfo: MutableMap<String, Any>,
+    ) {
+        // Proceed with the restore operation
+        val restoreSnapshotRequest = RestoreSnapshotRequest(repository, snapshotName)
+            .indices(indexName)
+            .storageType(RestoreSnapshotRequest.StorageType.REMOTE_SNAPSHOT)
+            .renamePattern("^(.*)\$")
+            .renameReplacement("$1_remote")
+            .waitForCompletion(false)
+            .includeAliases(action.includeAliases)
+            .ignoreIndexSettings(action.ignoreIndexSettings)
+
+        // Set number_of_replicas (defaults to 0 if not specified)
+        val indexSettings = Settings.builder()
+            .put(SETTING_NUMBER_OF_REPLICAS, action.numberOfReplicas)
+            .build()
+        restoreSnapshotRequest.indexSettings(indexSettings)
+
+        val response: RestoreSnapshotResponse = context.client.admin().cluster().suspendUntil {
+            restoreSnapshot(restoreSnapshotRequest, it)
+        }
+
+        when (response.status()) {
+            RestStatus.ACCEPTED, RestStatus.OK -> {
+                deleteOriginalIndex(context, indexName, mutableInfo)
+                // Mark as waiting for completion
+                stepStatus = StepStatus.CONDITION_NOT_MET
+                mutableInfo["message"] = "Waiting for remote index [$remoteIndexName] to be created"
+                logger.info("Restore accepted for snapshot [$snapshotName], waiting for remote index [$remoteIndexName] to be created")
+            }
+            else -> {
+                val message = getFailedMessage(indexName, "Unexpected response status: ${response.status()}")
+                logger.warn("$message - $response")
+                stepStatus = StepStatus.FAILED
+                mutableInfo["message"] = message
+                mutableInfo["cause"] = response.toString()
+            }
+        }
+    }
+
+    private suspend fun deleteOriginalIndex(
+        context: StepContext,
+        indexName: String,
+        mutableInfo: MutableMap<String, Any>,
+    ) {
+        // Restore accepted, delete original index
+        try {
+            val deleteResponse: AcknowledgedResponse = context.client.admin().indices().suspendUntil {
+                delete(DeleteIndexRequest(indexName), it)
+            }
+            if (deleteResponse.isAcknowledged) {
+                logger.info("Successfully deleted original index [$indexName] after restore was accepted")
+                mutableInfo["deleted_original_index"] = true
+            } else {
+                logger.warn("Delete request for original index [$indexName] was not acknowledged")
+                mutableInfo["deleted_original_index"] = false
+            }
+        } catch (e: Exception) {
+            logger.warn("Failed to delete original index [$indexName] after restore was accepted: ${e.message}", e)
+            mutableInfo["deleted_original_index"] = false
+            mutableInfo["delete_error"] = e.message ?: "Unknown error"
+        }
     }
 
     private fun compileTemplate(
