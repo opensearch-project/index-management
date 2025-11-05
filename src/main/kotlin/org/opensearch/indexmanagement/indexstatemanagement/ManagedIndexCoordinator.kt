@@ -337,10 +337,10 @@ class ManagedIndexCoordinator(
         if (clusterState.metadata.hasIndex(indexName)) {
             val indexMetadata = clusterState.metadata.index(indexName)
             val autoManage =
-                if (AUTO_MANAGE.get(indexMetadata.settings)) {
-                    true
-                } else {
+                if (indexMetadata.settings.get(AUTO_MANAGE.key).isNullOrBlank()) {
                     LegacyOpenDistroManagedIndexSettings.AUTO_MANAGE.get(indexMetadata.settings)
+                } else {
+                    AUTO_MANAGE.get(indexMetadata.settings)
                 }
             if (autoManage) {
                 val isHiddenIndex =
