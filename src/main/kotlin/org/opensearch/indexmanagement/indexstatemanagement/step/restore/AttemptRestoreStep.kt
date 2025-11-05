@@ -103,7 +103,7 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
                 stepStatus = StepStatus.COMPLETED
                 mutableInfo["message"] = getSuccessMessage(indexName)
             } else {
-                performRestore(context, indexName, remoteIndexName, repository, snapshotName, mutableInfo)
+                performRestore(context, indexName, repository, snapshotName, mutableInfo)
             }
             info = mutableInfo.toMap()
         } catch (e: RemoteTransportException) {
@@ -136,11 +136,11 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
     private suspend fun performRestore(
         context: StepContext,
         indexName: String,
-        remoteIndexName: String,
         repository: String,
         snapshotName: String?,
         mutableInfo: MutableMap<String, Any>,
     ) {
+        val remoteIndexName = "${indexName}_remote"
         // Proceed with the restore operation
         val restoreSnapshotRequest = RestoreSnapshotRequest(repository, snapshotName)
             .indices(indexName)
