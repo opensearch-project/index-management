@@ -32,6 +32,7 @@ import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionReso
 import org.opensearch.indexmanagement.rollup.util.parseRollup
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
@@ -51,6 +52,7 @@ constructor(
     val clusterService: ClusterService,
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<IndexRollupRequest, IndexRollupResponse>(
     IndexRollupAction.NAME, transportService, actionFilters, ::IndexRollupRequest,
 ) {
@@ -80,12 +82,10 @@ constructor(
                     ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
                 )}",
             )
-            client.threadPool().threadContext.stashContext().use {
-                if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
-                    return
-                }
-                indexManagementIndices.checkAndUpdateIMConfigIndex(ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure))
+            if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
+                return
             }
+            indexManagementIndices.checkAndUpdateIMConfigIndex(ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure))
         }
 
         private fun onCreateMappingsResponse(response: AcknowledgedResponse) {
@@ -113,7 +113,7 @@ constructor(
 
         private fun getRollup() {
             val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.rollup.id)
-            client.get(getRequest, ActionListener.wrap(::onGetRollup, actionListener::onFailure))
+            pluginClient.get(getRequest, ActionListener.wrap(::onGetRollup, actionListener::onFailure))
         }
 
         @Suppress("ReturnCount")
@@ -164,7 +164,7 @@ constructor(
                 .id(request.rollup.id)
                 .source(rollup.toXContent(jsonBuilder(), ToXContent.EMPTY_PARAMS))
                 .timeout(IndexRequest.DEFAULT_TIMEOUT)
-            client.index(
+            pluginClient.index(
                 request,
                 object : ActionListener<IndexResponse> {
                     override fun onResponse(response: IndexResponse) {

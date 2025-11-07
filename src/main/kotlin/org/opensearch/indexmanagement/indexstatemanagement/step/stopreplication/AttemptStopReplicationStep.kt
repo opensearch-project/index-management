@@ -14,6 +14,7 @@ import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.snapshots.SnapshotInProgressException
 import org.opensearch.transport.RemoteTransportException
 
@@ -28,8 +29,9 @@ class AttemptStopReplicationStep : Step(name) {
         try {
             val stopIndexReplicationRequestObj = StopIndexReplicationRequest(indexName)
             val response: AcknowledgedResponse = context.client.suspendUntil {
+                val pluginClient = context.client as PluginClient?
                 ReplicationPluginInterface.stopReplication(
-                    context.client,
+                    pluginClient!!.innerClient(),
                     stopIndexReplicationRequestObj,
                     it,
                 )
