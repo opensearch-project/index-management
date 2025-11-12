@@ -46,7 +46,7 @@ class RestExplainSnapshotManagementIT : SnapshotManagementRestTestCase() {
             assertTrue("Explain response did not contain policy creation details", explainPolicyMap.containsKey(SMMetadata.CREATION_FIELD))
             val creationField = explainPolicyMap[SMMetadata.CREATION_FIELD] as Map<String, Any>
             val creationTriggerField = creationField[TRIGGER_FIELD] as Map<String, Any>
-            val expectedCreationTime = smPolicy.creation.schedule.getNextExecutionTime(now()).toEpochMilli()
+            val expectedCreationTime = smPolicy.creation?.schedule?.getNextExecutionTime(now())?.toEpochMilli()
             assertEquals("Policy creation trigger time didn't match", expectedCreationTime, creationTriggerField[SMMetadata.Trigger.TIME_FIELD])
             val deletionField = explainPolicyMap[SMMetadata.DELETION_FIELD] as Map<String, Any>
             val deletionTriggerField = deletionField[TRIGGER_FIELD] as Map<String, Any>

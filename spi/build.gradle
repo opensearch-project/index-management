@@ -49,8 +49,7 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven { url "https://plugins.gradle.org/m2/" }
-    maven { url "https://central.sonatype.com/repository/maven-snapshots/" }
-    maven { url "https://aws.oss.sonatype.org/content/repositories/snapshots" }
+    maven { url "https://ci.opensearch.org/ci/dbc/snapshots/maven/" }
 }
 
 configurations.configureEach {
@@ -58,6 +57,7 @@ configurations.configureEach {
     resolutionStrategy {
         force "org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}"
         force "org.jetbrains.kotlin:kotlin-stdlib-common:${kotlin_version}"
+        force "com.google.errorprone:error_prone_annotations:${versions.error_prone_annotations}"
     }
 }
 
@@ -71,7 +71,6 @@ dependencies {
     compileOnly "org.opensearch:common-utils:${common_utils_version}"
 
     testImplementation "org.opensearch.test:framework:${opensearch_version}"
-    testImplementation "org.apache.logging.log4j:log4j-core:${versions.log4j}"
 }
 
 idea.module {
@@ -118,10 +117,11 @@ publishing {
         }
         maven {
             name = "Snapshots"
-            url = "https://central.sonatype.com/repository/maven-snapshots/"
-            credentials {
-                username System.getenv("SONATYPE_USERNAME")
-                password System.getenv("SONATYPE_PASSWORD")
+            url = System.getenv("MAVEN_SNAPSHOTS_S3_REPO")
+            credentials(AwsCredentials) {
+                accessKey = System.getenv("AWS_ACCESS_KEY_ID")
+                secretKey = System.getenv("AWS_SECRET_ACCESS_KEY")
+                sessionToken = System.getenv("AWS_SESSION_TOKEN")
             }
         }
     }

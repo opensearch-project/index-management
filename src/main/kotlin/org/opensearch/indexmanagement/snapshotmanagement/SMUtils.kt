@@ -17,6 +17,7 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
+import org.opensearch.common.regex.Regex
 import org.opensearch.common.time.DateFormatter
 import org.opensearch.common.time.DateFormatters
 import org.opensearch.common.unit.TimeValue
@@ -216,9 +217,11 @@ fun List<SnapshotInfo>.filterBySMPolicyInSnapshotMetadata(policyName: String): L
  */
 suspend fun Client.getSnapshots(name: String, repo: String): List<SnapshotInfo> {
     try {
+        val patterns = name.split(",").map { it.trim() }.toTypedArray()
+
         val req =
             GetSnapshotsRequest()
-                .snapshots(arrayOf(name))
+                .snapshots(patterns)
                 .repository(repo)
         val res: GetSnapshotsResponse = admin().cluster().suspendUntil { getSnapshots(req, it) }
         return res.snapshots
@@ -240,7 +243,7 @@ suspend fun Client.getSnapshots(
     snapshotMissingMsg: String?,
     exceptionMsg: String,
 ): GetSnapshotsResult {
-    val snapshots =
+    var snapshots =
         try {
             getSnapshots(
                 name,
@@ -257,7 +260,19 @@ suspend fun Client.getSnapshots(
                 cause = ex,
             )
             return GetSnapshotsResult(true, emptyList(), metadataBuilder)
-        }.filterBySMPolicyInSnapshotMetadata(job.policyName)
+        }
+
+    // Parse CSV patterns from name and implement pattern-based filtering
+    val patterns = name.split(",").map { it.trim() }
+    val policyNamePattern = "${job.policyName}*"
+    // Filter other snapshots by policy metadata
+    val otherPatternSnapshots = snapshots.filter { snapshot ->
+        patterns.any { pattern ->
+            pattern != policyNamePattern && Regex.simpleMatch(pattern, snapshot.snapshotId().name)
+        }
+    }
+    val policySnapshots = snapshots.filterBySMPolicyInSnapshotMetadata(job.policyName)
+    snapshots = policySnapshots + otherPatternSnapshots
 
     return GetSnapshotsResult(false, snapshots, metadataBuilder)
 }
