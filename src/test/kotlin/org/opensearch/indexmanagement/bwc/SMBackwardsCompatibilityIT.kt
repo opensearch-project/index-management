@@ -84,6 +84,11 @@ class SMBackwardsCompatibilityIT : SnapshotManagementRestTestCase() {
                     val traditionalPolicy = getSMPolicy(traditionalPolicyName)
                     assertNotNull("Traditional policy creation should exist", traditionalPolicy.creation)
                     assertNotNull("Traditional policy deletion should exist", traditionalPolicy.deletion)
+
+                    // Verify explain response works in old version (covers old version serialization path)
+                    val explainResponse = explainSMPolicy(traditionalPolicyName)
+                    val explainMetadata = parseExplainResponse(explainResponse.entity.content)
+                    assertTrue("Explain should return results", explainMetadata.isNotEmpty())
                 }
                 ClusterType.MIXED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
@@ -92,6 +97,11 @@ class SMBackwardsCompatibilityIT : SnapshotManagementRestTestCase() {
                     val traditionalPolicy = getSMPolicy(traditionalPolicyName)
                     assertNotNull("Traditional policy creation should exist", traditionalPolicy.creation)
                     assertNotNull("Traditional policy deletion should exist", traditionalPolicy.deletion)
+
+                    // Verify explain response works during rolling upgrade (mixed old/new version serialization)
+                    val explainResponse = explainSMPolicy(traditionalPolicyName)
+                    val explainMetadata = parseExplainResponse(explainResponse.entity.content)
+                    assertTrue("Explain should return results", explainMetadata.isNotEmpty())
                 }
                 ClusterType.UPGRADED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
@@ -101,6 +111,11 @@ class SMBackwardsCompatibilityIT : SnapshotManagementRestTestCase() {
                     assertNotNull("Traditional policy creation should exist", traditionalPolicy.creation)
                     assertNotNull("Traditional policy deletion should exist", traditionalPolicy.deletion)
 
+                    // Verify explain response for traditional policy on upgraded cluster (new version serialization)
+                    val traditionalExplainResponse = explainSMPolicy(traditionalPolicyName)
+                    val traditionalExplainMetadata = parseExplainResponse(traditionalExplainResponse.entity.content)
+                    assertTrue("Explain should return results for traditional policy", traditionalExplainMetadata.isNotEmpty())
+
                     // Now test new features on upgraded cluster
 
                     // Create deletion-only policy (3.2.0+ feature)
@@ -109,12 +124,22 @@ class SMBackwardsCompatibilityIT : SnapshotManagementRestTestCase() {
                     assertNull("Deletion-only policy creation should be null", deletionOnlyPolicy.creation)
                     assertNotNull("Deletion-only policy deletion should exist", deletionOnlyPolicy.deletion)
 
+                    // Verify explain response for deletion-only policy (tests null creation serialization with optionalField)
+                    val deletionOnlyExplainResponse = explainSMPolicy(deletionOnlyPolicyName)
+                    val deletionOnlyExplainMetadata = parseExplainResponse(deletionOnlyExplainResponse.entity.content)
+                    assertTrue("Explain should return results for deletion-only policy", deletionOnlyExplainMetadata.isNotEmpty())
+
                     // Create policy with snapshot pattern (3.2.0+ feature)
                     createPatternPolicy(patternPolicyName)
                     val patternPolicy = getSMPolicy(patternPolicyName)
                     assertNotNull("Pattern policy creation should exist", patternPolicy.creation)
                     assertNotNull("Pattern policy deletion should exist", patternPolicy.deletion)
                     assertEquals("Pattern policy should have snapshot pattern", "external-backup-*", patternPolicy.deletion?.snapshotPattern)
+
+                    // Verify explain response for pattern policy
+                    val patternExplainResponse = explainSMPolicy(patternPolicyName)
+                    val patternExplainMetadata = parseExplainResponse(patternExplainResponse.entity.content)
+                    assertTrue("Explain should return results for pattern policy", patternExplainMetadata.isNotEmpty())
                 }
             }
             break
