@@ -286,4 +286,19 @@ class ISMTemplateRestAPIIT : IndexStateManagementRestTestCase() {
             assertEquals(expectedReason, actualMessage["reason"])
         }
     }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test add template with only exclusion patterns`() {
+        try {
+            // Test exclusion pattern without any inclusion patterns
+            val ismTemp = ISMTemplate(listOf("-log-test-*", "-log-debug-*"), 100, randomInstant())
+            createPolicy(randomPolicy(ismTemplate = listOf(ismTemp)), "${testIndexName}_only_exclusion")
+            fail("Expect a failure")
+        } catch (e: ResponseException) {
+            assertEquals("Unexpected RestStatus", RestStatus.BAD_REQUEST, e.response.restStatus())
+            val actualMessage = e.response.asMap()["error"] as Map<String, Any>
+            val expectedReason = "Validation Failed: 1: index_patterns must contain at least one inclusion pattern (patterns cannot be all exclusions);"
+            assertEquals(expectedReason, actualMessage["reason"])
+        }
+    }
 }
