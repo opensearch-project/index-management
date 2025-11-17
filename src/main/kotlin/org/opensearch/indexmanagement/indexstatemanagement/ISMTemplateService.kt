@@ -22,22 +22,44 @@ import org.opensearch.indexmanagement.util.IndexManagementException
 @Suppress("ComplexMethod")
 fun validateFormat(indexPatterns: List<String>): OpenSearchException? {
     val indexPatternFormatErrors = mutableListOf<String>()
+    var hasInclusionPattern = false
+
     for (indexPattern in indexPatterns) {
-        if (indexPattern.contains("#")) {
+        // Strip the exclusion prefix (-) if present for validation
+        val isExclusionPattern = indexPattern.startsWith("-")
+        if (!isExclusionPattern) {
+            hasInclusionPattern = true
+        }
+        val patternToValidate = if (isExclusionPattern) {
+            indexPattern.substring(1)
+        } else {
+            indexPattern
+        }
+
+        // Check if exclusion pattern is empty after removing the prefix
+        if (isExclusionPattern && patternToValidate.isEmpty()) {
+            indexPatternFormatErrors.add("index_pattern [$indexPattern] must have content after '-' exclusion prefix")
+        }
+        if (patternToValidate.contains("#")) {
             indexPatternFormatErrors.add("index_pattern [$indexPattern] must not contain a '#'")
         }
-        if (indexPattern.contains(":")) {
+        if (patternToValidate.contains(":")) {
             indexPatternFormatErrors.add("index_pattern [$indexPattern] must not contain a ':'")
         }
-        if (indexPattern.startsWith("_")) {
+        if (patternToValidate.startsWith("_")) {
             indexPatternFormatErrors.add("index_pattern [$indexPattern] must not start with '_'")
         }
-        if (!Strings.validFileNameExcludingAstrix(indexPattern)) {
+        if (!Strings.validFileNameExcludingAstrix(patternToValidate)) {
             indexPatternFormatErrors.add(
                 "index_pattern [" + indexPattern + "] must not contain the following characters " +
                     Strings.INVALID_FILENAME_CHARS,
             )
         }
+    }
+
+    // Check if there's at least one inclusion pattern
+    if (!hasInclusionPattern) {
+        indexPatternFormatErrors.add("index_patterns must contain at least one inclusion pattern (patterns cannot be all exclusions)")
     }
 
     if (indexPatternFormatErrors.size > 0) {
