@@ -305,11 +305,16 @@ class RestStopRollupActionIT : RollupRestAPITestCase() {
         waitFor {
             val rollupJob = getRollup(rollupId = rollup.id)
             assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadataWithRoutingId(rollup.id, rollupJob.metadataID!!)
+            assertEquals("Rollup is not STARTED", RollupMetadata.Status.STARTED, rollupMetadata.status)
+
+            // There are two calls to _stop happening serially which is prone to version conflicts during an ongoing job
+            // so including it in a waitFor to ensure it can retry a few times
+            val response = client().makeRequest("POST", "$ROLLUP_JOBS_BASE_URI/${rollup.id}/_stop")
+            assertEquals("Stop rollup failed", RestStatus.OK, response.restStatus())
+            val expectedResponse = mapOf("acknowledged" to true)
+            assertEquals(expectedResponse, response.asMap())
         }
-        val response = client().makeRequest("POST", "$ROLLUP_JOBS_BASE_URI/${rollup.id}/_stop")
-        assertEquals("Stop rollup failed", RestStatus.OK, response.restStatus())
-        val expectedResponse = mapOf("acknowledged" to true)
-        assertEquals(expectedResponse, response.asMap())
 
         val updatedRollup = getRollup(rollup.id)
         assertFalse("Rollup was not disabled", updatedRollup.enabled)

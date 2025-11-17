@@ -245,12 +245,14 @@ class RestStartRollupActionIT : RollupRestAPITestCase() {
             val updatedRollup = getRollup(rollupId = rollup.id)
             val metadata = getRollupMetadataWithRoutingId(rollup.id, updatedRollup.metadataID!!)
             assertEquals("Status should be failed", RollupMetadata.Status.FAILED, metadata.status)
-        }
 
-        val response = client().makeRequest("POST", "${IndexManagementPlugin.ROLLUP_JOBS_BASE_URI}/${rollup.id}/_start")
-        assertEquals("Start rollup failed", RestStatus.OK, response.restStatus())
-        val expectedResponse = mapOf("acknowledged" to true)
-        assertEquals(expectedResponse, response.asMap())
+            // There are two calls to _start happening serially which is prone to version conflicts with multiple shards
+            // so including it in a waitFor to ensure it can retry a few times
+            val response = client().makeRequest("POST", "${IndexManagementPlugin.ROLLUP_JOBS_BASE_URI}/${rollup.id}/_start")
+            assertEquals("Start rollup failed", RestStatus.OK, response.restStatus())
+            val expectedResponse = mapOf("acknowledged" to true)
+            assertEquals(expectedResponse, response.asMap())
+        }
 
         val updatedRollup = getRollup(rollup.id)
         assertTrue("Rollup was not enabled", updatedRollup.enabled)
