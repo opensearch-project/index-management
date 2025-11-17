@@ -12,9 +12,6 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
-import org.opensearch.client.AdminClient
-import org.opensearch.client.Client
-import org.opensearch.client.ClusterAdminClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.action.ActionListener
@@ -33,12 +30,15 @@ import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.snapshots.SnapshotState
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.AdminClient
+import org.opensearch.transport.client.Client
+import org.opensearch.transport.client.ClusterAdminClient
 
 class WaitForSnapshotStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
-    private val lockService: LockService = LockService(mock(), clusterService)
+    private val lockService: LockService = mock()
     val snapshot = "snapshot-name"
 
     fun `test snapshot missing snapshot name in action properties`() {

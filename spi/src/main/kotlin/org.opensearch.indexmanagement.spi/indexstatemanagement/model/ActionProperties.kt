@@ -26,7 +26,8 @@ data class ActionProperties(
     val hasRollupFailed: Boolean? = null,
     val shrinkActionProperties: ShrinkActionProperties? = null,
     val transformActionProperties: TransformActionProperties? = null,
-) : Writeable, ToXContentFragment {
+) : Writeable,
+    ToXContentFragment {
     override fun writeTo(out: StreamOutput) {
         out.writeOptionalInt(maxNumSegments)
         out.writeOptionalString(snapshotName)

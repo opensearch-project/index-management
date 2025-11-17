@@ -12,9 +12,6 @@ import com.nhaarman.mockitokotlin2.whenever
 import org.junit.Before
 import org.mockito.Mockito
 import org.opensearch.action.index.IndexResponse
-import org.opensearch.client.AdminClient
-import org.opensearch.client.Client
-import org.opensearch.client.ClusterAdminClient
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.core.action.ActionListener
@@ -22,6 +19,10 @@ import org.opensearch.core.action.ActionResponse
 import org.opensearch.indexmanagement.snapshotmanagement.mockIndexResponse
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.threadpool.ThreadPool
+import org.opensearch.transport.client.AdminClient
+import org.opensearch.transport.client.Client
+import org.opensearch.transport.client.ClusterAdminClient
+import java.util.concurrent.atomic.AtomicInteger
 
 abstract class MocksTestCase : OpenSearchTestCase() {
     val client: Client = mock()
@@ -105,6 +106,24 @@ abstract class MocksTestCase : OpenSearchTestCase() {
             } else {
                 listener.onFailure(exception)
             }
+        }.whenever(clusterAdminClient).getSnapshots(any(), any())
+    }
+
+    fun mockGetSnapshotsCallFirstSuccessThenFailure(
+        firstResponse: ActionResponse,
+        secondException: Exception,
+    ) {
+        whenever(client.admin()).thenReturn(adminClient)
+        whenever(adminClient.cluster()).thenReturn(clusterAdminClient)
+        val callCount = AtomicInteger(0)
+        doAnswer {
+            val listener = it.getArgument<ActionListener<ActionResponse>>(1)
+            if (callCount.getAndIncrement() == 0) {
+                listener.onResponse(firstResponse)
+            } else {
+                listener.onFailure(secondException)
+            }
+            null
         }.whenever(clusterAdminClient).getSnapshots(any(), any())
     }
 }

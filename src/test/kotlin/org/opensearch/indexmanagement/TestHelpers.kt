@@ -56,9 +56,16 @@ private fun randomStringList(): List<String> {
     return data
 }
 
-fun randomUser(): User {
-    return User(OpenSearchRestTestCase.randomAlphaOfLength(10), randomStringList(), randomStringList(), randomStringList())
+private fun randomCustomAttNamesList(): List<String> {
+    val data = mutableListOf<String>()
+    repeat(OpenSearchRestTestCase.randomIntBetween(1, 10)) {
+        data.add("${OpenSearchRestTestCase.randomAlphaOfLength(10)}=${OpenSearchRestTestCase.randomAlphaOfLength(10)}")
+    }
+
+    return data
 }
+
+fun randomUser(): User = User(OpenSearchRestTestCase.randomAlphaOfLength(10), randomStringList(), randomStringList(), randomCustomAttNamesList())
 
 /**
 * Wrapper for [RestClient.performRequest] which was deprecated in ES 6.5 and is used in tests. This provides

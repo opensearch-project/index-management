@@ -20,7 +20,8 @@ import java.time.Instant
 data class ContinuousTransformStats(
     val lastTimestamp: Instant?,
     val documentsBehind: Map<String, Long>?,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         lastTimestamp = if (sin.readBoolean()) sin.readInstant() else null,

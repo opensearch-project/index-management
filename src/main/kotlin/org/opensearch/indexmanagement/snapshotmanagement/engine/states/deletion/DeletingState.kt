@@ -8,8 +8,7 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine.states.deletion
 import org.apache.logging.log4j.Logger
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.ClusterAdminClient
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
 import org.opensearch.indexmanagement.snapshotmanagement.engine.states.SMResult
@@ -23,6 +22,7 @@ import org.opensearch.snapshots.ConcurrentSnapshotExecutionException
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.snapshots.SnapshotState
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.ClusterAdminClient
 import java.time.Instant
 import java.time.Instant.now
 
@@ -49,9 +49,14 @@ object DeletingState : State {
 
         val snapshotsToDelete: List<String>
 
+        var snapshotPattern = job.policyName + "*"
+
+        if (job.deletion?.snapshotPattern != null) {
+            snapshotPattern += "," + job.deletion.snapshotPattern
+        }
         val getSnapshotsRes =
             client.getSnapshots(
-                job, job.policyName + "*", metadataBuilder, log,
+                job, snapshotPattern, metadataBuilder, log,
                 getSnapshotsMissingMessage(),
                 getSnapshotsErrorMessage(),
             )
@@ -59,11 +64,13 @@ object DeletingState : State {
         if (getSnapshotsRes.failed) {
             return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
         }
-        val getSnapshots = getSnapshotsRes.snapshots
+        val snapshots = getSnapshotsRes.snapshots
+            .distinctBy { it.snapshotId().name }
+            .filter { it.state() != SnapshotState.IN_PROGRESS }
 
         snapshotsToDelete =
             filterByDeleteCondition(
-                getSnapshots.filter { it.state() != SnapshotState.IN_PROGRESS },
+                snapshots,
                 job.deletion.condition, log,
             )
         if (snapshotsToDelete.isNotEmpty()) {

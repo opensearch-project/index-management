@@ -24,9 +24,7 @@ class ReplicaCountAction(
     private val attemptReplicaCountStep = AttemptReplicaCountStep(this)
     private val steps = listOf(attemptReplicaCountStep)
 
-    override fun getStepToExecute(context: StepContext): Step {
-        return attemptReplicaCountStep
-    }
+    override fun getStepToExecute(context: StepContext): Step = attemptReplicaCountStep
 
     override fun getSteps(): List<Step> = steps
 

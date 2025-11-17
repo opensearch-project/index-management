@@ -17,7 +17,7 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
-import org.opensearch.client.Client
+import org.opensearch.common.regex.Regex
 import org.opensearch.common.time.DateFormatter
 import org.opensearch.common.time.DateFormatters
 import org.opensearch.common.unit.TimeValue
@@ -47,6 +47,7 @@ import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.snapshots.SnapshotMissingException
 import org.opensearch.snapshots.SnapshotsService
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.Client
 import java.time.Instant
 import java.time.Instant.now
 import java.time.ZoneId
@@ -178,16 +179,14 @@ fun generateFormatDate(dateFormat: String, timezone: ZoneId = ZoneId.of("UTC")):
     return dateFormatter.format(now())
 }
 
-fun validateDateFormat(dateFormat: String): String? {
-    return try {
-        val timeZone = ZoneId.systemDefault()
-        val dateFormatter = DateFormatter.forPattern(dateFormat).withZone(timeZone)
-        val instant = dateFormatter.toDateMathParser().parse("now/s", System::currentTimeMillis, false, timeZone)
-        dateFormatter.format(instant)
-        null
-    } catch (e: Exception) {
-        e.message ?: "Invalid date format."
-    }
+fun validateDateFormat(dateFormat: String): String? = try {
+    val timeZone = ZoneId.systemDefault()
+    val dateFormatter = DateFormatter.forPattern(dateFormat).withZone(timeZone)
+    val instant = dateFormatter.toDateMathParser().parse("now/s", System::currentTimeMillis, false, timeZone)
+    dateFormatter.format(instant)
+    null
+} catch (e: Exception) {
+    e.message ?: "Invalid date format."
 }
 
 fun preFixTimeStamp(msg: String?): String {
@@ -208,9 +207,7 @@ fun addSMPolicyInSnapshotMetadata(snapshotConfig: Map<String, Any>, policyName: 
     return snapshotConfigWithSMPolicyMetadata
 }
 
-fun List<SnapshotInfo>.filterBySMPolicyInSnapshotMetadata(policyName: String): List<SnapshotInfo> {
-    return filter { it.userMetadata()?.get(SM_TYPE) == policyName }
-}
+fun List<SnapshotInfo>.filterBySMPolicyInSnapshotMetadata(policyName: String): List<SnapshotInfo> = filter { it.userMetadata()?.get(SM_TYPE) == policyName }
 
 /**
  * Get snapshots
@@ -220,9 +217,11 @@ fun List<SnapshotInfo>.filterBySMPolicyInSnapshotMetadata(policyName: String): L
  */
 suspend fun Client.getSnapshots(name: String, repo: String): List<SnapshotInfo> {
     try {
+        val patterns = name.split(",").map { it.trim() }.toTypedArray()
+
         val req =
             GetSnapshotsRequest()
-                .snapshots(arrayOf(name))
+                .snapshots(patterns)
                 .repository(repo)
         val res: GetSnapshotsResponse = admin().cluster().suspendUntil { getSnapshots(req, it) }
         return res.snapshots
@@ -244,7 +243,7 @@ suspend fun Client.getSnapshots(
     snapshotMissingMsg: String?,
     exceptionMsg: String,
 ): GetSnapshotsResult {
-    val snapshots =
+    var snapshots =
         try {
             getSnapshots(
                 name,
@@ -261,7 +260,19 @@ suspend fun Client.getSnapshots(
                 cause = ex,
             )
             return GetSnapshotsResult(true, emptyList(), metadataBuilder)
-        }.filterBySMPolicyInSnapshotMetadata(job.policyName)
+        }
+
+    // Parse CSV patterns from name and implement pattern-based filtering
+    val patterns = name.split(",").map { it.trim() }
+    val policyNamePattern = "${job.policyName}*"
+    // Filter other snapshots by policy metadata
+    val otherPatternSnapshots = snapshots.filter { snapshot ->
+        patterns.any { pattern ->
+            pattern != policyNamePattern && Regex.simpleMatch(pattern, snapshot.snapshotId().name)
+        }
+    }
+    val policySnapshots = snapshots.filterBySMPolicyInSnapshotMetadata(job.policyName)
+    snapshots = policySnapshots + otherPatternSnapshots
 
     return GetSnapshotsResult(false, snapshots, metadataBuilder)
 }

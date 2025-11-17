@@ -41,7 +41,7 @@ import javax.management.remote.JMXConnectorFactory
 import javax.management.remote.JMXServiceURL
 
 abstract class IndexManagementRestTestCase : ODFERestTestCase() {
-    val configSchemaVersion = 21
+    val configSchemaVersion = 24
     val historySchemaVersion = 7
 
     // Having issues with tests leaking into other tests and mappings being incorrect and they are not caught by any pending task wait check as
@@ -92,9 +92,7 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
     protected val isLocalTest = clusterName() == "integTest"
 
-    private fun clusterName(): String {
-        return System.getProperty("tests.clustername")
-    }
+    private fun clusterName(): String = System.getProperty("tests.clustername")
 
     fun Response.asMap(): Map<String, Any> = entityAsMap(this)
 

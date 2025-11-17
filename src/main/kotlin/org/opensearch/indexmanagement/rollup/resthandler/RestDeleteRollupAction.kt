@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.rollup.resthandler
 
 import org.opensearch.action.support.WriteRequest.RefreshPolicy
-import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.ROLLUP_JOBS_BASE_URI
 import org.opensearch.indexmanagement.rollup.action.delete.DeleteRollupAction
@@ -18,21 +17,18 @@ import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.DELETE
 import org.opensearch.rest.action.RestToXContentListener
+import org.opensearch.transport.client.node.NodeClient
 import java.io.IOException
 
 class RestDeleteRollupAction : BaseRestHandler() {
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                DELETE, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
-                DELETE, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            DELETE, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
+            DELETE, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
+        ),
+    )
 
     override fun getName(): String = "opendistro_delete_rollup_action"
 

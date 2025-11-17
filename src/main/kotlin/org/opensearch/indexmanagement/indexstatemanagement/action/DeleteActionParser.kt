@@ -24,7 +24,5 @@ class DeleteActionParser : ActionParser() {
         return DeleteAction(index)
     }
 
-    override fun getActionType(): String {
-        return DeleteAction.name
-    }
+    override fun getActionType(): String = DeleteAction.name
 }

@@ -4,6 +4,7 @@
  */
 
 
+import io.gitlab.arturbosch.detekt.Detekt
 import org.opensearch.gradle.testclusters.OpenSearchCluster
 import org.opensearch.gradle.testclusters.StandaloneRestIntegTestTask
 
@@ -26,7 +27,7 @@ import java.util.concurrent.TimeUnit
 buildscript {
     ext {
         isSnapshot = "true" == System.getProperty("build.snapshot", "true")
-        opensearch_version = System.getProperty("opensearch.version", "3.0.0-SNAPSHOT")
+        opensearch_version = System.getProperty("opensearch.version", "3.3.0-SNAPSHOT")
         buildVersionQualifier = System.getProperty("build.version_qualifier", "")
         // 2.2.0-SNAPSHOT -> 2.2.0.0-SNAPSHOT
         version_tokens = opensearch_version.tokenize('-')
@@ -63,30 +64,31 @@ buildscript {
         notifications_core_build_download = 'https://ci.opensearch.org/ci/dbc/distribution-build-opensearch/' + opensearch_no_snapshot +
                 '/latest/linux/x64/tar/builds/opensearch/plugins/opensearch-notifications-core-' + notifications_no_snapshot + '.zip'
 
-        kotlin_version = System.getProperty("kotlin.version", "1.9.25")
+        kotlin_version = System.getProperty("kotlin.version", "2.2.0")
 
         security_plugin_version = System.getProperty("security.version", opensearch_build)
+        ccr_version = System.getProperty("ccr.version", opensearch_build)
     }
 
     repositories {
         mavenLocal()
         mavenCentral()
         maven { url "https://plugins.gradle.org/m2/" }
-        maven { url "https://aws.oss.sonatype.org/content/repositories/snapshots" }
+        maven { url "https://ci.opensearch.org/ci/dbc/snapshots/maven/" }
     }
 
     dependencies {
         classpath "org.opensearch.gradle:build-tools:${opensearch_version}"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlin_version}"
         classpath "org.jetbrains.kotlin:kotlin-allopen:${kotlin_version}"
-        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.7"
-        classpath "org.jacoco:org.jacoco.agent:0.8.10"
+        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.8"
+        classpath "org.jacoco:org.jacoco.agent:0.8.12"
     }
 }
 
 plugins {
     id "de.undercouch.download" version "5.6.0"
-    id "com.netflix.nebula.ospackage" version "11.10.1"
+    id "com.netflix.nebula.ospackage" version "12.0.0"
     id "com.dorongold.task-tree" version "2.1.1"
 }
 
@@ -100,6 +102,7 @@ apply plugin: 'io.gitlab.arturbosch.detekt'
 apply plugin: 'org.jetbrains.kotlin.jvm'
 apply plugin: 'org.jetbrains.kotlin.plugin.allopen'
 apply plugin: 'opensearch.pluginzip'
+apply plugin: 'opensearch.java-agent'
 
 configurations.all {
     if (it.state != Configuration.State.UNRESOLVED) return
@@ -109,14 +112,14 @@ configurations.all {
         force "org.jetbrains.kotlin:kotlin-reflect:${kotlin_version}"
         force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlin_version}"
         force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${kotlin_version}"
-        force 'junit:junit:4.13.1'
-        force 'commons-beanutils:commons-beanutils:1.9.4'
-        force 'com.google.guava:guava:30.0-jre'
-        force 'com.puppycrawl.tools:checkstyle:8.29'
+        force 'junit:junit:4.13.2'
+        force 'commons-beanutils:commons-beanutils:1.10.1'
+        force 'com.google.guava:guava:30.1.1-jre'
+        force 'com.puppycrawl.tools:checkstyle:8.45.1'
         force 'commons-codec:commons-codec:1.17.2'
         force "com.fasterxml.jackson.core:jackson-databind:${versions.jackson_databind}"
         force "org.yaml:snakeyaml:${versions.snakeyaml}"
-        force 'org.codehaus.plexus:plexus-utils:3.0.24'
+        force 'org.codehaus.plexus:plexus-utils:3.6.0'
     }
 }
 
@@ -130,7 +133,6 @@ def usingMultiNode = project.properties.containsKey('numNodes')
 if (!usingRemoteCluster && !usingMultiNode) {
     apply from: 'build-tools/coverage.gradle'
 }
-check.dependsOn jacocoTestReport
 
 opensearchplugin {
     name 'opensearch-index-management'
@@ -177,6 +179,11 @@ detekt {
 // When writing detekt Gradle first finds the extension with this name,
 // but with a string it should look for a task with that name instead
 check.dependsOn "detekt"
+
+// TODO Remove this once detekt supports JDK24
+tasks.withType(Detekt).configureEach {
+    jvmTarget = "22"
+}
 
 configurations.testImplementation {
     exclude module: "securemock"
@@ -232,13 +239,17 @@ dependencies {
     testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
     testImplementation "org.mockito:mockito-core:${versions.mockito}"
 
-    add("ktlint", "com.pinterest.ktlint:ktlint-cli:1.1.0") {
+    add("ktlint", "com.pinterest.ktlint:ktlint-cli:1.5.0") {
         attributes {
             attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
         }
     }
     configurations.ktlint {
-        resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.10"
+        resolutionStrategy{
+            force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.25"
+            force "ch.qos.logback:logback-classic:1.5.16"
+            force "ch.qos.logback:logback-core:1.5.16"
+        }
     }
 
     // https://aws.oss.sonatype.org/content/repositories/snapshots/org/opensearch/plugin/
@@ -246,11 +257,12 @@ dependencies {
     opensearchPlugin "org.opensearch.plugin:opensearch-notifications-core:${notifications_version}@zip"
     opensearchPlugin "org.opensearch.plugin:notifications:${notifications_version}@zip"
     opensearchPlugin "org.opensearch.plugin:opensearch-security:${security_plugin_version}@zip"
+    opensearchPlugin "org.opensearch.plugin:opensearch-cross-cluster-replication:${ccr_version}@zip"
 }
 
 repositories {
     mavenLocal()
-    maven { url "https://aws.oss.sonatype.org/content/repositories/snapshots" }
+    maven { url "https://ci.opensearch.org/ci/dbc/snapshots/maven/" }
 }
 
 publishing {
@@ -278,10 +290,11 @@ publishing {
     repositories {
         maven {
             name = "Snapshots"
-            url = "https://aws.oss.sonatype.org/content/repositories/snapshots"
-            credentials {
-                username "$System.env.SONATYPE_USERNAME"
-                password "$System.env.SONATYPE_PASSWORD"
+            url = System.getenv("MAVEN_SNAPSHOTS_S3_REPO")
+            credentials(AwsCredentials) {
+                accessKey = System.getenv("AWS_ACCESS_KEY_ID")
+                secretKey = System.getenv("AWS_SECRET_ACCESS_KEY")
+                sessionToken = System.getenv("AWS_SESSION_TOKEN")
             }
         }
     }
@@ -329,6 +342,7 @@ def jobSchedulerFile = resolvePluginFile("opensearch-job-scheduler")
 def notificationsCoreFile = resolvePluginFile("opensearch-notifications-core")
 def notificationsFile = resolvePluginFile("notifications")
 def securityPluginFile = resolvePluginFile("opensearch-security")
+def ccrFile = resolvePluginFile("opensearch-cross-cluster-replication")
 
 ext.getPluginResource = { download_to_folder, download_from_src ->
     def src_split = download_from_src.split("/")
@@ -409,6 +423,7 @@ testClusters.integTest {
     if (securityEnabled) {
         plugin(provider(securityPluginFile))
     }
+    plugin(provider(ccrFile))
     setting 'path.repo', repo.absolutePath
 }
 
@@ -651,7 +666,7 @@ task integTestRemote(type: RestIntegTestTask) {
 
 // === Set up BWC tests ===
 
-String bwcVersionShort = "2.19.0"
+String bwcVersionShort = "2.20.0"
 String bwcVersion = bwcVersionShort + ".0"
 String baseName = "indexmanagementBwcCluster"
 

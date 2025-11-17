@@ -16,7 +16,6 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.search.TransportSearchAction.SEARCH_CANCEL_AFTER_TIME_INTERVAL_SETTING
-import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
@@ -63,6 +62,7 @@ import org.opensearch.search.aggregations.metrics.Percentiles
 import org.opensearch.search.aggregations.metrics.ScriptedMetric
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.Client
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
@@ -82,8 +82,7 @@ class TransformSearchService(
     @Volatile private var cancelAfterTimeInterval = SEARCH_CANCEL_AFTER_TIME_INTERVAL_SETTING.get(settings)
 
     init {
-        clusterService.clusterSettings.addSettingsUpdateConsumer(TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS, TRANSFORM_JOB_SEARCH_BACKOFF_COUNT) {
-                millis, count ->
+        clusterService.clusterSettings.addSettingsUpdateConsumer(TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS, TRANSFORM_JOB_SEARCH_BACKOFF_COUNT) { millis, count ->
             backoffPolicy = BackoffPolicy.constantBackoff(millis, count)
         }
 
@@ -194,9 +193,7 @@ class TransformSearchService(
      *   Apache Lucene has maxClauses limit which we could trip during recomputing of modified buckets(continuous transform)
      *   due to trying to match too many bucket fields. To avoid this, we control how many buckets we recompute at a time(pageSize)
      */
-    private fun calculateMaxPageSize(transform: Transform): Int {
-        return minOf(transform.pageSize, LUCENE_MAX_CLAUSES / (transform.groups.size + 1))
-    }
+    private fun calculateMaxPageSize(transform: Transform): Int = minOf(transform.pageSize, LUCENE_MAX_CLAUSES / (transform.groups.size + 1))
 
     @Suppress("RethrowCaughtException")
     suspend fun executeCompositeSearch(
@@ -434,35 +431,33 @@ class TransformSearchService(
             return BucketSearchResult(modifiedBuckets, aggs.afterKey(), searchResponse.took.millis)
         }
 
-        private fun getAggregationValue(aggregation: Aggregation, targetIndexDateFieldMappings: Map<String, Any>): Any {
-            return when (aggregation) {
-                is InternalSum, is InternalMin, is InternalMax, is InternalAvg, is InternalValueCount -> {
-                    val agg = aggregation as NumericMetricsAggregation.SingleValue
-                    /**
-                     * When date filed is used in transform aggregation (min, max avg), the value of the field is in exponential format
-                     * which is not allowed since the target index mapping for date field is strict_date_optional_time||epoch_millis
-                     * That's why the exponential value is transformed to long: agg.value().toLong()
-                     */
-                    if (aggregation is InternalValueCount || aggregation is InternalSum || !targetIndexDateFieldMappings.containsKey(agg.name)) {
-                        agg.value()
-                    } else {
-                        agg.value().toLong()
-                    }
+        private fun getAggregationValue(aggregation: Aggregation, targetIndexDateFieldMappings: Map<String, Any>): Any = when (aggregation) {
+            is InternalSum, is InternalMin, is InternalMax, is InternalAvg, is InternalValueCount -> {
+                val agg = aggregation as NumericMetricsAggregation.SingleValue
+                /**
+                 * When date filed is used in transform aggregation (min, max avg), the value of the field is in exponential format
+                 * which is not allowed since the target index mapping for date field is strict_date_optional_time||epoch_millis
+                 * That's why the exponential value is transformed to long: agg.value().toLong()
+                 */
+                if (aggregation is InternalValueCount || aggregation is InternalSum || !targetIndexDateFieldMappings.containsKey(agg.name)) {
+                    agg.value()
+                } else {
+                    agg.value().toLong()
                 }
-                is Percentiles -> {
-                    val percentiles = mutableMapOf<String, Double>()
-                    aggregation.forEach { percentile ->
-                        percentiles[percentile.percent.toString()] = percentile.value
-                    }
-                    percentiles
-                }
-                is ScriptedMetric -> {
-                    aggregation.aggregation()
-                }
-                else -> throw TransformSearchServiceException(
-                    "Found aggregation [${aggregation.name}] of type [${aggregation.type}] in composite result that is not currently supported",
-                )
             }
+            is Percentiles -> {
+                val percentiles = mutableMapOf<String, Double>()
+                aggregation.forEach { percentile ->
+                    percentiles[percentile.percent.toString()] = percentile.value
+                }
+                percentiles
+            }
+            is ScriptedMetric -> {
+                aggregation.aggregation()
+            }
+            else -> throw TransformSearchServiceException(
+                "Found aggregation [${aggregation.name}] of type [${aggregation.type}] in composite result that is not currently supported",
+            )
         }
 
         fun convertIndicesStatsResponse(response: IndicesStatsResponse): Map<ShardId, Long> {

@@ -79,9 +79,7 @@ fun isRollupIndex(index: String, clusterState: ClusterState): Boolean {
     return false
 }
 
-fun Rollup.isTargetIndexAlias(): Boolean {
-    return RollupFieldValueExpressionResolver.indexAliasUtils.isAlias(targetIndex)
-}
+fun Rollup.isTargetIndexAlias(): Boolean = RollupFieldValueExpressionResolver.indexAliasUtils.isAlias(targetIndex)
 
 fun Rollup.getRollupSearchRequest(metadata: RollupMetadata): SearchRequest {
     val query =
@@ -242,13 +240,13 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
                 .combineScript(
                     Script(
                         ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
-                        "def d = new double[2]; d[0] = state.sums; d[1] = state.counts; return d", emptyMap(),
+                        "def d = new org.opensearch.search.aggregations.metrics.ScriptedAvg(state.sums, state.counts); return d", emptyMap(),
                     ),
                 )
                 .reduceScript(
                     Script(
                         ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG,
-                        "double sum = 0; double count = 0; for (a in states) { sum += a[0]; count += a[1]; } return sum/count", emptyMap(),
+                        "double sum = 0; double count = 0; for (a in states) { sum += a.getSum(); count += a.getCount(); } return sum/count", emptyMap(),
                     ),
                 )
         }
@@ -300,91 +298,89 @@ fun Rollup.rewriteQueryBuilder(
     queryBuilder: QueryBuilder,
     fieldNameMappingTypeMap: Map<String, String>,
     concreteIndexName: String = "",
-): QueryBuilder {
-    return when (queryBuilder) {
-        is TermQueryBuilder -> {
-            val updatedFieldName = queryBuilder.fieldName() + "." + Dimension.Type.TERMS.type
-            val updatedTermQueryBuilder = TermQueryBuilder(updatedFieldName, queryBuilder.value())
-            updatedTermQueryBuilder.boost(queryBuilder.boost())
-            updatedTermQueryBuilder.queryName(queryBuilder.queryName())
-        }
-        is TermsQueryBuilder -> {
-            val updatedFieldName = queryBuilder.fieldName() + "." + Dimension.Type.TERMS.type
-            val updatedTermsQueryBuilder = TermsQueryBuilder(updatedFieldName, queryBuilder.values())
-            updatedTermsQueryBuilder.boost(queryBuilder.boost())
-            updatedTermsQueryBuilder.queryName(queryBuilder.queryName())
-        }
-        is RangeQueryBuilder -> {
-            val updatedFieldName = queryBuilder.fieldName() + "." + fieldNameMappingTypeMap.getValue(queryBuilder.fieldName())
-            val updatedRangeQueryBuilder = RangeQueryBuilder(updatedFieldName)
-            updatedRangeQueryBuilder.includeLower(queryBuilder.includeLower())
-            updatedRangeQueryBuilder.includeUpper(queryBuilder.includeUpper())
-            updatedRangeQueryBuilder.from(queryBuilder.from())
-            updatedRangeQueryBuilder.to(queryBuilder.to())
-            if (queryBuilder.timeZone() != null) updatedRangeQueryBuilder.timeZone(queryBuilder.timeZone())
-            if (queryBuilder.format() != null) updatedRangeQueryBuilder.format(queryBuilder.format())
-            if (queryBuilder.relation()?.relationName != null) updatedRangeQueryBuilder.relation(queryBuilder.relation().relationName)
-            updatedRangeQueryBuilder.queryName(queryBuilder.queryName())
-            updatedRangeQueryBuilder.boost(queryBuilder.boost())
-        }
-        is BoolQueryBuilder -> {
-            val newBoolQueryBuilder = BoolQueryBuilder()
-            queryBuilder.must()?.forEach {
-                val newMustQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName)
-                newBoolQueryBuilder.must(newMustQueryBuilder)
-            }
-            queryBuilder.mustNot()?.forEach {
-                val newMustNotQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName)
-                newBoolQueryBuilder.mustNot(newMustNotQueryBuilder)
-            }
-            queryBuilder.should()?.forEach {
-                val newShouldQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName)
-                newBoolQueryBuilder.should(newShouldQueryBuilder)
-            }
-            queryBuilder.filter()?.forEach {
-                val newFilterQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName)
-                newBoolQueryBuilder.filter(newFilterQueryBuilder)
-            }
-            newBoolQueryBuilder.minimumShouldMatch(queryBuilder.minimumShouldMatch())
-            newBoolQueryBuilder.adjustPureNegative(queryBuilder.adjustPureNegative())
-            newBoolQueryBuilder.queryName(queryBuilder.queryName())
-            newBoolQueryBuilder.boost(queryBuilder.boost())
-        }
-        is BoostingQueryBuilder -> {
-            val newPositiveQueryBuilder = this.rewriteQueryBuilder(queryBuilder.positiveQuery(), fieldNameMappingTypeMap, concreteIndexName)
-            val newNegativeQueryBuilder = this.rewriteQueryBuilder(queryBuilder.negativeQuery(), fieldNameMappingTypeMap, concreteIndexName)
-            val newBoostingQueryBuilder = BoostingQueryBuilder(newPositiveQueryBuilder, newNegativeQueryBuilder)
-            if (queryBuilder.negativeBoost() >= 0) newBoostingQueryBuilder.negativeBoost(queryBuilder.negativeBoost())
-            newBoostingQueryBuilder.queryName(queryBuilder.queryName())
-            newBoostingQueryBuilder.boost(queryBuilder.boost())
-        }
-        is ConstantScoreQueryBuilder -> {
-            val newInnerQueryBuilder = this.rewriteQueryBuilder(queryBuilder.innerQuery(), fieldNameMappingTypeMap, concreteIndexName)
-            val newConstantScoreQueryBuilder = ConstantScoreQueryBuilder(newInnerQueryBuilder)
-            newConstantScoreQueryBuilder.boost(queryBuilder.boost())
-            newConstantScoreQueryBuilder.queryName(queryBuilder.queryName())
-        }
-        is DisMaxQueryBuilder -> {
-            val newDisMaxQueryBuilder = DisMaxQueryBuilder()
-            queryBuilder.innerQueries().forEach {
-                newDisMaxQueryBuilder.add(this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName))
-            }
-            newDisMaxQueryBuilder.tieBreaker(queryBuilder.tieBreaker())
-            newDisMaxQueryBuilder.queryName(queryBuilder.queryName())
-            newDisMaxQueryBuilder.boost(queryBuilder.boost())
-        }
-        is MatchPhraseQueryBuilder -> {
-            val newFieldName = queryBuilder.fieldName() + "." + Dimension.Type.TERMS.type
-            val newMatchPhraseQueryBuilder = MatchPhraseQueryBuilder(newFieldName, queryBuilder.value())
-            newMatchPhraseQueryBuilder.queryName(queryBuilder.queryName())
-            newMatchPhraseQueryBuilder.boost(queryBuilder.boost())
-        }
-        is QueryStringQueryBuilder -> {
-            QueryStringQueryUtil.rewriteQueryStringQuery(queryBuilder, concreteIndexName)
-        }
-        // We do nothing otherwise, the validation logic should have already verified so not throwing an exception
-        else -> queryBuilder
+): QueryBuilder = when (queryBuilder) {
+    is TermQueryBuilder -> {
+        val updatedFieldName = queryBuilder.fieldName() + "." + Dimension.Type.TERMS.type
+        val updatedTermQueryBuilder = TermQueryBuilder(updatedFieldName, queryBuilder.value())
+        updatedTermQueryBuilder.boost(queryBuilder.boost())
+        updatedTermQueryBuilder.queryName(queryBuilder.queryName())
     }
+    is TermsQueryBuilder -> {
+        val updatedFieldName = queryBuilder.fieldName() + "." + Dimension.Type.TERMS.type
+        val updatedTermsQueryBuilder = TermsQueryBuilder(updatedFieldName, queryBuilder.values())
+        updatedTermsQueryBuilder.boost(queryBuilder.boost())
+        updatedTermsQueryBuilder.queryName(queryBuilder.queryName())
+    }
+    is RangeQueryBuilder -> {
+        val updatedFieldName = queryBuilder.fieldName() + "." + fieldNameMappingTypeMap.getValue(queryBuilder.fieldName())
+        val updatedRangeQueryBuilder = RangeQueryBuilder(updatedFieldName)
+        updatedRangeQueryBuilder.includeLower(queryBuilder.includeLower())
+        updatedRangeQueryBuilder.includeUpper(queryBuilder.includeUpper())
+        updatedRangeQueryBuilder.from(queryBuilder.from())
+        updatedRangeQueryBuilder.to(queryBuilder.to())
+        if (queryBuilder.timeZone() != null) updatedRangeQueryBuilder.timeZone(queryBuilder.timeZone())
+        if (queryBuilder.format() != null) updatedRangeQueryBuilder.format(queryBuilder.format())
+        if (queryBuilder.relation()?.relationName != null) updatedRangeQueryBuilder.relation(queryBuilder.relation().relationName)
+        updatedRangeQueryBuilder.queryName(queryBuilder.queryName())
+        updatedRangeQueryBuilder.boost(queryBuilder.boost())
+    }
+    is BoolQueryBuilder -> {
+        val newBoolQueryBuilder = BoolQueryBuilder()
+        queryBuilder.must()?.forEach {
+            val newMustQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName)
+            newBoolQueryBuilder.must(newMustQueryBuilder)
+        }
+        queryBuilder.mustNot()?.forEach {
+            val newMustNotQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName)
+            newBoolQueryBuilder.mustNot(newMustNotQueryBuilder)
+        }
+        queryBuilder.should()?.forEach {
+            val newShouldQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName)
+            newBoolQueryBuilder.should(newShouldQueryBuilder)
+        }
+        queryBuilder.filter()?.forEach {
+            val newFilterQueryBuilder = this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName)
+            newBoolQueryBuilder.filter(newFilterQueryBuilder)
+        }
+        newBoolQueryBuilder.minimumShouldMatch(queryBuilder.minimumShouldMatch())
+        newBoolQueryBuilder.adjustPureNegative(queryBuilder.adjustPureNegative())
+        newBoolQueryBuilder.queryName(queryBuilder.queryName())
+        newBoolQueryBuilder.boost(queryBuilder.boost())
+    }
+    is BoostingQueryBuilder -> {
+        val newPositiveQueryBuilder = this.rewriteQueryBuilder(queryBuilder.positiveQuery(), fieldNameMappingTypeMap, concreteIndexName)
+        val newNegativeQueryBuilder = this.rewriteQueryBuilder(queryBuilder.negativeQuery(), fieldNameMappingTypeMap, concreteIndexName)
+        val newBoostingQueryBuilder = BoostingQueryBuilder(newPositiveQueryBuilder, newNegativeQueryBuilder)
+        if (queryBuilder.negativeBoost() >= 0) newBoostingQueryBuilder.negativeBoost(queryBuilder.negativeBoost())
+        newBoostingQueryBuilder.queryName(queryBuilder.queryName())
+        newBoostingQueryBuilder.boost(queryBuilder.boost())
+    }
+    is ConstantScoreQueryBuilder -> {
+        val newInnerQueryBuilder = this.rewriteQueryBuilder(queryBuilder.innerQuery(), fieldNameMappingTypeMap, concreteIndexName)
+        val newConstantScoreQueryBuilder = ConstantScoreQueryBuilder(newInnerQueryBuilder)
+        newConstantScoreQueryBuilder.boost(queryBuilder.boost())
+        newConstantScoreQueryBuilder.queryName(queryBuilder.queryName())
+    }
+    is DisMaxQueryBuilder -> {
+        val newDisMaxQueryBuilder = DisMaxQueryBuilder()
+        queryBuilder.innerQueries().forEach {
+            newDisMaxQueryBuilder.add(this.rewriteQueryBuilder(it, fieldNameMappingTypeMap, concreteIndexName))
+        }
+        newDisMaxQueryBuilder.tieBreaker(queryBuilder.tieBreaker())
+        newDisMaxQueryBuilder.queryName(queryBuilder.queryName())
+        newDisMaxQueryBuilder.boost(queryBuilder.boost())
+    }
+    is MatchPhraseQueryBuilder -> {
+        val newFieldName = queryBuilder.fieldName() + "." + Dimension.Type.TERMS.type
+        val newMatchPhraseQueryBuilder = MatchPhraseQueryBuilder(newFieldName, queryBuilder.value())
+        newMatchPhraseQueryBuilder.queryName(queryBuilder.queryName())
+        newMatchPhraseQueryBuilder.boost(queryBuilder.boost())
+    }
+    is QueryStringQueryBuilder -> {
+        QueryStringQueryUtil.rewriteQueryStringQuery(queryBuilder, concreteIndexName)
+    }
+    // We do nothing otherwise, the validation logic should have already verified so not throwing an exception
+    else -> queryBuilder
 }
 
 fun Set<Rollup>.buildRollupQuery(fieldNameMappingTypeMap: Map<String, String>, oldQuery: QueryBuilder, targetIndexName: String = ""): QueryBuilder {
@@ -453,9 +449,7 @@ fun SearchSourceBuilder.rewriteSearchSourceBuilder(
     job: Rollup,
     fieldNameMappingTypeMap: Map<String, String>,
     concreteIndexName: String,
-): SearchSourceBuilder {
-    return this.rewriteSearchSourceBuilder(setOf(job), fieldNameMappingTypeMap, concreteIndexName)
-}
+): SearchSourceBuilder = this.rewriteSearchSourceBuilder(setOf(job), fieldNameMappingTypeMap, concreteIndexName)
 
 fun Rollup.getInitialDocValues(docCount: Long): MutableMap<String, Any?> =
     mutableMapOf(

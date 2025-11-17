@@ -15,6 +15,7 @@ jobs:
 
   test-and-build-linux:
     needs: Get-CI-Image-Tag
+    timeout-minutes: 25
     env:
       TEST_FILTER: ${{ matrix.test_filter }}
     strategy:
@@ -22,7 +23,7 @@ jobs:
       fail-fast: false
       # This starts three jobs, setting these environment variables uniquely for the different jobs
       matrix:
-        java: [21]
+        java: [21, 24]
         feature: [ism, non-ism]
         include:
           - feature: ism
@@ -51,9 +52,22 @@ jobs:
       # This is a hack, but this step creates a link to the X: mounted drive, which makes the path
       # short enough to work on Windows
       - name: Build with Gradle
+        timeout-minutes: 20
         run: |
           chown -R 1000:1000 `pwd`
           su `id -un 1000` -c "./gradlew build ${{ env.TEST_FILTER }}"
+      - name: Generate Jacoco Test Report
+        if: always() && matrix.java == 21
+        run: |
+          su `id -un 1000` -c "./gradlew jacocoTestReport"
+      - name: Upload coverage XML
+        uses: actions/upload-artifact@v4
+        if: always() && matrix.java == 21
+        with:
+          name: coverage-xml-${{ matrix.java }}-${{ matrix.feature }}
+          path: build/reports/jacoco/**/jacocoTestReport.xml
+          if-no-files-found: warn
+          overwrite: 'true'
       - name: Upload failed logs
         uses: actions/upload-artifact@v4
         if: ${{ failure() }}
@@ -61,20 +75,23 @@ jobs:
           name: logs-${{ matrix.java }}-${{ matrix.feature }}
           path: build/testclusters/integTest-*/logs/*
           overwrite: 'true'
+      - name: Upload test reports
+        uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: test-reports-linux-${{ matrix.java }}-${{ matrix.feature }}
+          path: build/reports/
+          overwrite: 'true'
       - name: Create Artifact Path
         run: |
           mkdir -p index-management-artifacts
           cp ./build/distributions/*.zip index-management-artifacts
-      - name: Uploads coverage
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
       # This step uses the upload-artifact Github action: https://github.com/actions/upload-artifact
       - name: Upload Artifacts
         # v4 requires node.js 20 which is not supported
         uses: actions/upload-artifact@v4
         with:
-          name: index-management-plugin-ubuntu-latest-${{ matrix.java }}
+          name: index-management-plugin-ubuntu-latest-${{ matrix.java }}-${{ matrix.feature }}
           path: index-management-artifacts
           overwrite: 'true'
 
@@ -131,6 +148,44 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: index-management-plugin-${{ matrix.os }}-${{ matrix.java }}
+          name: index-management-plugin-${{ matrix.os }}-${{ matrix.java }}-${{ matrix.feature }}
           path: index-management-artifacts
           overwrite: 'true'
+
+  report-coverage:
+    needs: ["test-and-build-linux"]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v5
+        with:
+          path: downloaded-artifacts
+          pattern: coverage-xml-*
+
+      - name: Display structure of downloaded files
+        run: ls -R
+        working-directory: downloaded-artifacts
+
+      - name: Check if coverage files exist
+        id: check_coverage
+        run: |
+          if find downloaded-artifacts -name "*.xml" -type f | grep -q .; then
+            echo "Coverage XML files found"
+            echo "has_coverage=true" >> $GITHUB_OUTPUT
+          else
+            echo "No coverage XML files found"
+            echo "has_coverage=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload Coverage with retry
+        if: steps.check_coverage.outputs.has_coverage == 'true'
+        uses: Wandalen/wretry.action@v3.8.0
+        with:
+          attempt_limit: 5
+          attempt_delay: 2000
+          action: codecov/codecov-action@v4
+          with: |
+            token: ${{ secrets.CODECOV_TOKEN }}
+            fail_ci_if_error: true
+            verbose: true

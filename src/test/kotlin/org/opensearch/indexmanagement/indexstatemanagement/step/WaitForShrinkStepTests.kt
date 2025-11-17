@@ -16,10 +16,7 @@ import kotlinx.coroutines.runBlocking
 import org.mockito.ArgumentMatcher
 import org.mockito.Mockito.never
 import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.AdminClient
-import org.opensearch.client.Client
-import org.opensearch.client.IndicesAdminClient
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.AliasMetadata
 import org.opensearch.cluster.metadata.IndexMetadata
@@ -35,6 +32,9 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.transport.client.AdminClient
+import org.opensearch.transport.client.Client
+import org.opensearch.transport.client.IndicesAdminClient
 
 class WaitForShrinkStepTests : OpenSearchTestCase() {
     private val metadata: Metadata = mock {}
@@ -42,7 +42,7 @@ class WaitForShrinkStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock { on { state() } doReturn clusterState }
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
-    private val lockService: LockService = LockService(mock(), clusterService)
+    private val lockService: LockService = mock()
     private val ackedResponse = AcknowledgedResponse(true)
     private val unAckedResponse = AcknowledgedResponse(false)
 

@@ -9,8 +9,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchException
 import org.opensearch.action.support.WriteRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.Client
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -25,6 +24,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.Client
 
 class AttemptCreateRollupJobStep(private val action: RollupAction) : Step(name) {
     private val logger = LogManager.getLogger(javaClass)

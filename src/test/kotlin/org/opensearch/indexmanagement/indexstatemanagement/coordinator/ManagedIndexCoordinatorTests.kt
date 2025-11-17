@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.indexstatemanagement.coordinator
 import org.junit.Before
 import org.mockito.Mockito
 import org.opensearch.Version
-import org.opensearch.client.Client
 import org.opensearch.cluster.OpenSearchAllocationTestCase
 import org.opensearch.cluster.node.DiscoveryNode
 import org.opensearch.cluster.service.ClusterService
@@ -25,6 +24,7 @@ import org.opensearch.test.ClusterServiceUtils
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.threadpool.Scheduler
 import org.opensearch.threadpool.ThreadPool
+import org.opensearch.transport.client.Client
 
 class ManagedIndexCoordinatorTests : OpenSearchAllocationTestCase() {
     private lateinit var client: Client

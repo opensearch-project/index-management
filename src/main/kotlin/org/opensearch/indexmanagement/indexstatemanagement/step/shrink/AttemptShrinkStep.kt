@@ -11,7 +11,7 @@ import org.opensearch.action.admin.indices.shrink.ResizeRequest
 import org.opensearch.action.admin.indices.shrink.ResizeResponse
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.common.settings.Settings
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
@@ -122,20 +122,18 @@ class AttemptShrinkStep(private val action: ShrinkAction) : ShrinkStep(name, tru
         return true
     }
 
-    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData {
-        return currentMetadata.copy(
-            actionMetaData =
-            currentMetadata.actionMetaData?.copy(
-                actionProperties =
-                ActionProperties(
-                    shrinkActionProperties = shrinkActionProperties,
-                ),
+    override fun getUpdatedManagedIndexMetadata(currentMetadata: ManagedIndexMetaData): ManagedIndexMetaData = currentMetadata.copy(
+        actionMetaData =
+        currentMetadata.actionMetaData?.copy(
+            actionProperties =
+            ActionProperties(
+                shrinkActionProperties = shrinkActionProperties,
             ),
-            stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
-            transitionTo = null,
-            info = info,
-        )
-    }
+        ),
+        stepMetaData = StepMetaData(name, getStepStartTime(currentMetadata).toEpochMilli(), stepStatus),
+        transitionTo = null,
+        info = info,
+    )
 
     override fun isIdempotent() = false
 

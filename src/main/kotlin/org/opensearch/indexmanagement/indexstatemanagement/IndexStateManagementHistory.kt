@@ -16,8 +16,7 @@ import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.support.IndicesOptions
-import org.opensearch.action.support.master.AcknowledgedResponse
-import org.opensearch.client.Client
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.LocalNodeClusterManagerListener
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
@@ -37,6 +36,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.threadpool.Scheduler
 import org.opensearch.threadpool.ThreadPool
+import org.opensearch.transport.client.Client
 import java.time.Instant
 
 @OpenForTesting
@@ -207,8 +207,7 @@ class IndexStateManagementHistory(
 
             if ((Instant.now().toEpochMilli() - creationTime) > historyRetentionPeriod.millis) {
                 val alias =
-                    indexMetaData.aliases.firstNotNullOfOrNull {
-                            alias ->
+                    indexMetaData.aliases.firstNotNullOfOrNull { alias ->
                         IndexManagementIndices.HISTORY_WRITE_INDEX_ALIAS == alias.value.alias
                     }
                 if (alias != null && historyEnabled) {
@@ -300,12 +299,12 @@ class IndexStateManagementHistory(
         }
     }
 
-    private fun shouldAddManagedIndexMetaDataToHistory(managedIndexMetaData: ManagedIndexMetaData): Boolean {
-        return when (managedIndexMetaData.stepMetaData?.stepStatus) {
-            Step.StepStatus.STARTING -> false
-            Step.StepStatus.CONDITION_NOT_MET -> false
-            else -> true
-        }
+    private fun shouldAddManagedIndexMetaDataToHistory(
+        managedIndexMetaData: ManagedIndexMetaData,
+    ): Boolean = when (managedIndexMetaData.stepMetaData?.stepStatus) {
+        Step.StepStatus.STARTING -> false
+        Step.StepStatus.CONDITION_NOT_MET -> false
+        else -> true
     }
 
     private fun createManagedIndexMetaDataHistoryIndexRequest(managedIndexMetaData: ManagedIndexMetaData): IndexRequest {

@@ -12,7 +12,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.bulk.BackoffPolicy
-import org.opensearch.client.Client
 import org.opensearch.cluster.health.ClusterHealthStatus
 import org.opensearch.cluster.health.ClusterStateHealth
 import org.opensearch.cluster.service.ClusterService
@@ -33,6 +32,7 @@ import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.threadpool.ThreadPool
+import org.opensearch.transport.client.Client
 import java.time.Instant.now
 
 object SMRunner :
@@ -103,17 +103,20 @@ object SMRunner :
 
                 // creation, deletion workflow have to be executed sequentially,
                 // because they are sharing the same metadata document.
-                SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
+                val stateMachine = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
                     .handlePolicyChange()
-                    .currentState(metadata.creation.currentState)
-                    .next(creationTransitions)
-                    .apply {
-                        val deleteMetadata = metadata.deletion
-                        if (deleteMetadata != null) {
-                            this.currentState(deleteMetadata.currentState)
-                                .next(deletionTransitions)
-                        }
-                    }
+
+                // Execute creation workflow if it exists
+                if (metadata.creation != null) {
+                    stateMachine.currentState(metadata.creation.currentState)
+                        .next(creationTransitions)
+                }
+
+                // Execute deletion workflow if it exists
+                if (metadata.deletion != null) {
+                    stateMachine.currentState(metadata.deletion.currentState)
+                        .next(deletionTransitions)
+                }
             } finally {
                 if (!releaseLockForScheduledJob(context, lock)) {
                     log.error("Could not release lock [${lock.lockId}] for ${job.id}.")
@@ -155,13 +158,14 @@ object SMRunner :
             id = smPolicyNameToMetadataDocId(smDocIdToPolicyName(job.id)),
             policySeqNo = job.seqNo,
             policyPrimaryTerm = job.primaryTerm,
-            creation =
-            SMMetadata.WorkflowMetadata(
-                SMState.CREATION_START,
-                SMMetadata.Trigger(
-                    time = job.creation.schedule.getNextExecutionTime(now),
-                ),
-            ),
+            creation = job.creation?.let {
+                SMMetadata.WorkflowMetadata(
+                    SMState.CREATION_START,
+                    SMMetadata.Trigger(
+                        time = job.creation.schedule.getNextExecutionTime(now),
+                    ),
+                )
+            },
             deletion =
             job.deletion?.let {
                 SMMetadata.WorkflowMetadata(

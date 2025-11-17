@@ -20,7 +20,9 @@ import org.opensearch.indexmanagement.util._PRIMARY_TERM
 import org.opensearch.indexmanagement.util._SEQ_NO
 import java.io.IOException
 
-class GetRollupsResponse : ActionResponse, ToXContentObject {
+class GetRollupsResponse :
+    ActionResponse,
+    ToXContentObject {
     val rollups: List<Rollup>
     val totalRollups: Int
     val status: RestStatus
@@ -50,21 +52,19 @@ class GetRollupsResponse : ActionResponse, ToXContentObject {
     }
 
     @Throws(IOException::class)
-    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
-        return builder.startObject()
-            .field("total_rollups", totalRollups)
-            .startArray("rollups")
-            .apply {
-                for (rollup in rollups) {
-                    this.startObject()
-                        .field(_ID, rollup.id)
-                        .field(_SEQ_NO, rollup.seqNo)
-                        .field(_PRIMARY_TERM, rollup.primaryTerm)
-                        .field(ROLLUP_TYPE, rollup, XCONTENT_WITHOUT_TYPE_AND_USER)
-                        .endObject()
-                }
+    override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
+        .field("total_rollups", totalRollups)
+        .startArray("rollups")
+        .apply {
+            for (rollup in rollups) {
+                this.startObject()
+                    .field(_ID, rollup.id)
+                    .field(_SEQ_NO, rollup.seqNo)
+                    .field(_PRIMARY_TERM, rollup.primaryTerm)
+                    .field(ROLLUP_TYPE, rollup, XCONTENT_WITHOUT_TYPE_AND_USER)
+                    .endObject()
             }
-            .endArray()
-            .endObject()
-    }
+        }
+        .endArray()
+        .endObject()
 }

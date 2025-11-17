@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.transform.action.get
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
-import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
@@ -33,6 +32,7 @@ import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.sort.SortOrder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 
 class TransportGetTransformsAction
 @Inject
@@ -43,7 +43,7 @@ constructor(
     val clusterService: ClusterService,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
-) : HandledTransportAction<GetTransformsRequest, GetTransformsResponse> (
+) : HandledTransportAction<GetTransformsRequest, GetTransformsResponse>(
     GetTransformsAction.NAME, transportService, actionFilters, ::GetTransformsRequest,
 ) {
     @Volatile private var filterByEnabled = IndexManagementSettings.FILTER_BY_BACKEND_ROLES.get(settings)
@@ -89,10 +89,8 @@ constructor(
         }
     }
 
-    private fun contentParser(bytesReference: BytesReference): XContentParser {
-        return XContentHelper.createParser(
-            xContentRegistry,
-            LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON,
-        )
-    }
+    private fun contentParser(bytesReference: BytesReference): XContentParser = XContentHelper.createParser(
+        xContentRegistry,
+        LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON,
+    )
 }

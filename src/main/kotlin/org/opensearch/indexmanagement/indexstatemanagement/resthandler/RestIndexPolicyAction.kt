@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.opensearch.action.support.WriteRequest
-import org.opensearch.client.node.NodeClient
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.rest.RestStatus
@@ -33,6 +32,7 @@ import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.PUT
 import org.opensearch.rest.RestResponse
 import org.opensearch.rest.action.RestResponseListener
+import org.opensearch.transport.client.node.NodeClient
 import java.io.IOException
 import java.time.Instant
 
@@ -46,26 +46,20 @@ class RestIndexPolicyAction(
         clusterService.clusterSettings.addSettingsUpdateConsumer(ALLOW_LIST) { allowList = it }
     }
 
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                PUT, POLICY_BASE_URI,
-                PUT, LEGACY_POLICY_BASE_URI,
-            ),
-            ReplacedRoute(
-                PUT, "$POLICY_BASE_URI/{policyID}",
-                PUT, "$LEGACY_POLICY_BASE_URI/{policyID}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            PUT, POLICY_BASE_URI,
+            PUT, LEGACY_POLICY_BASE_URI,
+        ),
+        ReplacedRoute(
+            PUT, "$POLICY_BASE_URI/{policyID}",
+            PUT, "$LEGACY_POLICY_BASE_URI/{policyID}",
+        ),
+    )
 
-    override fun getName(): String {
-        return "index_policy_action"
-    }
+    override fun getName(): String = "index_policy_action"
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {

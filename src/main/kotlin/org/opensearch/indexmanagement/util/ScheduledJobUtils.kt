@@ -9,7 +9,6 @@ import org.opensearch.ExceptionsHelper
 import org.opensearch.OpenSearchStatusException
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
-import org.opensearch.client.Client
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
@@ -26,6 +25,7 @@ import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.transform.action.get.GetTransformsResponse
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.search.builder.SearchSourceBuilder
+import org.opensearch.transport.client.Client
 
 fun getJobs(
     client: Client,
@@ -73,29 +73,23 @@ private fun populateResponse(
     jobs: List<Any>,
     status: RestStatus,
     totalJobs: Int,
-): ActionResponse {
-    return when (jobType) {
-        Rollup.ROLLUP_TYPE -> GetRollupsResponse(jobs as List<Rollup>, totalJobs, status)
-        Transform.TRANSFORM_TYPE -> GetTransformsResponse(jobs as List<Transform>, totalJobs, status)
-        else -> {
-            throw OpenSearchStatusException("Unknown scheduled job type", RestStatus.INTERNAL_SERVER_ERROR)
-        }
+): ActionResponse = when (jobType) {
+    Rollup.ROLLUP_TYPE -> GetRollupsResponse(jobs as List<Rollup>, totalJobs, status)
+    Transform.TRANSFORM_TYPE -> GetTransformsResponse(jobs as List<Transform>, totalJobs, status)
+    else -> {
+        throw OpenSearchStatusException("Unknown scheduled job type", RestStatus.INTERNAL_SERVER_ERROR)
     }
 }
 
-private fun getParser(jobType: String): (XContentParser, String, Long, Long) -> Any {
-    return when (jobType) {
-        Transform.TRANSFORM_TYPE -> Transform.Companion::parse
-        Rollup.ROLLUP_TYPE -> Rollup.Companion::parse
-        else -> {
-            throw OpenSearchStatusException("Unknown scheduled job type", RestStatus.INTERNAL_SERVER_ERROR)
-        }
+private fun getParser(jobType: String): (XContentParser, String, Long, Long) -> Any = when (jobType) {
+    Transform.TRANSFORM_TYPE -> Transform.Companion::parse
+    Rollup.ROLLUP_TYPE -> Rollup.Companion::parse
+    else -> {
+        throw OpenSearchStatusException("Unknown scheduled job type", RestStatus.INTERNAL_SERVER_ERROR)
     }
 }
 
-private fun contentParser(bytesReference: BytesReference): XContentParser {
-    return XContentHelper.createParser(
-        NamedXContentRegistry.EMPTY,
-        LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON,
-    )
-}
+private fun contentParser(bytesReference: BytesReference): XContentParser = XContentHelper.createParser(
+    NamedXContentRegistry.EMPTY,
+    LoggingDeprecationHandler.INSTANCE, bytesReference, XContentType.JSON,
+)

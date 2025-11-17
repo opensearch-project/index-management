@@ -59,34 +59,32 @@ fun randomSMMetadata(
     deletionLatestExecution: SMMetadata.LatestExecution? = null,
     creationRetryCount: Int? = null,
     deletionRetryCount: Int? = null,
-): SMMetadata {
-    return SMMetadata(
-        policySeqNo = policySeqNo,
-        policyPrimaryTerm = policyPrimaryTerm,
-        creation =
-        SMMetadata.WorkflowMetadata(
-            currentState = creationCurrentState,
-            trigger =
-            SMMetadata.Trigger(
-                time = nextCreationTime,
-            ),
-            started = if (startedCreation != null) listOf(startedCreation) else null,
-            latestExecution = creationLatestExecution,
-            retry = creationRetryCount?.let { SMMetadata.Retry(it) },
+): SMMetadata = SMMetadata(
+    policySeqNo = policySeqNo,
+    policyPrimaryTerm = policyPrimaryTerm,
+    creation =
+    SMMetadata.WorkflowMetadata(
+        currentState = creationCurrentState,
+        trigger =
+        SMMetadata.Trigger(
+            time = nextCreationTime,
         ),
-        deletion =
-        SMMetadata.WorkflowMetadata(
-            currentState = deletionCurrentState,
-            trigger =
-            SMMetadata.Trigger(
-                time = nextDeletionTime,
-            ),
-            started = startedDeletion,
-            latestExecution = deletionLatestExecution,
-            retry = deletionRetryCount?.let { SMMetadata.Retry(it) },
+        started = if (startedCreation != null) listOf(startedCreation) else null,
+        latestExecution = creationLatestExecution,
+        retry = creationRetryCount?.let { SMMetadata.Retry(it) },
+    ),
+    deletion =
+    SMMetadata.WorkflowMetadata(
+        currentState = deletionCurrentState,
+        trigger =
+        SMMetadata.Trigger(
+            time = nextDeletionTime,
         ),
-    )
-}
+        started = startedDeletion,
+        latestExecution = deletionLatestExecution,
+        retry = deletionRetryCount?.let { SMMetadata.Retry(it) },
+    ),
+)
 
 fun randomLatestExecution(
     status: SMMetadata.LatestExecution.Status = SMMetadata.LatestExecution.Status.IN_PROGRESS,
@@ -109,6 +107,8 @@ fun randomSMPolicy(
     deletionMaxAge: TimeValue? = null,
     deletionMinCount: Int = randomIntBetween(1, 5),
     deletionNull: Boolean = false,
+    creationNull: Boolean = false,
+    snapshotPattern: String? = null,
     snapshotConfig: MutableMap<String, Any> =
         mutableMapOf(
             "repository" to "repo",
@@ -128,11 +128,14 @@ fun randomSMPolicy(
         schemaVersion = schemaVersion,
         jobEnabled = jobEnabled,
         jobLastUpdateTime = jobLastUpdateTime,
-        creation =
-        SMPolicy.Creation(
-            schedule = creationSchedule,
-            timeLimit = creationTimeLimit,
-        ),
+        creation = if (creationNull) {
+            null
+        } else {
+            SMPolicy.Creation(
+                schedule = creationSchedule,
+                timeLimit = creationTimeLimit,
+            )
+        },
         deletion =
         randomPolicyDeletion(
             deletionSchedule,
@@ -141,6 +144,7 @@ fun randomSMPolicy(
             deletionMaxAge,
             deletionMinCount,
             deletionNull,
+            snapshotPattern,
         ),
         snapshotConfig = snapshotConfig,
         jobEnabledTime = if (jobEnabled) jobEnabledTime else null,
@@ -158,6 +162,7 @@ fun randomPolicyDeletion(
     deletionMaxAge: TimeValue? = null,
     deletionMinCount: Int = randomIntBetween(1, 5),
     deletionNull: Boolean = false,
+    snapshotPattern: String? = null,
 ): SMPolicy.Deletion? {
     if (deletionNull) return null
     return SMPolicy.Deletion(
@@ -169,6 +174,7 @@ fun randomPolicyDeletion(
             maxAge = deletionMaxAge,
             minCount = deletionMinCount,
         ),
+        snapshotPattern = snapshotPattern,
     )
 }
 
@@ -270,14 +276,12 @@ fun mockInProgressSnapshotInfo(
 fun mockSnapshotInfo(
     name: String = randomAlphaOfLength(10),
     snapshotState: SnapshotState,
-): SnapshotInfo {
-    return SnapshotInfo(
-        SnapshotId(name, UUIDs.randomBase64UUID()),
-        emptyList(),
-        emptyList(),
-        snapshotState,
-    )
-}
+): SnapshotInfo = SnapshotInfo(
+    SnapshotId(name, UUIDs.randomBase64UUID()),
+    emptyList(),
+    emptyList(),
+    snapshotState,
+)
 
 fun mockGetSnapshotResponse(num: Int): GetSnapshotsResponse {
     val getSnapshotsRes: GetSnapshotsResponse = mock()

@@ -1,26 +1,37 @@
 /*
+ * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
  */
 
-package org.opensearch.indexmanagement
+package org.opensearch.indexmanagement.security
 
 import org.junit.After
 import org.junit.Before
 import org.opensearch.client.RestClient
 import org.opensearch.commons.rest.SecureRestClientBuilder
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.BULK_WRITE_INDEX
+import org.opensearch.indexmanagement.CREATE_INDEX
+import org.opensearch.indexmanagement.DELETE_TRANSFORM
+import org.opensearch.indexmanagement.EXPLAIN_INDEX
+import org.opensearch.indexmanagement.EXPLAIN_TRANSFORM
+import org.opensearch.indexmanagement.GET_INDEX_MAPPING
+import org.opensearch.indexmanagement.GET_TRANSFORM
+import org.opensearch.indexmanagement.GET_TRANSFORMS
+import org.opensearch.indexmanagement.HEALTH
+import org.opensearch.indexmanagement.MANAGED_INDEX
+import org.opensearch.indexmanagement.PUT_INDEX_MAPPING
+import org.opensearch.indexmanagement.SEARCH_INDEX
+import org.opensearch.indexmanagement.START_TRANSFORM
+import org.opensearch.indexmanagement.STOP_TRANSFORM
+import org.opensearch.indexmanagement.TRANSFORM_ACTION
+import org.opensearch.indexmanagement.WRITE_INDEX
 import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
 import org.opensearch.indexmanagement.transform.randomTransform
+import org.opensearch.indexmanagement.waitFor
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.test.junit.annotations.TestLogging
 import java.time.Instant
@@ -39,7 +50,7 @@ class TransformSecurityBehaviorIT : SecurityRestTestCase() {
 
     @Before
     fun setupUsersAndRoles() {
-        updateClusterSetting(ManagedIndexSettings.JITTER.key, "0.0", false)
+        updateClusterSetting(ManagedIndexSettings.Companion.JITTER.key, "0.0", false)
 
         // Init super transform user
         val helpdeskClusterPermissions =
@@ -270,26 +281,24 @@ class TransformSecurityBehaviorIT : SecurityRestTestCase() {
     private fun createSimpleTransform(
         sourceIndex: String,
         targetIndex: String,
-    ): Transform {
-        return Transform(
-            id = "id_1",
-            schemaVersion = 1L,
-            enabled = true,
-            enabledAt = Instant.now(),
-            updatedAt = Instant.now(),
-            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
-            description = "test transform",
-            metadataId = null,
-            sourceIndex = sourceIndex,
-            targetIndex = targetIndex,
-            roles = emptyList(),
-            pageSize = 100,
-            groups =
-            listOf(
-                Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
-            ),
-        )
-    }
+    ): Transform = Transform(
+        id = "id_1",
+        schemaVersion = 1L,
+        enabled = true,
+        enabledAt = Instant.now(),
+        updatedAt = Instant.now(),
+        jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+        description = "test transform",
+        metadataId = null,
+        sourceIndex = sourceIndex,
+        targetIndex = targetIndex,
+        roles = emptyList(),
+        pageSize = 100,
+        groups =
+        listOf(
+            Terms(sourceField = "store_and_fwd_flag", targetField = "flag"),
+        ),
+    )
 
     private fun createTestUserWithRole(clusterPermissions: List<String>, indexPermissions: List<String>) {
         val testBackendRole = testRole + "_backend"

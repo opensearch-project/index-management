@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.rollup.resthandler
 
 import org.opensearch.action.support.WriteRequest
-import org.opensearch.client.node.NodeClient
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.seqno.SequenceNumbers
@@ -31,30 +30,25 @@ import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.PUT
 import org.opensearch.rest.RestResponse
 import org.opensearch.rest.action.RestResponseListener
+import org.opensearch.transport.client.node.NodeClient
 import java.io.IOException
 import java.time.Instant
 
 class RestIndexRollupAction : BaseRestHandler() {
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                PUT, ROLLUP_JOBS_BASE_URI,
-                PUT, LEGACY_ROLLUP_JOBS_BASE_URI,
-            ),
-            ReplacedRoute(
-                PUT, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
-                PUT, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            PUT, ROLLUP_JOBS_BASE_URI,
+            PUT, LEGACY_ROLLUP_JOBS_BASE_URI,
+        ),
+        ReplacedRoute(
+            PUT, "$ROLLUP_JOBS_BASE_URI/{rollupID}",
+            PUT, "$LEGACY_ROLLUP_JOBS_BASE_URI/{rollupID}",
+        ),
+    )
 
-    override fun getName(): String {
-        return "opendistro_index_rollup_action"
-    }
+    override fun getName(): String = "opendistro_index_rollup_action"
 
     @Throws(IOException::class)
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {

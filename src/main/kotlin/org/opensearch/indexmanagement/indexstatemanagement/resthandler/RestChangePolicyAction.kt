@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
-import org.opensearch.client.node.NodeClient
 import org.opensearch.core.common.Strings
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
@@ -23,25 +22,22 @@ import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.action.RestToXContentListener
+import org.opensearch.transport.client.node.NodeClient
 import java.io.IOException
 
 class RestChangePolicyAction : BaseRestHandler() {
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                POST, CHANGE_POLICY_BASE_URI,
-                POST, LEGACY_CHANGE_POLICY_BASE_URI,
-            ),
-            ReplacedRoute(
-                POST, "$CHANGE_POLICY_BASE_URI/{index}",
-                POST, "$LEGACY_CHANGE_POLICY_BASE_URI/{index}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            POST, CHANGE_POLICY_BASE_URI,
+            POST, LEGACY_CHANGE_POLICY_BASE_URI,
+        ),
+        ReplacedRoute(
+            POST, "$CHANGE_POLICY_BASE_URI/{index}",
+            POST, "$LEGACY_CHANGE_POLICY_BASE_URI/{index}",
+        ),
+    )
 
     override fun getName(): String = "change_policy_action"
 

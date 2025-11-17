@@ -6,7 +6,6 @@
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
 import org.apache.logging.log4j.LogManager
-import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.LEGACY_POLICY_BASE_URI
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.POLICY_BASE_URI
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy.GetPoliciesAction
@@ -25,34 +24,29 @@ import org.opensearch.rest.RestRequest.Method.HEAD
 import org.opensearch.rest.action.RestActions
 import org.opensearch.rest.action.RestToXContentListener
 import org.opensearch.search.fetch.subphase.FetchSourceContext
+import org.opensearch.transport.client.node.NodeClient
 
 private val log = LogManager.getLogger(RestGetPolicyAction::class.java)
 
 class RestGetPolicyAction : BaseRestHandler() {
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                GET, POLICY_BASE_URI,
-                GET, LEGACY_POLICY_BASE_URI,
-            ),
-            ReplacedRoute(
-                GET, "$POLICY_BASE_URI/{policyID}",
-                GET, "$LEGACY_POLICY_BASE_URI/{policyID}",
-            ),
-            ReplacedRoute(
-                HEAD, "$POLICY_BASE_URI/{policyID}",
-                HEAD, "$LEGACY_POLICY_BASE_URI/{policyID}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            GET, POLICY_BASE_URI,
+            GET, LEGACY_POLICY_BASE_URI,
+        ),
+        ReplacedRoute(
+            GET, "$POLICY_BASE_URI/{policyID}",
+            GET, "$LEGACY_POLICY_BASE_URI/{policyID}",
+        ),
+        ReplacedRoute(
+            HEAD, "$POLICY_BASE_URI/{policyID}",
+            HEAD, "$LEGACY_POLICY_BASE_URI/{policyID}",
+        ),
+    )
 
-    override fun getName(): String {
-        return "get_policy_action"
-    }
+    override fun getName(): String = "get_policy_action"
 
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {
         log.debug("${request.method()} ${request.path()}")

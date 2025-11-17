@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.transform.resthandler
 
-import org.opensearch.client.node.NodeClient
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.TRANSFORM_BASE_URI
 import org.opensearch.indexmanagement.transform.action.delete.DeleteTransformsAction
 import org.opensearch.indexmanagement.transform.action.delete.DeleteTransformsRequest
@@ -17,14 +16,13 @@ import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.DELETE
 import org.opensearch.rest.action.RestToXContentListener
+import org.opensearch.transport.client.node.NodeClient
 import java.io.IOException
 
 class RestDeleteTransformAction : BaseRestHandler() {
-    override fun routes(): List<RestHandler.Route> {
-        return listOf(
-            Route(DELETE, "$TRANSFORM_BASE_URI/{transformID}"),
-        )
-    }
+    override fun routes(): List<RestHandler.Route> = listOf(
+        Route(DELETE, "$TRANSFORM_BASE_URI/{transformID}"),
+    )
 
     override fun getName(): String = "opendistro_delete_transform_action"
 

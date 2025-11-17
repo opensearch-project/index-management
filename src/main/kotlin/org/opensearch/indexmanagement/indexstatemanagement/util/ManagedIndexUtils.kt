@@ -17,7 +17,6 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.update.UpdateRequest
-import org.opensearch.client.Client
 import org.opensearch.cluster.routing.Preference
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
@@ -35,6 +34,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
+import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
@@ -53,6 +53,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetry
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
 import org.opensearch.search.builder.SearchSourceBuilder
+import org.opensearch.transport.client.Client
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -89,14 +90,12 @@ fun managedIndexConfigIndexRequest(
         .source(managedIndexConfig.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
 }
 
-fun managedIndexConfigIndexRequest(managedIndexConfig: ManagedIndexConfig): IndexRequest {
-    return IndexRequest(INDEX_MANAGEMENT_INDEX)
-        .id(managedIndexConfig.indexUuid)
-        .setIfPrimaryTerm(managedIndexConfig.primaryTerm)
-        .setIfSeqNo(managedIndexConfig.seqNo)
-        .routing(managedIndexConfig.indexUuid) // we want job doc and its metadata doc be routed to same shard
-        .source(managedIndexConfig.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
-}
+fun managedIndexConfigIndexRequest(managedIndexConfig: ManagedIndexConfig): IndexRequest = IndexRequest(INDEX_MANAGEMENT_INDEX)
+    .id(managedIndexConfig.indexUuid)
+    .setIfPrimaryTerm(managedIndexConfig.primaryTerm)
+    .setIfSeqNo(managedIndexConfig.seqNo)
+    .routing(managedIndexConfig.indexUuid) // we want job doc and its metadata doc be routed to same shard
+    .source(managedIndexConfig.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS))
 
 const val METADATA_POST_FIX = "#metadata"
 
@@ -137,28 +136,20 @@ private fun updateEnabledField(uuid: String, enabled: Boolean, enabledTime: Long
     return UpdateRequest(INDEX_MANAGEMENT_INDEX, uuid).doc(builder)
 }
 
-fun updateDisableManagedIndexRequest(uuid: String): UpdateRequest {
-    return updateEnabledField(uuid, false, null)
-}
+fun updateDisableManagedIndexRequest(uuid: String): UpdateRequest = updateEnabledField(uuid, false, null)
 
-fun updateEnableManagedIndexRequest(uuid: String): UpdateRequest {
-    return updateEnabledField(uuid, true, Instant.now().toEpochMilli())
-}
+fun updateEnableManagedIndexRequest(uuid: String): UpdateRequest = updateEnabledField(uuid, true, Instant.now().toEpochMilli())
 
-fun deleteManagedIndexRequest(uuid: String): DeleteRequest {
-    return DeleteRequest(INDEX_MANAGEMENT_INDEX, uuid)
-}
+fun deleteManagedIndexRequest(uuid: String): DeleteRequest = DeleteRequest(INDEX_MANAGEMENT_INDEX, uuid)
 
-fun deleteManagedIndexMetadataRequest(uuid: String): DeleteRequest {
-    return DeleteRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(uuid)).routing(uuid)
-}
+fun deleteManagedIndexMetadataRequest(uuid: String): DeleteRequest = DeleteRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(uuid)).routing(uuid)
 
-fun updateManagedIndexRequest(sweptManagedIndexConfig: SweptManagedIndexConfig): UpdateRequest {
-    return UpdateRequest(INDEX_MANAGEMENT_INDEX, sweptManagedIndexConfig.uuid)
-        .setIfPrimaryTerm(sweptManagedIndexConfig.primaryTerm)
-        .setIfSeqNo(sweptManagedIndexConfig.seqNo)
-        .doc(getPartialChangePolicyBuilder(sweptManagedIndexConfig.changePolicy))
-}
+fun updateManagedIndexRequest(
+    sweptManagedIndexConfig: SweptManagedIndexConfig,
+): UpdateRequest = UpdateRequest(INDEX_MANAGEMENT_INDEX, sweptManagedIndexConfig.uuid)
+    .setIfPrimaryTerm(sweptManagedIndexConfig.primaryTerm)
+    .setIfSeqNo(sweptManagedIndexConfig.seqNo)
+    .doc(getPartialChangePolicyBuilder(sweptManagedIndexConfig.changePolicy))
 
 /**
  * Finds ManagedIndices that exist in [INDEX_MANAGEMENT_INDEX] that do not exist in the cluster state
@@ -171,10 +162,8 @@ fun updateManagedIndexRequest(sweptManagedIndexConfig: SweptManagedIndexConfig):
 fun getManagedIndicesToDelete(
     currentIndexUuids: List<String>,
     currentManagedIndexUuids: List<String>,
-): List<String> {
-    return currentManagedIndexUuids.filter { currentManagedIndex ->
-        !currentIndexUuids.contains(currentManagedIndex)
-    }
+): List<String> = currentManagedIndexUuids.filter { currentManagedIndex ->
+    !currentIndexUuids.contains(currentManagedIndex)
 }
 
 fun getSweptManagedIndexSearchRequest(scroll: Boolean = false, size: Int = ManagedIndexCoordinator.MAX_HITS): SearchRequest {
@@ -194,46 +183,82 @@ fun getSweptManagedIndexSearchRequest(scroll: Boolean = false, size: Int = Manag
     return req
 }
 
-@Suppress("ReturnCount", "ComplexCondition")
+@Suppress("ReturnCount", "ComplexCondition", "LongParameterList")
+data class TransitionConditionContext(
+    val indexCreationDate: Instant,
+    val numDocs: Long?,
+    val indexSize: ByteSizeValue?,
+    val transitionStartTime: Instant,
+    val rolloverDate: Instant?,
+    val indexAliasesCount: Int? = null,
+    val stateStartTime: Instant? = null,
+)
+
+@Suppress("ReturnCount")
 fun Transition.evaluateConditions(
-    indexCreationDate: Instant,
-    numDocs: Long?,
-    indexSize: ByteSizeValue?,
-    transitionStartTime: Instant,
-    rolloverDate: Instant?,
+    context: TransitionConditionContext,
 ): Boolean {
-    // If there are no conditions, treat as always true
-    if (this.conditions == null) return true
-
-    if (this.conditions.docCount != null && numDocs != null) {
-        return this.conditions.docCount <= numDocs
-    }
-
-    if (this.conditions.indexAge != null) {
-        val indexCreationDateMilli = indexCreationDate.toEpochMilli()
-        if (indexCreationDateMilli == -1L) return false // transitions cannot currently be ORd like rollover, so we must return here
-        val elapsedTime = Instant.now().toEpochMilli() - indexCreationDateMilli
-        return this.conditions.indexAge.millis <= elapsedTime
-    }
-
-    if (this.conditions.size != null && indexSize != null) {
-        return this.conditions.size <= indexSize
-    }
-
-    if (this.conditions.cron != null) {
-        // If a cron pattern matches the time between the start of "attempt_transition" to now then we consider it meeting the condition
-        return this.conditions.cron.getNextExecutionTime(transitionStartTime) <= Instant.now()
-    }
-
-    if (this.conditions.rolloverAge != null) {
-        val rolloverDateMilli = rolloverDate?.toEpochMilli() ?: return false
-        val elapsedTime = Instant.now().toEpochMilli() - rolloverDateMilli
-        return this.conditions.rolloverAge.millis <= elapsedTime
-    }
-
-    // We should never reach this
+    val conditions = this.conditions ?: return true
+    if (checkDocCount(conditions, context)) return true
+    if (checkIndexAge(conditions, context)) return true
+    if (checkSize(conditions, context)) return true
+    if (checkCron(conditions, context)) return true
+    if (checkRolloverAge(conditions, context)) return true
+    if (checkNoAlias(conditions, context)) return true
+    if (checkMinStateAge(conditions, context)) return true
     return false
 }
+
+private fun checkDocCount(conditions: Conditions, context: TransitionConditionContext): Boolean =
+    conditions.docCount != null &&
+        context.numDocs != null &&
+        conditions.docCount <= context.numDocs
+
+@Suppress("ReturnCount")
+private fun checkIndexAge(conditions: Conditions, context: TransitionConditionContext): Boolean {
+    if (conditions.indexAge != null) {
+        val indexCreationDateMilli = context.indexCreationDate.toEpochMilli()
+        if (indexCreationDateMilli == -1L) return false
+        val elapsedTime = Instant.now().toEpochMilli() - indexCreationDateMilli
+        return conditions.indexAge.millis <= elapsedTime
+    }
+    return false
+}
+
+private fun checkSize(conditions: Conditions, context: TransitionConditionContext): Boolean =
+    conditions.size != null &&
+        context.indexSize != null &&
+        conditions.size <= context.indexSize
+
+private fun checkCron(conditions: Conditions, context: TransitionConditionContext): Boolean {
+    if (conditions.cron != null) {
+        return conditions.cron.getNextExecutionTime(context.transitionStartTime) <= Instant.now()
+    }
+    return false
+}
+
+@Suppress("ReturnCount")
+private fun checkRolloverAge(conditions: Conditions, context: TransitionConditionContext): Boolean {
+    if (conditions.rolloverAge != null) {
+        val rolloverDateMilli = context.rolloverDate?.toEpochMilli() ?: return false
+        val elapsedTime = Instant.now().toEpochMilli() - rolloverDateMilli
+        return conditions.rolloverAge.millis <= elapsedTime
+    }
+    return false
+}
+
+private fun checkNoAlias(conditions: Conditions, context: TransitionConditionContext): Boolean =
+    conditions.noAlias != null &&
+        context.indexAliasesCount != null &&
+        (
+            (conditions.noAlias && context.indexAliasesCount == 0) ||
+                (!conditions.noAlias && context.indexAliasesCount > 0)
+            )
+
+private fun checkMinStateAge(conditions: Conditions, context: TransitionConditionContext): Boolean =
+    conditions.minStateAge != null &&
+        context.stateStartTime != null &&
+        (System.currentTimeMillis() - context.stateStartTime.toEpochMilli() >= conditions.minStateAge.millis)
 
 fun Transition.hasStatsConditions(): Boolean = this.conditions?.docCount != null || this.conditions?.size != null
 
@@ -283,9 +308,8 @@ fun State.getUpdatedStateMetaData(managedIndexMetaData: ManagedIndexMetaData): S
     }
 }
 
-fun Action.shouldBackoff(actionMetaData: ActionMetaData?, actionRetry: ActionRetry?): Pair<Boolean, Long?>? {
-    return this.configRetry?.backoff?.shouldBackoff(actionMetaData, actionRetry)
-}
+fun Action.shouldBackoff(actionMetaData: ActionMetaData?, actionRetry: ActionRetry?): Pair<Boolean, Long?>? =
+    this.configRetry?.backoff?.shouldBackoff(actionMetaData, actionRetry)
 
 @Suppress("ReturnCount")
 fun Action.hasTimedOut(actionMetaData: ActionMetaData?): Boolean {

@@ -30,9 +30,11 @@ class ActionValidation(
                 "read_write" -> ValidateReadWrite(settings, clusterService, jvmService).execute(indexName)
                 "replica_count" -> ValidateReplicaCount(settings, clusterService, jvmService).execute(indexName)
                 "snapshot" -> ValidateSnapshot(settings, clusterService, jvmService).execute(indexName)
+                "convert_index_to_remote" -> ValidateConvertIndexToRemote(settings, clusterService, jvmService).execute(indexName)
                 "transition" -> ValidateTransition(settings, clusterService, jvmService).execute(indexName)
                 "close" -> ValidateClose(settings, clusterService, jvmService).execute(indexName)
                 "index_priority" -> ValidateIndexPriority(settings, clusterService, jvmService).execute(indexName)
+                "stop_replication" -> ValidateStopReplication(settings, clusterService, jvmService).execute(indexName)
                 // No validations for these actions at current stage.
                 // Reason: https://github.com/opensearch-project/index-management/issues/587
                 "notification" -> ValidateNothing(settings, clusterService, jvmService).execute(indexName)

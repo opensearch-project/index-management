@@ -18,9 +18,6 @@ import org.mockito.ArgumentMatchers.eq
 import org.opensearch.action.admin.indices.rollover.RolloverInfo
 import org.opensearch.action.admin.indices.stats.CommonStats
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
-import org.opensearch.client.AdminClient
-import org.opensearch.client.Client
-import org.opensearch.client.IndicesAdminClient
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.metadata.Metadata
@@ -51,6 +48,9 @@ import org.opensearch.telemetry.metrics.MetricsRegistry
 import org.opensearch.telemetry.metrics.tags.Tags
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.AdminClient
+import org.opensearch.transport.client.Client
+import org.opensearch.transport.client.IndicesAdminClient
 import java.time.Instant
 
 class AttemptTransitionStepTests : OpenSearchTestCase() {
@@ -74,7 +74,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock { on { state() } doReturn clusterState }
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
-    private val lockService: LockService = LockService(mock(), clusterService)
+    private val lockService: LockService = mock()
 
     private val docsStats: DocsStats = mock()
     private val primaries: CommonStats = mock { on { getDocs() } doReturn docsStats }

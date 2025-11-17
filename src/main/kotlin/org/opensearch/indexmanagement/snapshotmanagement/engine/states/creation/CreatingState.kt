@@ -9,7 +9,6 @@ import org.apache.logging.log4j.Logger
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse
-import org.opensearch.client.ClusterAdminClient
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.snapshotmanagement.addSMPolicyInSnapshotMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.engine.SMStateMachine
@@ -22,6 +21,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.snapshots.ConcurrentSnapshotExecutionException
 import org.opensearch.snapshots.SnapshotInfo
 import org.opensearch.transport.RemoteTransportException
+import org.opensearch.transport.client.ClusterAdminClient
 import java.time.Instant
 
 object CreatingState : State {
@@ -38,7 +38,14 @@ object CreatingState : State {
             SMMetadata.Builder(metadata)
                 .workflow(WorkflowType.CREATION)
 
-        var snapshotName: String? = metadata.creation.started?.first()
+        if (job.creation == null) {
+            log.warn("Policy creation config becomes null before trying to create snapshot. Reset.")
+            return SMResult.Fail(
+                metadataBuilder.resetCreation(), WorkflowType.CREATION, true,
+            )
+        }
+
+        var snapshotName: String? = metadata.creation?.started?.first()
 
         // Check if there's already a snapshot created by SM in current execution period.
         // So that this State can be executed idempotent.
@@ -54,8 +61,8 @@ object CreatingState : State {
             }
             val getSnapshots = getSnapshotsResult.snapshots
 
-            val latestExecutionStartTime = job.creation.schedule.getPeriodStartingAt(null).v1()
-            snapshotName = checkCreatedSnapshots(latestExecutionStartTime, getSnapshots)
+            val latestExecutionStartTime = job.creation?.schedule?.getPeriodStartingAt(null)?.v1()
+            snapshotName = latestExecutionStartTime?.let { checkCreatedSnapshots(it, getSnapshots) }
             if (snapshotName != null) {
                 log.info("Already created snapshot [$snapshotName] during this execution period starting at $latestExecutionStartTime.")
                 metadataBuilder.setLatestExecution(

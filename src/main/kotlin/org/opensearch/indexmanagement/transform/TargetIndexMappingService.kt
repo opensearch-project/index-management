@@ -8,7 +8,6 @@ package org.opensearch.indexmanagement.transform
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsRequest
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
-import org.opensearch.client.Client
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentHelper
@@ -28,6 +27,7 @@ import org.opensearch.indexmanagement.transform.util.DEFAULT_DATE_FORMAT
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.search.aggregations.AggregationBuilder
 import org.opensearch.search.aggregations.support.ValuesSourceAggregationBuilder
+import org.opensearch.transport.client.Client
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
@@ -195,24 +195,22 @@ object TargetIndexMappingService {
     @Suppress("UNCHECKED_CAST")
     private fun mapCompositeAggregationToString(
         compositeAggregation: Map<String, Any>,
-    ): String {
-        return buildString {
-            var isFirst = true
-            val iterator = compositeAggregation.entries.iterator()
-            while (iterator.hasNext()) {
-                val it = iterator.next()
-                if (!isFirst) {
-                    append(",")
-                }
-                isFirst = false
-                if (it.value is Map<*, *>) {
-                    append("\"${it.key}\" : {")
-                    append(mapCompositeAggregationToString(it.value as Map<String, Any>))
-                    append("\n }")
-                } else {
-                    append("\n")
-                    append("\"${it.key}\" : \"${it.value}\"")
-                }
+    ): String = buildString {
+        var isFirst = true
+        val iterator = compositeAggregation.entries.iterator()
+        while (iterator.hasNext()) {
+            val it = iterator.next()
+            if (!isFirst) {
+                append(",")
+            }
+            isFirst = false
+            if (it.value is Map<*, *>) {
+                append("\"${it.key}\" : {")
+                append(mapCompositeAggregationToString(it.value as Map<String, Any>))
+                append("\n }")
+            } else {
+                append("\n")
+                append("\"${it.key}\" : \"${it.value}\"")
             }
         }
     }

@@ -20,7 +20,8 @@ import java.io.IOException
 class GetLRONConfigResponse(
     val lronConfigResponses: List<LRONConfigResponse>,
     val totalNumber: Int,
-) : ActionResponse(), ToXContentObject {
+) : ActionResponse(),
+    ToXContentObject {
     @Throws(IOException::class)
     constructor(sin: StreamInput) : this(
         lronConfigResponses = sin.readList(::LRONConfigResponse),

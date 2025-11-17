@@ -8,13 +8,13 @@ package org.opensearch.indexmanagement.indexstatemanagement
 import org.opensearch.action.admin.cluster.state.ClusterStateRequest
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse
 import org.opensearch.action.support.IndicesOptions
-import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.IndexMetadataService
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
+import org.opensearch.transport.client.Client
 
 class DefaultIndexMetadataService(private val customUUIDSetting: String? = null) : IndexMetadataService {
     /**
@@ -51,17 +51,14 @@ class DefaultIndexMetadataService(private val customUUIDSetting: String? = null)
      * This method prioritize the custom index setting provided by extension to decide the index UUID
      * Custom index UUID is needed when index moved out of cluster and re-attach back, it will get a new UUID in cluster metadata
      */
-    fun getIndexUUID(indexMetadata: IndexMetadata): String {
-        return if (customUUIDSetting != null) {
-            indexMetadata.settings.get(customUUIDSetting, indexMetadata.indexUUID)
-        } else {
-            indexMetadata.indexUUID
-        }
+    fun getIndexUUID(indexMetadata: IndexMetadata): String = if (customUUIDSetting != null) {
+        indexMetadata.settings.get(customUUIDSetting, indexMetadata.indexUUID)
+    } else {
+        indexMetadata.indexUUID
     }
 
-    override suspend fun getMetadataForAllIndices(client: Client, clusterService: ClusterService): Map<String, ISMIndexMetadata> {
-        return getMetadata(listOf("*"), client, clusterService)
-    }
+    override suspend fun getMetadataForAllIndices(client: Client, clusterService: ClusterService): Map<String, ISMIndexMetadata> =
+        getMetadata(listOf("*"), client, clusterService)
 
     companion object {
         const val DEFAULT_GET_METADATA_TIMEOUT_IN_MILLIS = 30000L

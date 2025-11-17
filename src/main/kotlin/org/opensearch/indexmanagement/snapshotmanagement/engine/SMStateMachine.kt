@@ -7,11 +7,12 @@ package org.opensearch.indexmanagement.snapshotmanagement.engine
 
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.opensearch.ExceptionsHelper
 import org.opensearch.action.bulk.BackoffPolicy
-import org.opensearch.client.Client
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.commons.ConfigConstants
+import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.opensearchapi.IndexManagementSecurityContext
 import org.opensearch.indexmanagement.opensearchapi.retry
@@ -27,6 +28,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata.Latest
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.threadpool.ThreadPool
+import org.opensearch.transport.client.Client
 import java.time.Instant.now
 
 @OpenForTesting
@@ -160,7 +162,7 @@ class SMStateMachine(
         val retry =
             when (result.workflowType) {
                 WorkflowType.CREATION -> {
-                    metadata.creation.retry
+                    metadata.creation?.retry
                 }
                 WorkflowType.DELETION -> {
                     metadata.deletion?.retry
@@ -215,6 +217,14 @@ class SMStateMachine(
                 metadata = md
             }
         } catch (ex: Exception) {
+            val unwrappedException = ExceptionsHelper.unwrapCause(ex) as Exception
+            if (unwrappedException is VersionConflictEngineException) {
+                // Don't throw the exception
+                // TODO: Extract seqNo on VersionConflictException and retry updateMetadata with updated seqNo.
+                log.error("Version conflict exception while updating metadata.", ex)
+                return
+            }
+
             val smEx = SnapshotManagementException(ExceptionKey.METADATA_INDEXING_FAILURE, ex)
             log.error(smEx.message, ex)
             throw smEx
@@ -239,7 +249,11 @@ class SMStateMachine(
             val metadataToSave =
                 SMMetadata.Builder(metadata)
                     .setSeqNoPrimaryTerm(job.seqNo, job.primaryTerm)
-                    .setNextCreationTime(job.creation.schedule.getNextExecutionTime(now))
+
+            val creation = job.creation
+            creation?.let {
+                metadataToSave.setNextCreationTime(creation.schedule.getNextExecutionTime(now))
+            }
 
             val deletion = job.deletion
             deletion?.let {

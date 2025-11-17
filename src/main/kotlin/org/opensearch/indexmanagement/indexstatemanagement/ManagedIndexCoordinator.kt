@@ -27,9 +27,8 @@ import org.opensearch.action.search.SearchPhaseExecutionException
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.search.SearchScrollRequest
-import org.opensearch.action.support.master.AcknowledgedResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
-import org.opensearch.client.Client
 import org.opensearch.cluster.ClusterChangedEvent
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.ClusterStateListener
@@ -87,6 +86,7 @@ import org.opensearch.indexmanagement.util.OpenForTesting
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.threadpool.Scheduler
 import org.opensearch.threadpool.ThreadPool
+import org.opensearch.transport.client.Client
 
 /**
  * Listens for cluster changes to pick up new indices to manage.
@@ -113,9 +113,9 @@ class ManagedIndexCoordinator(
     indexManagementIndices: IndexManagementIndices,
     private val indexMetadataProvider: IndexMetadataProvider,
     private val xContentRegistry: NamedXContentRegistry,
-) : ClusterStateListener,
-    CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ManagedIndexCoordinator")),
-    LifecycleListener() {
+) : LifecycleListener(),
+    ClusterStateListener,
+    CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineName("ManagedIndexCoordinator")) {
     private val logger = LogManager.getLogger(javaClass)
     private val ismIndices = indexManagementIndices
 
@@ -160,9 +160,7 @@ class ManagedIndexCoordinator(
         }
     }
 
-    private fun executorName(): String {
-        return ThreadPool.Names.MANAGEMENT
-    }
+    private fun executorName(): String = ThreadPool.Names.MANAGEMENT
 
     fun onClusterManager() {
         onClusterManagerTimeStamp = System.currentTimeMillis()
@@ -339,10 +337,10 @@ class ManagedIndexCoordinator(
         if (clusterState.metadata.hasIndex(indexName)) {
             val indexMetadata = clusterState.metadata.index(indexName)
             val autoManage =
-                if (AUTO_MANAGE.get(indexMetadata.settings)) {
-                    true
-                } else {
+                if (indexMetadata.settings.get(AUTO_MANAGE.key).isNullOrBlank()) {
                     LegacyOpenDistroManagedIndexSettings.AUTO_MANAGE.get(indexMetadata.settings)
+                } else {
+                    AUTO_MANAGE.get(indexMetadata.settings)
                 }
             if (autoManage) {
                 val isHiddenIndex =
@@ -368,14 +366,13 @@ class ManagedIndexCoordinator(
      * the policy has user, ensure that the user can manage the index if not find the one that can.
      * */
     private suspend fun findMatchingPolicy(indexName: String, creationDate: Long, policies: List<Policy>): Policy? {
-        val patternMatchPredicate = { pattern: String -> Regex.simpleMatch(pattern, indexName) }
         val priorityPolicyMap = mutableMapOf<Int, Policy>()
         policies.forEach { policy ->
             var highestPriorityForPolicy = -1
             policy.ismTemplate?.filter { template ->
                 template.lastUpdatedTime.toEpochMilli() < creationDate
             }?.forEach { template ->
-                if (template.indexPatterns.stream().anyMatch(patternMatchPredicate)) {
+                if (matchesIndexPatterns(indexName, template.indexPatterns)) {
                     if (highestPriorityForPolicy < template.priority) {
                         highestPriorityForPolicy = template.priority
                     }
@@ -399,6 +396,46 @@ class ManagedIndexCoordinator(
 
         logger.debug("Couldn't find any matching policy with appropriate permissions that can manage index $indexName")
         return null
+    }
+
+    /**
+     * Checks if an index name matches the given index patterns, supporting exclusion patterns prefixed with `-`.
+     * The index must match at least one inclusion pattern and must not match any exclusion patterns.
+     *
+     * @param indexName The name of the index to check
+     * @param patterns List of index patterns, where patterns starting with `-` are exclusion patterns
+     * @return true if the index matches (included and not excluded), false otherwise
+     */
+    private fun matchesIndexPatterns(indexName: String, patterns: List<String>): Boolean {
+        val inclusionPatterns = mutableListOf<String>()
+        val exclusionPatterns = mutableListOf<String>()
+
+        // Separate inclusion and exclusion patterns
+        patterns.forEach { pattern ->
+            if (pattern.startsWith("-")) {
+                exclusionPatterns.add(pattern.substring(1))
+            } else {
+                inclusionPatterns.add(pattern)
+            }
+        }
+
+        // Check if index matches any inclusion pattern
+        // Note: inclusionPatterns.isEmpty() is prevented by validation in ISMTemplateService
+        val matchesInclusion = inclusionPatterns.any { pattern ->
+            Regex.simpleMatch(pattern, indexName)
+        }
+
+        if (!matchesInclusion) {
+            return false
+        }
+
+        // Check if index matches any exclusion pattern
+        val matchesExclusion = exclusionPatterns.any { pattern ->
+            Regex.simpleMatch(pattern, indexName)
+        }
+
+        // Return true only if matches inclusion and does not match exclusion
+        return !matchesExclusion
     }
 
     private suspend fun canPolicyManagedIndex(policy: Policy, indexName: String): Boolean {

@@ -75,7 +75,5 @@ class ShrinkActionParser : ActionParser() {
         return ShrinkAction(numNewShards, maxShardSize, percentageOfSourceShards, targetIndexTemplate, aliases, switchAliases, forceUnsafe, index)
     }
 
-    override fun getActionType(): String {
-        return ShrinkAction.name
-    }
+    override fun getActionType(): String = ShrinkAction.name
 }

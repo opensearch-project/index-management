@@ -147,4 +147,46 @@ class RestIndexSnapshotManagementIT : SnapshotManagementRestTestCase() {
 
         assertEquals("Mappings are different", expectedMap, mappingsMap)
     }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test creating a deletion-only policy with snapshot pattern`() {
+        // Create a deletion-only policy with snapshot pattern support
+        var smPolicy = randomSMPolicy(
+            creationNull = true, // No creation workflow
+            deletionMaxAge = org.opensearch.common.unit.TimeValue.timeValueDays(30),
+            deletionMinCount = 3,
+            snapshotPattern = "external-backup-*", // Include external snapshots in deletion
+        )
+
+        val response = client().makeRequest("POST", "$SM_POLICIES_URI/${smPolicy.policyName}", emptyMap(), smPolicy.toHttpEntity())
+        assertEquals("Create deletion-only SM policy failed", RestStatus.CREATED, response.restStatus())
+
+        val responseBody = response.asMap()
+        val createdId = responseBody["_id"] as String
+        assertNotEquals("Response is missing Id", NO_ID, createdId)
+        assertEquals("Not same id", smPolicy.id, createdId)
+        assertEquals("Incorrect Location header", "$SM_POLICIES_URI/${smPolicy.policyName}", response.getHeader("Location"))
+
+        val responseSMPolicy = responseBody[SM_TYPE] as Map<String, Any>
+        // During indexing, we update these two fields so we need to override them here before the equality check
+        smPolicy = smPolicy.copy(
+            jobLastUpdateTime = Instant.ofEpochMilli(responseSMPolicy[SMPolicy.LAST_UPDATED_TIME_FIELD] as Long),
+            schemaVersion = IndexUtils.indexManagementConfigSchemaVersion,
+        )
+
+        // Verify the policy structure
+        val createdPolicyMap = smPolicy.toMap(XCONTENT_WITHOUT_TYPE_AND_USER)
+        assertEquals("Created and returned deletion-only policies differ", createdPolicyMap, responseSMPolicy)
+
+        // Verify creation is null and deletion has snapshot pattern
+        assertNull("Creation should be null for deletion-only policy", responseSMPolicy["creation"])
+        assertNotNull("Deletion should exist for deletion-only policy", responseSMPolicy["deletion"])
+
+        val deletionConfig = responseSMPolicy["deletion"] as Map<String, Any>
+        assertEquals("Snapshot pattern should be preserved", "external-backup-*", deletionConfig["snapshot_pattern"])
+
+        val deletionCondition = deletionConfig["condition"] as Map<String, Any>
+        assertEquals("Max age should be 30 days", "30d", deletionCondition["max_age"])
+        assertEquals("Min count should be 3", 3, deletionCondition["min_count"])
+    }
 }

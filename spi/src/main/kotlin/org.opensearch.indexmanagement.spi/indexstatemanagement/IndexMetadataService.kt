@@ -5,9 +5,9 @@
 
 package org.opensearch.indexmanagement.spi.indexstatemanagement
 
-import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
+import org.opensearch.transport.client.Client
 
 /**
  * ISM by default considers all the index metadata to be part of the cluster state,

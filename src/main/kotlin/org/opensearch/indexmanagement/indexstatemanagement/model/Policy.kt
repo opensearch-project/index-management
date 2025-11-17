@@ -40,7 +40,8 @@ data class Policy(
     val states: List<State>,
     val ismTemplate: List<ISMTemplate>? = null,
     val user: User? = null,
-) : ToXContentObject, Writeable {
+) : ToXContentObject,
+    Writeable {
     init {
         val distinctStateNames = states.map { it.name }.distinct()
         states.forEach { state ->
@@ -55,9 +56,7 @@ data class Policy(
         requireNotNull(states.find { it.name == defaultState }) { "Policy must have a valid default state" }
     }
 
-    fun toXContent(builder: XContentBuilder): XContentBuilder {
-        return toXContent(builder, ToXContent.EMPTY_PARAMS)
-    }
+    fun toXContent(builder: XContentBuilder): XContentBuilder = toXContent(builder, ToXContent.EMPTY_PARAMS)
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()

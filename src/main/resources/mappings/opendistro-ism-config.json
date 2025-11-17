@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 21
+    "schema_version": 24
   },
   "dynamic": "strict",
   "properties": {
@@ -170,6 +170,9 @@
                 "delete": {
                   "type": "object"
                 },
+                "stop_replication": {
+                  "type": "object"
+                },
                 "force_merge": {
                   "properties": {
                     "max_num_segments": {
@@ -213,6 +216,16 @@
                     },
                     "include_global_state": {
                       "type": "boolean"
+                    }
+                  }
+                },
+                "convert_index_to_remote": {
+                  "properties": {
+                    "repository": {
+                      "type": "keyword"
+                    },
+                    "snapshot": {
+                      "type": "keyword"
                     }
                   }
                 },
@@ -369,6 +382,10 @@
                               "ignore_above": 256
                             }
                           }
+                        },
+                        "target_index_settings": {
+                          "dynamic": "true",
+                          "type": "object"
                         },
                         "page_size": {
                           "type": "long"
@@ -994,6 +1011,10 @@
             }
           }
         },
+        "target_index_settings": {
+          "dynamic": "true",
+          "type": "object"
+        },
         "page_size": {
           "type": "long"
         },
@@ -1476,6 +1497,9 @@
                   "type": "integer"
                 }
               }
+            },
+            "snapshot_pattern": {
+              "type": "keyword"
             }
           }
         },

@@ -13,7 +13,6 @@ import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.bulk.BackoffPolicy
 import org.opensearch.action.support.WriteRequest
-import org.opensearch.client.Client
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
@@ -46,6 +45,7 @@ import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.script.ScriptService
 import org.opensearch.search.aggregations.bucket.composite.InternalComposite
 import org.opensearch.threadpool.ThreadPool
+import org.opensearch.transport.client.Client
 
 @Suppress("TooManyFunctions")
 object RollupRunner :
@@ -127,9 +127,7 @@ object RollupRunner :
         return this
     }
 
-    fun registerConsumers(): RollupRunner {
-        return this
-    }
+    fun registerConsumers(): RollupRunner = this
 
     @Suppress("ComplexMethod")
     override fun runJob(job: ScheduledJobParameter, context: JobExecutionContext) {

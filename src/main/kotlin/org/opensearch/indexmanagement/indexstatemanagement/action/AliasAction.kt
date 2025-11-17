@@ -38,9 +38,7 @@ class AliasAction(
 
     private val steps = listOf(attemptAliasActionsStep)
 
-    override fun getStepToExecute(context: StepContext): Step {
-        return attemptAliasActionsStep
-    }
+    override fun getStepToExecute(context: StepContext): Step = attemptAliasActionsStep
 
     override fun getSteps(): List<Step> = steps
 

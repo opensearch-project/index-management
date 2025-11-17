@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.resthandler
 
-import org.opensearch.client.node.NodeClient
 import org.opensearch.common.logging.DeprecationLogger
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.core.common.Strings
@@ -23,28 +22,23 @@ import org.opensearch.rest.RestHandler.Route
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestRequest.Method.POST
 import org.opensearch.rest.action.RestToXContentListener
+import org.opensearch.transport.client.node.NodeClient
 
 class RestRetryFailedManagedIndexAction : BaseRestHandler() {
-    override fun routes(): List<Route> {
-        return emptyList()
-    }
+    override fun routes(): List<Route> = emptyList()
 
-    override fun replacedRoutes(): List<ReplacedRoute> {
-        return listOf(
-            ReplacedRoute(
-                POST, RETRY_BASE_URI,
-                POST, LEGACY_RETRY_BASE_URI,
-            ),
-            ReplacedRoute(
-                POST, "$RETRY_BASE_URI/{index}",
-                POST, "$LEGACY_RETRY_BASE_URI/{index}",
-            ),
-        )
-    }
+    override fun replacedRoutes(): List<ReplacedRoute> = listOf(
+        ReplacedRoute(
+            POST, RETRY_BASE_URI,
+            POST, LEGACY_RETRY_BASE_URI,
+        ),
+        ReplacedRoute(
+            POST, "$RETRY_BASE_URI/{index}",
+            POST, "$LEGACY_RETRY_BASE_URI/{index}",
+        ),
+    )
 
-    override fun getName(): String {
-        return "retry_failed_managed_index"
-    }
+    override fun getName(): String = "retry_failed_managed_index"
 
     @Suppress("SpreadOperator") // There is no way around dealing with java vararg without spread operator.
     override fun prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer {

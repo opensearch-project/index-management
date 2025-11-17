@@ -9,7 +9,6 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.support.ActionFilter
 import org.opensearch.action.support.ActiveShardsObserver
-import org.opensearch.client.Client
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.node.DiscoveryNodes
 import org.opensearch.cluster.service.ClusterService
@@ -30,6 +29,7 @@ import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.env.Environment
 import org.opensearch.env.NodeEnvironment
+import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_ALL
 import org.opensearch.indexmanagement.controlcenter.notification.ControlCenterIndices
 import org.opensearch.indexmanagement.controlcenter.notification.action.delete.DeleteLRONConfigAction
 import org.opensearch.indexmanagement.controlcenter.notification.action.delete.TransportDeleteLRONConfigAction
@@ -196,12 +196,19 @@ import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.RemoteClusterService
 import org.opensearch.transport.TransportInterceptor
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 import org.opensearch.watcher.ResourceWatcherService
 import java.util.function.Supplier
 
 @Suppress("TooManyFunctions")
-class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin, ExtensiblePlugin, SystemIndexPlugin,
-    TelemetryAwarePlugin, Plugin() {
+class IndexManagementPlugin :
+    Plugin(),
+    JobSchedulerExtension,
+    NetworkPlugin,
+    ActionPlugin,
+    ExtensiblePlugin,
+    SystemIndexPlugin,
+    TelemetryAwarePlugin {
     private val logger = LogManager.getLogger(javaClass)
     lateinit var indexManagementIndices: IndexManagementIndices
     lateinit var actionValidation: ActionValidation
@@ -248,9 +255,7 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
 
     override fun getJobRunner(): ScheduledJobRunner = IndexManagementRunner
 
-    override fun getGuiceServiceClasses(): Collection<Class<out LifecycleComponent?>> {
-        return mutableListOf<Class<out LifecycleComponent?>>(GuiceHolder::class.java)
-    }
+    override fun getGuiceServiceClasses(): Collection<Class<out LifecycleComponent?>> = mutableListOf<Class<out LifecycleComponent?>>(GuiceHolder::class.java)
 
     @Suppress("ComplexMethod")
     override fun getJobParser(): ScheduledJobParser {
@@ -330,42 +335,40 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
         settingsFilter: SettingsFilter,
         indexNameExpressionResolver: IndexNameExpressionResolver,
         nodesInCluster: Supplier<DiscoveryNodes>,
-    ): List<RestHandler> {
-        return listOf(
-            RestRefreshSearchAnalyzerAction(),
-            RestIndexPolicyAction(settings, clusterService),
-            RestGetPolicyAction(),
-            RestDeletePolicyAction(),
-            RestExplainAction(),
-            RestRetryFailedManagedIndexAction(),
-            RestAddPolicyAction(),
-            RestRemovePolicyAction(),
-            RestChangePolicyAction(),
-            RestDeleteRollupAction(),
-            RestGetRollupAction(),
-            RestIndexRollupAction(),
-            RestStartRollupAction(),
-            RestStopRollupAction(),
-            RestExplainRollupAction(),
-            RestIndexTransformAction(),
-            RestGetTransformAction(),
-            RestPreviewTransformAction(),
-            RestDeleteTransformAction(),
-            RestExplainTransformAction(),
-            RestStartTransformAction(),
-            RestStopTransformAction(),
-            RestGetSMPolicyHandler(),
-            RestStartSMPolicyHandler(),
-            RestStopSMPolicyHandler(),
-            RestExplainSMPolicyHandler(),
-            RestDeleteSMPolicyHandler(),
-            RestCreateSMPolicyHandler(),
-            RestUpdateSMPolicyHandler(),
-            RestIndexLRONConfigAction(),
-            RestGetLRONConfigAction(),
-            RestDeleteLRONConfigAction(),
-        )
-    }
+    ): List<RestHandler> = listOf(
+        RestRefreshSearchAnalyzerAction(),
+        RestIndexPolicyAction(settings, clusterService),
+        RestGetPolicyAction(),
+        RestDeletePolicyAction(),
+        RestExplainAction(),
+        RestRetryFailedManagedIndexAction(),
+        RestAddPolicyAction(),
+        RestRemovePolicyAction(),
+        RestChangePolicyAction(),
+        RestDeleteRollupAction(),
+        RestGetRollupAction(),
+        RestIndexRollupAction(),
+        RestStartRollupAction(),
+        RestStopRollupAction(),
+        RestExplainRollupAction(),
+        RestIndexTransformAction(),
+        RestGetTransformAction(),
+        RestPreviewTransformAction(),
+        RestDeleteTransformAction(),
+        RestExplainTransformAction(),
+        RestStartTransformAction(),
+        RestStopTransformAction(),
+        RestGetSMPolicyHandler(),
+        RestStartSMPolicyHandler(),
+        RestStopSMPolicyHandler(),
+        RestExplainSMPolicyHandler(),
+        RestDeleteSMPolicyHandler(),
+        RestCreateSMPolicyHandler(),
+        RestUpdateSMPolicyHandler(),
+        RestIndexLRONConfigAction(),
+        RestGetLRONConfigAction(),
+        RestDeleteLRONConfigAction(),
+    )
 
     @Suppress("LongMethod")
     override fun createComponents(
@@ -501,140 +504,137 @@ class IndexManagementPlugin : JobSchedulerExtension, NetworkPlugin, ActionPlugin
     }
 
     @Suppress("LongMethod")
-    override fun getSettings(): List<Setting<*>> {
-        return listOf(
-            ManagedIndexSettings.HISTORY_ENABLED,
-            ManagedIndexSettings.HISTORY_INDEX_MAX_AGE,
-            ManagedIndexSettings.HISTORY_MAX_DOCS,
-            ManagedIndexSettings.HISTORY_RETENTION_PERIOD,
-            ManagedIndexSettings.HISTORY_ROLLOVER_CHECK_PERIOD,
-            ManagedIndexSettings.HISTORY_NUMBER_OF_SHARDS,
-            ManagedIndexSettings.HISTORY_NUMBER_OF_REPLICAS,
-            ManagedIndexSettings.POLICY_ID,
-            ManagedIndexSettings.ROLLOVER_ALIAS,
-            ManagedIndexSettings.ROLLOVER_SKIP,
-            ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
-            ManagedIndexSettings.ACTION_VALIDATION_ENABLED,
-            ManagedIndexSettings.AUTO_MANAGE,
-            ManagedIndexSettings.JITTER,
-            ManagedIndexSettings.JOB_INTERVAL,
-            ManagedIndexSettings.SWEEP_PERIOD,
-            ManagedIndexSettings.SWEEP_SKIP_PERIOD,
-            ManagedIndexSettings.COORDINATOR_BACKOFF_COUNT,
-            ManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
-            ManagedIndexSettings.ALLOW_LIST,
-            ManagedIndexSettings.SNAPSHOT_DENY_LIST,
-            ManagedIndexSettings.RESTRICTED_INDEX_PATTERN,
-            RollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
-            RollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
-            RollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
-            RollupSettings.ROLLUP_SEARCH_BACKOFF_MILLIS,
-            RollupSettings.ROLLUP_INDEX,
-            RollupSettings.ROLLUP_ENABLED,
-            RollupSettings.ROLLUP_SEARCH_ENABLED,
-            RollupSettings.ROLLUP_DASHBOARDS,
-            RollupSettings.ROLLUP_SEARCH_ALL_JOBS,
-            RollupSettings.ROLLUP_SEARCH_SOURCE_INDICES,
-            TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_COUNT,
-            TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_MILLIS,
-            TransformSettings.TRANSFORM_JOB_SEARCH_BACKOFF_COUNT,
-            TransformSettings.TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS,
-            TransformSettings.TRANSFORM_CIRCUIT_BREAKER_ENABLED,
-            TransformSettings.TRANSFORM_CIRCUIT_BREAKER_JVM_THRESHOLD,
-            IndexManagementSettings.FILTER_BY_BACKEND_ROLES,
-            LegacyOpenDistroManagedIndexSettings.HISTORY_ENABLED,
-            LegacyOpenDistroManagedIndexSettings.HISTORY_INDEX_MAX_AGE,
-            LegacyOpenDistroManagedIndexSettings.HISTORY_MAX_DOCS,
-            LegacyOpenDistroManagedIndexSettings.HISTORY_RETENTION_PERIOD,
-            LegacyOpenDistroManagedIndexSettings.HISTORY_ROLLOVER_CHECK_PERIOD,
-            LegacyOpenDistroManagedIndexSettings.HISTORY_NUMBER_OF_SHARDS,
-            LegacyOpenDistroManagedIndexSettings.HISTORY_NUMBER_OF_REPLICAS,
-            LegacyOpenDistroManagedIndexSettings.POLICY_ID,
-            LegacyOpenDistroManagedIndexSettings.ROLLOVER_ALIAS,
-            LegacyOpenDistroManagedIndexSettings.ROLLOVER_SKIP,
-            LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
-            LegacyOpenDistroManagedIndexSettings.JOB_INTERVAL,
-            LegacyOpenDistroManagedIndexSettings.SWEEP_PERIOD,
-            LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_COUNT,
-            LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
-            LegacyOpenDistroManagedIndexSettings.ALLOW_LIST,
-            LegacyOpenDistroManagedIndexSettings.SNAPSHOT_DENY_LIST,
-            LegacyOpenDistroManagedIndexSettings.AUTO_MANAGE,
-            LegacyOpenDistroManagedIndexSettings.RESTRICTED_INDEX_PATTERN,
-            LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
-            LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
-            LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
-            LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_MILLIS,
-            LegacyOpenDistroRollupSettings.ROLLUP_INDEX,
-            LegacyOpenDistroRollupSettings.ROLLUP_ENABLED,
-            LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_ENABLED,
-            LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS,
-            SnapshotManagementSettings.FILTER_BY_BACKEND_ROLES,
-        )
-    }
+    override fun getSettings(): List<Setting<*>> = listOf(
+        ManagedIndexSettings.HISTORY_ENABLED,
+        ManagedIndexSettings.HISTORY_INDEX_MAX_AGE,
+        ManagedIndexSettings.HISTORY_MAX_DOCS,
+        ManagedIndexSettings.HISTORY_RETENTION_PERIOD,
+        ManagedIndexSettings.HISTORY_ROLLOVER_CHECK_PERIOD,
+        ManagedIndexSettings.HISTORY_NUMBER_OF_SHARDS,
+        ManagedIndexSettings.HISTORY_NUMBER_OF_REPLICAS,
+        ManagedIndexSettings.POLICY_ID,
+        ManagedIndexSettings.ROLLOVER_ALIAS,
+        ManagedIndexSettings.ROLLOVER_SKIP,
+        ManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
+        ManagedIndexSettings.ACTION_VALIDATION_ENABLED,
+        ManagedIndexSettings.AUTO_MANAGE,
+        ManagedIndexSettings.JITTER,
+        ManagedIndexSettings.JOB_INTERVAL,
+        ManagedIndexSettings.SWEEP_PERIOD,
+        ManagedIndexSettings.SWEEP_SKIP_PERIOD,
+        ManagedIndexSettings.COORDINATOR_BACKOFF_COUNT,
+        ManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
+        ManagedIndexSettings.ALLOW_LIST,
+        ManagedIndexSettings.SNAPSHOT_DENY_LIST,
+        ManagedIndexSettings.RESTRICTED_INDEX_PATTERN,
+        RollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
+        RollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
+        RollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
+        RollupSettings.ROLLUP_SEARCH_BACKOFF_MILLIS,
+        RollupSettings.ROLLUP_INDEX,
+        RollupSettings.ROLLUP_ENABLED,
+        RollupSettings.ROLLUP_SEARCH_ENABLED,
+        RollupSettings.ROLLUP_DASHBOARDS,
+        RollupSettings.ROLLUP_SEARCH_ALL_JOBS,
+        RollupSettings.ROLLUP_SEARCH_SOURCE_INDICES,
+        TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_COUNT,
+        TransformSettings.TRANSFORM_JOB_INDEX_BACKOFF_MILLIS,
+        TransformSettings.TRANSFORM_JOB_SEARCH_BACKOFF_COUNT,
+        TransformSettings.TRANSFORM_JOB_SEARCH_BACKOFF_MILLIS,
+        TransformSettings.TRANSFORM_CIRCUIT_BREAKER_ENABLED,
+        TransformSettings.TRANSFORM_CIRCUIT_BREAKER_JVM_THRESHOLD,
+        IndexManagementSettings.FILTER_BY_BACKEND_ROLES,
+        LegacyOpenDistroManagedIndexSettings.HISTORY_ENABLED,
+        LegacyOpenDistroManagedIndexSettings.HISTORY_INDEX_MAX_AGE,
+        LegacyOpenDistroManagedIndexSettings.HISTORY_MAX_DOCS,
+        LegacyOpenDistroManagedIndexSettings.HISTORY_RETENTION_PERIOD,
+        LegacyOpenDistroManagedIndexSettings.HISTORY_ROLLOVER_CHECK_PERIOD,
+        LegacyOpenDistroManagedIndexSettings.HISTORY_NUMBER_OF_SHARDS,
+        LegacyOpenDistroManagedIndexSettings.HISTORY_NUMBER_OF_REPLICAS,
+        LegacyOpenDistroManagedIndexSettings.POLICY_ID,
+        LegacyOpenDistroManagedIndexSettings.ROLLOVER_ALIAS,
+        LegacyOpenDistroManagedIndexSettings.ROLLOVER_SKIP,
+        LegacyOpenDistroManagedIndexSettings.INDEX_STATE_MANAGEMENT_ENABLED,
+        LegacyOpenDistroManagedIndexSettings.JOB_INTERVAL,
+        LegacyOpenDistroManagedIndexSettings.SWEEP_PERIOD,
+        LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_COUNT,
+        LegacyOpenDistroManagedIndexSettings.COORDINATOR_BACKOFF_MILLIS,
+        LegacyOpenDistroManagedIndexSettings.ALLOW_LIST,
+        LegacyOpenDistroManagedIndexSettings.SNAPSHOT_DENY_LIST,
+        LegacyOpenDistroManagedIndexSettings.AUTO_MANAGE,
+        LegacyOpenDistroManagedIndexSettings.RESTRICTED_INDEX_PATTERN,
+        LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
+        LegacyOpenDistroRollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
+        LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
+        LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_BACKOFF_MILLIS,
+        LegacyOpenDistroRollupSettings.ROLLUP_INDEX,
+        LegacyOpenDistroRollupSettings.ROLLUP_ENABLED,
+        LegacyOpenDistroRollupSettings.ROLLUP_SEARCH_ENABLED,
+        LegacyOpenDistroRollupSettings.ROLLUP_DASHBOARDS,
+        SnapshotManagementSettings.FILTER_BY_BACKEND_ROLES,
+    )
 
-    override fun getActions(): List<ActionPlugin.ActionHandler<out ActionRequest, out ActionResponse>> {
-        return listOf(
-            ActionPlugin.ActionHandler(RemovePolicyAction.INSTANCE, TransportRemovePolicyAction::class.java),
-            ActionPlugin.ActionHandler(RefreshSearchAnalyzerAction.INSTANCE, TransportRefreshSearchAnalyzerAction::class.java),
-            ActionPlugin.ActionHandler(AddPolicyAction.INSTANCE, TransportAddPolicyAction::class.java),
-            ActionPlugin.ActionHandler(RetryFailedManagedIndexAction.INSTANCE, TransportRetryFailedManagedIndexAction::class.java),
-            ActionPlugin.ActionHandler(ChangePolicyAction.INSTANCE, TransportChangePolicyAction::class.java),
-            ActionPlugin.ActionHandler(IndexPolicyAction.INSTANCE, TransportIndexPolicyAction::class.java),
-            ActionPlugin.ActionHandler(ExplainAction.INSTANCE, TransportExplainAction::class.java),
-            ActionPlugin.ActionHandler(DeletePolicyAction.INSTANCE, TransportDeletePolicyAction::class.java),
-            ActionPlugin.ActionHandler(GetPolicyAction.INSTANCE, TransportGetPolicyAction::class.java),
-            ActionPlugin.ActionHandler(GetPoliciesAction.INSTANCE, TransportGetPoliciesAction::class.java),
-            ActionPlugin.ActionHandler(DeleteRollupAction.INSTANCE, TransportDeleteRollupAction::class.java),
-            ActionPlugin.ActionHandler(GetRollupAction.INSTANCE, TransportGetRollupAction::class.java),
-            ActionPlugin.ActionHandler(GetRollupsAction.INSTANCE, TransportGetRollupsAction::class.java),
-            ActionPlugin.ActionHandler(IndexRollupAction.INSTANCE, TransportIndexRollupAction::class.java),
-            ActionPlugin.ActionHandler(StartRollupAction.INSTANCE, TransportStartRollupAction::class.java),
-            ActionPlugin.ActionHandler(StopRollupAction.INSTANCE, TransportStopRollupAction::class.java),
-            ActionPlugin.ActionHandler(ExplainRollupAction.INSTANCE, TransportExplainRollupAction::class.java),
-            ActionPlugin.ActionHandler(UpdateRollupMappingAction.INSTANCE, TransportUpdateRollupMappingAction::class.java),
-            ActionPlugin.ActionHandler(IndexTransformAction.INSTANCE, TransportIndexTransformAction::class.java),
-            ActionPlugin.ActionHandler(GetTransformAction.INSTANCE, TransportGetTransformAction::class.java),
-            ActionPlugin.ActionHandler(GetTransformsAction.INSTANCE, TransportGetTransformsAction::class.java),
-            ActionPlugin.ActionHandler(PreviewTransformAction.INSTANCE, TransportPreviewTransformAction::class.java),
-            ActionPlugin.ActionHandler(DeleteTransformsAction.INSTANCE, TransportDeleteTransformsAction::class.java),
-            ActionPlugin.ActionHandler(ExplainTransformAction.INSTANCE, TransportExplainTransformAction::class.java),
-            ActionPlugin.ActionHandler(StartTransformAction.INSTANCE, TransportStartTransformAction::class.java),
-            ActionPlugin.ActionHandler(StopTransformAction.INSTANCE, TransportStopTransformAction::class.java),
-            ActionPlugin.ActionHandler(ManagedIndexAction.INSTANCE, TransportManagedIndexAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.INDEX_SM_POLICY_ACTION_TYPE, TransportIndexSMPolicyAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.GET_SM_POLICY_ACTION_TYPE, TransportGetSMPolicyAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.DELETE_SM_POLICY_ACTION_TYPE, TransportDeleteSMPolicyAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.START_SM_POLICY_ACTION_TYPE, TransportStartSMAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.STOP_SM_POLICY_ACTION_TYPE, TransportStopSMAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.EXPLAIN_SM_POLICY_ACTION_TYPE, TransportExplainSMAction::class.java),
-            ActionPlugin.ActionHandler(SMActions.GET_SM_POLICIES_ACTION_TYPE, TransportGetSMPoliciesAction::class.java),
-            ActionPlugin.ActionHandler(IndexLRONConfigAction.INSTANCE, TransportIndexLRONConfigAction::class.java),
-            ActionPlugin.ActionHandler(GetLRONConfigAction.INSTANCE, TransportGetLRONConfigAction::class.java),
-            ActionPlugin.ActionHandler(DeleteLRONConfigAction.INSTANCE, TransportDeleteLRONConfigAction::class.java),
-        )
-    }
+    override fun getActions(): List<ActionPlugin.ActionHandler<out ActionRequest, out ActionResponse>> = listOf(
+        ActionPlugin.ActionHandler(RemovePolicyAction.INSTANCE, TransportRemovePolicyAction::class.java),
+        ActionPlugin.ActionHandler(RefreshSearchAnalyzerAction.INSTANCE, TransportRefreshSearchAnalyzerAction::class.java),
+        ActionPlugin.ActionHandler(AddPolicyAction.INSTANCE, TransportAddPolicyAction::class.java),
+        ActionPlugin.ActionHandler(RetryFailedManagedIndexAction.INSTANCE, TransportRetryFailedManagedIndexAction::class.java),
+        ActionPlugin.ActionHandler(ChangePolicyAction.INSTANCE, TransportChangePolicyAction::class.java),
+        ActionPlugin.ActionHandler(IndexPolicyAction.INSTANCE, TransportIndexPolicyAction::class.java),
+        ActionPlugin.ActionHandler(ExplainAction.INSTANCE, TransportExplainAction::class.java),
+        ActionPlugin.ActionHandler(DeletePolicyAction.INSTANCE, TransportDeletePolicyAction::class.java),
+        ActionPlugin.ActionHandler(GetPolicyAction.INSTANCE, TransportGetPolicyAction::class.java),
+        ActionPlugin.ActionHandler(GetPoliciesAction.INSTANCE, TransportGetPoliciesAction::class.java),
+        ActionPlugin.ActionHandler(DeleteRollupAction.INSTANCE, TransportDeleteRollupAction::class.java),
+        ActionPlugin.ActionHandler(GetRollupAction.INSTANCE, TransportGetRollupAction::class.java),
+        ActionPlugin.ActionHandler(GetRollupsAction.INSTANCE, TransportGetRollupsAction::class.java),
+        ActionPlugin.ActionHandler(IndexRollupAction.INSTANCE, TransportIndexRollupAction::class.java),
+        ActionPlugin.ActionHandler(StartRollupAction.INSTANCE, TransportStartRollupAction::class.java),
+        ActionPlugin.ActionHandler(StopRollupAction.INSTANCE, TransportStopRollupAction::class.java),
+        ActionPlugin.ActionHandler(ExplainRollupAction.INSTANCE, TransportExplainRollupAction::class.java),
+        ActionPlugin.ActionHandler(UpdateRollupMappingAction.INSTANCE, TransportUpdateRollupMappingAction::class.java),
+        ActionPlugin.ActionHandler(IndexTransformAction.INSTANCE, TransportIndexTransformAction::class.java),
+        ActionPlugin.ActionHandler(GetTransformAction.INSTANCE, TransportGetTransformAction::class.java),
+        ActionPlugin.ActionHandler(GetTransformsAction.INSTANCE, TransportGetTransformsAction::class.java),
+        ActionPlugin.ActionHandler(PreviewTransformAction.INSTANCE, TransportPreviewTransformAction::class.java),
+        ActionPlugin.ActionHandler(DeleteTransformsAction.INSTANCE, TransportDeleteTransformsAction::class.java),
+        ActionPlugin.ActionHandler(ExplainTransformAction.INSTANCE, TransportExplainTransformAction::class.java),
+        ActionPlugin.ActionHandler(StartTransformAction.INSTANCE, TransportStartTransformAction::class.java),
+        ActionPlugin.ActionHandler(StopTransformAction.INSTANCE, TransportStopTransformAction::class.java),
+        ActionPlugin.ActionHandler(ManagedIndexAction.INSTANCE, TransportManagedIndexAction::class.java),
+        ActionPlugin.ActionHandler(SMActions.INDEX_SM_POLICY_ACTION_TYPE, TransportIndexSMPolicyAction::class.java),
+        ActionPlugin.ActionHandler(SMActions.GET_SM_POLICY_ACTION_TYPE, TransportGetSMPolicyAction::class.java),
+        ActionPlugin.ActionHandler(SMActions.DELETE_SM_POLICY_ACTION_TYPE, TransportDeleteSMPolicyAction::class.java),
+        ActionPlugin.ActionHandler(SMActions.START_SM_POLICY_ACTION_TYPE, TransportStartSMAction::class.java),
+        ActionPlugin.ActionHandler(SMActions.STOP_SM_POLICY_ACTION_TYPE, TransportStopSMAction::class.java),
+        ActionPlugin.ActionHandler(SMActions.EXPLAIN_SM_POLICY_ACTION_TYPE, TransportExplainSMAction::class.java),
+        ActionPlugin.ActionHandler(SMActions.GET_SM_POLICIES_ACTION_TYPE, TransportGetSMPoliciesAction::class.java),
+        ActionPlugin.ActionHandler(IndexLRONConfigAction.INSTANCE, TransportIndexLRONConfigAction::class.java),
+        ActionPlugin.ActionHandler(GetLRONConfigAction.INSTANCE, TransportGetLRONConfigAction::class.java),
+        ActionPlugin.ActionHandler(DeleteLRONConfigAction.INSTANCE, TransportDeleteLRONConfigAction::class.java),
+    )
 
-    override fun getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry, threadContext: ThreadContext): List<TransportInterceptor> {
-        return listOf(rollupInterceptor)
-    }
+    override fun getTransportInterceptors(
+        namedWriteableRegistry: NamedWriteableRegistry,
+        threadContext: ThreadContext,
+    ): List<TransportInterceptor> = listOf(rollupInterceptor)
 
-    override fun getActionFilters(): List<ActionFilter> {
-        return listOf(fieldCapsFilter, indexOperationActionFilter)
-    }
+    override fun getActionFilters(): List<ActionFilter> = listOf(fieldCapsFilter, indexOperationActionFilter)
 
-    override fun getSystemIndexDescriptors(settings: Settings): Collection<SystemIndexDescriptor> {
-        return listOf(
-            SystemIndexDescriptor(
-                INDEX_MANAGEMENT_INDEX,
-                "Index for storing index management configuration and metadata.",
-            ),
-            SystemIndexDescriptor(
-                CONTROL_CENTER_INDEX,
-                "Index for storing notification policy of long running index operations.",
-            ),
-        )
-    }
+    override fun getSystemIndexDescriptors(settings: Settings): Collection<SystemIndexDescriptor> = listOf(
+        SystemIndexDescriptor(
+            INDEX_MANAGEMENT_INDEX,
+            "Index for storing index management configuration and metadata.",
+        ),
+        SystemIndexDescriptor(
+            CONTROL_CENTER_INDEX,
+            "Index for storing notification policy of long running index operations.",
+        ),
+        SystemIndexDescriptor(
+            HISTORY_ALL,
+            "Index for history for index management operations.",
+        ),
+    )
 }
 
 class GuiceHolder
@@ -644,9 +644,7 @@ constructor(
 ) : LifecycleComponent {
     override fun close() { /* do nothing */ }
 
-    override fun lifecycleState(): Lifecycle.State? {
-        return null
-    }
+    override fun lifecycleState(): Lifecycle.State? = null
 
     override fun addLifecycleListener(listener: LifecycleListener) { /* do nothing */ }
 
