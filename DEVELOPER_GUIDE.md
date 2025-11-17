@@ -5,6 +5,8 @@
     - [Setup](#setup)  
     - [Build](#build)
         - [Building from the command line](#building-from-the-command-line)
+        - [Code Coverage](#code-coverage)
+        - [Security Behavior Tests](#security-behavior-tests)
         - [Debugging](#debugging)
     - [Using IntelliJ IDEA](#using-intellij-idea)
     - [Submitting Changes](#submitting-changes)
@@ -60,8 +62,94 @@ However, to build the `index management` plugin project, we also use the OpenSea
 10. `./gradlew indexmanagementBwcCluster#fullRestartClusterTask -Dtests.security.manager=false` launches a cluster with three nodes of bwc version of OpenSearch with index management and tests backwards compatibility by performing a full restart on the cluster upgrading all the nodes with the current version of OpenSearch with index management.
 11. `./gradlew bwcTestSuite -Dtests.security.manager=false` runs all the above bwc tests combined.
 12. `./gradlew integTestRemote -Dtests.rest.cluster=localhost:9200 -Dtests.cluster=localhost:9200 -Dtests.clustername="docker-cluster" -Dhttps=true -Duser=admin -Dpassword=admin` launches integration tests against a local cluster and run tests with security
+13. `./gradlew integTest -Dsecurity=true -Dhttps=true --tests '*SecurityBehaviorIT'` runs all security behavior tests with security enabled
 
 When launching a cluster using one of the above commands, logs are placed in `build/testclusters/integTest-0/logs`. Though the logs are teed to the console, in practices it's best to check the actual log file.
+
+### Code Coverage
+
+The project supports generating code coverage reports using JaCoCo.
+
+#### Generating Coverage Reports
+
+To generate code coverage reports
+
+```bash
+./gradlew check -Dtests.coverage=true
+```
+
+Or run any tests, and generate test report
+
+```bash
+./gradlew test
+./gradlew jacocoTestReport
+```
+
+#### Coverage Report Locations
+
+After running with coverage enabled, reports are generated in:
+- **HTML Report**: `build/reports/jacoco/test/html/index.html` (human readable)
+- **XML Report**: `build/reports/jacoco/test/jacocoTestReport.xml` (for tools like Codecov)
+
+### Security Behavior Tests
+
+Security behavior tests ensure that the Index Management plugin properly enforces access controls and permissions. These tests validate that users can only perform operations they are authorized for and receive appropriate error responses when access is denied.
+
+#### Overview
+
+Security behavior tests extend the `SecurityRestTestCase` base class and test various permission scenarios:
+- API endpoint permission enforcement
+- Policy based authentication and authorization
+
+#### Running Security Tests
+
+Security tests require additional flags and must be run against a cluster with security enabled:
+
+```bash
+# Run all security behavior tests
+./gradlew integTest -Dsecurity=true -Dhttps=true --tests '*SecurityBehaviorIT'
+
+# Run a specific security test class
+./gradlew integTest -Dsecurity=true -Dhttps=true --tests '*PolicySecurityBehaviorIT'
+
+# Run security tests against a remote cluster with authentication
+./gradlew integTestRemote -Dtests.rest.cluster=localhost:9200 -Dtests.cluster=localhost:9200 -Dtests.clustername="docker-cluster" -Dhttps=true -Duser=admin -Dpassword=admin
+```
+
+#### Writing New Security Tests
+
+When adding new security tests, follow these guidelines:
+
+1. **Extend SecurityRestTestCase**: All security tests should extend this base class
+2. **Test both success and failure scenarios**: Verify authorized access works and unauthorized access is properly denied
+3. **Use appropriate HTTP status codes**: Expect 401 (Unauthorized) or 403 (Forbidden) for denied access
+4. **Test role-based permissions**: Create users with specific roles and test their access levels
+5. **Include cleanup**: Ensure users and roles created during tests are properly cleaned up
+
+Example test structure:
+```kotlin
+@TestLogging("level:DEBUG", reason = "Debug for tests.")
+class MyFeatureSecurityBehaviorIT : SecurityRestTestCase() {
+    
+    @Before
+    fun setupUsersAndRoles() {
+        // Create test users and roles
+    }
+    
+    @After  
+    fun cleanup() {
+        // Clean up test users and roles
+    }
+    
+    fun testAuthorizedAccess() {
+        // Test that authorized users can perform operations
+    }
+    
+    fun testUnauthorizedAccess() {
+        // Test that unauthorized users receive proper error responses
+    }
+}
+```
 
 ### Debugging
 

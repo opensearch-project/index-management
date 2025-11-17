@@ -38,9 +38,14 @@ object DeletionFinishedState : State {
                 return@let
             }
 
+            var snapshotPattern = job.policyName + "*"
+
+            if (job.deletion?.snapshotPattern != null) {
+                snapshotPattern += "," + job.deletion.snapshotPattern
+            }
             val getSnapshotsRes =
                 client.getSnapshots(
-                    job, "${job.policyName}*", metadataBuilder, log,
+                    job, snapshotPattern, metadataBuilder, log,
                     getSnapshotMissingMessageInDeletionWorkflow(),
                     getSnapshotExceptionInDeletionWorkflow(snapshotsStartedDeletion),
                 )
@@ -48,9 +53,9 @@ object DeletionFinishedState : State {
             if (getSnapshotsRes.failed) {
                 return SMResult.Fail(metadataBuilder, WorkflowType.DELETION)
             }
-            val getSnapshots = getSnapshotsRes.snapshots
+            val snapshots = getSnapshotsRes.snapshots.distinctBy { it.snapshotId().name }
 
-            val existingSnapshotsNameSet = getSnapshots.map { it.snapshotId().name }.toSet()
+            val existingSnapshotsNameSet = snapshots.map { it.snapshotId().name }.toSet()
             val remainingSnapshotsName = existingSnapshotsNameSet intersect snapshotsStartedDeletion.toSet()
             if (remainingSnapshotsName.isEmpty()) {
                 val deletionMessage = "Snapshot(s) $snapshotsStartedDeletion deletion has finished."

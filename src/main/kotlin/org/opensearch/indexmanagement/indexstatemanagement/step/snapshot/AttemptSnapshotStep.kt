@@ -69,6 +69,7 @@ class AttemptSnapshotStep(private val action: SnapshotAction) : Step(name) {
                 CreateSnapshotRequest()
                     .userMetadata(mapOf("snapshot_created" to "Open Distro for Elasticsearch Index Management"))
                     .indices(indexName)
+                    .includeGlobalState(false)
                     .snapshot(snapshotName)
                     .repository(repository)
                     .waitForCompletion(false)

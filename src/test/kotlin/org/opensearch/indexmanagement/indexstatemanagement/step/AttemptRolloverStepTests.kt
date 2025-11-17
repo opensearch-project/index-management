@@ -49,7 +49,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
     private val clusterService: ClusterService = mock()
     private val scriptService: ScriptService = mock()
     private val settings: Settings = Settings.EMPTY
-    private val lockService: LockService = LockService(mock(), clusterService)
+    private val lockService: LockService = mock()
     private val oldIndexName = "old_index"
     private val newIndexName = "new_index"
     val alias = "alias"

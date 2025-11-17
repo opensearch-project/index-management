@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.snapshotmanagement.model
 
+import org.opensearch.Version
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.commons.authuser.User
 import org.opensearch.core.common.io.stream.StreamInput
@@ -41,7 +42,7 @@ data class SMPolicy(
     val id: String,
     val description: String? = null,
     val schemaVersion: Long,
-    val creation: Creation,
+    val creation: Creation?,
     val deletion: Deletion?,
     val snapshotConfig: Map<String, Any>,
     val jobEnabled: Boolean,
@@ -55,10 +56,13 @@ data class SMPolicy(
 ) : ScheduledJobParameter,
     Writeable {
     init {
+        require(creation != null || deletion != null) {
+            "Must provide either creation or deletion configuration."
+        }
         require(snapshotConfig["repository"] != null && snapshotConfig["repository"] != "") {
             "Must provide the repository in snapshot config."
         }
-        require(creation.schedule.getNextExecutionTime(now()) != null) {
+        require(creation == null || creation.schedule.getNextExecutionTime(now()) != null) {
             "Next execution time from the creation schedule is null, please provide a valid cron expression."
         }
         require(deletion == null || (deletion.schedule.getNextExecutionTime(now()) != null)) {
@@ -90,7 +94,7 @@ data class SMPolicy(
         builder.field(NAME_FIELD, smDocIdToPolicyName(id)) // for searching policy by name
             .optionalField(DESCRIPTION_FIELD, description)
             .field(SCHEMA_VERSION_FIELD, schemaVersion)
-            .field(CREATION_FIELD, creation)
+            .optionalField(CREATION_FIELD, creation)
             .optionalField(DELETION_FIELD, deletion)
             .field(SNAPSHOT_CONFIG_FIELD, snapshotConfig)
             .field(SCHEDULE_FIELD, jobSchedule)
@@ -180,9 +184,11 @@ data class SMPolicy(
                 schedule = IntervalSchedule(now(), 1, ChronoUnit.MINUTES)
             }
 
-            require(creation != null) { "Must provide the creation configuration." }
-            // If user doesn't provide delete schedule, use the creation schedule
+            // If user doesn't provide delete schedule, use the creation schedule if available
             if (deletion != null && !deletion.scheduleProvided) {
+                if (creation == null) {
+                    throw IllegalArgumentException("Schedule not provided for neither deletion policy nor creation policy")
+                }
                 deletion =
                     deletion.copy(
                         schedule = creation.schedule,
@@ -219,7 +225,12 @@ data class SMPolicy(
     constructor(sin: StreamInput) : this(
         description = sin.readOptionalString(),
         schemaVersion = sin.readLong(),
-        creation = Creation(sin),
+        creation = if (sin.version.onOrAfter(Version.V_3_3_0)) {
+            sin.readOptionalWriteable { Creation(it) }
+        } else {
+            // Before V_3_3_0, creation was always required
+            Creation(sin)
+        },
         deletion = sin.readOptionalWriteable { Deletion(it) },
         snapshotConfig = sin.readMap() as Map<String, Any>,
         jobLastUpdateTime = sin.readInstant(),
@@ -236,7 +247,12 @@ data class SMPolicy(
     override fun writeTo(out: StreamOutput) {
         out.writeOptionalString(description)
         out.writeLong(schemaVersion)
-        creation.writeTo(out)
+        if (out.version.onOrAfter(Version.V_3_3_0)) {
+            out.writeOptionalWriteable(creation)
+        } else {
+            // Before V_3_3_0, creation was always required
+            creation?.writeTo(out) ?: error("Creation cannot be null for versions before V_3_3_0")
+        }
         out.writeOptionalWriteable(deletion)
         out.writeMap(snapshotConfig)
         out.writeInstant(jobLastUpdateTime)
@@ -301,22 +317,26 @@ data class SMPolicy(
         val scheduleProvided: Boolean = true,
         val condition: DeleteCondition,
         val timeLimit: TimeValue? = null,
+        val snapshotPattern: String? = null,
     ) : Writeable,
         ToXContent {
         override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder.startObject()
             .field(SCHEDULE_FIELD, schedule)
             .field(CONDITION_FIELD, condition)
             .optionalField(TIME_LIMIT_FIELD, timeLimit)
+            .optionalField(SNAPSHOT_PATTERN_FIELD, snapshotPattern)
             .endObject()
 
         companion object {
             const val SCHEDULE_FIELD = "schedule"
             const val CONDITION_FIELD = "condition"
+            const val SNAPSHOT_PATTERN_FIELD = "snapshot_pattern"
 
             fun parse(xcp: XContentParser): Deletion {
                 var schedule: Schedule? = null
                 var timeLimit: TimeValue? = null
                 var condition: DeleteCondition? = null
+                var snapshotPattern: String? = null
                 var scheduleProvided = true
 
                 ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
@@ -328,6 +348,7 @@ data class SMPolicy(
                         SCHEDULE_FIELD -> schedule = ScheduleParser.parse(xcp)
                         TIME_LIMIT_FIELD -> timeLimit = TimeValue.parseTimeValue(xcp.text(), TIME_LIMIT_FIELD)
                         CONDITION_FIELD -> condition = DeleteCondition.parse(xcp)
+                        SNAPSHOT_PATTERN_FIELD -> snapshotPattern = xcp.text()
                     }
                 }
 
@@ -342,6 +363,7 @@ data class SMPolicy(
                     scheduleProvided = scheduleProvided,
                     timeLimit = timeLimit,
                     condition = requireNotNull(condition) { "$CONDITION_FIELD must not be null." },
+                    snapshotPattern = snapshotPattern,
                 )
             }
         }
@@ -350,12 +372,16 @@ data class SMPolicy(
             schedule = CronSchedule(sin),
             timeLimit = sin.readOptionalTimeValue(),
             condition = DeleteCondition(sin),
+            snapshotPattern = if (sin.version.onOrAfter(Version.V_3_3_0)) sin.readOptionalString() else null,
         )
 
         override fun writeTo(out: StreamOutput) {
             schedule.writeTo(out)
             out.writeOptionalTimeValue(timeLimit)
             condition.writeTo(out)
+            if (out.version.onOrAfter(Version.V_3_3_0)) {
+                out.writeOptionalString(snapshotPattern)
+            }
         }
     }
 

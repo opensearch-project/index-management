@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.indexmanagement.controlcenter.notification
+package org.opensearch.indexmanagement.security
 
 import org.junit.After
 import org.junit.Before
@@ -15,7 +15,12 @@ import org.opensearch.indexmanagement.DELETE_LRON_CONFIG
 import org.opensearch.indexmanagement.GET_LRON_CONFIG
 import org.opensearch.indexmanagement.INDEX_LRON_CONFIG
 import org.opensearch.indexmanagement.IndexManagementPlugin
-import org.opensearch.indexmanagement.SecurityRestTestCase
+import org.opensearch.indexmanagement.controlcenter.notification.getResourceURI
+import org.opensearch.indexmanagement.controlcenter.notification.initNodeIdsInRestIT
+import org.opensearch.indexmanagement.controlcenter.notification.nodeIdsInRestIT
+import org.opensearch.indexmanagement.controlcenter.notification.randomLRONConfig
+import org.opensearch.indexmanagement.controlcenter.notification.randomTaskId
+import org.opensearch.indexmanagement.controlcenter.notification.toJsonString
 
 @Suppress("UNCHECKED_CAST")
 class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
@@ -65,12 +70,12 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
         testUserClient?.close()
         deleteUser(testUser)
         deleteRole(testRole)
-        deleteIndexByName(IndexManagementPlugin.CONTROL_CENTER_INDEX)
+        deleteIndexByName(IndexManagementPlugin.Companion.CONTROL_CENTER_INDEX)
     }
 
     fun `test index LRONConfig with security using POST`() {
         // super user
-        val request = Request("POST", IndexManagementPlugin.LRON_BASE_URI)
+        val request = Request("POST", IndexManagementPlugin.Companion.LRON_BASE_URI)
         request.setJsonEntity(randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random())).toJsonString())
         executeRequest(request, RestStatus.OK, superUserClient!!)
         // test user
@@ -88,7 +93,7 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
 
     fun `test index LRONConfig dry run with security using POST`() {
         // super user
-        val request = Request("POST", IndexManagementPlugin.LRON_BASE_URI)
+        val request = Request("POST", IndexManagementPlugin.Companion.LRON_BASE_URI)
         request.addParameter("dry_run", "true")
         request.setJsonEntity(randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random())).toJsonString())
         executeRequest(request, RestStatus.OK, superUserClient!!)
@@ -107,7 +112,7 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
     fun `test update LRONConfig with security using PUT`() {
         // super user
         val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
-        val createRequest = Request("POST", IndexManagementPlugin.LRON_BASE_URI)
+        val createRequest = Request("POST", IndexManagementPlugin.Companion.LRON_BASE_URI)
         createRequest.setJsonEntity(lronConfig.toJsonString())
         executeRequest(createRequest, RestStatus.OK, superUserClient!!)
         val updateRequest = Request("PUT", getResourceURI(lronConfig.taskId, lronConfig.actionName))
@@ -129,7 +134,7 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
     fun `test delete LRONConfig with security`() {
         // super user
         val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
-        val createRequest = Request("POST", IndexManagementPlugin.LRON_BASE_URI)
+        val createRequest = Request("POST", IndexManagementPlugin.Companion.LRON_BASE_URI)
         createRequest.setJsonEntity(lronConfig.toJsonString())
         executeRequest(createRequest, RestStatus.OK, superUserClient!!)
         val deleteRequest = Request("DELETE", getResourceURI(lronConfig.taskId, lronConfig.actionName))
@@ -151,7 +156,7 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
     fun `test get LRONConfig with security`() {
         // super user
         val lronConfig = randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random()))
-        val createRequest = Request("POST", IndexManagementPlugin.LRON_BASE_URI)
+        val createRequest = Request("POST", IndexManagementPlugin.Companion.LRON_BASE_URI)
         createRequest.setJsonEntity(lronConfig.toJsonString())
         executeRequest(createRequest, RestStatus.OK, superUserClient!!)
         val getRequest = Request("GET", getResourceURI(lronConfig.taskId, lronConfig.actionName))
@@ -171,13 +176,13 @@ class LRONConfigSecurityBehaviorIT : SecurityRestTestCase() {
 
     fun `test get LRONConfigs with security`() {
         // super user
-        val createRequest = Request("POST", IndexManagementPlugin.LRON_BASE_URI)
+        val createRequest = Request("POST", IndexManagementPlugin.Companion.LRON_BASE_URI)
         randomList(1, 15) {
             createRequest.setJsonEntity(randomLRONConfig(taskId = randomTaskId(nodeId = nodeIdsInRestIT.random())).toJsonString())
             executeRequest(createRequest, RestStatus.OK, superUserClient!!).asMap()
         }
 
-        val getRequest = Request("GET", IndexManagementPlugin.LRON_BASE_URI)
+        val getRequest = Request("GET", IndexManagementPlugin.Companion.LRON_BASE_URI)
         executeRequest(getRequest, RestStatus.OK, superUserClient!!)
 
         // test user
