@@ -60,13 +60,14 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.util.IndexManagementException
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.indexmanagement.util.NO_ID
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import org.opensearch.transport.client.node.NodeClient
+import org.opensearch.transport.client.Client
 import java.lang.IllegalArgumentException
 
 private val log = LogManager.getLogger(TransportChangePolicyAction::class.java)
@@ -75,7 +76,7 @@ private val log = LogManager.getLogger(TransportChangePolicyAction::class.java)
 class TransportChangePolicyAction
 @Inject
 constructor(
-    val client: NodeClient,
+    val client: PluginClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
@@ -98,7 +99,7 @@ constructor(
     }
 
     inner class ChangePolicyHandler(
-        private val client: NodeClient,
+        private val client: Client,
         private val actionListener: ActionListener<ISMStatusResponse>,
         private val request: ChangePolicyRequest,
         private val user: User? = buildUser(client.threadPool().threadContext),
@@ -156,12 +157,10 @@ constructor(
         private fun getPolicy() {
             val getRequest = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, changePolicy.policyID)
 
-            client.threadPool().threadContext.stashContext().use {
-                if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
-                    return
-                }
-                client.get(getRequest, ActionListener.wrap(::onGetPolicyResponse, ::onFailure))
+            if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
+                return
             }
+            client.get(getRequest, ActionListener.wrap(::onGetPolicyResponse, ::onFailure))
         }
 
         @Suppress("ReturnCount")

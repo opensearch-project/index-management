@@ -26,15 +26,16 @@ import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigRespo
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.controlcenter.notification.util.getLRONConfigAndParse
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import org.opensearch.transport.client.node.NodeClient
+import org.opensearch.transport.client.Client
 
 class TransportGetLRONConfigAction
 @Inject
 constructor(
-    val client: NodeClient,
+    val client: PluginClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
@@ -48,7 +49,7 @@ constructor(
     }
 
     inner class GetLRONConfigHandler(
-        private val client: NodeClient,
+        private val client: Client,
         private val actionListener: ActionListener<GetLRONConfigResponse>,
         private val request: GetLRONConfigRequest,
     ) {
@@ -58,25 +59,23 @@ constructor(
                     ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
                 )}",
             )
-            client.threadPool().threadContext.stashContext().use {
-                if (null != request.docId) {
-                    getLRONConfigAndParse(
-                        client,
-                        request.docId,
-                        xContentRegistry,
-                        object : ActionListener<LRONConfigResponse> {
-                            override fun onResponse(response: LRONConfigResponse) {
-                                actionListener.onResponse(GetLRONConfigResponse(listOf(response), 1))
-                            }
+            if (null != request.docId) {
+                getLRONConfigAndParse(
+                    client,
+                    request.docId,
+                    xContentRegistry,
+                    object : ActionListener<LRONConfigResponse> {
+                        override fun onResponse(response: LRONConfigResponse) {
+                            actionListener.onResponse(GetLRONConfigResponse(listOf(response), 1))
+                        }
 
-                            override fun onFailure(e: Exception) {
-                                actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
-                            }
-                        },
-                    )
-                } else {
-                    doSearch()
-                }
+                        override fun onFailure(e: Exception) {
+                            actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+                        }
+                    },
+                )
+            } else {
+                doSearch()
             }
         }
 

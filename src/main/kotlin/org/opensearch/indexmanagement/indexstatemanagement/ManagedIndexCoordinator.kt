@@ -83,6 +83,7 @@ import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.util.OpenForTesting
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.threadpool.Scheduler
 import org.opensearch.threadpool.ThreadPool
@@ -107,7 +108,7 @@ import org.opensearch.transport.client.Client
 @OpenForTesting
 class ManagedIndexCoordinator(
     private val settings: Settings,
-    private val client: Client,
+    private val client: PluginClient,
     private val clusterService: ClusterService,
     private val threadPool: ThreadPool,
     indexManagementIndices: IndexManagementIndices,
@@ -442,6 +443,7 @@ class ManagedIndexCoordinator(
         if (policy.user != null) {
             try {
                 val request = ManagedIndexRequest().indices(indexName)
+                // TODO Do we need to continue to support injected user?
                 withClosableContext(IndexManagementSecurityContext("ApplyPolicyOnIndexCreation", settings, threadPool.threadContext, policy.user)) {
                     client.suspendUntil<Client, AcknowledgedResponse> { execute(ManagedIndexAction.INSTANCE, request, it) }
                 }

@@ -24,6 +24,7 @@ import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.IndicesOptions
+import org.opensearch.action.support.WriteRequest
 import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.block.ClusterBlockException
 import org.opensearch.cluster.service.ClusterService
@@ -62,6 +63,7 @@ import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermis
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
+import org.opensearch.transport.client.Client
 import org.opensearch.transport.client.node.NodeClient
 import java.time.Duration
 import java.time.Instant
@@ -106,7 +108,7 @@ constructor(
 
     @Suppress("TooManyFunctions")
     inner class AddPolicyHandler(
-        private val client: NodeClient,
+        private val client: Client,
         private val actionListener: ActionListener<ISMStatusResponse>,
         private val request: AddPolicyRequest,
         private val user: User? = buildUser(client.threadPool().threadContext),
@@ -218,12 +220,10 @@ constructor(
         private fun getPolicy() {
             val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.policyID)
 
-            client.threadPool().threadContext.stashContext().use {
-                if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
-                    return
-                }
-                client.get(getRequest, ActionListener.wrap(::onGetPolicyResponse, ::onFailure))
+            if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
+                return
             }
+            client.get(getRequest, ActionListener.wrap(::onGetPolicyResponse, ::onFailure))
         }
 
         private fun onGetPolicyResponse(response: GetResponse) {
@@ -329,6 +329,8 @@ constructor(
                     )
                 }
 
+                bulkReq.refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
+
                 client.bulk(
                     bulkReq,
                     object : ActionListener<BulkResponse> {
@@ -375,6 +377,7 @@ constructor(
         fun removeMetadatas(indices: List<Index>) {
             val request = indices.map { deleteManagedIndexMetadataRequest(it.uuid) }
             val bulkReq = BulkRequest().add(request)
+            bulkReq.refreshPolicy = WriteRequest.RefreshPolicy.IMMEDIATE
             client.bulk(
                 bulkReq,
                 object : ActionListener<BulkResponse> {

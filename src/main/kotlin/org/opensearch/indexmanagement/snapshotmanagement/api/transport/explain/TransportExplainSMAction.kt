@@ -38,6 +38,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companio
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy.Companion.NAME_FIELD
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
 import org.opensearch.indexmanagement.snapshotmanagement.smMetadataDocIdToPolicyName
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.subphase.FetchSourceContext
@@ -52,8 +53,9 @@ constructor(
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
+    pluginClient: PluginClient,
 ) : BaseTransportAction<ExplainSMPolicyRequest, ExplainSMPolicyResponse>(
-    SMActions.EXPLAIN_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::ExplainSMPolicyRequest,
+    SMActions.EXPLAIN_SM_POLICY_ACTION_NAME, transportService, client, actionFilters, ::ExplainSMPolicyRequest, pluginClient,
 ) {
     private val log = LogManager.getLogger(javaClass)
 
@@ -83,7 +85,7 @@ constructor(
         val searchRequest = getPolicyEnabledSearchRequest(policyNames, user)
         val searchResponse: SearchResponse =
             try {
-                client.suspendUntil { search(searchRequest, it) }
+                pluginClient.suspendUntil { search(searchRequest, it) }
             } catch (e: IndexNotFoundException) {
                 throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
             } catch (e: Exception) {
@@ -138,7 +140,7 @@ constructor(
         val searchRequest = getSMMetadataSearchRequest(policyNames)
         val searchResponse: SearchResponse =
             try {
-                client.suspendUntil { search(searchRequest, it) }
+                pluginClient.suspendUntil { search(searchRequest, it) }
             } catch (e: IndexNotFoundException) {
                 throw OpenSearchStatusException("Snapshot management config index not found", RestStatus.NOT_FOUND)
             }

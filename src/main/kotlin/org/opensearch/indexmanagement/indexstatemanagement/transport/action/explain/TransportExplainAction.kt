@@ -55,6 +55,7 @@ import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ValidationResult
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.search.SearchHit
 import org.opensearch.search.builder.SearchSourceBuilder
@@ -73,7 +74,7 @@ typealias ManagedIndexConfigDocUUID = String
 typealias ManagedIndexMetadataDocUUID = String // managedIndexMetadataID(indexUuid) -> <indexUuid>#metadata
 typealias ManagedIndexMetadataMap = Map<String, String?>
 
-@Suppress("SpreadOperator", "TooManyFunctions", "UnusedPrivateMember")
+@Suppress("SpreadOperator", "TooManyFunctions", "UnusedPrivateMember", "LongParameterList")
 class TransportExplainAction
 @Inject
 constructor(
@@ -83,6 +84,7 @@ constructor(
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
     val indexMetadataProvider: IndexMetadataProvider,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<ExplainRequest, ExplainResponse>(
     ExplainAction.NAME, transportService, actionFilters, ::ExplainRequest,
 ) {
@@ -184,80 +186,79 @@ constructor(
         }
 
         private fun searchForMetadata(searchRequest: SearchRequest) {
-            client.threadPool().threadContext.stashContext().use { threadContext ->
-                client.search(
-                    searchRequest,
-                    object : ActionListener<SearchResponse> {
-                        override fun onResponse(response: SearchResponse) {
-                            val totalHits = response.hits.totalHits
-                            if (totalHits != null) {
-                                totalManagedIndices = totalHits.value.toInt()
-                            }
-
-                            parseSearchHits(response.hits.hits).forEach { managedIndex ->
-                                managedIndices.add(managedIndex.index)
-                                enabledState[managedIndex.index] = managedIndex.enabled
-                                managedIndicesMetaDataMap[managedIndex.index] =
-                                    mapOf(
-                                        "index" to managedIndex.index,
-                                        "index_uuid" to managedIndex.indexUuid,
-                                        "policy_id" to managedIndex.policyID,
-                                        "enabled" to managedIndex.enabled.toString(),
-                                    )
-                                if (showPolicy) {
-                                    managedIndex.policy.let { appliedPolicies[managedIndex.index] = it }
-                                }
-                                if (validateAction) {
-                                    managedIndex.policy.let { policiesforValidation[managedIndex.index] = it }
-                                }
-                            }
-
-                            // explain all only return managed indices
-                            if (explainAll) {
-                                if (managedIndices.size == 0) {
-                                    // edge case: if specify query param pagination size to be 0
-                                    // we still show total managed indices
-                                    indexNames.clear()
-                                    sendResponse(
-                                        indexNames, indexMetadatas, indexPolicyIDs, enabledState,
-                                        totalManagedIndices, appliedPolicies, validationResults,
-                                    )
-                                    return
-                                } else {
-                                    // Clear and add the managedIndices from the response to preserve the sort order and size
-                                    indexNames.clear()
-                                    indexNames.addAll(managedIndices)
-                                    // Remove entries in case they were limited due to request size
-                                    indexNamesToUUIDs.filterKeys { indexNames.contains(it) }
-                                    getMetadata(indexNames, threadContext)
-                                    return
-                                }
-                            }
-
-                            // explain/{index} return results for all indices
-                            getMetadata(indexNames, threadContext)
+            val threadContext = client.threadPool().threadContext.newStoredContext(true)
+            pluginClient.search(
+                searchRequest,
+                object : ActionListener<SearchResponse> {
+                    override fun onResponse(response: SearchResponse) {
+                        val totalHits = response.hits.totalHits
+                        if (totalHits != null) {
+                            totalManagedIndices = totalHits.value.toInt()
                         }
 
-                        override fun onFailure(t: Exception) {
-                            if (t is IndexNotFoundException) {
-                                // config index hasn't been initialized
-                                // show all requested indices not managed
-                                if (!explainAll) {
-                                    getMetadata(indexNames, threadContext)
-                                    return
-                                }
+                        parseSearchHits(response.hits.hits).forEach { managedIndex ->
+                            managedIndices.add(managedIndex.index)
+                            enabledState[managedIndex.index] = managedIndex.enabled
+                            managedIndicesMetaDataMap[managedIndex.index] =
+                                mapOf(
+                                    "index" to managedIndex.index,
+                                    "index_uuid" to managedIndex.indexUuid,
+                                    "policy_id" to managedIndex.policyID,
+                                    "enabled" to managedIndex.enabled.toString(),
+                                )
+                            if (showPolicy) {
+                                managedIndex.policy.let { appliedPolicies[managedIndex.index] = it }
+                            }
+                            if (validateAction) {
+                                managedIndex.policy.let { policiesforValidation[managedIndex.index] = it }
+                            }
+                        }
+
+                        // explain all only return managed indices
+                        if (explainAll) {
+                            if (managedIndices.size == 0) {
+                                // edge case: if specify query param pagination size to be 0
+                                // we still show total managed indices
                                 indexNames.clear()
                                 sendResponse(
-                                    indexNames, indexMetadatas, indexPolicyIDs,
-                                    enabledState, totalManagedIndices, appliedPolicies, validationResults,
+                                    indexNames, indexMetadatas, indexPolicyIDs, enabledState,
+                                    totalManagedIndices, appliedPolicies, validationResults,
                                 )
                                 return
+                            } else {
+                                // Clear and add the managedIndices from the response to preserve the sort order and size
+                                indexNames.clear()
+                                indexNames.addAll(managedIndices)
+                                // Remove entries in case they were limited due to request size
+                                indexNamesToUUIDs.filterKeys { indexNames.contains(it) }
+                                getMetadata(indexNames, threadContext)
+                                return
                             }
-                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                         }
-                    },
-                )
-            }
+
+                        // explain/{index} return results for all indices
+                        getMetadata(indexNames, threadContext)
+                    }
+
+                    override fun onFailure(t: Exception) {
+                        if (t is IndexNotFoundException) {
+                            // config index hasn't been initialized
+                            // show all requested indices not managed
+                            if (!explainAll) {
+                                getMetadata(indexNames, threadContext)
+                                return
+                            }
+                            indexNames.clear()
+                            sendResponse(
+                                indexNames, indexMetadatas, indexPolicyIDs,
+                                enabledState, totalManagedIndices, appliedPolicies, validationResults,
+                            )
+                            return
+                        }
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                    }
+                },
+            )
         }
 
         @Suppress("SpreadOperator")
@@ -270,14 +271,13 @@ constructor(
                     .local(request.local)
                     .clusterManagerNodeTimeout(request.clusterManagerTimeout)
 
-                client.admin().cluster().state(
+                pluginClient.admin().cluster().state(
                     clusterStateRequest,
                     object : ActionListener<ClusterStateResponse> {
                         override fun onResponse(response: ClusterStateResponse) {
                             val clusterStateIndexMetadatas = response.state.metadata.indices
                             getMetadataMap(clusterStateIndexMetadatas, threadContext)
                         }
-
                         override fun onFailure(t: Exception) {
                             actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
                         }
@@ -293,7 +293,7 @@ constructor(
             indexNamesToUUIDs.values.forEach { uuid ->
                 mgetMetadataReq.add(MultiGetRequest.Item(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(uuid)).routing(uuid))
             }
-            client.multiGet(
+            pluginClient.multiGet(
                 mgetMetadataReq,
                 object : ActionListener<MultiGetResponse> {
                     override fun onResponse(response: MultiGetResponse) {
@@ -388,12 +388,11 @@ constructor(
             if (user == null || indexNames.isEmpty()) {
                 sendResponse(indexNames, indexMetadatas, indexPolicyIDs, enabledState, totalManagedIndices, appliedPolicies, validationResults)
             } else {
-                filterAndSendResponse(threadContext)
+                filterAndSendResponse()
             }
         }
 
-        private fun filterAndSendResponse(threadContext: ThreadContext.StoredContext) {
-            threadContext.restore()
+        private fun filterAndSendResponse() {
             val filteredIndices = mutableListOf<String>()
             val filteredMetadata = mutableListOf<ManagedIndexMetaData?>()
             val filteredValidationResult = mutableListOf<ValidationResult?>()

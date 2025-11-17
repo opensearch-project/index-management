@@ -32,6 +32,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.api.transport.SMActions
 import org.opensearch.indexmanagement.snapshotmanagement.model.SMPolicy
 import org.opensearch.indexmanagement.snapshotmanagement.settings.SnapshotManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
 import org.opensearch.indexmanagement.snapshotmanagement.util.SM_POLICY_NAME_KEYWORD
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.transport.TransportService
@@ -45,8 +46,9 @@ constructor(
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
     val settings: Settings,
+    pluginClient: PluginClient,
 ) : BaseTransportAction<GetSMPoliciesRequest, GetSMPoliciesResponse>(
-    GET_SM_POLICIES_ACTION_NAME, transportService, client, actionFilters, ::GetSMPoliciesRequest,
+    GET_SM_POLICIES_ACTION_NAME, transportService, client, actionFilters, ::GetSMPoliciesRequest, pluginClient,
 ) {
     private val log = LogManager.getLogger(javaClass)
 
@@ -72,7 +74,7 @@ constructor(
     private suspend fun getAllPolicies(searchParams: SearchParams, user: User?): Pair<List<SMPolicy>, Long> {
         val searchRequest = getAllPoliciesRequest(searchParams, user)
         return try {
-            val searchResponse = client.suspendUntil { search(searchRequest, it) }
+            val searchResponse = pluginClient.suspendUntil { search(searchRequest, it) }
             parseGetAllPoliciesResponse(searchResponse)
         } catch (e: Exception) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception

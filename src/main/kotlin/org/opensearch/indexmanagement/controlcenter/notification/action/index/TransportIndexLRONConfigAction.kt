@@ -28,16 +28,17 @@ import org.opensearch.indexmanagement.controlcenter.notification.ControlCenterIn
 import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.controlcenter.notification.util.getDocID
 import org.opensearch.indexmanagement.controlcenter.notification.util.getPriority
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import org.opensearch.transport.client.node.NodeClient
+import org.opensearch.transport.client.Client
 
 @Suppress("LongParameterList")
 class TransportIndexLRONConfigAction
 @Inject
 constructor(
-    val client: NodeClient,
+    val client: PluginClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
@@ -53,7 +54,7 @@ constructor(
     }
 
     inner class IndexLRONConfigHandler(
-        private val client: NodeClient,
+        private val client: Client,
         private val actionListener: ActionListener<LRONConfigResponse>,
         private val request: IndexLRONConfigRequest,
         private val user: User? = SecurityUtils.buildUser(client.threadPool().threadContext),
@@ -65,16 +66,14 @@ constructor(
                     ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
                 )}",
             )
-            client.threadPool().threadContext.stashContext().use {
-                // we use dryRun to help check permission and do request validation
-                if (request.dryRun) {
-                    validate()
-                    return
-                }
-                controlCenterIndices.checkAndUpdateControlCenterIndex(
-                    ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure),
-                )
+            // we use dryRun to help check permission and do request validation
+            if (request.dryRun) {
+                validate()
+                return
             }
+            controlCenterIndices.checkAndUpdateControlCenterIndex(
+                ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure),
+            )
         }
 
         private fun onCreateMappingsResponse(response: AcknowledgedResponse) {

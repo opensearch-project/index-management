@@ -548,7 +548,7 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig1)
         updateManagedIndexConfigStartTime(managedIndexConfig2)
 
-        waitFor {
+        waitFor(timeout = Instant.ofEpochSecond(60)) {
             val filterPolicy =
                 ExplainFilter(
                     actionType = "delete",

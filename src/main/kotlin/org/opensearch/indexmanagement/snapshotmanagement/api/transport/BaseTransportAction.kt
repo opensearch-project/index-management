@@ -22,6 +22,7 @@ import org.opensearch.core.common.io.stream.Writeable
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.indexmanagement.util.IndexManagementException
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
@@ -33,6 +34,7 @@ abstract class BaseTransportAction<Request : ActionRequest, Response : ActionRes
     val client: Client,
     actionFilters: ActionFilters,
     requestReader: Writeable.Reader<Request>,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<Request, Response>(
     name, transportService, actionFilters, requestReader,
 ) {
@@ -51,9 +53,8 @@ abstract class BaseTransportAction<Request : ActionRequest, Response : ActionRes
         val user: User? = SecurityUtils.buildUser(client.threadPool().threadContext)
         coroutineScope.launch {
             try {
-                client.threadPool().threadContext.stashContext().use { threadContext ->
-                    listener.onResponse(executeRequest(request, user, threadContext))
-                }
+                val threadContext = pluginClient.threadPool().threadContext.newStoredContext(true)
+                listener.onResponse(executeRequest(request, user, threadContext))
             } catch (ex: IndexManagementException) {
                 listener.onFailure(ex)
             } catch (ex: VersionConflictEngineException) {

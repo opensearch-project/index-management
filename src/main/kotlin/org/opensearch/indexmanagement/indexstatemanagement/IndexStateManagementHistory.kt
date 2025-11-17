@@ -29,7 +29,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_HIDDEN
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_REPLICAS
 import org.opensearch.indexmanagement.indexstatemanagement.util.INDEX_NUMBER_OF_SHARDS
-import org.opensearch.indexmanagement.opensearchapi.OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
@@ -119,16 +118,8 @@ class IndexStateManagementHistory(
     }
 
     private fun rolloverAndDeleteHistoryIndex() {
-        val ctx = threadPool.threadContext.stashContext()
-        try {
-            if (threadPool.threadContext.getTransient<String?>(OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST) == null) {
-                threadPool.threadContext.putTransient(OPENDISTRO_SECURITY_PROTECTED_INDICES_CONF_REQUEST, "true")
-            }
-            if (historyEnabled) rolloverHistoryIndex()
-            deleteOldHistoryIndex()
-        } finally {
-            ctx.close()
-        }
+        if (historyEnabled) rolloverHistoryIndex()
+        deleteOldHistoryIndex()
     }
 
     private fun rolloverHistoryIndex() {

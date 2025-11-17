@@ -13,6 +13,7 @@ import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.action.support.WriteRequest.RefreshPolicy
 import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.action.update.UpdateResponse
@@ -33,6 +34,7 @@ import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.transform.model.TransformMetadata
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.tasks.Task
@@ -53,6 +55,7 @@ import java.time.Instant
  * The inverse (job: successful and metadata: fail) will end up with a disabled job and a metadata that potentially
  * says STARTED still which is wrong.
  */
+@Suppress("LongParameterList")
 class TransportStopTransformAction
 @Inject
 constructor(
@@ -62,6 +65,7 @@ constructor(
     val clusterService: ClusterService,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<StopTransformRequest, AcknowledgedResponse>(
     StopTransformAction.NAME, transportService, actionFilters, ::StopTransformRequest,
 ) {
@@ -84,41 +88,39 @@ constructor(
         )
         val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id)
         val user = buildUser(client.threadPool().threadContext)
-        client.threadPool().threadContext.stashContext().use {
-            client.get(
-                getRequest,
-                object : ActionListener<GetResponse> {
-                    @Suppress("ReturnCount")
-                    override fun onResponse(response: GetResponse) {
-                        if (!response.isExists) {
-                            actionListener.onFailure(OpenSearchStatusException("Transform not found", RestStatus.NOT_FOUND))
-                            return
-                        }
-
-                        val transform: Transform?
-                        try {
-                            transform = parseFromGetResponse(response, xContentRegistry, Transform.Companion::parse)
-                        } catch (e: IllegalArgumentException) {
-                            actionListener.onFailure(OpenSearchStatusException("Transform not found", RestStatus.NOT_FOUND))
-                            return
-                        }
-
-                        if (!userHasPermissionForResource(user, transform.user, filterByEnabled, "transform", transform.id, actionListener)) {
-                            return
-                        }
-                        if (transform.metadataId != null) {
-                            retrieveAndUpdateTransformMetadata(transform, request, actionListener)
-                        } else {
-                            updateTransformJob(transform, request, actionListener)
-                        }
+        pluginClient.get(
+            getRequest,
+            object : ActionListener<GetResponse> {
+                @Suppress("ReturnCount")
+                override fun onResponse(response: GetResponse) {
+                    if (!response.isExists) {
+                        actionListener.onFailure(OpenSearchStatusException("Transform not found", RestStatus.NOT_FOUND))
+                        return
                     }
 
-                    override fun onFailure(e: Exception) {
-                        actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+                    val transform: Transform?
+                    try {
+                        transform = parseFromGetResponse(response, xContentRegistry, Transform.Companion::parse)
+                    } catch (e: IllegalArgumentException) {
+                        actionListener.onFailure(OpenSearchStatusException("Transform not found", RestStatus.NOT_FOUND))
+                        return
                     }
-                },
-            )
-        }
+
+                    if (!userHasPermissionForResource(user, transform.user, filterByEnabled, "transform", transform.id, actionListener)) {
+                        return
+                    }
+                    if (transform.metadataId != null) {
+                        retrieveAndUpdateTransformMetadata(transform, request, actionListener)
+                    } else {
+                        updateTransformJob(transform, request, actionListener)
+                    }
+                }
+
+                override fun onFailure(e: Exception) {
+                    actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+                }
+            },
+        )
     }
 
     private fun retrieveAndUpdateTransformMetadata(
@@ -127,7 +129,7 @@ constructor(
         actionListener: ActionListener<AcknowledgedResponse>,
     ) {
         val req = GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, transform.metadataId).routing(transform.id)
-        client.get(
+        pluginClient.get(
             req,
             object : ActionListener<GetResponse> {
                 override fun onResponse(response: GetResponse) {
@@ -192,7 +194,8 @@ constructor(
                     ),
                 )
                 .routing(transform.id)
-        client.update(
+        updateRequest.refreshPolicy = RefreshPolicy.IMMEDIATE
+        pluginClient.update(
             updateRequest,
             object : ActionListener<UpdateResponse> {
                 override fun onResponse(response: UpdateResponse) {
@@ -213,6 +216,7 @@ constructor(
     private fun updateTransformJob(transform: Transform, request: StopTransformRequest, actionListener: ActionListener<AcknowledgedResponse>) {
         val now = Instant.now().toEpochMilli()
         val updateReq = UpdateRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.id)
+        updateReq.refreshPolicy = RefreshPolicy.IMMEDIATE
         updateReq.setIfSeqNo(transform.seqNo).setIfPrimaryTerm(transform.primaryTerm)
             .doc(
                 mapOf(
@@ -223,7 +227,7 @@ constructor(
                         ),
                 ),
             )
-        client.update(
+        pluginClient.update(
             updateReq,
             object : ActionListener<UpdateResponse> {
                 override fun onResponse(response: UpdateResponse) {

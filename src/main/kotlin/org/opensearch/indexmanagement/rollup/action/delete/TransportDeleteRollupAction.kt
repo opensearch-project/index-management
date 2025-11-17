@@ -26,6 +26,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.util.parseRollup
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.tasks.Task
@@ -33,7 +34,7 @@ import org.opensearch.transport.TransportService
 import org.opensearch.transport.client.Client
 import java.lang.Exception
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount", "LongParameterList")
 class TransportDeleteRollupAction
 @Inject
 constructor(
@@ -43,6 +44,7 @@ constructor(
     val settings: Settings,
     actionFilters: ActionFilters,
     val xContentRegistry: NamedXContentRegistry,
+    val pluginClient: PluginClient,
 ) : HandledTransportAction<DeleteRollupRequest, DeleteResponse>(
     DeleteRollupAction.NAME, transportService, actionFilters, ::DeleteRollupRequest,
 ) {
@@ -71,14 +73,12 @@ constructor(
                     ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT,
                 )}",
             )
-            client.threadPool().threadContext.stashContext().use {
-                getRollup()
-            }
+            getRollup()
         }
 
         private fun getRollup() {
             val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, request.id())
-            client.get(
+            pluginClient.get(
                 getRequest,
                 object : ActionListener<GetResponse> {
                     override fun onResponse(response: GetResponse) {
@@ -112,9 +112,7 @@ constructor(
             val deleteRequest =
                 DeleteRequest(INDEX_MANAGEMENT_INDEX, request.id())
                     .setRefreshPolicy(request.refreshPolicy)
-            client.threadPool().threadContext.stashContext().use {
-                client.delete(deleteRequest, actionListener)
-            }
+            pluginClient.delete(deleteRequest, actionListener)
         }
     }
 }

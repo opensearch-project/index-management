@@ -168,31 +168,30 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
                 DEFAULT_PAGINATION_SIZE, 0, DEFAULT_LRON_CONFIG_SORT_FIELD, SORT_ORDER_DESC, queryString,
             )
 
-        client.threadPool().threadContext.stashContext().use {
-            client.execute(
-                GetLRONConfigAction.INSTANCE,
-                GetLRONConfigRequest(searchParams = searchParam),
-                object : ActionListener<GetLRONConfigResponse> {
-                    override fun onResponse(lronConfigResponse: GetLRONConfigResponse) {
-                        launch {
-                            sendNotification(lronConfigResponse, taskId, action, result)
-                        }
+        // TODO verify this works
+        client.execute(
+            GetLRONConfigAction.INSTANCE,
+            GetLRONConfigRequest(searchParams = searchParam),
+            object : ActionListener<GetLRONConfigResponse> {
+                override fun onResponse(lronConfigResponse: GetLRONConfigResponse) {
+                    launch {
+                        sendNotification(lronConfigResponse, taskId, action, result)
                     }
+                }
 
-                    override fun onFailure(e: Exception) {
-                        if (e is IndexNotFoundException) {
-                            logger.debug(
-                                "No notification policy configured for task: {} action: {}",
-                                taskId.toString(),
-                                action,
-                            )
-                        } else {
-                            logger.error("Can't get notification policy for action: {}", action, e)
-                        }
+                override fun onFailure(e: Exception) {
+                    if (e is IndexNotFoundException) {
+                        logger.debug(
+                            "No notification policy configured for task: {} action: {}",
+                            taskId.toString(),
+                            action,
+                        )
+                    } else {
+                        logger.error("Can't get notification policy for action: {}", action, e)
                     }
-                },
-            )
-        }
+                }
+            },
+        )
     }
 
     @Suppress("NestedBlockDepth")

@@ -22,7 +22,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.controlcenter.notification.LRONConfigResponse
 import org.opensearch.indexmanagement.controlcenter.notification.model.LRONConfig
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
-import org.opensearch.transport.client.node.NodeClient
+import org.opensearch.transport.client.Client
 
 const val LRON_DOC_ID_PREFIX = "LRON:"
 
@@ -68,7 +68,7 @@ fun getDocID(taskId: TaskId? = null, actionName: String? = null): String {
 }
 
 fun getLRONConfigAndParse(
-    client: NodeClient,
+    client: Client,
     docId: String,
     xContentRegistry: NamedXContentRegistry,
     actionListener: ActionListener<LRONConfigResponse>,

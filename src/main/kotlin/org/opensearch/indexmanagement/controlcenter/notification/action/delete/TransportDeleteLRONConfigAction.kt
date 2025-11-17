@@ -15,16 +15,17 @@ import org.opensearch.common.inject.Inject
 import org.opensearch.commons.ConfigConstants
 import org.opensearch.core.action.ActionListener
 import org.opensearch.indexmanagement.IndexManagementPlugin
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import org.opensearch.transport.client.node.NodeClient
+import org.opensearch.transport.client.Client
 
 class TransportDeleteLRONConfigAction
 @Inject
 constructor(
-    val client: NodeClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
+    val client: PluginClient,
 ) : HandledTransportAction<DeleteLRONConfigRequest, DeleteResponse>(
     DeleteLRONConfigAction.NAME, transportService, actionFilters, ::DeleteLRONConfigRequest,
 ) {
@@ -35,7 +36,7 @@ constructor(
     }
 
     inner class DeleteLRONConfigHandler(
-        private val client: NodeClient,
+        private val client: Client,
         private val actionListener: ActionListener<DeleteResponse>,
         private val request: DeleteLRONConfigRequest,
         private val docId: String = request.docId,
@@ -49,13 +50,11 @@ constructor(
                 }",
             )
 
-            client.threadPool().threadContext.stashContext().use {
-                val deleteRequest =
-                    DeleteRequest(IndexManagementPlugin.CONTROL_CENTER_INDEX, docId)
-                        .setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE)
+            val deleteRequest =
+                DeleteRequest(IndexManagementPlugin.CONTROL_CENTER_INDEX, docId)
+                    .setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE)
 
-                client.delete(deleteRequest, actionListener)
-            }
+            client.delete(deleteRequest, actionListener)
         }
     }
 }

@@ -27,6 +27,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.transform.model.Transform
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.search.fetch.subphase.FetchSourceContext
@@ -34,7 +35,7 @@ import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
 import org.opensearch.transport.client.Client
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount", "LongParameterList")
 class TransportDeleteTransformsAction
 @Inject
 constructor(
@@ -43,6 +44,7 @@ constructor(
     val settings: Settings,
     val clusterService: ClusterService,
     val xContentRegistry: NamedXContentRegistry,
+    val pluginClient: PluginClient,
     actionFilters: ActionFilters,
 ) : HandledTransportAction<DeleteTransformsRequest, BulkResponse>(
     DeleteTransformsAction.NAME, transportService, actionFilters, ::DeleteTransformsRequest,
@@ -81,32 +83,30 @@ constructor(
                 getRequest.add(MultiGetRequest.Item(INDEX_MANAGEMENT_INDEX, id).fetchSourceContext(fetchSourceContext))
             }
 
-            client.threadPool().threadContext.stashContext().use {
-                client.multiGet(
-                    getRequest,
-                    object : ActionListener<MultiGetResponse> {
-                        override fun onResponse(response: MultiGetResponse) {
-                            try {
-                                // response is failed only if managed index is not present
-                                if (response.responses.first().isFailed) {
-                                    actionListener.onFailure(
-                                        OpenSearchStatusException(
-                                            "Cluster missing system index $INDEX_MANAGEMENT_INDEX, cannot execute the request", RestStatus.BAD_REQUEST,
-                                        ),
-                                    )
-                                    return
-                                }
-
-                                bulkDelete(response, request.ids, request.force, actionListener)
-                            } catch (e: Exception) {
-                                actionListener.onFailure(e)
+            pluginClient.multiGet(
+                getRequest,
+                object : ActionListener<MultiGetResponse> {
+                    override fun onResponse(response: MultiGetResponse) {
+                        try {
+                            // response is failed only if managed index is not present
+                            if (response.responses.first().isFailed) {
+                                actionListener.onFailure(
+                                    OpenSearchStatusException(
+                                        "Cluster missing system index $INDEX_MANAGEMENT_INDEX, cannot execute the request", RestStatus.BAD_REQUEST,
+                                    ),
+                                )
+                                return
                             }
-                        }
 
-                        override fun onFailure(e: Exception) = actionListener.onFailure(e)
-                    },
-                )
-            }
+                            bulkDelete(response, request.ids, request.force, actionListener)
+                        } catch (e: Exception) {
+                            actionListener.onFailure(e)
+                        }
+                    }
+
+                    override fun onFailure(e: Exception) = actionListener.onFailure(e)
+                },
+            )
         }
 
         @Suppress("LongMethod", "NestedBlockDepth")
@@ -166,7 +166,7 @@ constructor(
                 bulkDeleteRequest.add(DeleteRequest(INDEX_MANAGEMENT_INDEX, id))
             }
 
-            client.bulk(
+            pluginClient.bulk(
                 bulkDeleteRequest,
                 object : ActionListener<BulkResponse> {
                     override fun onResponse(response: BulkResponse) {

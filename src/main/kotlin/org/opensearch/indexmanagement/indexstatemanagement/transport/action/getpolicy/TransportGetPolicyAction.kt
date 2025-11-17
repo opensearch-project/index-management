@@ -24,18 +24,18 @@ import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.opensearchapi.parseFromGetResponse
 import org.opensearch.indexmanagement.settings.IndexManagementSettings.Companion.FILTER_BY_BACKEND_ROLES
+import org.opensearch.indexmanagement.util.PluginClient
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportService
-import org.opensearch.transport.client.node.NodeClient
 import java.lang.IllegalArgumentException
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount", "LongParameterList")
 class TransportGetPolicyAction
 @Inject
 constructor(
-    val client: NodeClient,
+    val client: PluginClient,
     transportService: TransportService,
     actionFilters: ActionFilters,
     val clusterService: ClusterService,
@@ -58,7 +58,7 @@ constructor(
     }
 
     inner class GetPolicyHandler(
-        private val client: NodeClient,
+        private val client: PluginClient,
         private val actionListener: ActionListener<GetPolicyResponse>,
         private val request: GetPolicyRequest,
         private val user: User? = buildUser(client.threadPool().threadContext),
@@ -73,20 +73,18 @@ constructor(
                 GetRequest(IndexManagementPlugin.INDEX_MANAGEMENT_INDEX, request.policyID)
                     .version(request.version)
 
-            client.threadPool().threadContext.stashContext().use {
-                client.get(
-                    getRequest,
-                    object : ActionListener<GetResponse> {
-                        override fun onResponse(response: GetResponse) {
-                            onGetResponse(response)
-                        }
+            client.get(
+                getRequest,
+                object : ActionListener<GetResponse> {
+                    override fun onResponse(response: GetResponse) {
+                        onGetResponse(response)
+                    }
 
-                        override fun onFailure(t: Exception) {
-                            actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
-                        }
-                    },
-                )
-            }
+                    override fun onFailure(t: Exception) {
+                        actionListener.onFailure(ExceptionsHelper.unwrapCause(t) as Exception)
+                    }
+                },
+            )
         }
 
         fun onGetResponse(response: GetResponse) {
