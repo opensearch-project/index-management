@@ -16,6 +16,7 @@ import org.opensearch.core.common.io.stream.InputStreamStreamInput
 import org.opensearch.core.common.io.stream.OutputStreamStreamOutput
 import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActionConfig
@@ -31,6 +32,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomOpenActionConfi
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadWriteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomRestoreActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRollupActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomShrinkAction
@@ -159,6 +161,58 @@ class ActionTests : OpenSearchTestCase() {
 
     fun `test shrink action round trip`() {
         roundTripAction(randomShrinkAction())
+    }
+
+    fun `test convert index to remote action round trip with defaults`() {
+        roundTripAction(randomRestoreActionConfig())
+    }
+
+    fun `test convert index to remote action round trip with all fields`() {
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = "test-repo",
+            snapshot = "test-snapshot",
+            includeAliases = true,
+            ignoreIndexSettings = "index.refresh_interval,index.number_of_replicas",
+            numberOfReplicas = 2,
+            index = 0,
+        )
+        roundTripAction(convertAction)
+    }
+
+    fun `test convert index to remote action round trip with includeAliases only`() {
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = "test-repo",
+            snapshot = "test-snapshot",
+            includeAliases = true,
+            ignoreIndexSettings = "",
+            numberOfReplicas = 0,
+            index = 0,
+        )
+        roundTripAction(convertAction)
+    }
+
+    fun `test convert index to remote action round trip with ignoreIndexSettings only`() {
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = "test-repo",
+            snapshot = "test-snapshot",
+            includeAliases = false,
+            ignoreIndexSettings = "index.refresh_interval",
+            numberOfReplicas = 0,
+            index = 0,
+        )
+        roundTripAction(convertAction)
+    }
+
+    fun `test convert index to remote action round trip with numberOfReplicas only`() {
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = "test-repo",
+            snapshot = "test-snapshot",
+            includeAliases = false,
+            ignoreIndexSettings = "",
+            numberOfReplicas = 3,
+            index = 0,
+        )
+        roundTripAction(convertAction)
     }
 
     fun `test action timeout and retry round trip`() {
