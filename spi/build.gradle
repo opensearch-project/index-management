@@ -67,7 +67,7 @@ dependencies {
     compileOnly "org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}"
     compileOnly "org.jetbrains.kotlin:kotlin-stdlib-common:${kotlin_version}"
     compileOnly "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlin_version}"
-    compileOnly "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.9"
+    compileOnly "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2"
     compileOnly "org.opensearch:common-utils:${common_utils_version}"
 
     testImplementation "org.opensearch.test:framework:${opensearch_version}"
