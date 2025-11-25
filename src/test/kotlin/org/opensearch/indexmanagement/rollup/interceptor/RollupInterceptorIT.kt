@@ -2005,4 +2005,179 @@ class RollupInterceptorIT : RollupRestTestCase() {
             Assert.assertTrue(e.message!!.contains("Can't parse query_string query without sourceIndex mappings!"))
         }
     }
+
+    // Test to ensure we block size > 0 search queries on rolled up index
+    fun `test rollup search enforces size equals zero`() {
+        generateNYCTaxiData("source_size_check_test")
+        val rollup = Rollup(
+            id = "size_check_test",
+            enabled = true,
+            schemaVersion = 1L,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "size check test",
+            sourceIndex = "source_size_check_test",
+            targetIndex = "target_size_check_test",
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 10,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h")),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count",
+                    targetField = "passenger_count",
+                    metrics = listOf(Sum(), Average()),
+                ),
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollup)
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        refreshAllIndices()
+
+        // Size > 0 should fail
+        val reqWithSize = """{"size": 1, "aggs": {"sum": {"sum": {"field": "passenger_count"}}}}"""
+        try {
+            client().makeRequest("POST", "/target_size_check_test/_search", emptyMap(), StringEntity(reqWithSize, ContentType.APPLICATION_JSON))
+            fail("Expected 400 BAD_REQUEST response")
+        } catch (e: ResponseException) {
+            assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
+            assertTrue(e.message?.contains("Rollup search must have size explicitly set to 0") ?: false)
+        }
+
+        // Size = 0 should succeed
+        val reqWithZeroSize = """{"size": 0, "aggs": {"sum": {"sum": {"field": "passenger_count"}}}}"""
+        val response = client().makeRequest("POST", "/target_size_check_test/_search", emptyMap(), StringEntity(reqWithZeroSize, ContentType.APPLICATION_JSON))
+        assertEquals("Size 0 should be allowed", RestStatus.OK, response.restStatus())
+    }
+
+    fun `test multi-tier rollup search`() {
+        val sourceIdx = "source_multi_tier_search"
+        val tier1Idx = "tier1_rollup_search"
+        val tier2Idx = "tier2_rollup_search"
+
+        generateNYCTaxiData(sourceIdx)
+
+        // Tier 1: Rollup from raw data to hourly
+        val tier1Rollup = Rollup(
+            id = "tier1_hourly_rollup",
+            enabled = true,
+            schemaVersion = 1L,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "Tier 1 hourly rollup",
+            sourceIndex = sourceIdx,
+            targetIndex = tier1Idx,
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 10,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                Terms("RatecodeID", "RatecodeID"),
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count",
+                    targetField = "passenger_count",
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+                ),
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(tier1Rollup)
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = tier1Rollup.id)
+            assertNotNull("Tier 1 rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Tier 1 rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        // Tier 2: Rollup from hourly to daily
+        val tier2Rollup = Rollup(
+            id = "tier2_daily_rollup",
+            enabled = true,
+            schemaVersion = 1L,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "Tier 2 daily rollup",
+            sourceIndex = tier1Idx,
+            targetIndex = tier2Idx,
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 10,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1d"),
+                Terms("RatecodeID", "RatecodeID"),
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count",
+                    targetField = "passenger_count",
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+                ),
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(tier2Rollup)
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = tier2Rollup.id)
+            assertNotNull("Tier 2 rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Tier 2 rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        refreshAllIndices()
+
+        // Search tier 2 rollup index
+        val req = """
+            {
+                "size": 0,
+                "query": {
+                    "term": { "RatecodeID": 1 }
+                },
+                "aggs": {
+                    "sum_passenger": { "sum": { "field": "passenger_count" } },
+                    "min_passenger": { "min": { "field": "passenger_count" } },
+                    "max_passenger": { "max": { "field": "passenger_count" } },
+                    "value_count_passenger": { "value_count": { "field": "passenger_count" } },
+                    "avg_passenger": { "avg": { "field": "passenger_count" } }
+                }
+            }
+        """.trimIndent()
+
+        val sourceRes = client().makeRequest("POST", "/$sourceIdx/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(sourceRes.restStatus() == RestStatus.OK)
+        val tier2Res = client().makeRequest("POST", "/$tier2Idx/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(tier2Res.restStatus() == RestStatus.OK)
+
+        val sourceAggs = sourceRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        val tier2Aggs = tier2Res.asMap()["aggregations"] as Map<String, Map<String, Any>>
+
+        assertEquals("Sum not consistent", sourceAggs["sum_passenger"]!!["value"], tier2Aggs["sum_passenger"]!!["value"])
+        assertEquals("Min not consistent", sourceAggs["min_passenger"]!!["value"], tier2Aggs["min_passenger"]!!["value"])
+        assertEquals("Max not consistent", sourceAggs["max_passenger"]!!["value"], tier2Aggs["max_passenger"]!!["value"])
+        assertEquals("Value count not consistent", sourceAggs["value_count_passenger"]!!["value"], tier2Aggs["value_count_passenger"]!!["value"])
+        assertEquals("Average not consistent", sourceAggs["avg_passenger"]!!["value"], tier2Aggs["avg_passenger"]!!["value"])
+    }
 }
