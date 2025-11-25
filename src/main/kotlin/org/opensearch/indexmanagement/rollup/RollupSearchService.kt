@@ -99,7 +99,7 @@ class RollupSearchService(
     }
 
     @Suppress("CyclomaticComplexMethod")
-    suspend fun executeCompositeSearch(job: Rollup, metadata: RollupMetadata): RollupSearchResult = try {
+    suspend fun executeCompositeSearch(job: Rollup, metadata: RollupMetadata, clusterService: ClusterService): RollupSearchResult = try {
         var retryCount = 0
         RollupSearchResult.Success(
             retrySearchPolicy.retry(logger) {
@@ -113,7 +113,7 @@ class RollupSearchService(
                         )
                     }
 
-                    val searchRequest = job.copy(pageSize = pageSize).getRollupSearchRequest(metadata)
+                    val searchRequest = job.copy(pageSize = pageSize).getRollupSearchRequest(metadata, clusterService.state())
                     val cancelTimeoutTimeValue = TimeValue.timeValueMinutes(getCancelAfterTimeInterval(cancelAfterTimeInterval.minutes))
                     searchRequest.cancelAfterTimeInterval = cancelTimeoutTimeValue
 
