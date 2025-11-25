@@ -65,6 +65,49 @@ class RollupInterceptor(
 
     @Volatile private var searchRawRollupIndices = RollupSettings.ROLLUP_SEARCH_SOURCE_INDICES.get(settings)
 
+    companion object {
+        /**
+         * Thread-local bypass mechanism for internal operations that need to query rollup indices
+         * without triggering interceptor validations.
+         */
+        private val bypassInterceptor = ThreadLocal<Int>()
+
+        /**
+         * Bypass level that skips all rollup search validations and rewriting.
+         * Used when the system needs to query rollup indices directly using composite aggregation
+         */
+        const val BYPASS_ROLLUP_SEARCH = 1
+
+        /**
+         * Bypass level that allows non-zero size in rollup searches.
+         * Used for internal operations like continuous rollup initialization that need to fetch
+         * actual documents from rollup indices (e.g., getEarliestTimestampFromRollupIndex).
+         */
+        const val BYPASS_SIZE_CHECK = 2
+
+        /**
+         * Sets the bypass level for the current thread.
+         * Must be followed by clearBypass() to avoid leaking the bypass state.
+         */
+        fun setBypass(bypassLevel: Int) {
+            bypassInterceptor.set(bypassLevel)
+        }
+
+        /**
+         * Clears the bypass level for the current thread.
+         * Should always be called in a finally block after setBypass().
+         */
+        fun clearBypass() {
+            bypassInterceptor.remove()
+        }
+
+        /**
+         * Gets the current bypass level for the thread.
+         * Returns 0 if no bypass is set.
+         */
+        fun getBypassLevel(): Int = bypassInterceptor.get() ?: 0
+    }
+
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(RollupSettings.ROLLUP_SEARCH_ENABLED) {
             searchEnabled = it
@@ -89,7 +132,20 @@ class RollupInterceptor(
                 val index = request.shardId().indexName
                 val isRollupIndex = isRollupIndex(index, clusterService.state())
                 if (isRollupIndex) {
-                    if (request.source().size() != 0) {
+                    val bypassLevel = getBypassLevel()
+                    // BYPASS_ROLLUP_SEARCH: Skip all validations and query rewriting
+                    // Used for composite aggregation query which we do for retrieving the buckets
+                    // to write to target index during rollup of rolled up index
+                    if (bypassLevel == BYPASS_ROLLUP_SEARCH) {
+                        actualHandler.messageReceived(request, channel, task)
+                        return
+                    }
+
+                    // BYPASS_SIZE_CHECK: Allow non-zero size for internal operations that need to
+                    // fetch documents (e.g., fetching earliest timestamp document for rolled index
+                    // in case of continuous rollup job). Normal rollup searches must have size=0
+                    // since they should only return aggregations
+                    if (bypassLevel != BYPASS_SIZE_CHECK && request.source().size() != 0) {
                         throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
                     }
 
