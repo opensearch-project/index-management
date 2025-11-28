@@ -282,16 +282,7 @@ object RollupRunner :
                             withClosableContext(
                                 IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user),
                             ) {
-                                // Need to set this bypass as we are already doing the required aggregation re-writing in the composite aggregation
-                                // hence do not need to go through the interceptor for aggregation rewriting
-                                org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor.setBypass(
-                                    org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor.BYPASS_ROLLUP_SEARCH,
-                                )
-                                try {
-                                    rollupSearchService.executeCompositeSearch(updatableJob, metadata, clusterService)
-                                } finally {
-                                    org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor.clearBypass()
-                                }
+                                rollupSearchService.executeCompositeSearch(updatableJob, metadata, clusterService)
                             }
                         val rollupResult =
                             when (rollupSearchResult) {

@@ -69,6 +69,7 @@ class RollupInterceptor(
         /**
          * Thread-local bypass mechanism for internal operations that need to query rollup indices
          * without triggering interceptor validations.
+         * Kept for backward compatibility with single-node clusters.
          */
         private val bypassInterceptor = ThreadLocal<Int>()
 
@@ -108,6 +109,21 @@ class RollupInterceptor(
         fun getBypassLevel(): Int = bypassInterceptor.get() ?: 0
     }
 
+    /**
+     * Reads the bypass value from the request's FetchSourceContext.
+     * Returns the bypass level if the marker is present in includes array, null otherwise.
+     * This enables bypass mechanism to work in multi-node clusters.
+     */
+    private fun getBypassFromFetchSource(request: ShardSearchRequest): Int? {
+        val includes = request.source()?.fetchSource()?.includes()
+
+        // Look for our bypass marker in the includes array and extract the bypass level
+        return includes
+            ?.find { it.startsWith("_rollup_internal_bypass_") }
+            ?.substringAfter("_rollup_internal_bypass_")
+            ?.toIntOrNull()
+    }
+
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(RollupSettings.ROLLUP_SEARCH_ENABLED) {
             searchEnabled = it
@@ -129,14 +145,26 @@ class RollupInterceptor(
     ): TransportRequestHandler<T> = object : TransportRequestHandler<T> {
         override fun messageReceived(request: T, channel: TransportChannel, task: Task) {
             if (searchEnabled && request is ShardSearchRequest) {
+                logger.info("Idhr aaya hu 3")
                 val index = request.shardId().indexName
                 val isRollupIndex = isRollupIndex(index, clusterService.state())
                 if (isRollupIndex) {
-                    val bypassLevel = getBypassLevel()
+                    // Check bypass from FetchSourceContext (multi-node) OR ThreadLocal (single-node/backward compat)
+                    val bypassFromFetchSource = getBypassFromFetchSource(request)
+                    val bypassFromThreadLocal = getBypassLevel()
+
+                    // Use FetchSourceContext value if present, otherwise fall back to ThreadLocal
+                    val effectiveBypass = bypassFromFetchSource ?: bypassFromThreadLocal
+
+                    logger.debug(
+                        "RollupInterceptor bypass check - fetchSource: $bypassFromFetchSource, " +
+                            "threadLocal: $bypassFromThreadLocal, effective: $effectiveBypass",
+                    )
+
                     // BYPASS_ROLLUP_SEARCH: Skip all validations and query rewriting
                     // Used for composite aggregation query which we do for retrieving the buckets
                     // to write to target index during rollup of rolled up index
-                    if (bypassLevel == BYPASS_ROLLUP_SEARCH) {
+                    if (effectiveBypass == BYPASS_ROLLUP_SEARCH) {
                         actualHandler.messageReceived(request, channel, task)
                         return
                     }
@@ -145,7 +173,7 @@ class RollupInterceptor(
                     // fetch documents (e.g., fetching earliest timestamp document for rolled index
                     // in case of continuous rollup job). Normal rollup searches must have size=0
                     // since they should only return aggregations
-                    if (bypassLevel != BYPASS_SIZE_CHECK && request.source().size() != 0) {
+                    if (effectiveBypass != BYPASS_SIZE_CHECK && request.source().size() != 0) {
                         throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
                     }
 
