@@ -250,7 +250,7 @@ class RollupMetadataService(
             val dateHistogram = rollup.dimensions.first() as DateHistogram
             val dateField = dateHistogram.sourceField
 
-            logger.info("Idhr se ja rha hu mai tumhe kya 2")
+            val bypassMarker = "_rollup_internal_bypass_${org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor.BYPASS_SIZE_CHECK}"
 
             val searchRequest = SearchRequest(rollup.sourceIndex)
                 .source(
@@ -259,37 +259,31 @@ class RollupMetadataService(
                         .query(MatchAllQueryBuilder())
                         .sort("$dateField.date_histogram", SortOrder.ASC)
                         .trackTotalHits(false)
-                        .fetchSource(false)
+                        .fetchSource(org.opensearch.search.fetch.subphase.FetchSourceContext(false, arrayOf(bypassMarker), emptyArray()))
                         .docValueField("$dateField.date_histogram", DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT),
                 )
                 .allowPartialSearchResults(false)
 
-            // Set BYPASS_SIZE_CHECK to allow size=1 when querying rollup index to get earliest timestamp
-            // This is needed for continuous rollup initialization on rollup indices (multi-tier rollup)
-            org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor.setBypass(
-                org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor.BYPASS_SIZE_CHECK,
-            )
-            try {
-                val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
+            // Set bypass in ThreadContext for multi-node support - skips all rollup validations
+            // This is needed because we're querying a rollup index directly without aggregations
+            // Set bypass via preference parameter for multi-node support - allows size > 0 for fetching earliest timestamp
+//            searchRequest.preference("_rollup_bypass:${org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor.BYPASS_SIZE_CHECK}")
 
-                if (response.hits.hits.isEmpty()) {
-                    return StartingTimeResult.NoDocumentsFound
-                }
+            val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
 
-                logger.info("Idhr se ja rha hu mai tumhe kya")
-
-                // In rollup indices, date histogram fields are named as "field.date_histogram"
-                val rollupDateField = "$dateField.date_histogram"
-                val firstHitTimestampAsString: String =
-                    response.hits.hits.first().field(rollupDateField).getValue<String>()
-                        ?: return StartingTimeResult.NoDocumentsFound
-
-                val formatter = DateFormatter.forPattern(DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT)
-                val epochMillis = DateFormatters.from(formatter.parse(firstHitTimestampAsString), formatter.locale()).toInstant().toEpochMilli()
-                return StartingTimeResult.Success(getRoundedTime(epochMillis, dateHistogram))
-            } finally {
-                org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor.clearBypass()
+            if (response.hits.hits.isEmpty()) {
+                return StartingTimeResult.NoDocumentsFound
             }
+
+            // In rollup indices, date histogram fields are named as "field.date_histogram"
+            val rollupDateField = "$dateField.date_histogram"
+            val firstHitTimestampAsString: String =
+                response.hits.hits.first().field(rollupDateField).getValue<String>()
+                    ?: return StartingTimeResult.NoDocumentsFound
+
+            val formatter = DateFormatter.forPattern(DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT)
+            val epochMillis = DateFormatters.from(formatter.parse(firstHitTimestampAsString), formatter.locale()).toInstant().toEpochMilli()
+            return StartingTimeResult.Success(getRoundedTime(epochMillis, dateHistogram))
         } catch (e: RemoteTransportException) {
             val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
             logger.error("Error when getting earliest timestamp from rollup index for rollup [{}]: {}", rollup.id, unwrappedException)
