@@ -19,6 +19,7 @@ import org.opensearch.core.action.ActionListener
 import org.opensearch.core.common.breaker.CircuitBreakingException
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.MINIMUM_CANCEL_AFTER_TIME_INTERVAL_MINUTES
@@ -26,6 +27,7 @@ import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.R
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings.Companion.ROLLUP_SEARCH_BACKOFF_MILLIS
 import org.opensearch.indexmanagement.rollup.util.getRollupSearchRequest
 import org.opensearch.search.aggregations.MultiBucketConsumerService
+import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.transport.RemoteTransportException
 import org.opensearch.transport.client.Client
 import java.time.Instant
@@ -116,6 +118,14 @@ class RollupSearchService(
                     val searchRequest = job.copy(pageSize = pageSize).getRollupSearchRequest(metadata, clusterService.state())
                     val cancelTimeoutTimeValue = TimeValue.timeValueMinutes(getCancelAfterTimeInterval(cancelAfterTimeInterval.minutes))
                     searchRequest.cancelAfterTimeInterval = cancelTimeoutTimeValue
+
+                    // Set bypass flag via FetchSourceContext for multi-node support
+                    // Using fetchSource=false with marker in includes to avoid affecting actual source fetching
+                    val bypassMarker = "_rollup_internal_bypass_${RollupInterceptor.BYPASS_ROLLUP_SEARCH}"
+
+                    searchRequest.source().fetchSource(
+                        FetchSourceContext(false, arrayOf(bypassMarker), emptyArray()),
+                    )
 
                     search(searchRequest, listener)
                 }
