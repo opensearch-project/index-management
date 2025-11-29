@@ -31,6 +31,7 @@ import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor
 import org.opensearch.indexmanagement.rollup.model.ContinuousMetadata
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
@@ -41,6 +42,7 @@ import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.search.aggregations.bucket.composite.InternalComposite
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
 import org.opensearch.search.builder.SearchSourceBuilder
+import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.search.sort.SortOrder
 import org.opensearch.transport.RemoteTransportException
 import org.opensearch.transport.client.Client
@@ -250,7 +252,9 @@ class RollupMetadataService(
             val dateHistogram = rollup.dimensions.first() as DateHistogram
             val dateField = dateHistogram.sourceField
 
-            val bypassMarker = "_rollup_internal_bypass_${org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor.BYPASS_SIZE_CHECK}"
+            // For multi-tier rollup, we would be querying a document on a rollup index
+            // So we set this bypassMarker in fetchSource as a flag to help bypass the validation in RollupInterceptor
+            val bypassMarker = "_rollup_internal_bypass_${RollupInterceptor.BYPASS_SIZE_CHECK}"
 
             val searchRequest = SearchRequest(rollup.sourceIndex)
                 .source(
@@ -259,15 +263,10 @@ class RollupMetadataService(
                         .query(MatchAllQueryBuilder())
                         .sort("$dateField.date_histogram", SortOrder.ASC)
                         .trackTotalHits(false)
-                        .fetchSource(org.opensearch.search.fetch.subphase.FetchSourceContext(false, arrayOf(bypassMarker), emptyArray()))
+                        .fetchSource(FetchSourceContext(false, arrayOf(bypassMarker), emptyArray()))
                         .docValueField("$dateField.date_histogram", DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT),
                 )
                 .allowPartialSearchResults(false)
-
-            // Set bypass in ThreadContext for multi-node support - skips all rollup validations
-            // This is needed because we're querying a rollup index directly without aggregations
-            // Set bypass via preference parameter for multi-node support - allows size > 0 for fetching earliest timestamp
-//            searchRequest.preference("_rollup_bypass:${org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor.BYPASS_SIZE_CHECK}")
 
             val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
 
