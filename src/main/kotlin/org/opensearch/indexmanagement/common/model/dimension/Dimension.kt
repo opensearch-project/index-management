@@ -49,7 +49,7 @@ abstract class Dimension(
         const val DIMENSION_SOURCE_FIELD_FIELD = "source_field"
         const val DIMENSION_TARGET_FIELD_FIELD = "target_field"
 
-        @Suppress("ComplexMethod")
+        @Suppress("CyclomaticComplexMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): Dimension {

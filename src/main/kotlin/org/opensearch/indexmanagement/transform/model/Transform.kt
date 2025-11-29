@@ -305,7 +305,7 @@ data class Transform(
         const val CONTINUOUS_FIELD = "continuous"
         const val USER_FIELD = "user"
 
-        @Suppress("ComplexMethod", "LongMethod")
+        @Suppress("CyclomaticComplexMethod", "LongMethod")
         @JvmStatic
         @JvmOverloads
         fun parse(

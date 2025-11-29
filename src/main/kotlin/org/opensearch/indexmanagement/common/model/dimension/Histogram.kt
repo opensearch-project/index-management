@@ -111,7 +111,7 @@ data class Histogram(
         // so add an error to the range query and then limit the buckets indexed later.
         private const val bucketError = 0.00005
 
-        @Suppress("ComplexMethod", "LongMethod")
+        @Suppress("CyclomaticComplexMethod", "LongMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): Histogram {

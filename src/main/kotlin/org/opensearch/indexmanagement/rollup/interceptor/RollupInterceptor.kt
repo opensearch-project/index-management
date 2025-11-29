@@ -161,7 +161,7 @@ class RollupInterceptor(
         return allMatchingRollupJobs
     }
 
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     private fun getAggregationMetadata(
         aggregationBuilders: Collection<AggregationBuilder>?,
         fieldMappings: MutableSet<RollupFieldMapping> = mutableSetOf(),
@@ -201,7 +201,7 @@ class RollupInterceptor(
         return fieldMappings
     }
 
-    @Suppress("ComplexMethod", "ThrowsCount", "LongMethod")
+    @Suppress("CyclomaticComplexMethod", "ThrowsCount", "LongMethod")
     private fun getQueryMetadata(
         query: QueryBuilder?,
         concreteSourceIndexName: String?,
@@ -271,7 +271,7 @@ class RollupInterceptor(
     }
 
     // TODO: How does this job matching work with roles/security?
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     private fun findMatchingRollupJobs(
         fieldMappings: Set<RollupFieldMapping>,
         rollupJobs: List<Rollup>,

@@ -220,7 +220,7 @@ constructor(
             )
         }
 
-        @Suppress("ComplexMethod")
+        @Suppress("CyclomaticComplexMethod")
         private fun onMgetMetadataResponse(mgetResponse: MultiGetResponse) {
             val metadataMap = mgetResponseToMap(mgetResponse)
             indicesToRetry.forEach { (indexUuid, indexName) ->

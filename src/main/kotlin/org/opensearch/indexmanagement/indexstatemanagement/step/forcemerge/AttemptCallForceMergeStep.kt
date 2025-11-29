@@ -32,7 +32,7 @@ class AttemptCallForceMergeStep(private val action: ForceMergeAction) : Step(nam
     private var info: Map<String, Any>? = null
 
     @OptIn(DelicateCoroutinesApi::class)
-    @Suppress("TooGenericExceptionCaught", "ComplexMethod")
+    @Suppress("TooGenericExceptionCaught", "CyclomaticComplexMethod")
     override suspend fun execute(): AttemptCallForceMergeStep {
         val context = this.context ?: return this
         val indexName = context.metadata.index

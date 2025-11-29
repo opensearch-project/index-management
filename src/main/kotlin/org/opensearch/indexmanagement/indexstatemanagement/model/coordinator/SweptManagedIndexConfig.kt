@@ -30,7 +30,7 @@ data class SweptManagedIndexConfig(
     val changePolicy: ChangePolicy?,
 ) {
     companion object {
-        @Suppress("ComplexMethod", "UNUSED_PARAMETER")
+        @Suppress("CyclomaticComplexMethod", "UNUSED_PARAMETER")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser, id: String = NO_ID, seqNo: Long, primaryTerm: Long): SweptManagedIndexConfig {

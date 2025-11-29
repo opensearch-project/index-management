@@ -31,7 +31,7 @@ import org.opensearch.transport.RemoteClusterAware
 
 private val logger = LogManager.getLogger(FieldCapsFilter::class.java)
 
-@Suppress("UNCHECKED_CAST", "SpreadOperator", "TooManyFunctions", "ComplexMethod", "NestedBlockDepth")
+@Suppress("UNCHECKED_CAST", "SpreadOperator", "TooManyFunctions", "CyclomaticComplexMethod", "NestedBlockDepth")
 class FieldCapsFilter(
     val clusterService: ClusterService,
     val settings: Settings,

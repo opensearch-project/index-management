@@ -334,7 +334,7 @@ constructor(
             )
         }
 
-        @Suppress("ComplexMethod", "NestedBlockDepth")
+        @Suppress("CyclomaticComplexMethod", "NestedBlockDepth")
         private fun buildResponse(
             indices: Map<IndexName, IndexUUID>,
             metadataMap: Map<ManagedIndexMetadataDocUUID, ManagedIndexMetadataMap?>,

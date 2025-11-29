@@ -103,7 +103,7 @@ data class ActionMetaData(
             }
         }
 
-        @Suppress("ComplexMethod")
+        @Suppress("CyclomaticComplexMethod")
         fun parse(xcp: XContentParser): ActionMetaData {
             var name: String? = null
             var startTime: Long? = null

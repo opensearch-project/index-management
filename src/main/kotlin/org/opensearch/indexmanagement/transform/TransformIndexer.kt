@@ -27,7 +27,7 @@ import org.opensearch.indexmanagement.transform.util.TransformContext
 import org.opensearch.transport.RemoteTransportException
 import org.opensearch.transport.client.Client
 
-@Suppress("ComplexMethod")
+@Suppress("CyclomaticComplexMethod")
 class TransformIndexer(
     settings: Settings,
     private val clusterService: ClusterService,

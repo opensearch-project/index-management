@@ -119,7 +119,7 @@ data class TransformMetadata(
         const val CONTINUOUS_STATS_FIELD = "continuous_stats"
         const val FAILURE_REASON = "failure_reason"
 
-        @Suppress("ComplexMethod", "LongMethod")
+        @Suppress("CyclomaticComplexMethod", "LongMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(

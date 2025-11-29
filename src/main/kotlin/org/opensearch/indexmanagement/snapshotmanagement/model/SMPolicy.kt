@@ -129,7 +129,7 @@ data class SMPolicy(
         // Used by sub models Creation and Deletion
         const val TIME_LIMIT_FIELD = "time_limit"
 
-        @Suppress("ComplexMethod", "LongMethod")
+        @Suppress("CyclomaticComplexMethod", "LongMethod")
         fun parse(
             xcp: XContentParser,
             id: String,

@@ -160,7 +160,7 @@ data class Policy(
         const val ISM_TEMPLATE = "ism_template"
         const val USER_FIELD = "user"
 
-        @Suppress("ComplexMethod", "LongMethod", "NestedBlockDepth")
+        @Suppress("CyclomaticComplexMethod", "LongMethod", "NestedBlockDepth")
         @JvmStatic
         @JvmOverloads
         @Throws(IOException::class)

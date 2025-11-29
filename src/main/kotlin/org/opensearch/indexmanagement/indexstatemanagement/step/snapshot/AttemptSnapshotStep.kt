@@ -36,7 +36,7 @@ class AttemptSnapshotStep(private val action: SnapshotAction) : Step(name) {
     private var info: Map<String, Any>? = null
     private var snapshotName: String? = null
 
-    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "LongMethod")
+    @Suppress("TooGenericExceptionCaught", "CyclomaticComplexMethod", "ReturnCount", "LongMethod")
     override suspend fun execute(): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index

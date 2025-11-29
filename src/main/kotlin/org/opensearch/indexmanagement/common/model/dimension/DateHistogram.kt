@@ -134,7 +134,7 @@ data class DateHistogram(
         const val DATE_HISTOGRAM_TIMEZONE_FIELD = "timezone"
         const val FORMAT = "format"
 
-        @Suppress("ComplexMethod", "LongMethod")
+        @Suppress("CyclomaticComplexMethod", "LongMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): DateHistogram {

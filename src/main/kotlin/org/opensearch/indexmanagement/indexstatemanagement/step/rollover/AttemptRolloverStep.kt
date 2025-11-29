@@ -40,7 +40,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
     private var info: Map<String, Any>? = null
     private var newIndex: String? = null // this variable holds the new index name if rollover is successful in this run
 
-    @Suppress("ComplexMethod", "LongMethod")
+    @Suppress("CyclomaticComplexMethod", "LongMethod")
     override suspend fun execute(): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index
@@ -220,7 +220,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         return null
     }
 
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     private suspend fun executeRollover(
         context: StepContext,
         rolloverTarget: String,
@@ -286,7 +286,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
      * TODO This method can be deprecated once this issue finished
      * https://github.com/opensearch-project/index-management/issues/849 finished
      */
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     private suspend fun copyAlias(
         clusterService: ClusterService,
         indexName: String,

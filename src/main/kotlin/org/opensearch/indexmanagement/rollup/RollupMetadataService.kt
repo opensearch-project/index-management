@@ -53,7 +53,7 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
 
     // If the job does not have a metadataID then we need to initialize the first metadata
     // document for this job otherwise we should get the existing metadata document
-    @Suppress("ReturnCount", "ComplexMethod", "NestedBlockDepth")
+    @Suppress("ReturnCount", "CyclomaticComplexMethod", "NestedBlockDepth")
     suspend fun init(rollup: Rollup): MetadataResult {
         if (rollup.metadataID != null) {
             val existingMetadata =
@@ -381,7 +381,7 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
         return submitMetadataUpdate(updatedMetadata, updatedMetadata.id != NO_ID)
     }
 
-    @Suppress("ComplexMethod", "ReturnCount")
+    @Suppress("CyclomaticComplexMethod", "ReturnCount")
     private suspend fun submitMetadataUpdate(metadata: RollupMetadata, updating: Boolean): MetadataResult {
         val errorMessage = "An error occurred when ${if (updating) "updating" else "creating"} rollup metadata"
         try {

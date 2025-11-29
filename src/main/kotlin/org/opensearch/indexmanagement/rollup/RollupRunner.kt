@@ -129,7 +129,7 @@ object RollupRunner :
 
     fun registerConsumers(): RollupRunner = this
 
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     override fun runJob(job: ScheduledJobParameter, context: JobExecutionContext) {
         if (job !is Rollup) {
             throw IllegalArgumentException("Invalid job type, found ${job.javaClass.simpleName} with id: ${context.jobId}")
@@ -191,7 +191,7 @@ object RollupRunner :
      *  There is a rollup.metadataID and doc but theres no job in target index?
      *        -> index was deleted and recreated as rollup -> just recreate (but we would have to start over)? Or move to FAILED?
      * */
-    @Suppress("ReturnCount", "NestedBlockDepth", "ComplexMethod", "LongMethod", "ThrowsCount")
+    @Suppress("ReturnCount", "NestedBlockDepth", "CyclomaticComplexMethod", "LongMethod", "ThrowsCount")
     private suspend fun runRollupJob(job: Rollup, context: JobExecutionContext, lock: LockModel) {
         logger.debug("Running rollup job [${job.id}]")
         var updatableLock = lock
@@ -388,7 +388,7 @@ object RollupRunner :
 
     // TODO: Source index could be a pattern but it's used at runtime so it could match new indices which weren't matched before
     //  which means we always need to validate the source index on every execution?
-    @Suppress("ReturnCount", "ComplexMethod")
+    @Suppress("ReturnCount", "CyclomaticComplexMethod")
     private suspend fun isJobValid(job: Rollup): RollupJobValidationResult {
         return withClosableContext(
             IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user),

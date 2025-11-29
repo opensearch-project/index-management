@@ -257,7 +257,7 @@ class IndexManagementPlugin :
 
     override fun getGuiceServiceClasses(): Collection<Class<out LifecycleComponent?>> = mutableListOf<Class<out LifecycleComponent?>>(GuiceHolder::class.java)
 
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     override fun getJobParser(): ScheduledJobParser {
         return ScheduledJobParser { xcp, id, jobDocVersion ->
             ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)

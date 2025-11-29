@@ -24,7 +24,7 @@ class WaitForSnapshotStep(private val action: SnapshotAction) : Step(name) {
     private var stepStatus = StepStatus.STARTING
     private var info: Map<String, Any>? = null
 
-    @Suppress("ComplexMethod", "ReturnCount")
+    @Suppress("CyclomaticComplexMethod", "ReturnCount")
     override suspend fun execute(): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index

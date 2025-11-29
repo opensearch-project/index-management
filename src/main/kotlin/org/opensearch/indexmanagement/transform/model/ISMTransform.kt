@@ -153,7 +153,7 @@ data class ISMTransform(
     }
 
     companion object {
-        @Suppress("ComplexMethod", "LongMethod")
+        @Suppress("CyclomaticComplexMethod", "LongMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): ISMTransform {

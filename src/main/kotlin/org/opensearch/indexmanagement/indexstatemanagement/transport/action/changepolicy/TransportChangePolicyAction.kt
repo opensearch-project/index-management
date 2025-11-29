@@ -263,7 +263,7 @@ constructor(
             )
         }
 
-        @Suppress("ComplexMethod")
+        @Suppress("CyclomaticComplexMethod")
         private fun onMgetMetadataResponse(mgetResponse: MultiGetResponse) {
             val metadataMap = mgetResponseToMap(mgetResponse)
             val includedStates = changePolicy.include.map { it.state }.toSet()

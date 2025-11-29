@@ -51,7 +51,7 @@ data class ContinuousMetadata(
         private const val NEXT_WINDOW_END_TIME_FIELD = "next_window_end_time"
         private const val NEXT_WINDOW_END_TIME_FIELD_IN_MILLIS = "next_window_end_time_in_millis"
 
-        @Suppress("ComplexMethod", "LongMethod")
+        @Suppress("CyclomaticComplexMethod", "LongMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): ContinuousMetadata {
@@ -117,7 +117,7 @@ data class RollupStats(
         private const val INDEX_TIME_IN_MILLIS_FIELD = "index_time_in_millis" // The total time spent indexing rollup documents
         private const val SEARCH_TIME_IN_MILLIS_FIELD = "search_time_in_millis" // The total time spent querying/aggregating live documents
 
-        @Suppress("ComplexMethod", "LongMethod")
+        @Suppress("CyclomaticComplexMethod", "LongMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): RollupStats {
@@ -233,7 +233,7 @@ data class RollupMetadata(
         const val FAILURE_REASON = "failure_reason"
         const val STATS_FIELD = "stats"
 
-        @Suppress("ComplexMethod", "LongMethod")
+        @Suppress("CyclomaticComplexMethod", "LongMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(

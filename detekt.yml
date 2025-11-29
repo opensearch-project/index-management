@@ -1,6 +1,3 @@
-build:
-  maxIssues: 0
-
 exceptions:
   TooGenericExceptionCaught:
     active: false
@@ -24,9 +21,9 @@ complexity:
   LargeClass:
     excludes: ['**/test/**']
   LongMethod:
-    threshold: 80
+    allowedLines: 80
     excludes: ['**/test/**']
   LongParameterList:
     excludes: ['**/test/**']
   NestedBlockDepth:
-    threshold: 5
+    allowedDepth: 5
