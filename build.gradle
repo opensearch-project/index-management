@@ -191,6 +191,10 @@ tasks.named('forbiddenApisTest').configure {
     bundledSignatures += 'jdk-internal'
 }
 
+// TODO remove it when upgrade to 3.4
+forbiddenApisMain.enabled = false
+forbiddenApisTest.enabled = false
+
 ext {
     projectSubstitutions = [:]
 
