@@ -95,7 +95,7 @@ data class RollupMetrics(
         const val TARGET_FIELD_FIELD = "target_field"
         const val METRICS_FIELD = "metrics"
 
-        @Suppress("ComplexMethod", "LongMethod")
+        @Suppress("CyclomaticComplexMethod", "LongMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): RollupMetrics {

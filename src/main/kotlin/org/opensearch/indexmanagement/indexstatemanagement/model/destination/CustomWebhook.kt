@@ -89,7 +89,7 @@ data class CustomWebhook(
         const val USERNAME_FIELD = "username"
         const val PASSWORD_FIELD = "password"
 
-        @Suppress("ComplexMethod")
+        @Suppress("CyclomaticComplexMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): CustomWebhook {

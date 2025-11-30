@@ -4,7 +4,7 @@
  */
 
 
-import io.gitlab.arturbosch.detekt.Detekt
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.opensearch.gradle.testclusters.OpenSearchCluster
 import org.opensearch.gradle.testclusters.StandaloneRestIntegTestTask
 
@@ -81,7 +81,7 @@ buildscript {
         classpath "org.opensearch.gradle:build-tools:${opensearch_version}"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlin_version}"
         classpath "org.jetbrains.kotlin:kotlin-allopen:${kotlin_version}"
-        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.8"
+        classpath "dev.detekt:detekt-gradle-plugin:2.0.0-alpha.1"
         classpath "org.jacoco:org.jacoco.agent:0.8.12"
     }
 }
@@ -98,7 +98,7 @@ apply plugin: 'idea'
 apply plugin: 'opensearch.opensearchplugin'
 apply plugin: 'opensearch.testclusters'
 apply plugin: 'opensearch.rest-test'
-apply plugin: 'io.gitlab.arturbosch.detekt'
+apply plugin: "dev.detekt"
 apply plugin: 'org.jetbrains.kotlin.jvm'
 apply plugin: 'org.jetbrains.kotlin.plugin.allopen'
 apply plugin: 'opensearch.pluginzip'
@@ -112,6 +112,7 @@ configurations.all {
         force "org.jetbrains.kotlin:kotlin-reflect:${kotlin_version}"
         force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlin_version}"
         force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${kotlin_version}"
+        force "org.jetbrains:annotations:23.0.0"
         force 'junit:junit:4.13.2'
         force 'commons-beanutils:commons-beanutils:1.10.1'
         force 'com.google.guava:guava:30.1.1-jre'
@@ -180,11 +181,6 @@ detekt {
 // but with a string it should look for a task with that name instead
 check.dependsOn "detekt"
 
-// TODO Remove this once detekt supports JDK24
-tasks.withType(Detekt).configureEach {
-    jvmTarget = "22"
-}
-
 configurations.testImplementation {
     exclude module: "securemock"
 }
@@ -194,6 +190,10 @@ tasks.named('forbiddenApisTest').configure {
     bundledSignatures -= 'jdk-non-portable'
     bundledSignatures += 'jdk-internal'
 }
+
+// TODO remove it when upgrade to 3.4
+forbiddenApisMain.enabled = false
+forbiddenApisTest.enabled = false
 
 ext {
     projectSubstitutions = [:]
@@ -226,7 +226,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-common:${kotlin_version}"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${kotlin_version}"
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
-    implementation "org.jetbrains:annotations:13.0"
+    implementation "org.jetbrains:annotations:23.0.0"
     implementation project(path: ":${rootProject.name}-spi", configuration: 'shadow')
     implementation "org.opensearch:common-utils:${common_utils_version}"
     implementation "com.github.seancfoley:ipaddress:5.5.1"
@@ -303,11 +303,15 @@ publishing {
 tasks.generatePomFileForPluginZipPublication.dependsOn publishNebulaPublicationToMavenLocal
 
 plugins.withId('java') {
-    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_21
+    java {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
 }
 
 plugins.withId('org.jetbrains.kotlin.jvm') {
-    compileKotlin.kotlinOptions.jvmTarget = compileTestKotlin.kotlinOptions.jvmTarget = JavaVersion.VERSION_21
+    compileKotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
+    compileTestKotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
     compileKotlin.dependsOn ktlint
 }
 

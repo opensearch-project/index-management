@@ -17,7 +17,7 @@ class ActionValidation(
     val clusterService: ClusterService,
     val jvmService: JvmService,
 ) {
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     fun validate(actionName: String, indexName: String): ValidationResult {
         // map action to validation class
         val validation =

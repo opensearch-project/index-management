@@ -34,7 +34,7 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
     private var policyCompleted: Boolean = false
     private var info: Map<String, Any>? = null
 
-    @Suppress("ReturnCount", "ComplexMethod", "LongMethod", "NestedBlockDepth")
+    @Suppress("ReturnCount", "CyclomaticComplexMethod", "LongMethod", "NestedBlockDepth")
     override suspend fun execute(): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index

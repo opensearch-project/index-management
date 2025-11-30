@@ -279,7 +279,7 @@ data class Rollup(
         const val ROLLUP_DOC_SCHEMA_VERSION_FIELD = "$ROLLUP_TYPE._$SCHEMA_VERSION_FIELD"
         const val USER_FIELD = "user"
 
-        @Suppress("ComplexMethod", "LongMethod", "NestedBlockDepth")
+        @Suppress("CyclomaticComplexMethod", "LongMethod", "NestedBlockDepth")
         @JvmStatic
         @JvmOverloads
         @Throws(IOException::class)

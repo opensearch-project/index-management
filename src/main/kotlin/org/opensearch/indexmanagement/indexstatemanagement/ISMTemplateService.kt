@@ -19,7 +19,7 @@ import org.opensearch.indexmanagement.util.IndexManagementException
  * get the idea from ES validate function in MetadataIndexTemplateService
  * acknowledge https://github.com/a2lin who should be the first contributor
  */
-@Suppress("ComplexMethod")
+@Suppress("CyclomaticComplexMethod")
 fun validateFormat(indexPatterns: List<String>): OpenSearchException? {
     val indexPatternFormatErrors = mutableListOf<String>()
     var hasInclusionPattern = false

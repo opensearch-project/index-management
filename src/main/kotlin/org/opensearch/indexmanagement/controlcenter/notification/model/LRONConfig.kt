@@ -122,7 +122,7 @@ data class LRONConfig(
         ): LRONConfig = parse(xcp)
 
         @JvmStatic
-        @Suppress("MaxLineLength", "ComplexMethod", "NestedBlockDepth")
+        @Suppress("MaxLineLength", "CyclomaticComplexMethod", "NestedBlockDepth")
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): LRONConfig {
             var lronCondition = LRONCondition()

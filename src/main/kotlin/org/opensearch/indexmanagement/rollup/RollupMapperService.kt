@@ -276,7 +276,7 @@ class RollupMapperService(
         return RollupJobValidationResult.Valid
     }
 
-    @Suppress("ReturnCount", "ComplexMethod")
+    @Suppress("ReturnCount", "CyclomaticComplexMethod")
     private suspend fun isSourceIndexMappingsValid(index: String, rollup: Rollup): RollupJobValidationResult {
         try {
             val res =

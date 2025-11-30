@@ -55,7 +55,7 @@ data class TransformStats(
         private const val INDEX_TIME_IN_MILLIS_FIELD = "index_time_in_millis"
         private const val SEARCH_TIME_IN_MILLIS_FIELD = "search_time_in_millis"
 
-        @Suppress("ComplexMethod, LongMethod")
+        @Suppress("CyclomaticComplexMethod, LongMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): TransformStats {

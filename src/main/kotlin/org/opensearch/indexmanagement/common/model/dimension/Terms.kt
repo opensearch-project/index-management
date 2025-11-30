@@ -99,7 +99,7 @@ data class Terms(
             .subAggregations(subAggregations)
 
     companion object {
-        @Suppress("ComplexMethod", "LongMethod")
+        @Suppress("CyclomaticComplexMethod", "LongMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): Terms {

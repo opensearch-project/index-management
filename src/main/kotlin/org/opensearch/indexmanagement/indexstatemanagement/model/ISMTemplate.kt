@@ -57,7 +57,7 @@ data class ISMTemplate(
         const val PRIORITY = "priority"
         const val LAST_UPDATED_TIME_FIELD = "last_updated_time"
 
-        @Suppress("ComplexMethod")
+        @Suppress("CyclomaticComplexMethod")
         fun parse(xcp: XContentParser): ISMTemplate {
             val indexPatterns: MutableList<String> = mutableListOf()
             var priority = 0

@@ -99,7 +99,7 @@ object TransformRunner :
     }
 
     // TODO: Add circuit breaker checks - [cluster healthy, utilization within limit]
-    @Suppress("NestedBlockDepth", "ComplexMethod", "LongMethod", "ReturnCount")
+    @Suppress("NestedBlockDepth", "CyclomaticComplexMethod", "LongMethod", "ReturnCount")
     private suspend fun executeJob(transform: Transform, metadata: TransformMetadata, context: JobExecutionContext) {
         var newGlobalCheckpoints: Map<ShardId, Long>? = null
         var newGlobalCheckpointTime: Instant? = null

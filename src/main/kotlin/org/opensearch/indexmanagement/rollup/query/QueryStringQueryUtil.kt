@@ -92,7 +92,7 @@ object QueryStringQueryUtil {
         return escapedField
     }
 
-    @Suppress("ComplexMethod", "LongMethod", "ThrowsCount", "EmptyCatchBlock")
+    @Suppress("CyclomaticComplexMethod", "LongMethod", "ThrowsCount", "EmptyCatchBlock")
     fun extractFieldsFromQueryString(queryBuilder: QueryBuilder, concreteIndexName: String): Pair<List<String>, Map<String, Float>> {
         val context = QueryShardContextFactory.createShardContext(concreteIndexName)
         val qsqBuilder = queryBuilder as QueryStringQueryBuilder

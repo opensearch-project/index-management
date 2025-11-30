@@ -60,7 +60,7 @@ data class LRONCondition(
         ): LRONCondition = parse(xcp)
 
         @JvmStatic
-        @Suppress("MaxLineLength", "ComplexMethod", "NestedBlockDepth")
+        @Suppress("MaxLineLength", "CyclomaticComplexMethod", "NestedBlockDepth")
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): LRONCondition {
             var success: Boolean = DEFAULT_ENABLED

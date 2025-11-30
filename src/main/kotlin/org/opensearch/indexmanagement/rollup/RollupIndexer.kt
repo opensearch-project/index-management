@@ -36,7 +36,7 @@ import org.opensearch.search.aggregations.metrics.InternalValueCount
 import org.opensearch.transport.RemoteTransportException
 import org.opensearch.transport.client.Client
 
-@Suppress("ThrowsCount", "ComplexMethod")
+@Suppress("ThrowsCount", "CyclomaticComplexMethod")
 class RollupIndexer(
     settings: Settings,
     clusterService: ClusterService,
@@ -103,7 +103,7 @@ class RollupIndexer(
     //  Elastic has a PR for a _doc_count mapping which we might be able to use but its in PR and they could change it
     //  Is there a way we can overwrite doc_count? On request/response? https://github.com/elastic/elasticsearch/pull/58339
     //  Perhaps try to save it in what will most likely be the correct way for that PR so we can reuse in the future?
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     fun convertResponseToRequests(job: Rollup, internalComposite: InternalComposite): List<DocWriteRequest<*>> {
         val requests = mutableListOf<DocWriteRequest<*>>()
         internalComposite.buckets.forEach {

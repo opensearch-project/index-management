@@ -34,7 +34,7 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
     private var info: Map<String, Any>? = null
     private var snapshotName: String? = null
 
-    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "LongMethod")
+    @Suppress("TooGenericExceptionCaught", "CyclomaticComplexMethod", "ReturnCount", "LongMethod")
     override suspend fun execute(): Step {
         val context = this.context ?: return this
         val managedIndexMetadata = context.metadata

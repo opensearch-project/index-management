@@ -48,6 +48,7 @@ constructor(
         }
     }
 
+    @Suppress("ThrowsCount")
     override suspend fun executeRequest(
         request: GetSMPolicyRequest,
         user: User?,

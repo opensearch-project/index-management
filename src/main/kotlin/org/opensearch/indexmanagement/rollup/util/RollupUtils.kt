@@ -102,7 +102,7 @@ fun Rollup.getRollupSearchRequest(metadata: RollupMetadata): SearchRequest {
         .allowPartialSearchResults(false)
 }
 
-@Suppress("ComplexMethod", "NestedBlockDepth")
+@Suppress("CyclomaticComplexMethod", "NestedBlockDepth")
 fun Rollup.getCompositeAggregationBuilder(afterKey: Map<String, Any>?): CompositeAggregationBuilder {
     val sources = mutableListOf<CompositeValuesSourceBuilder<*>>()
     this.dimensions.forEach { dimension -> sources.add(dimension.toSourceBuilder(appendType = true)) }
@@ -157,7 +157,7 @@ inline fun <reified T> Rollup.findMatchingMetricField(field: String): String {
     error("Did not find matching rollup metric")
 }
 
-@Suppress("NestedBlockDepth", "ComplexMethod")
+@Suppress("NestedBlockDepth", "CyclomaticComplexMethod")
 fun IndexMetadata.getRollupJobs(): List<Rollup>? {
     val rollupJobs = mutableListOf<Rollup>()
     val source = this.mapping()?.source() ?: return null
@@ -199,7 +199,7 @@ fun IndexMetadata.getRollupJobs(): List<Rollup>? {
 }
 
 // TODO: If we have to set this manually for each aggregation builder then it means we could miss new ones settings in the future
-@Suppress("ComplexMethod", "LongMethod")
+@Suppress("CyclomaticComplexMethod", "LongMethod")
 fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): AggregationBuilder {
     val aggFactory =
         AggregatorFactories.builder().also { factories ->
@@ -293,7 +293,7 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
     }
 }
 
-@Suppress("ComplexMethod", "LongMethod")
+@Suppress("CyclomaticComplexMethod", "LongMethod")
 fun Rollup.rewriteQueryBuilder(
     queryBuilder: QueryBuilder,
     fieldNameMappingTypeMap: Map<String, String>,
@@ -406,7 +406,7 @@ fun Rollup.populateFieldMappings(): Set<RollupFieldMapping> {
 
 // TODO: Not a fan of this.. but I can't find a way to overwrite the aggregations on the shallow copy or original
 //  so we need to instantiate a new one so we can add the rewritten aggregation builders
-@Suppress("ComplexMethod")
+@Suppress("CyclomaticComplexMethod")
 fun SearchSourceBuilder.rewriteSearchSourceBuilder(
     jobs: Set<Rollup>,
     fieldNameMappingTypeMap: Map<String, String>,

@@ -27,7 +27,7 @@ abstract class Metric(val type: Type) :
     }
 
     companion object {
-        @Suppress("ComplexMethod")
+        @Suppress("CyclomaticComplexMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): Metric {

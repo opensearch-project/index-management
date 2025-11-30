@@ -41,7 +41,7 @@ data class ManagedIndexMetaData(
     val rolledOverIndexName: String? = null,
 ) : Writeable,
     ToXContentFragment {
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     fun toMap(): Map<String, String> {
         val resultMap = mutableMapOf<String, String>()
         resultMap[INDEX] = index
@@ -98,7 +98,7 @@ data class ManagedIndexMetaData(
         return false
     }
 
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         // The order we check values matters here as we are only trying to show what is needed for the customer
         // and can return early on certain checks like policyCompleted
@@ -225,7 +225,7 @@ data class ManagedIndexMetaData(
             )
         }
 
-        @Suppress("ComplexMethod", "LongMethod")
+        @Suppress("CyclomaticComplexMethod", "LongMethod")
         @JvmStatic
         @JvmOverloads
         @Throws(IOException::class)

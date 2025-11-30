@@ -169,7 +169,7 @@ class IndexStateManagementHistory(
         )
     }
 
-    @Suppress("SpreadOperator", "NestedBlockDepth", "ComplexMethod")
+    @Suppress("SpreadOperator", "NestedBlockDepth", "CyclomaticComplexMethod")
     private fun deleteOldHistoryIndex() {
         val clusterStateRequest =
             ClusterStateRequest()

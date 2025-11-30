@@ -98,7 +98,7 @@ data class ManagedIndexConfig(
         const val CHANGE_POLICY_FIELD = "change_policy"
         const val JITTER = "jitter"
 
-        @Suppress("ComplexMethod", "LongMethod")
+        @Suppress("CyclomaticComplexMethod", "LongMethod")
         @JvmStatic
         @JvmOverloads
         @Throws(IOException::class)

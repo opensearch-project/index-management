@@ -47,7 +47,7 @@ data class ContinuousTransformStats(
         private const val LAST_TIMESTAMP_FIELD_IN_MILLIS = "last_timestamp_in_millis"
         private const val DOCUMENTS_BEHIND_FIELD = "documents_behind"
 
-        @Suppress("ComplexMethod, LongMethod")
+        @Suppress("CyclomaticComplexMethod, LongMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): ContinuousTransformStats {

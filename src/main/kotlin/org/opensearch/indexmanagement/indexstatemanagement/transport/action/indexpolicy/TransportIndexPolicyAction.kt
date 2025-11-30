@@ -119,7 +119,7 @@ constructor(
             }
         }
 
-        @Suppress("ComplexMethod", "LongMethod", "NestedBlockDepth")
+        @Suppress("CyclomaticComplexMethod", "LongMethod", "NestedBlockDepth")
         private fun validate() {
             // ISM doesn't support update auto expand replica setting, so initiate this as false
             val autoExpandReplica = AutoExpandReplicas.SETTING[Settings.EMPTY]
