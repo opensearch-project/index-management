@@ -74,10 +74,6 @@ data class ISMRollup(
     /**
      * Converts ISMRollup configuration to a Rollup job.
      *
-     * Source index resolution priority:
-     * 1. If ISMRollup.sourceIndex is set, use it (for multi-tier rollups)
-     * 2. Otherwise, use the sourceIndex parameter (managed index from ISM context)
-     *
      * @param sourceIndex The managed index from ISM context (fallback if ISMRollup.sourceIndex is null)
      * @param user Optional user context for the rollup job
      * @return Rollup job configuration
