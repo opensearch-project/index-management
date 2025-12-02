@@ -35,6 +35,7 @@ data class ISMRollup(
     val pageSize: Int,
     val dimensions: List<Dimension>,
     val metrics: List<RollupMetrics>,
+    val sourceIndex: String? = null,
 ) : ToXContentObject,
     Writeable {
     // TODO: This can be moved to a common place, since this is shared between Rollup and ISMRollup
@@ -58,6 +59,9 @@ data class ISMRollup(
             .field(Rollup.PAGE_SIZE_FIELD, pageSize)
             .field(Rollup.DIMENSIONS_FIELD, dimensions)
             .field(Rollup.METRICS_FIELD, metrics)
+        if (sourceIndex != null) {
+            builder.field(Rollup.SOURCE_INDEX_FIELD, sourceIndex)
+        }
         if (targetIndexSettings != null) {
             builder.startObject(Rollup.TARGET_INDEX_SETTINGS_FIELD)
             targetIndexSettings.toXContent(builder, params)
@@ -67,8 +71,20 @@ data class ISMRollup(
         return builder
     }
 
+    /**
+     * Converts ISMRollup configuration to a Rollup job.
+     *
+     * Source index resolution priority:
+     * 1. If ISMRollup.sourceIndex is set, use it (for multi-tier rollups)
+     * 2. Otherwise, use the sourceIndex parameter (managed index from ISM context)
+     *
+     * @param sourceIndex The managed index from ISM context (fallback if ISMRollup.sourceIndex is null)
+     * @param user Optional user context for the rollup job
+     * @return Rollup job configuration
+     */
     fun toRollup(sourceIndex: String, user: User? = null): Rollup {
-        val id = sourceIndex + toString()
+        val resolvedSourceIndex = this.sourceIndex ?: sourceIndex
+        val id = resolvedSourceIndex + toString()
         val currentTime = Instant.now()
         return Rollup(
             id = DigestUtils.sha1Hex(id),
@@ -80,7 +96,7 @@ data class ISMRollup(
             jobLastUpdatedTime = currentTime,
             jobEnabledTime = currentTime,
             description = this.description,
-            sourceIndex = sourceIndex,
+            sourceIndex = resolvedSourceIndex,
             targetIndex = this.targetIndex,
             targetIndexSettings = this.targetIndexSettings,
             metadataID = null,
@@ -120,6 +136,11 @@ data class ISMRollup(
             dimensionsList.toList()
         },
         metrics = sin.readList(::RollupMetrics),
+        sourceIndex = if (sin.version.onOrAfter(Version.V_3_0_0) && sin.readBoolean()) {
+            sin.readString()
+        } else {
+            null
+        },
     )
 
     override fun toString(): String {
@@ -159,6 +180,10 @@ data class ISMRollup(
             }
         }
         out.writeCollection(metrics)
+        if (out.version.onOrAfter(Version.V_3_0_0)) {
+            out.writeBoolean(sourceIndex != null)
+            if (sourceIndex != null) out.writeString(sourceIndex)
+        }
     }
 
     companion object {
@@ -170,6 +195,7 @@ data class ISMRollup(
         ): ISMRollup {
             var description = ""
             var targetIndex = ""
+            var sourceIndex: String? = null
             var targetIndexSettings: Settings? = null
             var pageSize = 0
             val dimensions = mutableListOf<Dimension>()
@@ -185,7 +211,7 @@ data class ISMRollup(
                     Rollup.DESCRIPTION_FIELD -> description = xcp.text()
 
                     Rollup.TARGET_INDEX_FIELD -> targetIndex = xcp.text()
-
+                    Rollup.SOURCE_INDEX_FIELD -> sourceIndex = xcp.text()
                     Rollup.TARGET_INDEX_SETTINGS_FIELD -> {
                         XContentParserUtils.ensureExpectedToken(
                             XContentParser.Token.START_OBJECT,
@@ -230,6 +256,7 @@ data class ISMRollup(
                 metrics = metrics,
                 targetIndex = targetIndex,
                 targetIndexSettings = targetIndexSettings,
+                sourceIndex = sourceIndex,
             )
         }
     }
