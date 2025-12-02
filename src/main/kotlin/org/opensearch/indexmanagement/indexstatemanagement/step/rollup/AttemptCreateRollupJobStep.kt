@@ -60,9 +60,6 @@ class AttemptCreateRollupJobStep(private val action: RollupAction) : Step(name) 
             }
 
             // Resolve target_index template.
-            // Common patterns:
-            // - "rollup_{{ctx.index}}" -> "rollup_logs-2024-01"
-            // - "rollup_tier2_{{ctx.index}}" -> "rollup_tier2_rollup_tier1_logs-2024-01"
             val resolvedTargetIndex = RollupFieldValueExpressionResolver.resolve(
                 tempRollup,
                 action.ismRollup.targetIndex,
@@ -79,8 +76,6 @@ class AttemptCreateRollupJobStep(private val action: RollupAction) : Step(name) 
             )
 
             // Create the final rollup job with resolved source_index and target_index.
-            // The copy() ensures that template variables are replaced with actual index names
-            // before the rollup job is persisted and executed.
             val rollup = action.ismRollup.toRollup(indexName, context.user)
                 .copy(sourceIndex = resolvedSourceIndex, targetIndex = resolvedTargetIndex)
             rollupId = rollup.id
@@ -122,11 +117,6 @@ class AttemptCreateRollupJobStep(private val action: RollupAction) : Step(name) 
 
     /**
      * Validates that resolved source and target indices are valid and different.
-     *
-     * This validation ensures that:
-     * 1. The resolved source_index is not empty or whitespace-only
-     * 2. The resolved target_index is not empty or whitespace-only
-     * 3. The source and target indices are different (prevents self-rollup)
      *
      * @param sourceIndex The resolved source index name (after template resolution)
      * @param targetIndex The resolved target index name (after template resolution)

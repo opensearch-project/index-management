@@ -69,7 +69,6 @@ class RollupInterceptor(
         /**
          * Bypass level that skips all rollup search validations and rewriting.
          * Used when the system needs to query rollup indices directly using composite aggregation.
-         * Passed via FetchSourceContext marker for multi-node support.
          */
         const val BYPASS_ROLLUP_SEARCH = 1
 
@@ -77,7 +76,6 @@ class RollupInterceptor(
          * Bypass level that allows non-zero size in rollup searches.
          * Used for internal operations like continuous rollup initialization that need to fetch
          * actual documents from rollup indices (e.g., getEarliestTimestampFromRollupIndex).
-         * Passed via FetchSourceContext marker for multi-node support.
          */
         const val BYPASS_SIZE_CHECK = 2
     }
@@ -85,7 +83,6 @@ class RollupInterceptor(
     /**
      * Reads the bypass value from the request's FetchSourceContext.
      * Returns the bypass level if the marker is present in includes array, null otherwise.
-     * This enables bypass mechanism to work in multi-node clusters.
      */
     internal fun getBypassFromFetchSource(request: ShardSearchRequest): Int? {
         val includes = request.source()?.fetchSource()?.includes()
@@ -121,7 +118,7 @@ class RollupInterceptor(
                 val index = request.shardId().indexName
                 val isRollupIndex = isRollupIndex(index, clusterService.state())
                 if (isRollupIndex) {
-                    // Check bypass from FetchSourceContext for multi-node support
+                    // Check bypass from FetchSourceContext
                     val bypassLevel = getBypassFromFetchSource(request)
 
                     logger.debug("RollupInterceptor bypass check - bypassLevel: $bypassLevel")
