@@ -16,6 +16,7 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.core.common.transport.TransportAddress
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
 import org.opensearch.test.OpenSearchTestCase
+import kotlin.test.Ignore
 
 class SkipExecutionTests : OpenSearchTestCase() {
     private var clusterService: ClusterService = mock()
@@ -57,6 +58,7 @@ class SkipExecutionTests : OpenSearchTestCase() {
         assertFalse(skip.hasLegacyPlugin)
     }
 
+    @Ignore("Legacy version was remove https://github.com/opensearch-project/OpenSearch/pull/19793")
     fun `test sweepISMPluginVersion should set flag to true and hasLegacyPlugin to true when there are different versions including current version`() {
         val minVersion = Version.fromString("7.10.0")
         val maxVersion = Version.CURRENT
@@ -73,6 +75,7 @@ class SkipExecutionTests : OpenSearchTestCase() {
         assertTrue(skip.hasLegacyPlugin)
     }
 
+    @Ignore("Legacy version was remove https://github.com/opensearch-project/OpenSearch/pull/19793")
     fun `test sweepISMPluginVersion should set flag to true and hasLegacyPlugin to true with different versions`() {
         val minVersion = Version.fromString("7.10.0")
         val maxVersion = Version.V_2_0_0
