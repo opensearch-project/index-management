@@ -39,8 +39,11 @@ class RolloverActionParser : ActionParser() {
 
             when (fieldName) {
                 RolloverAction.MIN_SIZE_FIELD -> minSize = ByteSizeValue.parseBytesSizeValue(xcp.text(), RolloverAction.MIN_SIZE_FIELD)
+
                 RolloverAction.MIN_DOC_COUNT_FIELD -> minDocs = xcp.longValue()
+
                 RolloverAction.MIN_INDEX_AGE_FIELD -> minAge = TimeValue.parseTimeValue(xcp.text(), RolloverAction.MIN_INDEX_AGE_FIELD)
+
                 RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD ->
                     minPrimaryShardSize =
                         ByteSizeValue.parseBytesSizeValue(
@@ -48,7 +51,9 @@ class RolloverActionParser : ActionParser() {
                             RolloverAction
                                 .MIN_PRIMARY_SHARD_SIZE_FIELD,
                         )
+
                 RolloverAction.COPY_ALIAS_FIELD -> copyAlias = xcp.booleanValue()
+
                 else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in RolloverAction.")
             }
         }

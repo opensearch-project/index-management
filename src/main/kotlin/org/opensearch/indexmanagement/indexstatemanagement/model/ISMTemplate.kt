@@ -75,8 +75,11 @@ data class ISMTemplate(
                             indexPatterns.add(xcp.text())
                         }
                     }
+
                     PRIORITY -> priority = if (xcp.currentToken() == Token.VALUE_NULL) 0 else xcp.intValue()
+
                     LAST_UPDATED_TIME_FIELD -> lastUpdatedTime = xcp.instant()
+
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ISMTemplate.")
                 }
             }

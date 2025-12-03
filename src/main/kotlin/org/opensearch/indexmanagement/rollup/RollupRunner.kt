@@ -144,7 +144,9 @@ object RollupRunner :
                     metadata =
                         when (val getMetadataResult = rollupMetadataService.getExistingMetadata(job)) {
                             is MetadataResult.Success -> getMetadataResult.metadata
+
                             is MetadataResult.NoMetadata -> null
+
                             is MetadataResult.Failure ->
                                 throw RollupMetadataException("Failed to get existing rollup metadata [${job.metadataID}]", getMetadataResult.cause)
                         }
@@ -177,6 +179,7 @@ object RollupRunner :
                             releaseLockForScheduledJob(context, lock)
                         }
                     }
+
                     else -> {}
                 }
             }
@@ -202,11 +205,13 @@ object RollupRunner :
                     setFailedMetadataAndDisableJob(job, jobValidity.reason)
                     return
                 }
+
                 is RollupJobValidationResult.Failure -> {
                     logger.error("Failed to validate [${job.id}]: [${jobValidity.message}]")
                     setFailedMetadataAndDisableJob(job, jobValidity.message)
                     return
                 }
+
                 else -> {}
             }
 
@@ -214,10 +219,13 @@ object RollupRunner :
             var metadata =
                 when (val initMetadataResult = rollupMetadataService.init(job)) {
                     is MetadataResult.Success -> initMetadataResult.metadata
+
                     is MetadataResult.NoMetadata -> {
                         logger.info("Init metadata NoMetadata returning early")
                         return
-                    } // No-op this execution
+                    }
+
+                    // No-op this execution
                     is MetadataResult.Failure ->
                         throw RollupMetadataException("Failed to initialize rollup metadata", initMetadataResult.cause)
                 }
@@ -232,6 +240,7 @@ object RollupRunner :
             if (updatableJob.metadataID == null && metadata.status == RollupMetadata.Status.INIT) {
                 when (val updateRollupJobResult = updateRollupJob(updatableJob.copy(metadataID = metadata.id), metadata)) {
                     is RollupJobResult.Success -> updatableJob = updateRollupJobResult.rollup
+
                     is RollupJobResult.Failure -> {
                         logger.error(
                             "Failed to update the rollup job [${updatableJob.id}] with metadata id [${metadata.id}]", updateRollupJobResult.cause,
@@ -252,10 +261,12 @@ object RollupRunner :
                     setFailedMetadataAndDisableJob(updatableJob, result.message, metadata)
                     return
                 }
+
                 is RollupJobValidationResult.Invalid -> {
                     setFailedMetadataAndDisableJob(updatableJob, result.reason, metadata)
                     return
                 }
+
                 else -> {}
             }
 
@@ -284,6 +295,7 @@ object RollupRunner :
                                         is RollupIndexResult.Failure -> RollupResult.Failure(rollupIndexResult.message, rollupIndexResult.cause)
                                     }
                                 }
+
                                 is RollupSearchResult.Failure -> {
                                     RollupResult.Failure(rollupSearchResult.message, rollupSearchResult.cause)
                                 }
@@ -304,6 +316,7 @@ object RollupRunner :
                                         }.rollup ?: error("Unable to get rollup job")
                                     }
                             }
+
                             is RollupResult.Failure -> {
                                 rollupMetadataService.updateMetadata(
                                     metadata.copy(status = RollupMetadata.Status.FAILED, failureReason = rollupResult.cause.message),
@@ -376,9 +389,11 @@ object RollupRunner :
             val errorMessage = "An error occurred when updating rollup job [${job.id}]"
             return when (val setFailedMetadataResult = rollupMetadataService.setFailedMetadata(job, errorMessage, metadata)) {
                 is MetadataResult.Success -> RollupJobResult.Failure(errorMessage, e)
+
                 // If the metadata update failed as well, throw an exception to end the runner execution
                 is MetadataResult.Failure ->
                     throw RollupMetadataException(setFailedMetadataResult.message, setFailedMetadataResult.cause)
+
                 // Should not get NoMetadata here
                 is MetadataResult.NoMetadata ->
                     throw RollupMetadataException("Unexpected state when updating metadata", null)
@@ -399,7 +414,9 @@ object RollupRunner :
                 metadata =
                     when (val getMetadataResult = rollupMetadataService.getExistingMetadata(job)) {
                         is MetadataResult.Success -> getMetadataResult.metadata
+
                         is MetadataResult.NoMetadata -> null
+
                         is MetadataResult.Failure ->
                             throw RollupMetadataException("Failed to get existing rollup metadata [${job.metadataID}]", getMetadataResult.cause)
                     }
@@ -408,7 +425,9 @@ object RollupRunner :
             logger.debug("Validating source index [${job.sourceIndex}] for rollup job [${job.id}]")
             when (val sourceIndexValidationResult = rollupMapperService.isSourceIndexValid(job)) {
                 is RollupJobValidationResult.Valid -> {
-                } // No action taken when valid
+                }
+
+                // No action taken when valid
                 else -> return@withClosableContext sourceIndexValidationResult
             }
 
@@ -432,8 +451,10 @@ object RollupRunner :
         val updatedMetadata =
             when (val setFailedMetadataResult = rollupMetadataService.setFailedMetadata(job, reason, existingMetadata)) {
                 is MetadataResult.Success -> setFailedMetadataResult.metadata
+
                 is MetadataResult.Failure ->
                     throw RollupMetadataException(setFailedMetadataResult.message, setFailedMetadataResult.cause)
+
                 // Should not get NoMetadata here
                 is MetadataResult.NoMetadata ->
                     throw RollupMetadataException("Unexpected state when setting failed metadata", null)
@@ -464,6 +485,7 @@ object RollupRunner :
 
         return when (val updateRollupJobResult = updateRollupJob(updatedRollupJob, metadata)) {
             is RollupJobResult.Success -> true
+
             is RollupJobResult.Failure -> {
                 logger.error("Failed to disable rollup job [${job.id}]", updateRollupJobResult.cause)
                 false

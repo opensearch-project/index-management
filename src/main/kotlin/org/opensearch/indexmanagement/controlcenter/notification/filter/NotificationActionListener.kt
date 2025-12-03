@@ -288,10 +288,13 @@ class NotificationActionListener<Request : ActionRequest, Response : ActionRespo
         if (runtimeConfig != null) channels.add(runtimeConfig)
         if (defaultConfig != null) channels.add(defaultConfig)
 
-        return channels.filter { ch ->
-            val condition = ch.lronConfig.lronCondition
-            condition.success && result == OperationResult.COMPLETE || condition.failure && result != OperationResult.COMPLETE
-        }.toSet()
+        return channels
+            .filter { ch ->
+                val condition = ch.lronConfig.lronCondition
+                (condition.success && result == OperationResult.COMPLETE) ||
+                    (condition.failure && result != OperationResult.COMPLETE)
+            }
+            .toSet()
     }
 
     fun escapeQueryString(query: String): String = query.replace("/", "\\/").replace(":", "\\:")

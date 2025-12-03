@@ -744,7 +744,7 @@ object ManagedIndexRunner :
                 )
             }
 
-        /**
+        /*
          * The freshness of isSafe may change between runs, and we use it to decide whether to enter this method
          * n [shouldChangePolicy]. So here we check the safeness again
          */
@@ -759,7 +759,7 @@ object ManagedIndexRunner :
             }
         }
 
-        /**
+        /*
          * Try to update the ManagedIndexMetaData, we need to do this first before updating the
          * ManagedIndexConfig because if this fails we can fail early and still retry this whole process on the next
          * execution whereas if we do the update to ManagedIndexConfig first we lose the ChangePolicy on the job and

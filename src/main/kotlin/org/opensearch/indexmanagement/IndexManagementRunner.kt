@@ -24,9 +24,13 @@ object IndexManagementRunner : ScheduledJobRunner {
     override fun runJob(job: ScheduledJobParameter, context: JobExecutionContext) {
         when (job) {
             is ManagedIndexConfig -> ManagedIndexRunner.runJob(job, context)
+
             is Rollup -> RollupRunner.runJob(job, context)
+
             is Transform -> TransformRunner.runJob(job, context)
+
             is SMPolicy -> SMRunner.runJob(job, context)
+
             else -> {
                 val errorMessage = "Invalid job type, found ${job.javaClass.simpleName} with id: ${context.jobId}"
                 logger.error(errorMessage)

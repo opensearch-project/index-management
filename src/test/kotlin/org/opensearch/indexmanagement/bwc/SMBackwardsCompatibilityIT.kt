@@ -30,6 +30,7 @@ class SMBackwardsCompatibilityIT : SnapshotManagementRestTestCase() {
 
     private fun getPluginUri(): String = when (CLUSTER_TYPE) {
         ClusterType.OLD -> "_nodes/$CLUSTER_NAME-0/plugins"
+
         ClusterType.MIXED -> {
             when (System.getProperty("tests.rest.bwcsuite_round")) {
                 "second" -> "_nodes/$CLUSTER_NAME-1/plugins"
@@ -37,6 +38,7 @@ class SMBackwardsCompatibilityIT : SnapshotManagementRestTestCase() {
                 else -> "_nodes/$CLUSTER_NAME-0/plugins"
             }
         }
+
         ClusterType.UPGRADED -> "_nodes/plugins"
     }
 
@@ -90,6 +92,7 @@ class SMBackwardsCompatibilityIT : SnapshotManagementRestTestCase() {
                     val explainMetadata = parseExplainResponse(explainResponse.entity.content)
                     assertTrue("Explain should return results", explainMetadata.isNotEmpty())
                 }
+
                 ClusterType.MIXED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
 
@@ -103,6 +106,7 @@ class SMBackwardsCompatibilityIT : SnapshotManagementRestTestCase() {
                     val explainMetadata = parseExplainResponse(explainResponse.entity.content)
                     assertTrue("Explain should return results", explainMetadata.isNotEmpty())
                 }
+
                 ClusterType.UPGRADED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
 

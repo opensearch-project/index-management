@@ -75,12 +75,17 @@ data class ActionProperties(
 
                 when (fieldName) {
                     Properties.MAX_NUM_SEGMENTS.key -> maxNumSegments = xcp.intValue()
+
                     Properties.SNAPSHOT_NAME.key -> snapshotName = xcp.text()
+
                     Properties.ROLLUP_ID.key -> rollupId = xcp.text()
+
                     Properties.HAS_ROLLUP_FAILED.key -> hasRollupFailed = xcp.booleanValue()
+
                     ShrinkActionProperties.SHRINK_ACTION_PROPERTIES -> {
                         shrinkActionProperties = if (xcp.currentToken() == Token.VALUE_NULL) null else ShrinkActionProperties.parse(xcp)
                     }
+
                     TransformActionProperties.TRANSFORM_ACTION_PROPERTIES -> {
                         transformActionProperties = if (xcp.currentToken() == Token.VALUE_NULL) null else TransformActionProperties.parse(xcp)
                     }

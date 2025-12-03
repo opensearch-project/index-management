@@ -84,6 +84,7 @@ data class Transform(
             is CronSchedule -> {
                 // Job scheduler already correctly throws errors for this
             }
+
             is IntervalSchedule -> {
                 require(jobSchedule.interval >= MINIMUM_JOB_INTERVAL) { "Transform job schedule interval must be greater than 0" }
             }
@@ -340,13 +341,21 @@ data class Transform(
                     TRANSFORM_ID_FIELD -> {
                         requireNotNull(xcp.text()) { "The transform_id field is null" }
                     }
+
                     JOB_SCHEDULE_FIELD -> schedule = ScheduleParser.parse(xcp)
+
                     SCHEMA_VERSION_FIELD -> schemaVersion = xcp.longValue()
+
                     UPDATED_AT_FIELD -> updatedAt = xcp.instant()
+
                     ENABLED_AT_FIELD -> enabledAt = xcp.instant()
+
                     ENABLED_FIELD -> enabled = xcp.booleanValue()
+
                     DESCRIPTION_FIELD -> description = xcp.text()
+
                     SOURCE_INDEX_FIELD -> sourceIndex = xcp.text()
+
                     DATA_SELECTION_QUERY_FIELD -> {
                         val registry = xcp.xContentRegistry
                         val source = xcp.mapOrdered()
@@ -359,8 +368,11 @@ data class Transform(
                             )
                         dataSelectionQuery = AbstractQueryBuilder.parseInnerQueryBuilder(sourceParser)
                     }
+
                     TARGET_INDEX_FIELD -> targetIndex = xcp.text()
+
                     METADATA_ID_FIELD -> metadataId = xcp.textOrNull()
+
                     ROLES_FIELD -> {
                         // Parsing but not storing the field, deprecated
                         ensureExpectedToken(Token.START_ARRAY, xcp.currentToken(), xcp)
@@ -368,20 +380,26 @@ data class Transform(
                             xcp.text()
                         }
                     }
+
                     PAGE_SIZE_FIELD -> pageSize = xcp.intValue()
+
                     GROUPS_FIELD -> {
                         ensureExpectedToken(Token.START_ARRAY, xcp.currentToken(), xcp)
                         while (xcp.nextToken() != Token.END_ARRAY) {
                             groups.add(Dimension.parse(xcp))
                         }
                     }
+
                     AGGREGATIONS_FIELD -> {
                         AggregatorFactories.parseAggregators(xcp)?.let { aggregations = it }
                     }
+
                     CONTINUOUS_FIELD -> continuous = xcp.booleanValue()
+
                     USER_FIELD -> {
                         user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)
                     }
+
                     else -> throw IllegalArgumentException("Invalid field [$fieldName] found in Transforms.")
                 }
             }
