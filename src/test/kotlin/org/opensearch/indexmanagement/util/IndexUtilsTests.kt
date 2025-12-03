@@ -59,7 +59,7 @@ class IndexUtilsTests : OpenSearchTestCase() {
                     "number_of_shards": "1",
                     "number_of_replicas": "1",
                     "uuid": "t-VBBW6aR6KpJ3XP5iISOA",
-                    "version": { "created": "6040399" },
+                    "version": { "created": "136217927" },
                     "provided_name": "data_test"
                   }
                 },
@@ -89,7 +89,7 @@ class IndexUtilsTests : OpenSearchTestCase() {
                     "number_of_shards": "1",
                     "number_of_replicas": "1",
                     "uuid": "t-VBBW6aR6KpJ3XP5iISOA",
-                    "version": { "created": "6040399" },
+                    "version": { "created": "136217927" },
                     "provided_name": "data_test"
                   }
                 },
@@ -124,7 +124,7 @@ class IndexUtilsTests : OpenSearchTestCase() {
                     "number_of_shards": "1",
                     "number_of_replicas": "1",
                     "uuid": "t-VBBW6aR6KpJ3XP5iISOA",
-                    "version": { "created": "6040399" },
+                    "version": { "created": "136217927" },
                     "provided_name": "data_test"
                   }
                 },
