@@ -65,6 +65,35 @@ class RollupInterceptor(
 
     @Volatile private var searchRawRollupIndices = RollupSettings.ROLLUP_SEARCH_SOURCE_INDICES.get(settings)
 
+    companion object {
+        /**
+         * Bypass level that skips all rollup search validations and rewriting.
+         * Used when the system needs to query rollup indices directly using composite aggregation.
+         */
+        const val BYPASS_ROLLUP_SEARCH = 1
+
+        /**
+         * Bypass level that allows non-zero size in rollup searches.
+         * Used for internal operations like continuous rollup initialization that need to fetch
+         * actual documents from rollup indices (e.g., getEarliestTimestampFromRollupIndex).
+         */
+        const val BYPASS_SIZE_CHECK = 2
+    }
+
+    /**
+     * Reads the bypass value from the request's FetchSourceContext.
+     * Returns the bypass level if the marker is present in includes array, null otherwise.
+     */
+    internal fun getBypassFromFetchSource(request: ShardSearchRequest): Int? {
+        val includes = request.source()?.fetchSource()?.includes()
+
+        // Look for our bypass marker in the includes array and extract the bypass level
+        return includes
+            ?.find { it.startsWith("_rollup_internal_bypass_") }
+            ?.substringAfter("_rollup_internal_bypass_")
+            ?.toIntOrNull()
+    }
+
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(RollupSettings.ROLLUP_SEARCH_ENABLED) {
             searchEnabled = it
@@ -89,7 +118,22 @@ class RollupInterceptor(
                 val index = request.shardId().indexName
                 val isRollupIndex = isRollupIndex(index, clusterService.state())
                 if (isRollupIndex) {
-                    if (request.source().size() != 0) {
+                    // Check bypass from FetchSourceContext
+                    val bypassLevel = getBypassFromFetchSource(request)
+
+                    logger.debug("RollupInterceptor bypass check - bypassLevel: $bypassLevel")
+
+                    // BYPASS_ROLLUP_SEARCH: Skip all validations and query rewriting
+                    // Used for composite aggregation queries when rolling up rollup indices
+                    if (bypassLevel == BYPASS_ROLLUP_SEARCH) {
+                        actualHandler.messageReceived(request, channel, task)
+                        return
+                    }
+
+                    // BYPASS_SIZE_CHECK: Allow non-zero size for internal operations that need to
+                    // fetch documents (e.g., fetching earliest timestamp document for continuous rollup initialization)
+                    // Normal rollup searches must have size=0 since they should only return aggregations
+                    if (bypassLevel != BYPASS_SIZE_CHECK && request.source().size() != 0) {
                         throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
                     }
 

@@ -18,6 +18,7 @@ import org.opensearch.indexmanagement.rollup.action.index.IndexRollupRequest
 import org.opensearch.indexmanagement.rollup.action.index.IndexRollupResponse
 import org.opensearch.indexmanagement.rollup.action.start.StartRollupAction
 import org.opensearch.indexmanagement.rollup.action.start.StartRollupRequest
+import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionResolver
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
@@ -39,37 +40,98 @@ class AttemptCreateRollupJobStep(private val action: RollupAction) : Step(name) 
         val previousRunRollupId = managedIndexMetadata.actionMetaData?.actionProperties?.rollupId
         val hasPreviousRollupAttemptFailed = managedIndexMetadata.actionMetaData?.actionProperties?.hasRollupFailed
 
-        // Creating a rollup job
-        val rollup = action.ismRollup.toRollup(indexName, context.user)
-        rollupId = rollup.id
-        logger.info("Attempting to create a rollup job $rollupId for index $indexName")
-
-        val indexRollupRequest = IndexRollupRequest(rollup, WriteRequest.RefreshPolicy.IMMEDIATE)
-
         try {
+            // Create a temporary rollup object for template resolution context.
+            // This provides the rollup's source_index as {{ctx.source_index}} in templates.
+            val tempRollup = action.ismRollup.toRollup(indexName, context.user)
+
+            // Resolve source_index template if provided, else use managed index name.
+            // This enables patterns like:
+            // - source_index: "{{ctx.index}}" -> resolves to the managed index name
+            // - source_index: null -> defaults to the managed index name (backward compatible)
+            val resolvedSourceIndex = if (action.ismRollup.sourceIndex != null) {
+                RollupFieldValueExpressionResolver.resolve(
+                    tempRollup,
+                    action.ismRollup.sourceIndex,
+                    indexName,
+                )
+            } else {
+                indexName
+            }
+
+            // Resolve target_index template.
+            val resolvedTargetIndex = RollupFieldValueExpressionResolver.resolve(
+                tempRollup,
+                action.ismRollup.targetIndex,
+                indexName,
+            )
+
+            // Validate resolved indices to ensure they are valid and different.
+            // This catches configuration errors early before attempting to create the rollup job.
+            validateResolvedIndices(resolvedSourceIndex, resolvedTargetIndex)
+
+            logger.info(
+                "Executing rollup from source [$resolvedSourceIndex] to target [$resolvedTargetIndex] " +
+                    "for managed index [$indexName]",
+            )
+
+            // Create the final rollup job with resolved source_index and target_index.
+            val rollup = action.ismRollup.toRollup(indexName, context.user)
+                .copy(sourceIndex = resolvedSourceIndex, targetIndex = resolvedTargetIndex)
+            rollupId = rollup.id
+            logger.info("Attempting to create a rollup job $rollupId for index $indexName")
+
+            val indexRollupRequest = IndexRollupRequest(rollup, WriteRequest.RefreshPolicy.IMMEDIATE)
             val response: IndexRollupResponse = context.client.suspendUntil { execute(IndexRollupAction.INSTANCE, indexRollupRequest, it) }
             logger.info("Received status ${response.status.status} on trying to create rollup job $rollupId")
 
             stepStatus = StepStatus.COMPLETED
             info = mapOf("message" to getSuccessMessage(rollup.id, indexName))
+        } catch (e: IllegalArgumentException) {
+            val message = "Failed to validate resolved indices for rollup job"
+            logger.error(message, e)
+            stepStatus = StepStatus.FAILED
+            info = mapOf("message" to message, "cause" to "${e.message}")
         } catch (e: VersionConflictEngineException) {
-            val message = getFailedJobExistsMessage(rollup.id, indexName)
+            val message = getFailedJobExistsMessage(rollupId ?: "unknown", indexName)
             logger.info(message)
             if (rollupId == previousRunRollupId && hasPreviousRollupAttemptFailed == true) {
-                startRollupJob(rollup.id, context)
+                startRollupJob(rollupId ?: "unknown", context)
             } else {
                 stepStatus = StepStatus.COMPLETED
                 info = mapOf("info" to message)
             }
         } catch (e: RemoteTransportException) {
-            processFailure(rollup.id, indexName, ExceptionsHelper.unwrapCause(e) as Exception)
+            processFailure(rollupId ?: "unknown", indexName, ExceptionsHelper.unwrapCause(e) as Exception)
         } catch (e: OpenSearchException) {
-            processFailure(rollup.id, indexName, e)
+            processFailure(rollupId ?: "unknown", indexName, e)
         } catch (e: Exception) {
-            processFailure(rollup.id, indexName, e)
+            val message = "Failed to create rollup job"
+            logger.error(message, e)
+            stepStatus = StepStatus.FAILED
+            info = mapOf("message" to message, "cause" to "${e.message}")
         }
 
         return this
+    }
+
+    /**
+     * Validates that resolved source and target indices are valid and different.
+     *
+     * @param sourceIndex The resolved source index name (after template resolution)
+     * @param targetIndex The resolved target index name (after template resolution)
+     * @throws IllegalArgumentException if any validation rule fails, with a descriptive error message
+     */
+    private fun validateResolvedIndices(sourceIndex: String, targetIndex: String) {
+        require(sourceIndex.isNotBlank()) {
+            "Resolved source_index cannot be empty"
+        }
+        require(targetIndex.isNotBlank()) {
+            "Resolved target_index cannot be empty"
+        }
+        require(sourceIndex != targetIndex) {
+            "Source and target indices must be different: $sourceIndex"
+        }
     }
 
     fun processFailure(rollupId: String, indexName: String, e: Exception) {
