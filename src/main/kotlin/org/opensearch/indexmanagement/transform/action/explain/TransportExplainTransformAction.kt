@@ -148,6 +148,7 @@ constructor(
                                     when (e) {
                                         is RemoteTransportException ->
                                             actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as java.lang.Exception)
+
                                         else -> actionListener.onFailure(e)
                                     }
                                 }
@@ -183,7 +184,9 @@ constructor(
                                 val nonWildcardIds = ids.filter { !it.contains("*") }.map { it to failureReason }.toMap(mutableMapOf())
                                 actionListener.onResponse(ExplainTransformResponse(mapOf(), nonWildcardIds))
                             }
+
                             is RemoteTransportException -> actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as java.lang.Exception)
+
                             else -> actionListener.onFailure(e)
                         }
                     }

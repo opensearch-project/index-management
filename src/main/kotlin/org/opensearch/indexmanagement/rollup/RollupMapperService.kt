@@ -267,8 +267,11 @@ class RollupMapperService(
         // Validate mappings for each concrete index resolved from the rollup source index
         concreteIndices.forEach { index ->
             when (val sourceIndexMappingResult = isSourceIndexMappingsValid(index, rollup)) {
-                is RollupJobValidationResult.Valid -> {} // no-op if valid
+                is RollupJobValidationResult.Valid -> {}
+
+                // no-op if valid
                 is RollupJobValidationResult.Invalid -> return sourceIndexMappingResult
+
                 is RollupJobValidationResult.Failure -> return sourceIndexMappingResult
             }
         }
@@ -282,6 +285,7 @@ class RollupMapperService(
             val res =
                 when (val getMappingsResult = getMappings(index)) {
                     is GetMappingsResult.Success -> getMappingsResult.response
+
                     is GetMappingsResult.Failure ->
                         return RollupJobValidationResult.Failure(getMappingsResult.message, getMappingsResult.cause)
                 }
@@ -304,9 +308,11 @@ class RollupMapperService(
                     is DateHistogram -> {
                         // TODO: Validate if field is date type: date, date_nanos?
                     }
+
                     is Histogram -> {
                         // TODO: Validate field types for histograms
                     }
+
                     is Terms -> {
                         // TODO: Validate field types for terms
                     }
@@ -351,6 +357,7 @@ class RollupMapperService(
         val res =
             when (val getMappingsResult = getMappings(targetIndexResolvedName)) {
                 is GetMappingsResult.Success -> getMappingsResult.response
+
                 is GetMappingsResult.Failure ->
                     return RollupJobValidationResult.Failure(getMappingsResult.message, getMappingsResult.cause)
             }

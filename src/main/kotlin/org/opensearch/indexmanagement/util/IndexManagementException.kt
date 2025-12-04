@@ -26,18 +26,22 @@ class IndexManagementException(message: String, val status: RestStatus, ex: Exce
                     status = ex.status()
                     friendlyMsg = "Configuration index not found"
                 }
+
                 is IllegalArgumentException -> {
                     status = RestStatus.BAD_REQUEST
                     friendlyMsg = ex.message as String
                 }
+
                 is ValidationException -> {
                     status = RestStatus.BAD_REQUEST
                     friendlyMsg = ex.message as String
                 }
+
                 is OpenSearchStatusException -> {
                     status = ex.status()
                     friendlyMsg = ex.message as String
                 }
+
                 else -> {
                     if (!Strings.isNullOrEmpty(ex.message)) {
                         friendlyMsg = ex.message as String

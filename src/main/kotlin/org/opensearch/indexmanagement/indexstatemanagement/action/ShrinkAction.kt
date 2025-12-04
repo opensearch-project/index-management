@@ -79,8 +79,11 @@ class ShrinkAction(
         if (currentStepStatus == Step.StepStatus.COMPLETED) {
             return when (currentStep) {
                 AttemptMoveShardsStep.name -> waitForMoveShardsStep
+
                 WaitForMoveShardsStep.name -> attemptShrinkStep
+
                 AttemptShrinkStep.name -> waitForShrinkStep
+
                 // We do not expect to ever hit this point, but if we do somehow, starting over is safe.
                 else -> attemptMoveShardsStep
             }
@@ -92,9 +95,13 @@ class ShrinkAction(
         // step not completed, return the same step
         return when (stepMetaData.name) {
             AttemptMoveShardsStep.name -> attemptMoveShardsStep
+
             WaitForMoveShardsStep.name -> waitForMoveShardsStep
+
             AttemptShrinkStep.name -> attemptShrinkStep
+
             WaitForShrinkStep.name -> waitForShrinkStep
+
             // Again, we don't expect to ever hit this point
             else -> attemptMoveShardsStep
         }

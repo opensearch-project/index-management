@@ -122,18 +122,21 @@ data class State(
 
                 when (fieldName) {
                     NAME_FIELD -> name = xcp.text()
+
                     ACTIONS_FIELD -> {
                         ensureExpectedToken(Token.START_ARRAY, xcp.currentToken(), xcp)
                         while (xcp.nextToken() != Token.END_ARRAY) {
                             actions.add(ISMActionsParser.instance.parse(xcp, actions.size))
                         }
                     }
+
                     TRANSITIONS_FIELD -> {
                         ensureExpectedToken(Token.START_ARRAY, xcp.currentToken(), xcp)
                         while (xcp.nextToken() != Token.END_ARRAY) {
                             transitions.add(Transition.parse(xcp))
                         }
                     }
+
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in State.")
                 }
             }

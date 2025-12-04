@@ -298,6 +298,7 @@ fun tryUpdatingNextExecutionTime(
             WorkflowType.CREATION -> {
                 metadataBuilder.setNextCreationTime(newNextTime)
             }
+
             WorkflowType.DELETION -> {
                 metadataBuilder.setNextDeletionTime(newNextTime)
             }
@@ -376,6 +377,7 @@ fun getTimeLimitExceededMessage(timeLimit: TimeValue, workflow: WorkflowType): S
             WorkflowType.CREATION -> {
                 "creation"
             }
+
             WorkflowType.DELETION -> {
                 "deletion"
             }

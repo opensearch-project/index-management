@@ -110,10 +110,14 @@ fun randomConditions(
 
     return when (type) {
         Conditions.MIN_INDEX_AGE_FIELD -> Conditions(indexAge = value as TimeValue)
+
         Conditions.MIN_DOC_COUNT_FIELD -> Conditions(docCount = value as Long)
+
         Conditions.MIN_SIZE_FIELD -> Conditions(size = value as ByteSizeValue)
-//        Conditions.CRON_FIELD -> Conditions(cron = value as CronSchedule) // TODO: Uncomment after issues are fixed
+
+        //        Conditions.CRON_FIELD -> Conditions(cron = value as CronSchedule) // TODO: Uncomment after issues are fixed
         Conditions.MIN_ROLLOVER_AGE_FIELD -> Conditions(rolloverAge = value as TimeValue)
+
         else -> throw IllegalArgumentException("Invalid field: [$type] given for random Conditions.")
     }
 }

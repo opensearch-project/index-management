@@ -38,6 +38,7 @@ class AliasActionParser : ActionParser() {
                         actions.add(IndicesAliasesRequest.AliasActions.fromXContent(xcp))
                     }
                 }
+
                 else -> {
                     logger.error("Invalid field: [$fieldName] found in AliasAction.")
                     throw IllegalArgumentException("Invalid field: [$fieldName] found in AliasAction.")

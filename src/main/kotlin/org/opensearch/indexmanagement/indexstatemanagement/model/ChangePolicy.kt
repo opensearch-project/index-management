@@ -95,17 +95,22 @@ data class ChangePolicy(
 
                 when (fieldName) {
                     POLICY_ID_FIELD -> policyID = xcp.text()
+
                     STATE_FIELD -> state = xcp.textOrNull()
+
                     INCLUDE_FIELD -> {
                         ensureExpectedToken(Token.START_ARRAY, xcp.currentToken(), xcp)
                         while (xcp.nextToken() != Token.END_ARRAY) {
                             include.add(StateFilter.parse(xcp))
                         }
                     }
+
                     IS_SAFE_FIELD -> isSafe = xcp.booleanValue()
+
                     USER_FIELD -> {
                         user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)
                     }
+
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ChangePolicy.")
                 }
             }

@@ -259,27 +259,41 @@ data class ManagedIndexMetaData(
 
                 when (fieldName) {
                     INDEX -> index = xcp.text()
+
                     INDEX_UUID -> indexUuid = xcp.text()
+
                     POLICY_ID -> policyID = xcp.text()
+
                     POLICY_SEQ_NO -> policySeqNo = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.longValue()
+
                     POLICY_PRIMARY_TERM -> policyPrimaryTerm = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.longValue()
+
                     POLICY_COMPLETED -> policyCompleted = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.booleanValue()
+
                     ROLLED_OVER -> rolledOver = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.booleanValue()
+
                     ROLLED_OVER_INDEX_NAME -> rolledOverIndexName = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.text()
+
                     INDEX_CREATION_DATE -> indexCreationDate = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.longValue()
+
                     TRANSITION_TO -> transitionTo = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.text()
+
                     StateMetaData.STATE -> {
                         state = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else StateMetaData.parse(xcp)
                     }
+
                     ActionMetaData.ACTION -> {
                         action = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else ActionMetaData.parse(xcp)
                     }
+
                     StepMetaData.STEP -> {
                         step = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else StepMetaData.parse(xcp)
                     }
+
                     PolicyRetryInfoMetaData.RETRY_INFO -> {
                         retryInfo = PolicyRetryInfoMetaData.parse(xcp)
                     }
+
                     INFO -> info = xcp.map()
                     // below line will break when getting metadata for explain or history
                     // else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ManagedIndexMetaData.")

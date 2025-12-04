@@ -97,7 +97,9 @@ class ISMActionsParser private constructor() {
             xcp.nextToken()
             when (type) {
                 ActionTimeout.TIMEOUT_FIELD -> timeout = ActionTimeout.parse(xcp)
+
                 ActionRetry.RETRY_FIELD -> retry = ActionRetry.parse(xcp)
+
                 Action.CUSTOM_ACTION_FIELD -> {
                     // The "custom" wrapper allows extensions to create arbitrary actions without updating the config mappings
                     // We consume the full custom wrapper and parse the action in this step
@@ -107,6 +109,7 @@ class ISMActionsParser private constructor() {
                     action = parseAction(xcp, totalActions, customActionType)
                     XContentParserUtils.ensureExpectedToken(XContentParser.Token.END_OBJECT, xcp.nextToken(), xcp)
                 }
+
                 else -> {
                     action = parseAction(xcp, totalActions, type)
                 }

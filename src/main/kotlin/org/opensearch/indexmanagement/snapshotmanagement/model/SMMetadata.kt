@@ -447,6 +447,7 @@ data class SMMetadata(
                             ),
                         )
                 }
+
                 WorkflowType.DELETION -> {
                     metadata =
                         metadata.copy(
@@ -475,6 +476,7 @@ data class SMMetadata(
                     startedCreation = null
                     creationRetry = null
                 }
+
                 WorkflowType.DELETION -> {
                     deletionCurrentState = SMState.DELETION_START
                     startedDeletion = null
@@ -570,6 +572,7 @@ data class SMMetadata(
                             creation = metadata.creation?.let { getUpdatedWorkflowMetadata(it) },
                         )
                     }
+
                     WorkflowType.DELETION -> {
                         metadata.copy(
                             deletion = metadata.deletion?.let { getUpdatedWorkflowMetadata(it) },
@@ -583,6 +586,7 @@ data class SMMetadata(
             WorkflowType.CREATION -> {
                 metadata.creation
             }
+
             WorkflowType.DELETION -> {
                 metadata.deletion
             }
@@ -594,6 +598,7 @@ data class SMMetadata(
             WorkflowType.CREATION -> {
                 metadata.creation?.started
             }
+
             WorkflowType.DELETION -> {
                 metadata.deletion?.started
             }
@@ -610,6 +615,7 @@ data class SMMetadata(
                             ),
                         )
                 }
+
                 WorkflowType.DELETION -> {
                     metadata =
                         metadata.copy(
@@ -637,6 +643,7 @@ data class SMMetadata(
                             )
                     }
                 }
+
                 WorkflowType.DELETION -> {
                     if (metadata.deletion?.retry != null) {
                         metadata =

@@ -49,10 +49,12 @@ class WaitForSnapshotStep(private val action: SnapshotAction) : Step(name) {
                         stepStatus = StepStatus.CONDITION_NOT_MET
                         info = mapOf("message" to getSnapshotInProgressMessage(indexName), "state" to status.state().toString())
                     }
+
                     SnapshotState.SUCCESS -> {
                         stepStatus = StepStatus.COMPLETED
                         info = mapOf("message" to getSuccessMessage(indexName), "state" to status.state().toString())
                     }
+
                     else -> { // State.FAILED, State.ABORTED
                         val message = getFailedExistsMessage(indexName)
                         logger.warn(message)

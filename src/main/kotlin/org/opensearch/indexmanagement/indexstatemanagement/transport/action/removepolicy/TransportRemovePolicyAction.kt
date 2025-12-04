@@ -116,6 +116,7 @@ constructor(
                                             "User doesn't have required index permissions on one or more requested indices: ${e.localizedMessage}",
                                             RestStatus.FORBIDDEN,
                                         )
+
                                     false -> e
                                 },
                             ),

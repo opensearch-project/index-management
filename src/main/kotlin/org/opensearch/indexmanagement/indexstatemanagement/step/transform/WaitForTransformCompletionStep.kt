@@ -83,14 +83,17 @@ class WaitForTransformCompletionStep : Step(name) {
                 stepStatus = StepStatus.CONDITION_NOT_MET
                 info = mapOf("message" to getJobProcessingMessage(transformJobId, indexName))
             }
+
             TransformMetadata.Status.FAILED -> {
                 stepStatus = StepStatus.FAILED
                 info = mapOf("message" to getJobFailedMessage(transformJobId, indexName), "cause" to "${transformMetadata.failureReason}")
             }
+
             TransformMetadata.Status.FINISHED -> {
                 stepStatus = StepStatus.COMPLETED
                 info = mapOf("message" to getJobCompletionMessage(transformJobId, indexName))
             }
+
             TransformMetadata.Status.STOPPED -> {
                 stepStatus = StepStatus.FAILED
                 info = mapOf("message" to getJobFailedMessage(transformJobId, indexName), "cause" to JOB_STOPPED_MESSAGE)

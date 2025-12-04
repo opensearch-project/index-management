@@ -102,6 +102,7 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
                     stepStatus = StepStatus.COMPLETED
                     mutableInfo["message"] = getSuccessMessage(indexName)
                 }
+
                 else -> {
                     val message = getFailedMessage(indexName, "Unexpected response status: ${response.status()}")
                     logger.warn("$message - $response")

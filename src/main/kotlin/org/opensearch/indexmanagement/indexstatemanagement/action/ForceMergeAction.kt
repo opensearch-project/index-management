@@ -53,7 +53,9 @@ class ForceMergeAction(
         if (currentStepStatus == Step.StepStatus.COMPLETED) {
             return when (currentStep) {
                 AttemptSetReadOnlyStep.name -> attemptCallForceMergeStep
+
                 AttemptCallForceMergeStep.name -> waitForForceMergeStep
+
                 // Shouldn't hit this case but including it so that the when expression is exhaustive
                 else -> stepNameToStep[currentStep]!!
             }
