@@ -172,8 +172,11 @@ data class ISMTransform(
 
                 when (fieldName) {
                     Transform.DESCRIPTION_FIELD -> description = xcp.text()
+
                     Transform.TARGET_INDEX_FIELD -> targetIndex = xcp.text()
+
                     Transform.PAGE_SIZE_FIELD -> pageSize = xcp.intValue()
+
                     Transform.DATA_SELECTION_QUERY_FIELD -> {
                         val registry = xcp.xContentRegistry
                         val source = xcp.mapOrdered()
@@ -186,13 +189,16 @@ data class ISMTransform(
                             )
                         dataSelectionQuery = AbstractQueryBuilder.parseInnerQueryBuilder(sourceParser)
                     }
+
                     Transform.GROUPS_FIELD -> {
                         XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_ARRAY, xcp.currentToken(), xcp)
                         while (xcp.nextToken() != XContentParser.Token.END_ARRAY) {
                             groups.add(Dimension.parse(xcp))
                         }
                     }
+
                     Transform.AGGREGATIONS_FIELD -> aggregations = AggregatorFactories.parseAggregators(xcp)
+
                     else -> throw IllegalArgumentException("Invalid field [$fieldName] found in ISM Transform.")
                 }
             }

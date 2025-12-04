@@ -85,7 +85,9 @@ fun ToXContent.convertToMap(): Map<String, Any> {
 
 fun XContentParser.instant(): Instant? = when {
     currentToken() == Token.VALUE_NULL -> null
+
     currentToken().isValue -> Instant.ofEpochMilli(longValue())
+
     else -> {
         XContentParserUtils.throwUnknownToken(currentToken(), tokenLocation)
         null // unreachable

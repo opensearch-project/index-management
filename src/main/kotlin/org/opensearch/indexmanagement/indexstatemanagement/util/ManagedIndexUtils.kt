@@ -370,7 +370,9 @@ fun ManagedIndexMetaData.getCompletedManagedIndexMetaData(
         if (updatedStepMetaData.stepMetaData?.stepStatus == Step.StepStatus.FAILED) {
             when {
                 action.configRetry == null -> actionMetaData.copy(failed = true)
+
                 actionMetaData.consumedRetries >= action.configRetry!!.count -> actionMetaData.copy(failed = true)
+
                 else ->
                     actionMetaData.copy(
                         failed = false,

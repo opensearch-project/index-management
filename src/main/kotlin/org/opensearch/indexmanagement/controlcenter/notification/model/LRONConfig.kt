@@ -139,12 +139,15 @@ data class LRONConfig(
 
                 when (fieldName) {
                     LRONCondition.LRON_CONDITION_FIELD -> lronCondition = LRONCondition.parse(xcp)
+
                     TASK_ID_FIELD ->
                         taskId =
                             if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else TaskId(xcp.text())
+
                     ACTION_NAME_FIELD ->
                         actionName =
                             if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.text()
+
                     CHANNELS_FIELD -> {
                         if (xcp.currentToken() != XContentParser.Token.VALUE_NULL) {
                             channels = mutableListOf()
@@ -154,8 +157,11 @@ data class LRONConfig(
                             }
                         }
                     }
+
                     USER_FIELD -> user = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else User.parse(xcp)
+
                     PRIORITY_FIELD -> priority = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.intValue()
+
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in LRONConfig.")
                 }
             }

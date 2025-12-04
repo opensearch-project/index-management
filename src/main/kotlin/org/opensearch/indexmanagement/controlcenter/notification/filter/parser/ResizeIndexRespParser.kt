@@ -139,10 +139,13 @@ class ResizeIndexRespParser(
                             else -> message
                         }
                     }
+
                     is ResourceAlreadyExistsException -> {
                         "The target index ${getIndexName(request.targetIndexRequest, clusterService)} already exists."
                     }
+
                     is IndexNotFoundException -> "The $indexWithCluster does not exist."
+
                     else -> message
                 }
             } else {

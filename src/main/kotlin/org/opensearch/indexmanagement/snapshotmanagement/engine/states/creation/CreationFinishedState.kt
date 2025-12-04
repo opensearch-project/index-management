@@ -74,6 +74,7 @@ object CreationFinishedState : State {
                     // If creation notifications are enabled, send one now
                     job.notificationConfig?.sendCreationNotification(client, job.policyName, creationMessage, job.user, log)
                 }
+
                 SnapshotState.IN_PROGRESS -> {
                     job.creation?.timeLimit?.let { timeLimit ->
                         if (timeLimit.isExceed(metadata.creation?.latestExecution?.startTime)) {
@@ -83,6 +84,7 @@ object CreationFinishedState : State {
                         }
                     }
                 }
+
                 else -> {
                     // FAILED, PARTIAL, INCOMPATIBLE
                     val currentState = snapshot.state()?.name

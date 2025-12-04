@@ -414,7 +414,7 @@ class TransformSearchService(
         private fun getAggregationValue(aggregation: Aggregation, targetIndexDateFieldMappings: Map<String, Any>): Any = when (aggregation) {
             is InternalSum, is InternalMin, is InternalMax, is InternalAvg, is InternalValueCount -> {
                 val agg = aggregation as NumericMetricsAggregation.SingleValue
-                /**
+                /*
                  * When date filed is used in transform aggregation (min, max avg), the value of the field is in exponential format
                  * which is not allowed since the target index mapping for date field is strict_date_optional_time||epoch_millis
                  * That's why the exponential value is transformed to long: agg.value().toLong()
@@ -425,6 +425,7 @@ class TransformSearchService(
                     agg.value().toLong()
                 }
             }
+
             is Percentiles -> {
                 val percentiles = mutableMapOf<String, Double>()
                 aggregation.forEach { percentile ->
@@ -432,9 +433,11 @@ class TransformSearchService(
                 }
                 percentiles
             }
+
             is ScriptedMetric -> {
                 aggregation.aggregation()
             }
+
             else -> throw TransformSearchServiceException(
                 "Found aggregation [${aggregation.name}] of type [${aggregation.type}] in composite result that is not currently supported",
             )

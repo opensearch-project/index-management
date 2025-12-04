@@ -51,7 +51,7 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
         val responseMap = getAsMap(uri)["nodes"] as Map<String, Map<String, Any>>
         for (response in responseMap.values) {
             val plugins = response["plugins"] as List<Map<String, Any>>
-            val pluginNames = plugins.map { plugin -> plugin ["name"] }.toSet()
+            val pluginNames = plugins.map { plugin -> plugin["name"] }.toSet()
             when (CLUSTER_TYPE) {
                 ClusterType.OLD -> {
                     createBasicPolicy()
@@ -61,11 +61,13 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
                         verifyPolicyOnIndex(LEGACY_ISM_BASE_URI)
                     }
                 }
+
                 ClusterType.MIXED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
                     verifyPolicyExists(LEGACY_POLICY_BASE_URI)
                     verifyPolicyOnIndex(LEGACY_ISM_BASE_URI)
                 }
+
                 ClusterType.UPGRADED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
                     verifyPolicyExists(LEGACY_POLICY_BASE_URI)
@@ -94,6 +96,7 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
 
     private fun getPluginUri(): String = when (CLUSTER_TYPE) {
         ClusterType.OLD -> "_nodes/$CLUSTER_NAME-0/plugins"
+
         ClusterType.MIXED -> {
             when (System.getProperty("tests.rest.bwcsuite_round")) {
                 "second" -> "_nodes/$CLUSTER_NAME-1/plugins"
@@ -101,6 +104,7 @@ class IndexManagementBackwardsCompatibilityIT : IndexManagementRestTestCase() {
                 else -> "_nodes/$CLUSTER_NAME-0/plugins"
             }
         }
+
         ClusterType.UPGRADED -> "_nodes/plugins"
     }
 

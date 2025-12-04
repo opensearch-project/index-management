@@ -55,6 +55,7 @@ data class Slack(val url: String) :
                 xcp.nextToken()
                 when (fieldName) {
                     URL -> url = xcp.text()
+
                     else -> {
                         error("Unexpected field: $fieldName, while parsing Slack destination")
                     }

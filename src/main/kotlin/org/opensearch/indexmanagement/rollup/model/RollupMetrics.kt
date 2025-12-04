@@ -110,13 +110,16 @@ data class RollupMetrics(
 
                 when (fieldName) {
                     SOURCE_FIELD_FIELD -> sourceField = xcp.text()
+
                     TARGET_FIELD_FIELD -> targetField = xcp.text()
+
                     METRICS_FIELD -> {
                         ensureExpectedToken(Token.START_ARRAY, xcp.currentToken(), xcp)
                         while (xcp.nextToken() != Token.END_ARRAY) {
                             metrics.add(Metric.parse(xcp))
                         }
                     }
+
                     else -> throw IllegalArgumentException("Invalid dimension type [$fieldName] found in rollup metrics")
                 }
             }

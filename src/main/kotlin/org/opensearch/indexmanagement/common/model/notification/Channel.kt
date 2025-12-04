@@ -59,6 +59,7 @@ data class Channel(val id: String) :
                 xcp.nextToken()
                 when (fieldName) {
                     ID -> id = xcp.text()
+
                     else -> {
                         error("Unexpected field: $fieldName, while parsing Channel destination")
                     }

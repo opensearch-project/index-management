@@ -191,8 +191,10 @@ constructor(
         val updatedStatus =
             when (metadata.status) {
                 RollupMetadata.Status.FINISHED, RollupMetadata.Status.STOPPED -> RollupMetadata.Status.STARTED
+
                 RollupMetadata.Status.STARTED, RollupMetadata.Status.INIT, RollupMetadata.Status.RETRY ->
                     return actionListener.onResponse(AcknowledgedResponse(true))
+
                 RollupMetadata.Status.FAILED -> RollupMetadata.Status.RETRY
             }
         val updateRequest =

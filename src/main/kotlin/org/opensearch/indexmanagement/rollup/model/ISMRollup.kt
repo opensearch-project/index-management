@@ -183,7 +183,9 @@ data class ISMRollup(
 
                 when (fieldName) {
                     Rollup.DESCRIPTION_FIELD -> description = xcp.text()
+
                     Rollup.TARGET_INDEX_FIELD -> targetIndex = xcp.text()
+
                     Rollup.TARGET_INDEX_SETTINGS_FIELD -> {
                         XContentParserUtils.ensureExpectedToken(
                             XContentParser.Token.START_OBJECT,
@@ -192,7 +194,9 @@ data class ISMRollup(
                         )
                         targetIndexSettings = Settings.fromXContent(xcp)
                     }
+
                     Rollup.PAGE_SIZE_FIELD -> pageSize = xcp.intValue()
+
                     Rollup.DIMENSIONS_FIELD -> {
                         XContentParserUtils.ensureExpectedToken(
                             XContentParser.Token.START_ARRAY,
@@ -203,6 +207,7 @@ data class ISMRollup(
                             dimensions.add(Dimension.parse(xcp))
                         }
                     }
+
                     Rollup.METRICS_FIELD -> {
                         XContentParserUtils.ensureExpectedToken(
                             XContentParser.Token.START_ARRAY,
@@ -213,6 +218,7 @@ data class ISMRollup(
                             metrics.add(RollupMetrics.parse(xcp))
                         }
                     }
+
                     else -> throw IllegalArgumentException("Invalid field, [$fieldName] not supported in ISM Rollup.")
                 }
             }

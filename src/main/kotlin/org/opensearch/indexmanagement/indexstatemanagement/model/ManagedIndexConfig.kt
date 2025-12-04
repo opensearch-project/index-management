@@ -129,28 +129,41 @@ data class ManagedIndexConfig(
 
                 when (fieldName) {
                     NAME_FIELD -> name = xcp.text()
+
                     INDEX_FIELD -> index = xcp.text()
+
                     INDEX_UUID_FIELD -> indexUuid = xcp.text()
+
                     ENABLED_FIELD -> enabled = xcp.booleanValue()
+
                     SCHEDULE_FIELD -> schedule = ScheduleParser.parse(xcp)
+
                     ENABLED_TIME_FIELD -> enabledTime = xcp.instant()
+
                     LAST_UPDATED_TIME_FIELD -> lastUpdatedTime = xcp.instant()
+
                     POLICY_ID_FIELD -> policyID = xcp.text()
+
                     POLICY_SEQ_NO_FIELD -> {
                         policySeqNo = if (xcp.currentToken() == Token.VALUE_NULL) null else xcp.longValue()
                     }
+
                     POLICY_PRIMARY_TERM_FIELD -> {
                         policyPrimaryTerm = if (xcp.currentToken() == Token.VALUE_NULL) null else xcp.longValue()
                     }
+
                     POLICY_FIELD -> {
                         policy = if (xcp.currentToken() == Token.VALUE_NULL) null else Policy.parse(xcp)
                     }
+
                     CHANGE_POLICY_FIELD -> {
                         changePolicy = if (xcp.currentToken() == Token.VALUE_NULL) null else ChangePolicy.parse(xcp)
                     }
+
                     JITTER -> {
                         jitter = if (xcp.currentToken() == Token.VALUE_NULL) null else xcp.doubleValue()
                     }
+
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ManagedIndexConfig.")
                 }
             }

@@ -171,27 +171,35 @@ class RollupInterceptor(
                 is TermsAggregationBuilder -> {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, it.field(), it.type))
                 }
+
                 is DateHistogramAggregationBuilder -> {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, it.field(), it.type))
                 }
+
                 is HistogramAggregationBuilder -> {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, it.field(), it.type))
                 }
+
                 is SumAggregationBuilder -> {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.METRIC, it.field(), it.type))
                 }
+
                 is AvgAggregationBuilder -> {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.METRIC, it.field(), it.type))
                 }
+
                 is MaxAggregationBuilder -> {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.METRIC, it.field(), it.type))
                 }
+
                 is MinAggregationBuilder -> {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.METRIC, it.field(), it.type))
                 }
+
                 is ValueCountAggregationBuilder -> {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.METRIC, it.field(), it.type))
                 }
+
                 else -> throw IllegalArgumentException("The ${it.type} aggregation is not currently supported in rollups")
             }
             if (it.subAggregations?.isNotEmpty() == true) {
@@ -214,31 +222,39 @@ class RollupInterceptor(
             is TermQueryBuilder -> {
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
             }
+
             is TermsQueryBuilder -> {
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
             }
+
             is RangeQueryBuilder -> {
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), UNKNOWN_MAPPING))
             }
+
             is MatchAllQueryBuilder -> {
                 // do nothing
             }
+
             is BoolQueryBuilder -> {
                 query.must()?.forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
                 query.mustNot()?.forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
                 query.should()?.forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
                 query.filter()?.forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
             }
+
             is BoostingQueryBuilder -> {
                 this.getQueryMetadata(query.positiveQuery(), concreteSourceIndexName, fieldMappings)
                 this.getQueryMetadata(query.negativeQuery(), concreteSourceIndexName, fieldMappings)
             }
+
             is ConstantScoreQueryBuilder -> {
                 this.getQueryMetadata(query.innerQuery(), concreteSourceIndexName, fieldMappings)
             }
+
             is DisMaxQueryBuilder -> {
                 query.innerQueries().forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
             }
+
             is MatchPhraseQueryBuilder -> {
                 if (!query.analyzer().isNullOrEmpty() ||
                     query.slop() != MatchQuery.DEFAULT_PHRASE_SLOP ||
@@ -250,6 +266,7 @@ class RollupInterceptor(
                 }
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
             }
+
             is QueryStringQueryBuilder -> {
                 if (concreteSourceIndexName.isNullOrEmpty()) {
                     throw IllegalArgumentException("Can't parse query_string query without sourceIndex mappings!")
@@ -263,6 +280,7 @@ class RollupInterceptor(
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, field, Dimension.Type.TERMS.type))
                 }
             }
+
             else -> {
                 throw IllegalArgumentException("The ${query.name} query is currently not supported in rollups")
             }
