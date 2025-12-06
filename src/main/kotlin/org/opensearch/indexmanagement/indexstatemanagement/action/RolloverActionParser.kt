@@ -20,9 +20,10 @@ class RolloverActionParser : ActionParser() {
         val minAge = sin.readOptionalTimeValue()
         val minPrimaryShardSize = sin.readOptionalWriteable(::ByteSizeValue)
         val copyAlias = sin.readBoolean()
+        val preventEmptyRollover = sin.readBoolean()
         val index = sin.readInt()
 
-        return RolloverAction(minSize, minDocs, minAge, minPrimaryShardSize, copyAlias, index)
+        return RolloverAction(minSize, minDocs, minAge, minPrimaryShardSize, copyAlias, preventEmptyRollover, index)
     }
 
     override fun fromXContent(xcp: XContentParser, index: Int): Action {
@@ -31,6 +32,7 @@ class RolloverActionParser : ActionParser() {
         var minAge: TimeValue? = null
         var minPrimaryShardSize: ByteSizeValue? = null
         var copyAlias = false
+        var preventEmptyRollover = false
 
         ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
         while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
@@ -54,11 +56,13 @@ class RolloverActionParser : ActionParser() {
 
                 RolloverAction.COPY_ALIAS_FIELD -> copyAlias = xcp.booleanValue()
 
+                RolloverAction.PREVENT_EMPTY_ROLLOVER_FIELD -> preventEmptyRollover = xcp.booleanValue()
+
                 else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in RolloverAction.")
             }
         }
 
-        return RolloverAction(minSize, minDocs, minAge, minPrimaryShardSize, copyAlias, index)
+        return RolloverAction(minSize, minDocs, minAge, minPrimaryShardSize, copyAlias, preventEmptyRollover, index)
     }
 
     override fun getActionType(): String = RolloverAction.name

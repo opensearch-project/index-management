@@ -598,7 +598,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
 
     fun `test allowing change policy to happen in middle of state if same state structure`() {
         // Creates a policy that has one state with rollover
-        val action = RolloverAction(index = 0, minDocs = 100_000_000, minAge = null, minSize = null, minPrimaryShardSize = null)
+        val action = RolloverAction(index = 0, minDocs = 100_000_000, minAge = null, minSize = null, minPrimaryShardSize = null, preventEmptyRollover = false)
         val stateWithReadOnlyAction = randomState(actions = listOf(action))
         val randomPolicy = randomPolicy(states = listOf(stateWithReadOnlyAction))
         val policy = createPolicy(randomPolicy)
@@ -631,7 +631,7 @@ class RestChangePolicyActionIT : IndexStateManagementRestTestCase() {
         val newStateWithReadOnlyAction =
             randomState(
                 name = stateWithReadOnlyAction.name,
-                actions = listOf(RolloverAction(index = 0, minDocs = 5, minAge = null, minSize = null, minPrimaryShardSize = null)),
+                actions = listOf(RolloverAction(index = 0, minDocs = 5, minAge = null, minSize = null, minPrimaryShardSize = null, preventEmptyRollover = false)),
             )
         val newRandomPolicy = randomPolicy(states = listOf(newStateWithReadOnlyAction))
         val newPolicy = createPolicy(newRandomPolicy)
