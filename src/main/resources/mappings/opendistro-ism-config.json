@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 24
+    "schema_version": 25
   },
   "dynamic": "strict",
   "properties": {
@@ -244,6 +244,9 @@
                       "type": "keyword"
                     },
                     "copy_alias": {
+                      "type": "boolean"
+                    },
+                    "prevent_empty_rollover": {
                       "type": "boolean"
                     }
                   }

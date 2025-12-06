@@ -137,6 +137,7 @@ fun randomRolloverActionConfig(
     minDocs = minDocs,
     minAge = minAge,
     minPrimaryShardSize = minPrimaryShardSize,
+    preventEmptyRollover = false,
     index = 0,
 )
 

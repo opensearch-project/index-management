@@ -75,6 +75,25 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         // If statsResponse is null we already updated failed info from getIndexStatsOrUpdateInfo and can return early
         statsResponse ?: return this
 
+        // Check for empty index if prevent_empty_rollover is enabled
+        if (action.preventEmptyRollover) {
+            val numDocs = statsResponse.primaries.docs?.count ?: 0
+            if (numDocs == 0L) {
+                stepStatus = StepStatus.CONDITION_NOT_MET
+                info = mapOf(
+                    "message" to getPreventedEmptyRolloverMessage(indexName),
+                    "conditions" to mapOf(
+                        "prevent_empty_rollover" to mapOf(
+                            "condition" to "index must have at least 1 document",
+                            "current" to 0,
+                        ),
+                    ),
+                )
+                logger.info("$indexName rollover prevented: index is empty (0 documents)")
+                return this
+            }
+        }
+
         val indexCreationDate = clusterService.state().metadata().index(indexName).creationDate
         val indexAgeTimeValue =
             if (indexCreationDate == -1L) {
@@ -426,5 +445,8 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
 
         fun getCopyAliasRolledOverIndexNotFoundMessage(index: String?) =
             "Successfully rolled over [index=$index] but ISM cannot find rolled over index from metadata to copy aliases to, please manually copy"
+
+        fun getPreventedEmptyRolloverMessage(index: String) =
+            "Rollover prevented: index is empty (0 documents) [index=$index]"
     }
 }

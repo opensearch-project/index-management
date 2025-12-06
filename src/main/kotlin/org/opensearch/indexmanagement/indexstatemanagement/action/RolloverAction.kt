@@ -21,6 +21,7 @@ class RolloverAction(
     val minAge: TimeValue?,
     val minPrimaryShardSize: ByteSizeValue?,
     val copyAlias: Boolean = false,
+    val preventEmptyRollover: Boolean = false,
     index: Int,
 ) : Action(name, index) {
     init {
@@ -48,6 +49,7 @@ class RolloverAction(
         if (minAge != null) builder.field(MIN_INDEX_AGE_FIELD, minAge.stringRep)
         if (minPrimaryShardSize != null) builder.field(MIN_PRIMARY_SHARD_SIZE_FIELD, minPrimaryShardSize.stringRep)
         builder.field(COPY_ALIAS_FIELD, copyAlias)
+        if (preventEmptyRollover) builder.field(PREVENT_EMPTY_ROLLOVER_FIELD, preventEmptyRollover)
         builder.endObject()
     }
 
@@ -57,6 +59,7 @@ class RolloverAction(
         out.writeOptionalTimeValue(minAge)
         out.writeOptionalWriteable(minPrimaryShardSize)
         out.writeBoolean(copyAlias)
+        out.writeBoolean(preventEmptyRollover)
         out.writeInt(actionIndex)
     }
 
@@ -67,5 +70,6 @@ class RolloverAction(
         const val MIN_INDEX_AGE_FIELD = "min_index_age"
         const val MIN_PRIMARY_SHARD_SIZE_FIELD = "min_primary_shard_size"
         const val COPY_ALIAS_FIELD = "copy_alias"
+        const val PREVENT_EMPTY_ROLLOVER_FIELD = "prevent_empty_rollover"
     }
 }

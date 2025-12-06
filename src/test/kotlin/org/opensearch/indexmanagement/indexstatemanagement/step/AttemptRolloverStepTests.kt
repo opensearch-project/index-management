@@ -94,7 +94,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(rolloverResponse, aliasResponse, null, null)))
 
         runBlocking {
-            val rolloverAction = RolloverAction(null, null, null, null, true, 0)
+            val rolloverAction = RolloverAction(null, null, null, null, true, false, 0)
             val managedIndexMetaData =
                 ManagedIndexMetaData(
                     oldIndexName, "indexUuid", "policy_id",
@@ -120,7 +120,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(rolloverResponse, null, null, exception)))
 
         runBlocking {
-            val rolloverAction = RolloverAction(null, null, null, null, true, 0)
+            val rolloverAction = RolloverAction(null, null, null, null, true, false, 0)
             val managedIndexMetaData =
                 ManagedIndexMetaData(
                     oldIndexName, "indexUuid", "policy_id",
@@ -146,7 +146,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(rolloverResponse, null, null, exception)))
 
         runBlocking {
-            val rolloverAction = RolloverAction(null, null, null, null, true, 0)
+            val rolloverAction = RolloverAction(null, null, null, null, true, false, 0)
             val managedIndexMetaData =
                 ManagedIndexMetaData(
                     oldIndexName, "indexUuid", "policy_id",
@@ -172,7 +172,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(rolloverResponse, aliasResponse, null, null)))
 
         runBlocking {
-            val rolloverAction = RolloverAction(null, null, null, null, true, 0)
+            val rolloverAction = RolloverAction(null, null, null, null, true, false, 0)
             val managedIndexMetaData =
                 ManagedIndexMetaData(
                     oldIndexName, "indexUuid", "policy_id",
