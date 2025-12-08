@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.Version
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentFactory
@@ -14,6 +15,8 @@ import org.opensearch.core.common.io.stream.OutputStreamStreamOutput
 import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.opensearchapi.string
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionTimeout
 import org.opensearch.test.OpenSearchTestCase
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -276,5 +279,120 @@ class RolloverActionTests : OpenSearchTestCase() {
         assertNull("minPrimaryShardSize should be null", deserializedAction.minPrimaryShardSize)
         assertEquals("copyAlias should be preserved", originalAction.copyAlias, deserializedAction.copyAlias)
         assertEquals("preventEmptyRollover should be preserved", originalAction.preventEmptyRollover, deserializedAction.preventEmptyRollover)
+    }
+
+    fun `test backward compatibility - old version without preventEmptyRollover`() {
+        // Simulate serialization from an older version (< 3.4.0) that doesn't have preventEmptyRollover
+        val baos = ByteArrayOutputStream()
+        val osso = OutputStreamStreamOutput(baos)
+        osso.version = Version.V_3_3_0
+
+        // Write action type and config fields as ISMActionsParser expects
+        osso.writeString("rollover")
+        osso.writeOptionalWriteable(null) // configTimeout
+        osso.writeOptionalWriteable(null) // configRetry
+
+        // Manually write fields as an old version would (without preventEmptyRollover)
+        osso.writeOptionalWriteable(ByteSizeValue.parseBytesSizeValue("50gb", "test"))
+        osso.writeOptionalLong(1000L)
+        osso.writeOptionalTimeValue(TimeValue.parseTimeValue("7d", "test"))
+        osso.writeOptionalWriteable(ByteSizeValue.parseBytesSizeValue("30gb", "test"))
+        osso.writeBoolean(true) // copyAlias
+        // Note: preventEmptyRollover is NOT written for old version
+        osso.writeInt(0) // actionIndex
+
+        // Deserialize with current version parser
+        val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray()))
+        input.version = Version.V_3_3_0
+        val deserializedAction = ISMActionsParser.instance.fromStreamInput(input) as RolloverAction
+
+        assertEquals("minSize should be preserved", ByteSizeValue.parseBytesSizeValue("50gb", "test"), deserializedAction.minSize)
+        assertEquals("minDocs should be preserved", 1000L, deserializedAction.minDocs)
+        assertEquals("minAge should be preserved", TimeValue.parseTimeValue("7d", "test"), deserializedAction.minAge)
+        assertEquals("minPrimaryShardSize should be preserved", ByteSizeValue.parseBytesSizeValue("30gb", "test"), deserializedAction.minPrimaryShardSize)
+        assertTrue("copyAlias should be true", deserializedAction.copyAlias)
+        assertFalse("preventEmptyRollover should default to false for old version", deserializedAction.preventEmptyRollover)
+    }
+
+    fun `test forward compatibility - new version with preventEmptyRollover`() {
+        // Test that new version (>= 3.4.0) correctly serializes and deserializes preventEmptyRollover
+        val originalAction = RolloverAction(
+            minSize = ByteSizeValue.parseBytesSizeValue("50gb", "test"),
+            minDocs = 1000L,
+            minAge = TimeValue.parseTimeValue("7d", "test"),
+            minPrimaryShardSize = ByteSizeValue.parseBytesSizeValue("30gb", "test"),
+            copyAlias = true,
+            preventEmptyRollover = true,
+            index = 0,
+        )
+
+        val baos = ByteArrayOutputStream()
+        val osso = OutputStreamStreamOutput(baos)
+        osso.version = Version.V_3_4_0
+        originalAction.writeTo(osso)
+
+        val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray()))
+        input.version = Version.V_3_4_0
+        val deserializedAction = ISMActionsParser.instance.fromStreamInput(input) as RolloverAction
+
+        assertEquals("minSize should be preserved", originalAction.minSize, deserializedAction.minSize)
+        assertEquals("minDocs should be preserved", originalAction.minDocs, deserializedAction.minDocs)
+        assertEquals("minAge should be preserved", originalAction.minAge, deserializedAction.minAge)
+        assertEquals("minPrimaryShardSize should be preserved", originalAction.minPrimaryShardSize, deserializedAction.minPrimaryShardSize)
+        assertEquals("copyAlias should be preserved", originalAction.copyAlias, deserializedAction.copyAlias)
+        assertTrue("preventEmptyRollover should be preserved as true", deserializedAction.preventEmptyRollover)
+    }
+
+    fun `test version compatibility - writing to old version skips preventEmptyRollover`() {
+        // Test that when writing to an old version node, preventEmptyRollover is not serialized
+        val action = RolloverAction(
+            minSize = ByteSizeValue.parseBytesSizeValue("50gb", "test"),
+            minDocs = 1000L,
+            minAge = TimeValue.parseTimeValue("7d", "test"),
+            minPrimaryShardSize = ByteSizeValue.parseBytesSizeValue("30gb", "test"),
+            copyAlias = true,
+            preventEmptyRollover = true,
+            index = 0,
+        )
+
+        // Serialize with old version (< 3.4.0)
+        val baos = ByteArrayOutputStream()
+        val osso = OutputStreamStreamOutput(baos)
+        osso.version = Version.V_3_3_0
+
+        // Write action type and config fields as ISMActionsParser expects
+        osso.writeString("rollover")
+        osso.writeOptionalWriteable(action.configTimeout)
+        osso.writeOptionalWriteable(action.configRetry)
+
+        // Now write the action itself
+        action.populateAction(osso)
+
+        // The byte array should NOT contain the preventEmptyRollover field
+        // We can verify this by deserializing with old version expectations
+        val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray()))
+        input.version = Version.V_3_3_0
+
+        // Skip the action type and config fields that ISMActionsParser would read
+        input.readString() // action type
+        input.readOptionalWriteable(::ActionTimeout) // configTimeout
+        input.readOptionalWriteable(::ActionRetry) // configRetry
+
+        // Read fields as old version would
+        val minSize = input.readOptionalWriteable(::ByteSizeValue)
+        val minDocs = input.readOptionalLong()
+        val minAge = input.readOptionalTimeValue()
+        val minPrimaryShardSize = input.readOptionalWriteable(::ByteSizeValue)
+        val copyAlias = input.readBoolean()
+        // Old version doesn't read preventEmptyRollover
+        val actionIndex = input.readInt()
+
+        assertEquals("minSize should match", action.minSize, minSize)
+        assertEquals("minDocs should match", action.minDocs, minDocs)
+        assertEquals("minAge should match", action.minAge, minAge)
+        assertEquals("minPrimaryShardSize should match", action.minPrimaryShardSize, minPrimaryShardSize)
+        assertEquals("copyAlias should match", action.copyAlias, copyAlias)
+        assertEquals("actionIndex should match", action.actionIndex, actionIndex)
+        assertEquals("Stream should be fully consumed", 0, input.available())
     }
 }

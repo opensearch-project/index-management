@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.Version
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.common.unit.ByteSizeValue
@@ -59,7 +60,9 @@ class RolloverAction(
         out.writeOptionalTimeValue(minAge)
         out.writeOptionalWriteable(minPrimaryShardSize)
         out.writeBoolean(copyAlias)
-        out.writeBoolean(preventEmptyRollover)
+        if (out.version.onOrAfter(Version.V_3_4_0)) {
+            out.writeBoolean(preventEmptyRollover)
+        }
         out.writeInt(actionIndex)
     }
 

@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.Version
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.unit.ByteSizeValue
@@ -20,7 +21,11 @@ class RolloverActionParser : ActionParser() {
         val minAge = sin.readOptionalTimeValue()
         val minPrimaryShardSize = sin.readOptionalWriteable(::ByteSizeValue)
         val copyAlias = sin.readBoolean()
-        val preventEmptyRollover = sin.readBoolean()
+        val preventEmptyRollover = if (sin.version.onOrAfter(Version.V_3_4_0)) {
+            sin.readBoolean()
+        } else {
+            false
+        }
         val index = sin.readInt()
 
         return RolloverAction(minSize, minDocs, minAge, minPrimaryShardSize, copyAlias, preventEmptyRollover, index)
