@@ -82,7 +82,7 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlin_version}"
         classpath "org.jetbrains.kotlin:kotlin-allopen:${kotlin_version}"
         classpath "dev.detekt:detekt-gradle-plugin:2.0.0-alpha.1"
-        classpath "org.jacoco:org.jacoco.agent:0.8.12"
+        classpath "org.jacoco:org.jacoco.agent:0.8.14"
     }
 }
 
