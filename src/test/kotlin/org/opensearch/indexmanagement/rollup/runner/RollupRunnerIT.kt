@@ -23,6 +23,7 @@ import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.RollupMetrics
 import org.opensearch.indexmanagement.rollup.model.metric.Average
+import org.opensearch.indexmanagement.rollup.model.metric.Cardinality
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Min
 import org.opensearch.indexmanagement.rollup.model.metric.Sum
@@ -1867,7 +1868,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         // Create source data with NYC taxi data
         generateNYCTaxiData(sourceIdx)
 
-        // Level 1: Raw data -> Hourly rollup (all metrics)
+        // Level 1: Raw data -> Hourly rollup (all metrics including cardinality)
         val level1Rollup = Rollup(
             id = "ecommerce_level1_rollup",
             schemaVersion = 1L,
@@ -1891,7 +1892,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count", targetField = "passenger_count",
-                    metrics = listOf(Sum(), Average(), Min(), Max(), ValueCount()),
+                    metrics = listOf(Sum(), Average(), Min(), Max(), ValueCount(), Cardinality()),
                 ),
             ),
         ).let { createRollup(it, it.id) }
@@ -1904,7 +1905,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             assertEquals("Level 1 rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
         }
 
-        // Level 2: Hourly -> Daily rollup
+        // Level 2: Hourly -> Daily rollup (must use same precision as Level 1)
         val level2Rollup = Rollup(
             id = "ecommerce_level2_rollup",
             schemaVersion = 1L,
@@ -1928,7 +1929,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count", targetField = "passenger_count",
-                    metrics = listOf(Sum(), Average(), Min(), Max(), ValueCount()),
+                    metrics = listOf(Sum(), Average(), Min(), Max(), ValueCount(), Cardinality()),
                 ),
             ),
         ).let { createRollup(it, it.id) }
@@ -1941,7 +1942,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             assertEquals("Level 2 rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
         }
 
-        // Level 3: Daily -> Weekly rollup
+        // Level 3: Daily -> Weekly rollup (must use same precision as Level 1 and 2)
         val level3Rollup = Rollup(
             id = "ecommerce_level3_rollup",
             schemaVersion = 1L,
@@ -1965,7 +1966,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count", targetField = "passenger_count",
-                    metrics = listOf(Sum(), Average(), Min(), Max(), ValueCount()),
+                    metrics = listOf(Sum(), Average(), Min(), Max(), ValueCount(), Cardinality()),
                 ),
             ),
         ).let { createRollup(it, it.id) }
@@ -2014,7 +2015,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count", targetField = "passenger_count",
-                    metrics = listOf(Sum(), Average(), Min(), Max(), ValueCount()),
+                    metrics = listOf(Sum(), Average(), Min(), Max(), ValueCount(), Cardinality(precisionThreshold = 40000)),
                 ),
             ),
         ).let { createRollup(it, it.id) }
@@ -2051,7 +2052,7 @@ class RollupRunnerIT : RollupRestTestCase() {
             metrics = listOf(
                 RollupMetrics(
                     sourceField = "passenger_count", targetField = "passenger_count",
-                    metrics = listOf(Sum(), Average(), Min(), Max(), ValueCount()),
+                    metrics = listOf(Sum(), Average(), Min(), Max(), ValueCount(), Cardinality(precisionThreshold = 40000)),
                 ),
             ),
         ).let { createRollup(it, it.id) }
@@ -2076,7 +2077,8 @@ class RollupRunnerIT : RollupRestTestCase() {
                         "min_passenger": { "min": { "field": "passenger_count" } },
                         "max_passenger": { "max": { "field": "passenger_count" } },
                         "value_count_passenger": { "value_count": { "field": "passenger_count" } },
-                        "avg_passenger": { "avg": { "field": "passenger_count" } }
+                        "avg_passenger": { "avg": { "field": "passenger_count" } },
+                        "cardinality_passenger": { "cardinality": { "field": "passenger_count" } }
                     }
                 }
             """.trimIndent()
@@ -2122,12 +2124,23 @@ class RollupRunnerIT : RollupRestTestCase() {
                 sourceAggs["avg_passenger"]!!["value"],
                 level2Aggs["avg_passenger"]!!["value"],
             )
+
+            // Verify cardinality with approximate matching (HLL is approximate)
+            val sourceCardinality = sourceAggs["cardinality_passenger"]!!["value"] as Number
+            val level2Cardinality = level2Aggs["cardinality_passenger"]!!["value"] as Number
+            val cardinalityDiff = Math.abs(sourceCardinality.toDouble() - level2Cardinality.toDouble())
+            val cardinalityErrorRate = if (sourceCardinality.toDouble() > 0) cardinalityDiff / sourceCardinality.toDouble() else 0.0
+
+            assertTrue(
+                "Cardinality should be approximately consistent in continuous rollup on rollup (within 5% error), source: $sourceCardinality, level2: $level2Cardinality, error rate: ${cardinalityErrorRate * 100}%",
+                cardinalityErrorRate <= 0.05,
+            )
         }
     }
 
     @Suppress("UNCHECKED_CAST")
     private fun verifyMultiTierRollupData(sourceIdx: String, level3Idx: String) {
-        // Verify all 5 metrics are consistent between source and final rollup
+        // Verify all 6 metrics (including cardinality) are consistent between source and final rollup
         val aggReq = """
             {
                 "size": 0,
@@ -2149,6 +2162,9 @@ class RollupRunnerIT : RollupRestTestCase() {
                     },
                     "count_passenger_count": {
                         "value_count": { "field": "passenger_count" }
+                    },
+                    "cardinality_passenger_count": {
+                        "cardinality": { "field": "passenger_count" }
                     }
                 }
             }
@@ -2163,7 +2179,7 @@ class RollupRunnerIT : RollupRestTestCase() {
         val sourceAggs = sourceResponse.asMap()["aggregations"] as Map<String, Map<String, Any>>
         val level3Aggs = level3Response.asMap()["aggregations"] as Map<String, Map<String, Any>>
 
-        // Verify all 5 metrics
+        // Verify all 6 metrics
         assertEquals(
             "Sum should be consistent",
             sourceAggs["sum_passenger_count"]!!["value"],
@@ -2184,12 +2200,119 @@ class RollupRunnerIT : RollupRestTestCase() {
             sourceAggs["max_passenger_count"]!!["value"],
             level3Aggs["max_passenger_count"]!!["value"],
         )
-
         assertEquals(
             "Value count should be consistent",
             sourceAggs["count_passenger_count"]!!["value"],
             level3Aggs["count_passenger_count"]!!["value"],
         )
+
+        // Verify cardinality metric
+        val sourceCardinality = sourceAggs["cardinality_passenger_count"]!!["value"] as Number
+        val level3Cardinality = level3Aggs["cardinality_passenger_count"]!!["value"] as Number
+
+        // Cardinality uses HyperLogLog which is approximate, so we allow a small margin of error
+        // Typically HLL has ~2% error rate, so we check if values are within 5% of each other
+        val cardinalityDiff = Math.abs(sourceCardinality.toDouble() - level3Cardinality.toDouble())
+        val cardinalityErrorRate = cardinalityDiff / sourceCardinality.toDouble()
+        assertTrue(
+            "Cardinality should be approximately consistent (within 5% error), source: $sourceCardinality, level3: $level3Cardinality, error rate: ${cardinalityErrorRate * 100}%",
+            cardinalityErrorRate <= 0.05,
+        )
+    }
+
+    fun `test rollup on rollup with mismatched cardinality precisionThreshold`() {
+        val sourceIdxName = "source_rollup_precision_mismatch"
+        val firstRollupIdxName = "first_rollup_precision_mismatch"
+        val secondRollupIdxName = "second_rollup_precision_mismatch"
+
+        generateNYCTaxiData(sourceIdxName)
+
+        // Create first level rollup with precisionThreshold 5000
+        val firstRollup = Rollup(
+            id = "first_rollup_precision_mismatch_job",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "First level rollup with precisionThreshold 5000",
+            sourceIndex = sourceIdxName,
+            targetIndex = firstRollupIdxName,
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count",
+                    targetField = "passenger_count",
+                    metrics = listOf(Sum(), Cardinality(precisionThreshold = 5000)),
+                ),
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(firstRollup)
+        waitFor {
+            val rollupJob = getRollup(rollupId = firstRollup.id)
+            assertNotNull("First rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("First rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        // Create second level rollup with different precisionThreshold 8000 (should fail validation)
+        val secondRollup = Rollup(
+            id = "second_rollup_precision_mismatch_job",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "Second level rollup with mismatched precisionThreshold 8000",
+            sourceIndex = firstRollupIdxName,
+            targetIndex = secondRollupIdxName,
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1d"),
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count",
+                    targetField = "passenger_count",
+                    metrics = listOf(Sum(), Cardinality(precisionThreshold = 8000)), // Mismatched precisionThreshold
+                ),
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(secondRollup)
+        waitFor {
+            val rollupJob = getRollup(rollupId = secondRollup.id)
+            assertNotNull("Second rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Second rollup should fail with precisionThreshold mismatch", RollupMetadata.Status.FAILED, rollupMetadata.status)
+            assertTrue(
+                "Failure reason should mention precisionThreshold mismatch for field passenger_count",
+                rollupMetadata.failureReason?.contains("Cardinality precisionThreshold mismatch") == true &&
+                    rollupMetadata.failureReason?.contains("field [passenger_count]") == true,
+            )
+            assertTrue(
+                "Failure reason should mention source precisionThreshold 5000",
+                rollupMetadata.failureReason?.contains("source uses precisionThreshold 5000") == true,
+            )
+            assertTrue(
+                "Failure reason should mention target precisionThreshold 8000",
+                rollupMetadata.failureReason?.contains("target specifies precisionThreshold 8000") == true,
+            )
+        }
     }
 
     private fun deleteRollupMetadata(metadataId: String) {
