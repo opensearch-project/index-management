@@ -207,7 +207,9 @@ data class ISMRollup(
                     Rollup.DESCRIPTION_FIELD -> description = xcp.text()
 
                     Rollup.TARGET_INDEX_FIELD -> targetIndex = xcp.text()
+
                     Rollup.SOURCE_INDEX_FIELD -> sourceIndex = xcp.text()
+
                     Rollup.TARGET_INDEX_SETTINGS_FIELD -> {
                         XContentParserUtils.ensureExpectedToken(
                             XContentParser.Token.START_OBJECT,

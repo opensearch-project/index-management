@@ -7,6 +7,7 @@
 
 package org.opensearch.indexmanagement.rollup.util
 
+import org.apache.logging.log4j.LogManager
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.cluster.ClusterState
@@ -38,6 +39,7 @@ import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.metric.Average
+import org.opensearch.indexmanagement.rollup.model.metric.Cardinality
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Min
 import org.opensearch.indexmanagement.rollup.model.metric.Sum
@@ -56,6 +58,7 @@ import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregat
 import org.opensearch.search.aggregations.bucket.histogram.HistogramAggregationBuilder
 import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder
 import org.opensearch.search.aggregations.metrics.AvgAggregationBuilder
+import org.opensearch.search.aggregations.metrics.CardinalityAggregationBuilder
 import org.opensearch.search.aggregations.metrics.MaxAggregationBuilder
 import org.opensearch.search.aggregations.metrics.MinAggregationBuilder
 import org.opensearch.search.aggregations.metrics.ScriptedMetricAggregationBuilder
@@ -65,6 +68,8 @@ import org.opensearch.search.builder.SearchSourceBuilder
 
 const val DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT = "strict_date_optional_time"
 const val DATE_FIELD_EPOCH_MILLIS_FORMAT = "epoch_millis"
+
+private val logger = LogManager.getLogger("RollupUtils")
 
 @Suppress("ReturnCount")
 fun isRollupIndex(index: String, clusterState: ClusterState): Boolean {
@@ -144,10 +149,12 @@ fun Rollup.getCompositeAggregationBuilder(afterKey: Map<String, Any>?, clusterSt
                     // Reference the pre-aggregated date histogram field
                     sourceBuilder.field("${dimension.targetField}.${dimension.type.type}")
                 }
+
                 is Terms -> {
                     // Reference the pre-aggregated terms field
                     sourceBuilder.field("${dimension.targetField}.${dimension.type.type}")
                 }
+
                 is Histogram -> {
                     // Reference the pre-aggregated histogram field
                     sourceBuilder.field("${dimension.targetField}.${dimension.type.type}")
@@ -190,6 +197,7 @@ fun Rollup.getCompositeAggregationBuilder(afterKey: Map<String, Any>?, clusterSt
                                 )
                             }
                         }
+
                         is Sum -> {
                             // Multi-tier: Sum the pre-computed sum values
                             // Standard: Sum the raw field values
@@ -200,6 +208,7 @@ fun Rollup.getCompositeAggregationBuilder(afterKey: Map<String, Any>?, clusterSt
                                     ),
                             )
                         }
+
                         is Max -> {
                             // Multi-tier: Take max of pre-computed max values (max of maxes)
                             // Standard: Take max of raw field values
@@ -210,6 +219,7 @@ fun Rollup.getCompositeAggregationBuilder(afterKey: Map<String, Any>?, clusterSt
                                     ),
                             )
                         }
+
                         is Min -> {
                             // Multi-tier: Take min of pre-computed min values (min of mins)
                             // Standard: Take min of raw field values
@@ -220,6 +230,7 @@ fun Rollup.getCompositeAggregationBuilder(afterKey: Map<String, Any>?, clusterSt
                                     ),
                             )
                         }
+
                         is ValueCount -> {
                             listOf(
                                 if (isRollupIndex) {
@@ -235,6 +246,20 @@ fun Rollup.getCompositeAggregationBuilder(afterKey: Map<String, Any>?, clusterSt
                                 },
                             )
                         }
+
+                        is Cardinality -> {
+                            // Cardinality aggregation for HLL++ sketches
+                            // Multi-tier: Aggregate over pre-computed HLL sketches (field.hll)
+                            // Standard: Compute HLL sketch from raw field values
+                            listOf(
+                                CardinalityAggregationBuilder(metric.targetFieldWithType(agg))
+                                    .field(
+                                        if (isRollupIndex) metric.targetFieldWithType(agg) else metric.sourceField,
+                                    )
+                                    .precisionThreshold(agg.precisionThreshold),
+                            )
+                        }
+
                         // This shouldn't be possible as rollup will fail to initialize with an unsupported metric
                         else -> throw IllegalArgumentException("Found unsupported metric aggregation ${agg.type.type}")
                     }
@@ -409,6 +434,26 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
                         "long valueCount = 0; for (vc in states) { valueCount += vc } return valueCount", emptyMap(),
                     ),
                 )
+        }
+
+        is CardinalityAggregationBuilder -> {
+            // Rewrite cardinality aggregation to use the .hll field
+            // Customer queries: cardinality(field="user_id")
+            // Rewritten query: cardinality(field="user_id.hll")
+            
+            // Log if user specified precisionThreshold in query (it will be ignored)
+            if (aggregationBuilder.precisionThreshold() != null && aggregationBuilder.precisionThreshold() > 0) {
+                logger.debug(
+                    "Ignoring precisionThreshold parameter [{}] in cardinality query for field [{}]. " +
+                        "Rollup indices use pre-computed HLL sketches with precision determined at rollup time. " +
+                        "The query will use the precision from the rollup index mapping.",
+                    aggregationBuilder.precisionThreshold(),
+                    aggregationBuilder.field(),
+                )
+            }
+            
+            CardinalityAggregationBuilder(aggregationBuilder.name)
+                .field(this.findMatchingMetricField<Cardinality>(aggregationBuilder.field()))
         }
 
         // We do nothing otherwise, the validation logic should have already verified so not throwing an exception

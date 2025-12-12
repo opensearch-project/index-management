@@ -27,6 +27,7 @@ import org.opensearch.indexmanagement.opensearchapi.convertToMap
 import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
 import org.opensearch.indexmanagement.rollup.model.RollupMetrics
 import org.opensearch.indexmanagement.rollup.randomAverage
+import org.opensearch.indexmanagement.rollup.randomCardinality
 import org.opensearch.indexmanagement.rollup.randomDateHistogram
 import org.opensearch.indexmanagement.rollup.randomHistogram
 import org.opensearch.indexmanagement.rollup.randomMax
@@ -38,6 +39,7 @@ import org.opensearch.indexmanagement.rollup.randomTerms
 import org.opensearch.indexmanagement.rollup.randomValueCount
 import org.opensearch.indexmanagement.transform.randomAggregationBuilder
 import org.opensearch.search.aggregations.metrics.AvgAggregationBuilder
+import org.opensearch.search.aggregations.metrics.CardinalityAggregationBuilder
 import org.opensearch.search.aggregations.metrics.ValueCountAggregationBuilder
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.rest.OpenSearchRestTestCase
@@ -556,5 +558,95 @@ class RollupUtilsTests : OpenSearchTestCase() {
         assertEquals(dateHistogram.sourceField, rangeQuery.fieldName())
         assertEquals(startTime.toEpochMilli(), rangeQuery.from())
         assertEquals(endTime.toEpochMilli(), rangeQuery.to())
+    }
+
+    fun `test getCompositeAggregationBuilder with non-rollup source index for Cardinality metric`() {
+        val cardinality = randomCardinality()
+        val rollupMetrics = RollupMetrics("test_field", "test_field", listOf(cardinality))
+        val rollup = randomRollup().copy(metrics = listOf(rollupMetrics))
+
+        val clusterState: ClusterState = mock()
+        val metadata: Metadata = mock()
+        val indexMetadata: org.opensearch.cluster.metadata.IndexMetadata = mock()
+        val settings = org.opensearch.common.settings.Settings.EMPTY
+
+        whenever(clusterState.metadata).doReturn(metadata)
+        whenever(metadata.index(rollup.sourceIndex)).doReturn(indexMetadata)
+        whenever(indexMetadata.settings).doReturn(settings)
+
+        val compositeAgg = rollup.getCompositeAggregationBuilder(null, clusterState)
+
+        val subAggs = compositeAgg.subAggregations
+        assertEquals(1, subAggs.size)
+        val cardinalityAgg = subAggs.first() as CardinalityAggregationBuilder
+        assertEquals("test_field.hll", cardinalityAgg.name)
+        assertEquals("test_field", cardinalityAgg.field())
+    }
+
+    fun `test getCompositeAggregationBuilder with rollup source index for Cardinality metric`() {
+        val cardinality = randomCardinality()
+        val rollupMetrics = RollupMetrics("test_field", "test_field", listOf(cardinality))
+        val rollup = randomRollup().copy(metrics = listOf(rollupMetrics))
+
+        val clusterState: ClusterState = mock()
+        val metadata: Metadata = mock()
+        val indexMetadata: org.opensearch.cluster.metadata.IndexMetadata = mock()
+        val settings = org.opensearch.common.settings.Settings.builder()
+            .put(org.opensearch.indexmanagement.rollup.settings.RollupSettings.ROLLUP_INDEX.key, true).build()
+
+        whenever(clusterState.metadata).doReturn(metadata)
+        whenever(metadata.index(rollup.sourceIndex)).doReturn(indexMetadata)
+        whenever(indexMetadata.settings).doReturn(settings)
+
+        val compositeAgg = rollup.getCompositeAggregationBuilder(null, clusterState)
+
+        val subAggs = compositeAgg.subAggregations
+        assertEquals(1, subAggs.size)
+        val cardinalityAgg = subAggs.first() as CardinalityAggregationBuilder
+        assertEquals("test_field.hll", cardinalityAgg.name)
+        assertEquals("test_field.hll", cardinalityAgg.field())
+    }
+
+    fun `test rewriteAggregationBuilder for Cardinality`() {
+        val cardinality = randomCardinality()
+        val rollupMetrics = RollupMetrics("test_field", "test_field", listOf(cardinality))
+        val rollup = randomRollup().copy(metrics = listOf(rollupMetrics))
+
+        val cardinalityAgg = CardinalityAggregationBuilder("test_agg")
+            .field("test_field")
+            .precisionThreshold(cardinality.precisionThreshold)
+
+        val rewrittenAgg = rollup.rewriteAggregationBuilder(cardinalityAgg) as CardinalityAggregationBuilder
+
+        assertEquals("test_agg", rewrittenAgg.name)
+        assertEquals("test_field.hll", rewrittenAgg.field())
+    }
+
+    fun `test getCompositeAggregationBuilder with rollup source index for mixed metrics including Cardinality`() {
+        val cardinality = randomCardinality()
+        val rollupMetrics = RollupMetrics(
+            "test_field", "test_field",
+            listOf(randomSum(), randomMax(), cardinality, randomValueCount()),
+        )
+        val rollup = randomRollup().copy(metrics = listOf(rollupMetrics))
+
+        val clusterState: ClusterState = mock()
+        val metadata: Metadata = mock()
+        val indexMetadata: org.opensearch.cluster.metadata.IndexMetadata = mock()
+        val settings = org.opensearch.common.settings.Settings.builder()
+            .put(org.opensearch.indexmanagement.rollup.settings.RollupSettings.ROLLUP_INDEX.key, true).build()
+
+        whenever(clusterState.metadata).doReturn(metadata)
+        whenever(metadata.index(rollup.sourceIndex)).doReturn(indexMetadata)
+        whenever(indexMetadata.settings).doReturn(settings)
+
+        val compositeAgg = rollup.getCompositeAggregationBuilder(null, clusterState)
+
+        val subAggs = compositeAgg.subAggregations
+        assertEquals(4, subAggs.size)
+        assertTrue(subAggs.any { it.name.endsWith(".sum") && it.type == "sum" })
+        assertTrue(subAggs.any { it.name.endsWith(".max") && it.type == "max" })
+        assertTrue(subAggs.any { it.name.endsWith(".hll") && it.type == "cardinality" })
+        assertTrue(subAggs.any { it.name.endsWith(".value_count") && it.type == "sum" })
     }
 }

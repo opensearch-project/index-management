@@ -41,6 +41,7 @@ import org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval
 import org.opensearch.search.aggregations.bucket.histogram.HistogramAggregationBuilder
 import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder
 import org.opensearch.search.aggregations.metrics.AvgAggregationBuilder
+import org.opensearch.search.aggregations.metrics.CardinalityAggregationBuilder
 import org.opensearch.search.aggregations.metrics.MaxAggregationBuilder
 import org.opensearch.search.aggregations.metrics.MinAggregationBuilder
 import org.opensearch.search.aggregations.metrics.SumAggregationBuilder
@@ -241,6 +242,10 @@ class RollupInterceptor(
                 }
 
                 is ValueCountAggregationBuilder -> {
+                    fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.METRIC, it.field(), it.type))
+                }
+
+                is CardinalityAggregationBuilder -> {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.METRIC, it.field(), it.type))
                 }
 

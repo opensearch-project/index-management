@@ -1,6 +1,6 @@
 {
-  "_meta" : {
-    "schema_version": 25
+  "_meta": {
+    "schema_version": 26
   },
   "dynamic": "strict",
   "properties": {
@@ -472,6 +472,13 @@
                                 },
                                 "value_count": {
                                   "type": "object"
+                                },
+                                "cardinality": {
+                                  "properties": {
+                                    "precision_threshold": {
+                                      "type": "long"
+                                    }
+                                  }
                                 }
                               }
                             }
@@ -1117,6 +1124,13 @@
                 },
                 "value_count": {
                   "type": "object"
+                },
+                "cardinality": {
+                  "properties": {
+                    "precision_threshold": {
+                      "type": "long"
+                    }
+                  }
                 }
               }
             }
