@@ -35,6 +35,7 @@ import org.opensearch.indexmanagement.rollup.model.RollupJobValidationResult
 import org.opensearch.indexmanagement.rollup.settings.LegacyOpenDistroRollupSettings
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionResolver
+import org.opensearch.indexmanagement.rollup.util.RollupMappingUtils
 import org.opensearch.indexmanagement.rollup.util.getRollupJobs
 import org.opensearch.indexmanagement.rollup.util.isRollupIndex
 import org.opensearch.indexmanagement.rollup.util.isTargetIndexAlias
@@ -157,7 +158,7 @@ class RollupMapperService(
         } else {
             val errorMessage = "Failed to create target index [$targetIndexResolvedName]"
             return try {
-                val response = createTargetIndex(targetIndexResolvedName, job.targetIndexSettings, hasLegacyPlugin)
+                val response = createTargetIndex(targetIndexResolvedName, job.targetIndexSettings, hasLegacyPlugin, job)
                 if (response.isAcknowledged) {
                     updateRollupIndexMappings(job, targetIndexResolvedName)
                 } else {
@@ -228,7 +229,12 @@ class RollupMapperService(
         return RollupJobValidationResult.Valid
     }
 
-    private suspend fun createTargetIndex(targetIndexName: String, targetIndexSettings: Settings?, hasLegacyPlugin: Boolean): CreateIndexResponse {
+    private suspend fun createTargetIndex(
+        targetIndexName: String,
+        targetIndexSettings: Settings?,
+        hasLegacyPlugin: Boolean,
+        rollup: Rollup,
+    ): CreateIndexResponse {
         val settings = Settings.builder().apply {
             targetIndexSettings?.let { put(it) }
             val rollupIndexSetting = if (hasLegacyPlugin) {
@@ -243,12 +249,19 @@ class RollupMapperService(
             CreateIndexRequest(targetIndexName)
                 .settings(settings)
                 .mapping(IndexManagementIndices.rollupTargetMappings)
-        // TODO: Perhaps we can do better than this for mappings... as it'll be dynamic for rest
-        //  Can we read in the actual mappings from the source index and use that?
-        //  Can it have issues with metrics? i.e. an int mapping with 3, 5, 6 added up and divided by 3 for avg is 14/3 = 4.6666
-        //  What happens if the first indexing is an integer, i.e. 3 + 3 + 3 = 9/3 = 3 and it saves it as int
-        //  and then the next is float and it fails or rounds it up? Does elasticsearch dynamically resolve to int?
-        return client.admin().indices().suspendUntil { create(request, it) }
+
+        // Create the index first
+        val response = client.admin().indices().suspendUntil { create(request, it) }
+
+        // If the rollup has cardinality metrics, add explicit field mappings
+        if (RollupMappingUtils.hasCardinalityMetrics(rollup)) {
+            val cardinalityMappings = RollupMappingUtils.buildCardinalityFieldMappings(rollup)
+            val putMappingRequest =
+                PutMappingRequest(targetIndexName).source(cardinalityMappings, XContentType.JSON)
+            client.admin().indices().suspendUntil { putMapping(putMappingRequest, it) }
+        }
+
+        return response
     }
 
     // Source index can be a pattern so will need to resolve the index to concrete indices and check:

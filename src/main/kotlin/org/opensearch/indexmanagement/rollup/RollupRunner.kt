@@ -34,6 +34,7 @@ import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.RollupStats
 import org.opensearch.indexmanagement.rollup.model.incrementStats
 import org.opensearch.indexmanagement.rollup.model.mergeStats
+import org.opensearch.indexmanagement.rollup.model.metric.Cardinality
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.indexmanagement.rollup.util.getDateHistogram
 import org.opensearch.indexmanagement.rollup.util.getRollupJobs
@@ -559,9 +560,58 @@ object RollupRunner :
                         "Target rollup requests metrics $unsupportedMetrics that are not available in source rollup",
                     )
                 } else {
+                    // Validate cardinality precisionThreshold compatibility
+                    val precisionThresholdValidation = validateCardinalityPrecisionThreshold(sourceJob, job)
+                    if (precisionThresholdValidation is RollupJobValidationResult.Invalid) {
+                        return precisionThresholdValidation
+                    }
+
                     RollupJobValidationResult.Valid
                 }
             }
+        }
+    }
+
+    /**
+     * Validates that cardinality precisionThreshold values match between source and target rollups.
+     * This prevents runtime HLL++ sketch precision mismatch errors during multi-tier rollup execution.
+     */
+    private fun validateCardinalityPrecisionThreshold(
+        sourceJob: Rollup,
+        targetJob: Rollup,
+    ): RollupJobValidationResult {
+        // Extract cardinality metrics from source rollup
+        val sourceCardinalityThresholds = sourceJob.metrics
+            .flatMap { metric ->
+                metric.metrics
+                    .filterIsInstance<Cardinality>()
+                    .map { metric.sourceField to it.precisionThreshold }
+            }
+            .toMap()
+
+        // Check target cardinality metrics for mismatches
+        val mismatches = mutableListOf<String>()
+
+        targetJob.metrics.forEach { targetMetric ->
+            targetMetric.metrics.filterIsInstance<Cardinality>().forEach { targetCardinality ->
+                val sourceThreshold = sourceCardinalityThresholds[targetMetric.sourceField]
+
+                // Only validate if source has cardinality for this field
+                if (sourceThreshold != null && sourceThreshold != targetCardinality.precisionThreshold) {
+                    mismatches.add(
+                        "field [${targetMetric.sourceField}]: source uses precisionThreshold $sourceThreshold, " +
+                            "but target specifies precisionThreshold ${targetCardinality.precisionThreshold}",
+                    )
+                }
+            }
+        }
+
+        return if (mismatches.isNotEmpty()) {
+            val errorMessage = "Cardinality precisionThreshold mismatch for ${mismatches.joinToString("; ")}. " +
+                "Use matching precisionThreshold values for multi-tier rollup compatibility."
+            RollupJobValidationResult.Invalid(errorMessage)
+        } else {
+            RollupJobValidationResult.Valid
         }
     }
 
