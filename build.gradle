@@ -247,8 +247,8 @@ dependencies {
     configurations.ktlint {
         resolutionStrategy{
             force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.25"
-            force "ch.qos.logback:logback-classic:1.5.19"
-            force "ch.qos.logback:logback-core:1.5.19"
+            force "ch.qos.logback:logback-classic:1.5.22"
+            force "ch.qos.logback:logback-core:1.5.22"
         }
     }
 
