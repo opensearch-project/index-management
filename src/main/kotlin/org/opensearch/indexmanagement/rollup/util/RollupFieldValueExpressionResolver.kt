@@ -33,23 +33,7 @@ object RollupFieldValueExpressionResolver {
      *         produces an empty/null result
      */
     fun resolve(rollup: Rollup, fieldValue: String): String {
-        val script = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, fieldValue, mapOf())
-
-        val contextMap =
-            rollup.toXContent(XContentFactory.jsonBuilder(), XCONTENT_WITHOUT_TYPE)
-                .toMap()
-                .filterKeys { key -> key in validTopContextFields }
-
-        var compiledValue =
-            scriptService.compile(script, TemplateScript.CONTEXT)
-                .newInstance(script.params + mapOf("ctx" to contextMap))
-                .execute()
-
-        if (indexAliasUtils.isAlias(compiledValue)) {
-            compiledValue = indexAliasUtils.getWriteIndexNameForAlias(compiledValue)
-        }
-
-        return if (compiledValue.isNullOrBlank()) fieldValue else compiledValue
+        return resolve(rollup, fieldValue, managedIndexName = null)
     }
 
     /**
@@ -64,18 +48,25 @@ object RollupFieldValueExpressionResolver {
      *                   - Literal values without templates are returned unchanged
      * @param managedIndexName The name of the index being managed by ISM. This is the index to which
      *                         the ISM policy is applied, and it's made available as {{ctx.index}} in templates.
+     *                         If null, the {{ctx.index}} variable will not be available in the template context.
      * @return The resolved field value with all template variables replaced. If the resolved value is an alias,
      *         it's automatically resolved to the write index name. If resolution produces an empty or null result,
      *         the original fieldValue is returned unchanged.
      */
-    fun resolve(rollup: Rollup, fieldValue: String, managedIndexName: String): String {
+    fun resolve(rollup: Rollup, fieldValue: String, managedIndexName: String?): String {
         val script = Script(ScriptType.INLINE, Script.DEFAULT_TEMPLATE_LANG, fieldValue, mapOf())
 
         val contextMap =
             rollup.toXContent(XContentFactory.jsonBuilder(), XCONTENT_WITHOUT_TYPE)
                 .toMap()
                 .filterKeys { key -> key in validTopContextFields }
-                .plus("index" to managedIndexName)
+                .let { map ->
+                    if (managedIndexName != null) {
+                        map.plus("index" to managedIndexName)
+                    } else {
+                        map
+                    }
+                }
 
         var compiledValue =
             scriptService.compile(script, TemplateScript.CONTEXT)

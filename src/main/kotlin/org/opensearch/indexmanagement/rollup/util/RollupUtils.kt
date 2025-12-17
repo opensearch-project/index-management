@@ -131,114 +131,154 @@ fun Rollup.getRollupSearchRequest(metadata: RollupMetadata, clusterState: Cluste
 fun Rollup.getCompositeAggregationBuilder(afterKey: Map<String, Any>?, clusterState: ClusterState): CompositeAggregationBuilder {
     // Determine if the source index is a rollup index to adjust field references accordingly
     val isRollupIndex = isRollupIndex(this.sourceIndex, clusterState)
-    val sources = mutableListOf<CompositeValuesSourceBuilder<*>>()
-
-    if (isRollupIndex) {
-        // Multi-tier rollup: Source is a rollup index with pre-aggregated data
-        // Dimension fields in rollup indices are stored with type suffixes
-        // Example: "tpep_pickup_datetime" becomes "tpep_pickup_datetime.date_histogram"
-        this.dimensions.forEach { dimension ->
-            val sourceBuilder = dimension.toSourceBuilder(appendType = true)
-            when (dimension) {
-                is DateHistogram -> {
-                    // Reference the pre-aggregated date histogram field
-                    sourceBuilder.field("${dimension.targetField}.${dimension.type.type}")
-                }
-                is Terms -> {
-                    // Reference the pre-aggregated terms field
-                    sourceBuilder.field("${dimension.targetField}.${dimension.type.type}")
-                }
-                is Histogram -> {
-                    // Reference the pre-aggregated histogram field
-                    sourceBuilder.field("${dimension.targetField}.${dimension.type.type}")
-                }
-            }
-            sources.add(sourceBuilder)
-        }
+    
+    return if (isRollupIndex) {
+        buildCompositeAggregationForRollupIndex(afterKey)
     } else {
-        // Standard rollup: Source is a regular index with raw data
-        // Use the original source fields directly
-        this.dimensions.forEach { dimension -> sources.add(dimension.toSourceBuilder(appendType = true)) }
+        buildCompositeAggregationForStandardIndex(afterKey)
     }
+}
 
+/**
+ * Builds composite aggregation for multi-tier rollup (source is a rollup index).
+ * 
+ * In multi-tier rollups:
+ * - Dimension fields are stored with type suffixes (e.g., "field.date_histogram", "field.terms")
+ * - Metric fields are pre-computed aggregations that need to be re-aggregated
+ * - Average is stored as separate sum and value_count fields
+ * - ValueCount is stored as a sum that needs to be summed again
+ */
+private fun Rollup.buildCompositeAggregationForRollupIndex(afterKey: Map<String, Any>?): CompositeAggregationBuilder {
+    val sources = mutableListOf<CompositeValuesSourceBuilder<*>>()
+    
+    // Build dimension sources with type suffixes
+    this.dimensions.forEach { dimension ->
+        val sourceBuilder = dimension.toSourceBuilder(appendType = true)
+        when (dimension) {
+            is DateHistogram -> {
+                sourceBuilder.field("${dimension.targetField}.${dimension.type.type}")
+            }
+            is Terms -> {
+                sourceBuilder.field("${dimension.targetField}.${dimension.type.type}")
+            }
+            is Histogram -> {
+                sourceBuilder.field("${dimension.targetField}.${dimension.type.type}")
+            }
+        }
+        sources.add(sourceBuilder)
+    }
+    
     return CompositeAggregationBuilder(this.id, sources).size(this.pageSize).also { compositeAgg ->
         afterKey?.let { compositeAgg.aggregateAfter(it) }
-
-        // Add metric aggregations based on source index type
+        
+        // Add metric aggregations for rollup index
         this.metrics.forEach { metric ->
-            val subAggs =
-                metric.metrics.flatMap { agg ->
-                    when (agg) {
-                        is Average -> {
-                            if (isRollupIndex) {
-                                // Multi-tier rollup: Average is stored as separate sum and value_count fields
-                                // We sum both components to aggregate across multiple rollup documents
-                                // Final average is computed during query time: total_sum / total_value_count
-                                listOf(
-                                    SumAggregationBuilder(metric.targetFieldWithType(agg) + ".sum")
-                                        .field(metric.targetFieldWithType(agg) + ".sum"),
-                                    SumAggregationBuilder(metric.targetFieldWithType(agg) + ".value_count")
-                                        .field(metric.targetFieldWithType(agg) + ".value_count"),
-                                )
-                            } else {
-                                // Standard rollup: Compute sum and count from raw data
-                                listOf(
-                                    SumAggregationBuilder(metric.targetFieldWithType(agg) + ".sum")
-                                        .field(metric.sourceField),
-                                    ValueCountAggregationBuilder(metric.targetFieldWithType(agg) + ".value_count")
-                                        .field(metric.sourceField),
-                                )
-                            }
-                        }
-                        is Sum -> {
-                            // Multi-tier: Sum the pre-computed sum values
-                            // Standard: Sum the raw field values
-                            listOf(
-                                SumAggregationBuilder(metric.targetFieldWithType(agg))
-                                    .field(
-                                        if (isRollupIndex) metric.targetFieldWithType(agg) else metric.sourceField,
-                                    ),
-                            )
-                        }
-                        is Max -> {
-                            // Multi-tier: Take max of pre-computed max values (max of maxes)
-                            // Standard: Take max of raw field values
-                            listOf(
-                                MaxAggregationBuilder(metric.targetFieldWithType(agg))
-                                    .field(
-                                        if (isRollupIndex) metric.targetFieldWithType(agg) else metric.sourceField,
-                                    ),
-                            )
-                        }
-                        is Min -> {
-                            // Multi-tier: Take min of pre-computed min values (min of mins)
-                            // Standard: Take min of raw field values
-                            listOf(
-                                MinAggregationBuilder(metric.targetFieldWithType(agg))
-                                    .field(
-                                        if (isRollupIndex) metric.targetFieldWithType(agg) else metric.sourceField,
-                                    ),
-                            )
-                        }
-                        is ValueCount -> {
-                            listOf(
-                                if (isRollupIndex) {
-                                    // Multi-tier rollup: Sum the pre-computed value_count fields
-                                    // Each rollup document contains a count of raw documents it represents
-                                    // Summing these counts gives us the total count of original raw documents
-                                    SumAggregationBuilder(metric.targetFieldWithType(agg))
-                                        .field(metric.targetFieldWithType(agg))
-                                } else {
-                                    // Standard rollup: Count the raw documents
-                                    ValueCountAggregationBuilder(metric.targetFieldWithType(agg))
-                                        .field(metric.sourceField)
-                                },
-                            )
-                        }
-                        // This shouldn't be possible as rollup will fail to initialize with an unsupported metric
-                        else -> throw IllegalArgumentException("Found unsupported metric aggregation ${agg.type.type}")
+            val subAggs = metric.metrics.flatMap { agg ->
+                when (agg) {
+                    is Average -> {
+                        // Average is stored as separate sum and value_count fields
+                        // Sum both components to aggregate across multiple rollup documents
+                        listOf(
+                            SumAggregationBuilder(metric.targetFieldWithType(agg) + ".sum")
+                                .field(metric.targetFieldWithType(agg) + ".sum"),
+                            SumAggregationBuilder(metric.targetFieldWithType(agg) + ".value_count")
+                                .field(metric.targetFieldWithType(agg) + ".value_count"),
+                        )
                     }
+                    is Sum -> {
+                        // Sum the pre-computed sum values
+                        listOf(
+                            SumAggregationBuilder(metric.targetFieldWithType(agg))
+                                .field(metric.targetFieldWithType(agg)),
+                        )
+                    }
+                    is Max -> {
+                        // Take max of pre-computed max values (max of maxes)
+                        listOf(
+                            MaxAggregationBuilder(metric.targetFieldWithType(agg))
+                                .field(metric.targetFieldWithType(agg)),
+                        )
+                    }
+                    is Min -> {
+                        // Take min of pre-computed min values (min of mins)
+                        listOf(
+                            MinAggregationBuilder(metric.targetFieldWithType(agg))
+                                .field(metric.targetFieldWithType(agg)),
+                        )
+                    }
+                    is ValueCount -> {
+                        // Sum the pre-computed value_count fields
+                        // Each rollup document contains a count of raw documents it represents
+                        listOf(
+                            SumAggregationBuilder(metric.targetFieldWithType(agg))
+                                .field(metric.targetFieldWithType(agg)),
+                        )
+                    }
+                    else -> throw IllegalArgumentException("Found unsupported metric aggregation ${agg.type.type}")
                 }
+            }
+            subAggs.forEach { compositeAgg.subAggregation(it) }
+        }
+    }
+}
+
+/**
+ * Builds composite aggregation for standard rollup (source is a regular index with raw data).
+ * 
+ * Uses the original source fields directly and computes aggregations from raw data.
+ */
+private fun Rollup.buildCompositeAggregationForStandardIndex(afterKey: Map<String, Any>?): CompositeAggregationBuilder {
+    val sources = this.dimensions.map { dimension -> 
+        dimension.toSourceBuilder(appendType = true) 
+    }
+    
+    return CompositeAggregationBuilder(this.id, sources).size(this.pageSize).also { compositeAgg ->
+        afterKey?.let { compositeAgg.aggregateAfter(it) }
+        
+        // Add metric aggregations for standard index
+        this.metrics.forEach { metric ->
+            val subAggs = metric.metrics.flatMap { agg ->
+                when (agg) {
+                    is Average -> {
+                        // Compute sum and count from raw data
+                        listOf(
+                            SumAggregationBuilder(metric.targetFieldWithType(agg) + ".sum")
+                                .field(metric.sourceField),
+                            ValueCountAggregationBuilder(metric.targetFieldWithType(agg) + ".value_count")
+                                .field(metric.sourceField),
+                        )
+                    }
+                    is Sum -> {
+                        // Sum the raw field values
+                        listOf(
+                            SumAggregationBuilder(metric.targetFieldWithType(agg))
+                                .field(metric.sourceField),
+                        )
+                    }
+                    is Max -> {
+                        // Take max of raw field values
+                        listOf(
+                            MaxAggregationBuilder(metric.targetFieldWithType(agg))
+                                .field(metric.sourceField),
+                        )
+                    }
+                    is Min -> {
+                        // Take min of raw field values
+                        listOf(
+                            MinAggregationBuilder(metric.targetFieldWithType(agg))
+                                .field(metric.sourceField),
+                        )
+                    }
+                    is ValueCount -> {
+                        // Count the raw documents
+                        listOf(
+                            ValueCountAggregationBuilder(metric.targetFieldWithType(agg))
+                                .field(metric.sourceField),
+                        )
+                    }
+                    else -> throw IllegalArgumentException("Found unsupported metric aggregation ${agg.type.type}")
+                }
+            }
             subAggs.forEach { compositeAgg.subAggregation(it) }
         }
     }
