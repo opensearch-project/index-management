@@ -82,7 +82,24 @@ class RollupInterceptor(
 
     /**
      * Reads the bypass value from the request's FetchSourceContext.
-     * Returns the bypass level if the marker is present in includes array, null otherwise.
+     * 
+     * The bypass mechanism uses a special marker string in the FetchSourceContext includes array
+     * to communicate bypass levels across nodes in a multi-node cluster. The marker format is:
+     * "_rollup_internal_bypass_<level>" where <level> is an integer (BYPASS_ROLLUP_SEARCH or BYPASS_SIZE_CHECK).
+     * 
+     * This marker is set by internal components before making search requests:
+     * - RollupSearchService: Sets BYPASS_ROLLUP_SEARCH when querying rollup indices with composite aggregations
+     *   during the rollup process (multi-tier rollup scenario where a rollup index is the source)
+     * - RollupMetadataService: Sets BYPASS_SIZE_CHECK when fetching the earliest timestamp document from
+     *   a rollup index during continuous rollup initialization (needs size=1 to retrieve actual documents)
+     * 
+     * The marker is placed in the FetchSourceContext includes array because:
+     * 1. It's serialized and transmitted across nodes in the cluster
+     * 2. It doesn't affect the actual source fetching behavior (fetchSource is set to false)
+     * 3. It provides a clean way to pass metadata without modifying the core search request structure
+     * 
+     * @param request The shard search request to check for bypass markers
+     * @return The bypass level if the marker is present in includes array, null otherwise
      */
     internal fun getBypassFromFetchSource(request: ShardSearchRequest): Int? {
         val includes = request.source()?.fetchSource()?.includes()
