@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 25
+    "schema_version": 26
   },
   "dynamic": "strict",
   "properties": {

@@ -440,7 +440,9 @@ object RollupRunner :
             if (isRollupIndex(job.sourceIndex, clusterService.state())) {
                 when (val rollupValidationResult = validateRollupOnRollup(job)) {
                     is RollupJobValidationResult.Valid -> {
-                    } // No action taken when valid
+                    }
+
+                    // No action taken when valid
                     else -> return@withClosableContext rollupValidationResult
                 }
             }
@@ -541,9 +543,11 @@ object RollupRunner :
             invalidDimensionFields.isNotEmpty() -> RollupJobValidationResult.Invalid(
                 "Cannot rollup on dimension fields $invalidDimensionFields that don't exist in source rollup",
             )
+
             invalidMetricFields.isNotEmpty() -> RollupJobValidationResult.Invalid(
                 "Cannot rollup on metric fields $invalidMetricFields that don't exist in source rollup",
             )
+
             else -> {
                 // Validate metric compatibility
                 val sourceMetrics = sourceJob.metrics.flatMap { it.metrics }.map { it.type.type }.toSet()

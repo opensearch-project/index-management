@@ -32,9 +32,7 @@ object RollupFieldValueExpressionResolver {
      * @return The resolved field value with variables replaced, or the original value if resolution
      *         produces an empty/null result
      */
-    fun resolve(rollup: Rollup, fieldValue: String): String {
-        return resolve(rollup, fieldValue, managedIndexName = null)
-    }
+    fun resolve(rollup: Rollup, fieldValue: String): String = resolve(rollup, fieldValue, managedIndexName = null)
 
     /**
      * Resolves template variables in a field value using the rollup object and managed index name as context.
