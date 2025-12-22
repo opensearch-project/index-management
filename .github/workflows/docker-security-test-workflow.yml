@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set Up JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin # Temurin is a distribution of adoptium
           java-version: 21
@@ -83,7 +83,7 @@ jobs:
             echo "Security plugin is NOT available skipping this run as tests without security have already been run"
           fi
       - name: Upload failed logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: logs
@@ -96,7 +96,7 @@ jobs:
       - name: Tar logs
         run: tar cvzf ./logs.tgz ./logs
       - name: Upload logs to GitHub
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: logs.tgz
