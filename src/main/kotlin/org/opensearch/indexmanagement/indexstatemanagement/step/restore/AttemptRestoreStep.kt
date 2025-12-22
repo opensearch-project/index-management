@@ -91,7 +91,7 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
                 .indices(indexName)
                 .storageType(RestoreSnapshotRequest.StorageType.REMOTE_SNAPSHOT)
                 .renamePattern("^(.*)\$")
-                .renameReplacement("$1_remote")
+                .renameReplacement("remote_$1")
                 .waitForCompletion(false)
             val response: RestoreSnapshotResponse = context.client.admin().cluster().suspendUntil {
                 restoreSnapshot(restoreSnapshotRequest, it)
