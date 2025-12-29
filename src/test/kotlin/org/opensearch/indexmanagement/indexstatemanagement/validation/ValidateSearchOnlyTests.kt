@@ -51,19 +51,26 @@ class ValidateSearchOnlyTests : OpenSearchTestCase() {
     }
 
     private fun getClusterService(indexName: String?, isSearchOnly: Boolean): ClusterService {
+        val clusterSettings = Settings.builder()
+            .put("cluster.remote_store.enabled", true)
+            .build()
         val metadata: Metadata = if (indexName != null) {
             val indexSettings = Settings.builder()
                 .put("index.blocks.search_only", isSearchOnly)
+                .put("index.replication.type", "SEGMENT")
+                .put("index.number_of_search_only_replicas", 1)
                 .build()
             val indexMetadata: IndexMetadata = mock {
                 on { settings } doReturn indexSettings
             }
             mock {
                 on { index(indexName) } doReturn indexMetadata
+                on { settings() } doReturn clusterSettings
             }
         } else {
             mock {
                 on { index(org.mockito.ArgumentMatchers.anyString()) } doReturn null
+                on { settings() } doReturn clusterSettings
             }
         }
         val clusterState: ClusterState = mock {
