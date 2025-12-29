@@ -50,15 +50,51 @@ class ValidateSearchOnlyTests : OpenSearchTestCase() {
         assertTrue("Message should indicate already in search-only mode", result.validationMessage!!.contains("already"))
     }
 
-    private fun getClusterService(indexName: String?, isSearchOnly: Boolean): ClusterService {
+    fun `test validation fails when remote store is disabled`() {
+        val clusterService = getClusterService("test-index", false, remoteStoreEnabled = false)
+        val validate = ValidateSearchOnly(settings, clusterService, jvmService)
+
+        val result = validate.execute("test-index")
+
+        assertEquals("Validation status should be FAILED", Validate.ValidationStatus.FAILED, result.validationStatus)
+        assertTrue("Message should indicate remote store disabled", result.validationMessage!!.contains("remote store"))
+    }
+
+    fun `test validation fails when segment replication is disabled`() {
+        val clusterService = getClusterService("test-index", false, replicationType = "DOCUMENT")
+        val validate = ValidateSearchOnly(settings, clusterService, jvmService)
+
+        val result = validate.execute("test-index")
+
+        assertEquals("Validation status should be FAILED", Validate.ValidationStatus.FAILED, result.validationStatus)
+        assertTrue("Message should indicate segment replication disabled", result.validationMessage!!.contains("segment replication"))
+    }
+
+    fun `test validation fails when no search replicas configured`() {
+        val clusterService = getClusterService("test-index", false, searchReplicas = 0)
+        val validate = ValidateSearchOnly(settings, clusterService, jvmService)
+
+        val result = validate.execute("test-index")
+
+        assertEquals("Validation status should be FAILED", Validate.ValidationStatus.FAILED, result.validationStatus)
+        assertTrue("Message should indicate no search replicas", result.validationMessage!!.contains("search replicas"))
+    }
+
+    private fun getClusterService(
+        indexName: String?,
+        isSearchOnly: Boolean,
+        remoteStoreEnabled: Boolean = true,
+        replicationType: String = "SEGMENT",
+        searchReplicas: Int = 1,
+    ): ClusterService {
         val clusterSettings = Settings.builder()
-            .put("cluster.remote_store.enabled", true)
+            .put("cluster.remote_store.enabled", remoteStoreEnabled)
             .build()
         val metadata: Metadata = if (indexName != null) {
             val indexSettings = Settings.builder()
                 .put("index.blocks.search_only", isSearchOnly)
-                .put("index.replication.type", "SEGMENT")
-                .put("index.number_of_search_only_replicas", 1)
+                .put("index.replication.type", replicationType)
+                .put("index.number_of_search_only_replicas", searchReplicas)
                 .build()
             val indexMetadata: IndexMetadata = mock {
                 on { settings } doReturn indexSettings
