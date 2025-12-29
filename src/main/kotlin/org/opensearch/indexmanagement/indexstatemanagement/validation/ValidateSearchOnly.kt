@@ -58,6 +58,7 @@ class ValidateSearchOnly(
         return false
     }
 
+    @Suppress("ReturnCount")
     private fun hasRemoteStorePrerequisites(indexMetadata: IndexMetadata, indexName: String): Boolean {
         val clusterSettings = clusterService.state().metadata.settings()
         val isRemoteStoreEnabled = clusterSettings.getAsBoolean("cluster.remote_store.enabled", false)
