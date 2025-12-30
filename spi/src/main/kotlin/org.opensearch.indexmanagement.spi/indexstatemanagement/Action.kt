@@ -61,8 +61,10 @@ abstract class Action(
             // start a new action
             stateMetaData?.name != stateName ->
                 ActionMetaData(this.type, Instant.now().toEpochMilli(), this.actionIndex, false, 0, 0, null)
+
             actionMetaData?.index != this.actionIndex ->
                 ActionMetaData(this.type, Instant.now().toEpochMilli(), this.actionIndex, false, 0, 0, null)
+
             // RetryAPI will reset startTime to null for actionMetaData and we'll reset it to "now" here
             else -> actionMetaData.copy(startTime = actionMetaData.startTime ?: Instant.now().toEpochMilli())
         }

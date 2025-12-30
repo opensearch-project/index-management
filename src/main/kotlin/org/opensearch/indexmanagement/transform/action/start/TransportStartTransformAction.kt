@@ -192,8 +192,10 @@ constructor(
         val updatedStatus =
             when (metadata.status) {
                 TransformMetadata.Status.FINISHED, TransformMetadata.Status.STOPPED -> TransformMetadata.Status.STARTED
+
                 TransformMetadata.Status.STARTED, TransformMetadata.Status.INIT ->
                     return actionListener.onResponse(AcknowledgedResponse(true))
+
                 TransformMetadata.Status.FAILED -> TransformMetadata.Status.STARTED
             }
         val updateRequest =

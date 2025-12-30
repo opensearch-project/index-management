@@ -186,17 +186,24 @@ data class Policy(
 
                 when (fieldName) {
                     SCHEMA_VERSION_FIELD -> schemaVersion = xcp.longValue()
+
                     LAST_UPDATED_TIME_FIELD -> lastUpdatedTime = xcp.instant()
+
                     POLICY_ID_FIELD -> { /* do nothing as this is an internal field */ }
+
                     DESCRIPTION_FIELD -> description = xcp.text()
+
                     ERROR_NOTIFICATION_FIELD -> errorNotification = if (xcp.currentToken() == Token.VALUE_NULL) null else ErrorNotification.parse(xcp)
+
                     DEFAULT_STATE_FIELD -> defaultState = xcp.text()
+
                     STATES_FIELD -> {
                         ensureExpectedToken(Token.START_ARRAY, xcp.currentToken(), xcp)
                         while (xcp.nextToken() != Token.END_ARRAY) {
                             states.add(State.parse(xcp))
                         }
                     }
+
                     ISM_TEMPLATE -> {
                         if (xcp.currentToken() != Token.VALUE_NULL) {
                             ismTemplates = mutableListOf()
@@ -206,14 +213,18 @@ data class Policy(
                                         ismTemplates.add(ISMTemplate.parse(xcp))
                                     }
                                 }
+
                                 Token.START_OBJECT -> {
                                     ismTemplates.add(ISMTemplate.parse(xcp))
                                 }
+
                                 else -> ensureExpectedToken(Token.START_ARRAY, xcp.currentToken(), xcp)
                             }
                         }
                     }
+
                     USER_FIELD -> user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)
+
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in Policy.")
                 }
             }

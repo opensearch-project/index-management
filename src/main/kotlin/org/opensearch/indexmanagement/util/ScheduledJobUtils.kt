@@ -75,7 +75,9 @@ private fun populateResponse(
     totalJobs: Int,
 ): ActionResponse = when (jobType) {
     Rollup.ROLLUP_TYPE -> GetRollupsResponse(jobs as List<Rollup>, totalJobs, status)
+
     Transform.TRANSFORM_TYPE -> GetTransformsResponse(jobs as List<Transform>, totalJobs, status)
+
     else -> {
         throw OpenSearchStatusException("Unknown scheduled job type", RestStatus.INTERNAL_SERVER_ERROR)
     }
@@ -83,7 +85,9 @@ private fun populateResponse(
 
 private fun getParser(jobType: String): (XContentParser, String, Long, Long) -> Any = when (jobType) {
     Transform.TRANSFORM_TYPE -> Transform.Companion::parse
+
     Rollup.ROLLUP_TYPE -> Rollup.Companion::parse
+
     else -> {
         throw OpenSearchStatusException("Unknown scheduled job type", RestStatus.INTERNAL_SERVER_ERROR)
     }

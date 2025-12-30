@@ -44,6 +44,7 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
 
     private fun getPluginUri(): String = when (CLUSTER_TYPE) {
         ClusterType.OLD -> "_nodes/$CLUSTER_NAME-0/plugins"
+
         ClusterType.MIXED -> {
             when (System.getProperty("tests.rest.bwcsuite_round")) {
                 "second" -> "_nodes/$CLUSTER_NAME-1/plugins"
@@ -51,6 +52,7 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
                 else -> "_nodes/$CLUSTER_NAME-0/plugins"
             }
         }
+
         ClusterType.UPGRADED -> "_nodes/plugins"
     }
 
@@ -91,7 +93,7 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
         val responseMap = getAsMap(uri)["nodes"] as Map<String, Map<String, Any>>
         for (response in responseMap.values) {
             val plugins = response["plugins"] as List<Map<String, Any>>
-            val pluginNames = plugins.map { plugin -> plugin ["name"] }.toSet()
+            val pluginNames = plugins.map { plugin -> plugin["name"] }.toSet()
             when (CLUSTER_TYPE) {
                 ClusterType.OLD -> {
                     assertTrue(pluginNames.contains("opendistro-index-management") || pluginNames.contains("opensearch-index-management"))
@@ -112,12 +114,14 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
                     verifyPendingRollover(index1)
                     verifyPendingRollover(index2)
                 }
+
                 ClusterType.MIXED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
 
                     verifyPendingRollover(index1)
                     verifyPendingRollover(index2)
                 }
+
                 ClusterType.UPGRADED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
 
@@ -171,12 +175,14 @@ class ISMBackwardsCompatibilityIT : IndexStateManagementRestTestCase() {
                     verifyPendingTransition(index1)
                     verifyPendingTransition(index2)
                 }
+
                 ClusterType.MIXED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
 
                     verifyPendingTransition(index1)
                     verifyPendingTransition(index2)
                 }
+
                 ClusterType.UPGRADED -> {
                     assertTrue(pluginNames.contains("opensearch-index-management"))
 

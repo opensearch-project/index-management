@@ -123,10 +123,12 @@ object TransformRunner :
                         logger.warn("Cannot acquire lock for transform job ${transform.id}")
                         return
                     }
+
                     listOf(TransformMetadata.Status.STOPPED, TransformMetadata.Status.FINISHED).contains(metadata.status) -> {
                         logger.warn("Transform job ${transform.id} is in ${metadata.status} status. Skipping execution")
                         return
                     }
+
                     else -> {
                         val validatedMetadata = validateTransform(transform, currentMetadata)
                         if (validatedMetadata.status == TransformMetadata.Status.FAILED) {

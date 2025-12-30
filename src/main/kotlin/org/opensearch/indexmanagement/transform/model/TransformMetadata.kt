@@ -144,15 +144,22 @@ data class TransformMetadata(
 
                 when (fieldName) {
                     TRANSFORM_ID_FIELD -> transformId = xcp.text()
+
                     AFTER_KEY_FIELD -> afterkey = xcp.map()
+
                     LAST_UPDATED_AT_FIELD -> lastUpdatedAt = xcp.instant()
+
                     STATUS_FIELD -> status = Status.valueOf(xcp.text().uppercase(Locale.ROOT))
+
                     FAILURE_REASON -> failureReason = xcp.textOrNull()
+
                     STATS_FIELD -> stats = TransformStats.parse(xcp)
+
                     SHARD_ID_TO_GLOBAL_CHECKPOINT_FIELD ->
                         shardIDToGlobalCheckpoint =
                             xcp.map({ HashMap<String, Long>() }, { parser -> parser.longValue() })
                                 .mapKeys { ShardId.fromString(it.key) }
+
                     CONTINUOUS_STATS_FIELD -> continuousStats = ContinuousTransformStats.parse(xcp)
                 }
             }

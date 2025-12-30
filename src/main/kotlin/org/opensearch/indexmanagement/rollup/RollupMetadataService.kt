@@ -68,9 +68,11 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
                     val recoveredMetadata =
                         when (val recoverMetadataResult = recoverRetryMetadata(rollup, existingMetadata)) {
                             is MetadataResult.Success -> recoverMetadataResult.metadata
+
                             // NoMetadata here means that there were no documents when initializing start time
                             // for a continuous rollup so we will propagate the response to no-op in the runner
                             is MetadataResult.NoMetadata -> return recoverMetadataResult
+
                             // In case of failure, return early with the result
                             is MetadataResult.Failure -> return recoverMetadataResult
                         }
@@ -97,8 +99,10 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
         val createdMetadataResult = if (rollup.continuous) createContinuousMetadata(rollup) else createNonContinuousMetadata(rollup)
         return when (createdMetadataResult) {
             is MetadataResult.Success -> submitMetadataUpdate(createdMetadataResult.metadata, false)
+
             // Hitting this case means that there were no documents when initializing start time for a continuous rollup
             is MetadataResult.NoMetadata -> createdMetadataResult
+
             is MetadataResult.Failure -> createdMetadataResult
         }
     }
@@ -110,7 +114,9 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
             val nextWindowStartTime =
                 when (val initStartTimeResult = getInitialStartTime(rollup)) {
                     is StartingTimeResult.Success -> initStartTimeResult.startingTime
+
                     is StartingTimeResult.NoDocumentsFound -> return MetadataResult.NoMetadata
+
                     is StartingTimeResult.Failure ->
                         return MetadataResult.Failure("Failed to initialize start time for retried rollup job [${rollup.id}]", initStartTimeResult.e)
                 }
@@ -154,7 +160,9 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
         val nextWindowStartTime =
             when (val initStartTimeResult = getInitialStartTime(rollup)) {
                 is StartingTimeResult.Success -> initStartTimeResult.startingTime
+
                 is StartingTimeResult.NoDocumentsFound -> return MetadataResult.NoMetadata
+
                 is StartingTimeResult.Failure ->
                     return MetadataResult.Failure("Failed to initialize start time for rollup [${rollup.id}]", initStartTimeResult.e)
             }
@@ -345,8 +353,10 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
     suspend fun updateMetadata(metadata: RollupMetadata): RollupMetadata =
         when (val metadataUpdateResult = submitMetadataUpdate(metadata, metadata.id != NO_ID)) {
             is MetadataResult.Success -> metadataUpdateResult.metadata
+
             is MetadataResult.Failure ->
                 throw RollupMetadataException("Failed to update rollup metadata [${metadata.id}]", metadataUpdateResult.cause)
+
             // NoMetadata is not expected from submitMetadataUpdate here
             is MetadataResult.NoMetadata -> throw RollupMetadataException("Unexpected state when updating rollup metadata [${metadata.id}]", null)
         }
@@ -404,6 +414,7 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
                 DocWriteResponse.Result.CREATED, DocWriteResponse.Result.UPDATED -> {
                     // noop
                 }
+
                 DocWriteResponse.Result.DELETED, DocWriteResponse.Result.NOOP, DocWriteResponse.Result.NOT_FOUND, null -> {
                     status = RollupMetadata.Status.FAILED
                     failureReason = "The create metadata call failed with a ${response.result?.lowercase} result"

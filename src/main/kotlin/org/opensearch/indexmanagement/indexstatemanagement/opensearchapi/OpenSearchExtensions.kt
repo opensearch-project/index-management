@@ -109,6 +109,7 @@ suspend fun Client.getManagedIndexMetadata(indexUUID: String): Pair<ManagedIndex
             is IndexNotFoundException, is NoShardAvailableActionException -> {
                 log.error("Failed to get metadata because no index or shard not available")
             }
+
             else -> log.error("Failed to get metadata", e)
         }
 

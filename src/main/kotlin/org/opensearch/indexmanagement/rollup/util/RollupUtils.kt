@@ -118,10 +118,15 @@ fun Rollup.getCompositeAggregationBuilder(afterKey: Map<String, Any>?): Composit
                                 ValueCountAggregationBuilder(metric.targetFieldWithType(agg) + ".value_count").field(metric.sourceField),
                             )
                         }
+
                         is Sum -> listOf(SumAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
+
                         is Max -> listOf(MaxAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
+
                         is Min -> listOf(MinAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
+
                         is ValueCount -> listOf(ValueCountAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
+
                         // This shouldn't be possible as rollup will fail to initialize with an unsupported metric
                         else -> throw IllegalArgumentException("Found unsupported metric aggregation ${agg.type.type}")
                     }
@@ -187,10 +192,12 @@ fun IndexMetadata.getRollupJobs(): List<Rollup>? {
                                 rollupJobs.add(Rollup.parse(xcp, rollupID))
                             }
                         }
+
                         else -> xcp.skipChildren()
                     }
                 }
             }
+
             else -> xcp.skipChildren()
         }
     }
@@ -213,18 +220,22 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
             val dim = this.findMatchingDimension(aggregationBuilder.field(), Dimension.Type.TERMS) as Terms
             dim.getRewrittenAggregation(aggregationBuilder, aggFactory)
         }
+
         is DateHistogramAggregationBuilder -> {
             val dim = this.findMatchingDimension(aggregationBuilder.field(), Dimension.Type.DATE_HISTOGRAM) as DateHistogram
             dim.getRewrittenAggregation(aggregationBuilder, aggFactory)
         }
+
         is HistogramAggregationBuilder -> {
             val dim = this.findMatchingDimension(aggregationBuilder.field(), Dimension.Type.HISTOGRAM) as Histogram
             dim.getRewrittenAggregation(aggregationBuilder, aggFactory)
         }
+
         is SumAggregationBuilder -> {
             SumAggregationBuilder(aggregationBuilder.name)
                 .field(this.findMatchingMetricField<Sum>(aggregationBuilder.field()))
         }
+
         is AvgAggregationBuilder -> {
             ScriptedMetricAggregationBuilder(aggregationBuilder.name)
                 .initScript(Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, "state.sums = 0D; state.counts = 0L;", emptyMap()))
@@ -250,14 +261,17 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
                     ),
                 )
         }
+
         is MaxAggregationBuilder -> {
             MaxAggregationBuilder(aggregationBuilder.name)
                 .field(this.findMatchingMetricField<Max>(aggregationBuilder.field()))
         }
+
         is MinAggregationBuilder -> {
             MinAggregationBuilder(aggregationBuilder.name)
                 .field(this.findMatchingMetricField<Min>(aggregationBuilder.field()))
         }
+
         is ValueCountAggregationBuilder -> {
             /*
              * A value count aggs of a pre-computed value count is incorrect as it just returns the number of
@@ -288,6 +302,7 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
                     ),
                 )
         }
+
         // We do nothing otherwise, the validation logic should have already verified so not throwing an exception
         else -> aggregationBuilder
     }
@@ -305,12 +320,14 @@ fun Rollup.rewriteQueryBuilder(
         updatedTermQueryBuilder.boost(queryBuilder.boost())
         updatedTermQueryBuilder.queryName(queryBuilder.queryName())
     }
+
     is TermsQueryBuilder -> {
         val updatedFieldName = queryBuilder.fieldName() + "." + Dimension.Type.TERMS.type
         val updatedTermsQueryBuilder = TermsQueryBuilder(updatedFieldName, queryBuilder.values())
         updatedTermsQueryBuilder.boost(queryBuilder.boost())
         updatedTermsQueryBuilder.queryName(queryBuilder.queryName())
     }
+
     is RangeQueryBuilder -> {
         val updatedFieldName = queryBuilder.fieldName() + "." + fieldNameMappingTypeMap.getValue(queryBuilder.fieldName())
         val updatedRangeQueryBuilder = RangeQueryBuilder(updatedFieldName)
@@ -324,6 +341,7 @@ fun Rollup.rewriteQueryBuilder(
         updatedRangeQueryBuilder.queryName(queryBuilder.queryName())
         updatedRangeQueryBuilder.boost(queryBuilder.boost())
     }
+
     is BoolQueryBuilder -> {
         val newBoolQueryBuilder = BoolQueryBuilder()
         queryBuilder.must()?.forEach {
@@ -347,6 +365,7 @@ fun Rollup.rewriteQueryBuilder(
         newBoolQueryBuilder.queryName(queryBuilder.queryName())
         newBoolQueryBuilder.boost(queryBuilder.boost())
     }
+
     is BoostingQueryBuilder -> {
         val newPositiveQueryBuilder = this.rewriteQueryBuilder(queryBuilder.positiveQuery(), fieldNameMappingTypeMap, concreteIndexName)
         val newNegativeQueryBuilder = this.rewriteQueryBuilder(queryBuilder.negativeQuery(), fieldNameMappingTypeMap, concreteIndexName)
@@ -355,12 +374,14 @@ fun Rollup.rewriteQueryBuilder(
         newBoostingQueryBuilder.queryName(queryBuilder.queryName())
         newBoostingQueryBuilder.boost(queryBuilder.boost())
     }
+
     is ConstantScoreQueryBuilder -> {
         val newInnerQueryBuilder = this.rewriteQueryBuilder(queryBuilder.innerQuery(), fieldNameMappingTypeMap, concreteIndexName)
         val newConstantScoreQueryBuilder = ConstantScoreQueryBuilder(newInnerQueryBuilder)
         newConstantScoreQueryBuilder.boost(queryBuilder.boost())
         newConstantScoreQueryBuilder.queryName(queryBuilder.queryName())
     }
+
     is DisMaxQueryBuilder -> {
         val newDisMaxQueryBuilder = DisMaxQueryBuilder()
         queryBuilder.innerQueries().forEach {
@@ -370,15 +391,18 @@ fun Rollup.rewriteQueryBuilder(
         newDisMaxQueryBuilder.queryName(queryBuilder.queryName())
         newDisMaxQueryBuilder.boost(queryBuilder.boost())
     }
+
     is MatchPhraseQueryBuilder -> {
         val newFieldName = queryBuilder.fieldName() + "." + Dimension.Type.TERMS.type
         val newMatchPhraseQueryBuilder = MatchPhraseQueryBuilder(newFieldName, queryBuilder.value())
         newMatchPhraseQueryBuilder.queryName(queryBuilder.queryName())
         newMatchPhraseQueryBuilder.boost(queryBuilder.boost())
     }
+
     is QueryStringQueryBuilder -> {
         QueryStringQueryUtil.rewriteQueryStringQuery(queryBuilder, concreteIndexName)
     }
+
     // We do nothing otherwise, the validation logic should have already verified so not throwing an exception
     else -> queryBuilder
 }

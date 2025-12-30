@@ -101,6 +101,7 @@ class SMStateMachine(
                             // break the nextStates loop, to avoid executing other lateral states
                             break
                         }
+
                         is SMResult.Stay -> {
                             log.debug("State [{}] has not finished.", currentState)
                             updateMetadata(
@@ -111,6 +112,7 @@ class SMStateMachine(
                             )
                             // can still execute other lateral states if exists
                         }
+
                         is SMResult.Fail -> {
                             handleFailureNotification(result)
                             // any error causing Fail state is logged in place
@@ -164,6 +166,7 @@ class SMStateMachine(
                 WorkflowType.CREATION -> {
                     metadata.creation?.retry
                 }
+
                 WorkflowType.DELETION -> {
                     metadata.deletion?.retry
                 }

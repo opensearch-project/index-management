@@ -47,11 +47,15 @@ data class SweptManagedIndexConfig(
 
                 when (fieldName) {
                     ManagedIndexConfig.INDEX_FIELD -> index = xcp.text()
+
                     ManagedIndexConfig.INDEX_UUID_FIELD -> uuid = xcp.text()
+
                     ManagedIndexConfig.POLICY_ID_FIELD -> policyID = xcp.text()
+
                     ManagedIndexConfig.POLICY_FIELD -> {
                         policy = if (xcp.currentToken() == Token.VALUE_NULL) null else Policy.parse(xcp)
                     }
+
                     ManagedIndexConfig.CHANGE_POLICY_FIELD -> {
                         changePolicy = if (xcp.currentToken() == Token.VALUE_NULL) null else ChangePolicy.parse(xcp)
                     }

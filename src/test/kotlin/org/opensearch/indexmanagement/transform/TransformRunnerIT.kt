@@ -539,13 +539,13 @@ class TransformRunnerIT : TransformRestTestCase() {
         val sourceProperties = ((sourceIndexParserMap[sourceIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)
         val targetProperties = ((targetIndexParserMap[targetIdxTestName]?.get("mappings") as Map<String, Any>)["properties"] as Map<String, Any>)
 
-        val sourcePickupDate = (sourceProperties [pickupDateTime] as Map<String, Any>)["type"]
-        val targetPickupDateTerm = (targetProperties [pickupDateTimeTerm] as Map<String, Any>)["type"]
+        val sourcePickupDate = (sourceProperties[pickupDateTime] as Map<String, Any>)["type"]
+        val targetPickupDateTerm = (targetProperties[pickupDateTimeTerm] as Map<String, Any>)["type"]
 
         assertEquals("date", targetPickupDateTerm)
         assertEquals(sourcePickupDate, targetPickupDateTerm)
 
-        val targetPickupDate = (targetProperties [pickupDateTime] as Map<String, Any>)["type"]
+        val targetPickupDate = (targetProperties[pickupDateTime] as Map<String, Any>)["type"]
 
         assertEquals("date", targetPickupDate)
         assertEquals(sourcePickupDate, targetPickupDate)

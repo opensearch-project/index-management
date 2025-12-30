@@ -144,6 +144,7 @@ constructor(
                                             "User doesn't have required index permissions on one or more requested indices: ${e.localizedMessage}",
                                             RestStatus.FORBIDDEN,
                                         )
+
                                     false -> e
                                 },
                             ),
@@ -285,6 +286,7 @@ constructor(
                                 "Failed to get managed index metadata, $mgetFailure",
                             ),
                         )
+
                     // if there exists a transitionTo on the ManagedIndexMetaData then we will
                     // fail as they might not of meant to add a ChangePolicy when it's on the next state
                     managedIndexMetadata?.transitionTo != null ->
@@ -294,15 +296,19 @@ constructor(
                                 RestChangePolicyAction.INDEX_IN_TRANSITION,
                             ),
                         )
+
                     // else if there is no ManagedIndexMetaData yet then the managed index has not initialized, and we can change the policy safely
                     managedIndexMetadata == null -> {
                         managedIndicesToUpdate.add(indexName to indexUuid)
                     }
+
                     // else if the includedStates is empty (i.e. not being used) then we will always try to update the managed index
                     includedStates.isEmpty() -> managedIndicesToUpdate.add(indexName to indexUuid)
+
                     // else only update the managed index if its currently in one of the included states
                     includedStates.contains(managedIndexMetadata.stateMetaData?.name) ->
                         managedIndicesToUpdate.add(indexName to indexUuid)
+
                     // else the managed index did not match any of the included state filters, and we will not update it
                     else -> log.debug("Skipping $indexName as it does not match any of the include state filters")
                 }

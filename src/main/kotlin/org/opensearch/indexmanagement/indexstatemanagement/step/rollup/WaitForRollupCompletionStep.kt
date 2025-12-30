@@ -62,23 +62,28 @@ class WaitForRollupCompletionStep : Step(name) {
                 stepStatus = StepStatus.CONDITION_NOT_MET
                 info = mapOf("message" to getJobProcessingMessage(rollupJobId, indexName))
             }
+
             RollupMetadata.Status.STARTED -> {
                 stepStatus = StepStatus.CONDITION_NOT_MET
                 info = mapOf("message" to getJobProcessingMessage(rollupJobId, indexName))
             }
+
             RollupMetadata.Status.FAILED -> {
                 stepStatus = StepStatus.FAILED
                 hasRollupFailed = true
                 info = mapOf("message" to getJobFailedMessage(rollupJobId, indexName), "cause" to "${rollupMetadata.failureReason}")
             }
+
             RollupMetadata.Status.FINISHED -> {
                 stepStatus = StepStatus.COMPLETED
                 info = mapOf("message" to getJobCompletionMessage(rollupJobId, indexName))
             }
+
             RollupMetadata.Status.RETRY -> {
                 stepStatus = StepStatus.CONDITION_NOT_MET
                 info = mapOf("message" to getJobProcessingMessage(rollupJobId, indexName))
             }
+
             RollupMetadata.Status.STOPPED -> {
                 stepStatus = StepStatus.FAILED
                 hasRollupFailed = true

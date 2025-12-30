@@ -82,13 +82,13 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlin_version}"
         classpath "org.jetbrains.kotlin:kotlin-allopen:${kotlin_version}"
         classpath "dev.detekt:detekt-gradle-plugin:2.0.0-alpha.1"
-        classpath "org.jacoco:org.jacoco.agent:0.8.12"
+        classpath "org.jacoco:org.jacoco.agent:0.8.14"
     }
 }
 
 plugins {
     id "de.undercouch.download" version "5.6.0"
-    id "com.netflix.nebula.ospackage" version "12.0.0"
+    id "com.netflix.nebula.ospackage" version "12.1.1"
     id "com.dorongold.task-tree" version "2.1.1"
 }
 
@@ -239,7 +239,7 @@ dependencies {
     testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
     testImplementation "org.mockito:mockito-core:${versions.mockito}"
 
-    add("ktlint", "com.pinterest.ktlint:ktlint-cli:1.5.0") {
+    add("ktlint", "com.pinterest.ktlint:ktlint-cli:1.8.0") {
         attributes {
             attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
         }
@@ -247,8 +247,8 @@ dependencies {
     configurations.ktlint {
         resolutionStrategy{
             force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.25"
-            force "ch.qos.logback:logback-classic:1.5.16"
-            force "ch.qos.logback:logback-core:1.5.16"
+            force "ch.qos.logback:logback-classic:1.5.23"
+            force "ch.qos.logback:logback-core:1.5.23"
         }
     }
 

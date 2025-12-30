@@ -80,10 +80,12 @@ class AttemptSnapshotStep(private val action: SnapshotAction) : Step(name) {
                     stepStatus = StepStatus.COMPLETED
                     mutableInfo["message"] = getSuccessMessage(indexName)
                 }
+
                 RestStatus.OK -> {
                     stepStatus = StepStatus.COMPLETED
                     mutableInfo["message"] = getSuccessMessage(indexName)
                 }
+
                 else -> {
                     val message = getFailedMessage(indexName)
                     logger.warn("$message - $response")

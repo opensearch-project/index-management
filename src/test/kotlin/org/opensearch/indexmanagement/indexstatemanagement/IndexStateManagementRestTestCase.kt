@@ -1010,7 +1010,9 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
             when {
                 key == FAILURES && value is Boolean -> assertEquals(expected[key] as Boolean, value)
+
                 key == UPDATED_INDICES && value is Int -> assertEquals(expected[key] as Int, value)
+
                 key == FAILED_INDICES && value is List<*> -> {
                     val actualArray = (value as List<Map<String, String>>).toTypedArray()
                     actualArray.sortWith(compareBy { it["index_name"] })
@@ -1019,6 +1021,7 @@ abstract class IndexStateManagementRestTestCase : IndexManagementRestTestCase() 
 
                     assertArrayEquals(expectedArray, actualArray)
                 }
+
                 else -> fail("Unknown field: [$key] or incorrect type for value: [$value]")
             }
         }

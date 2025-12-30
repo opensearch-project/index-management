@@ -52,9 +52,13 @@ class ShrinkActionParser : ActionParser() {
 
             when (fieldName) {
                 NUM_NEW_SHARDS_FIELD -> numNewShards = xcp.intValue()
+
                 MAX_SHARD_SIZE_FIELD -> maxShardSize = ByteSizeValue.parseBytesSizeValue(xcp.text(), MAX_SHARD_SIZE_FIELD)
+
                 PERCENTAGE_OF_SOURCE_SHARDS_FIELD -> percentageOfSourceShards = xcp.doubleValue()
+
                 TARGET_INDEX_TEMPLATE_FIELD -> targetIndexTemplate = Script.parse(xcp, Script.DEFAULT_TEMPLATE_LANG)
+
                 ALIASES_FIELD -> {
                     if (xcp.currentToken() != XContentParser.Token.VALUE_NULL) {
                         ensureExpectedToken(XContentParser.Token.START_ARRAY, xcp.currentToken(), xcp)
@@ -66,8 +70,11 @@ class ShrinkActionParser : ActionParser() {
                         }
                     }
                 }
+
                 SWITCH_ALIASES -> switchAliases = xcp.booleanValue()
+
                 FORCE_UNSAFE_FIELD -> forceUnsafe = xcp.booleanValue()
+
                 else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ShrinkAction.")
             }
         }

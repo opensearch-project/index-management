@@ -112,6 +112,7 @@ data class Destination(
                         .withMessage(messageContent)
                         .build()
             }
+
             DestinationType.SLACK -> {
                 val messageContent = slack?.constructMessageContent(compiledSubject, compiledMessage)
                 destinationMessage =
@@ -120,6 +121,7 @@ data class Destination(
                         .withMessage(messageContent)
                         .build()
             }
+
             DestinationType.CUSTOM_WEBHOOK -> {
                 destinationMessage =
                     LegacyCustomWebhookMessage.Builder("custom_webhook")

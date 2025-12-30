@@ -112,7 +112,9 @@ class CreationConditionMetStateTests : MocksTestCase() {
 
             val builtMetadata = when (result) {
                 is SMResult.Next -> result.metadataToSave.build()
+
                 is SMResult.Stay -> result.metadataToSave.build()
+
                 else -> {
                     fail("Unexpected result type")
                     error("Should not reach here")
