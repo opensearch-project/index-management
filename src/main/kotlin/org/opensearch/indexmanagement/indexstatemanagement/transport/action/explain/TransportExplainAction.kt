@@ -149,7 +149,13 @@ constructor(
                 indexNamesToUUIDs.putAll(indexNameToMetadata.mapValues { it.value.indexUuid })
 
                 val params = request.searchParams
-                val searchRequest = getSearchMetadataRequest(params, indexNamesToUUIDs.values.toList(), if (explainAll) params.size else MAX_HITS)
+                val searchRequest =
+                    try {
+                        getSearchMetadataRequest(params, indexNamesToUUIDs.values.toList(), if (explainAll) params.size else MAX_HITS)
+                    } catch (e: IllegalArgumentException) {
+                        actionListener.onFailure(e)
+                        return@launch
+                    }
                 searchForMetadata(searchRequest)
             }
         }
