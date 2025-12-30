@@ -726,4 +726,16 @@ class RestExplainActionIT : IndexStateManagementRestTestCase() {
             assertEquals("Expected and actual values does not match", entry.value, actual[entry.key])
         }
     }
+
+    fun `test invalid sort order returns error`() {
+        try {
+            client().makeRequest(
+                RestRequest.Method.GET.toString(),
+                "${IndexManagementPlugin.ISM_BASE_URI}/explain?sortOrder=invalid",
+            )
+            fail("Expected error for invalid sortOrder")
+        } catch (e: org.opensearch.client.ResponseException) {
+            assertEquals(RestStatus.BAD_REQUEST.status, e.response.statusLine.statusCode)
+        }
+    }
 }
