@@ -35,6 +35,9 @@ import org.opensearch.indexmanagement.rollup.model.RollupStats
 import org.opensearch.indexmanagement.rollup.model.incrementStats
 import org.opensearch.indexmanagement.rollup.model.mergeStats
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
+import org.opensearch.indexmanagement.rollup.util.getDateHistogram
+import org.opensearch.indexmanagement.rollup.util.getRollupJobs
+import org.opensearch.indexmanagement.rollup.util.isRollupIndex
 import org.opensearch.indexmanagement.util.acquireLockForScheduledJob
 import org.opensearch.indexmanagement.util.releaseLockForScheduledJob
 import org.opensearch.indexmanagement.util.renewLockForScheduledJob
@@ -44,6 +47,8 @@ import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.script.ScriptService
 import org.opensearch.search.aggregations.bucket.composite.InternalComposite
+import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
+import org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval
 import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.client.Client
 
@@ -277,7 +282,7 @@ object RollupRunner :
                             withClosableContext(
                                 IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user),
                             ) {
-                                rollupSearchService.executeCompositeSearch(updatableJob, metadata)
+                                rollupSearchService.executeCompositeSearch(updatableJob, metadata, clusterService)
                             }
                         val rollupResult =
                             when (rollupSearchResult) {
@@ -431,6 +436,17 @@ object RollupRunner :
                 else -> return@withClosableContext sourceIndexValidationResult
             }
 
+            // Additional validation for rollup-on-rollup scenarios
+            if (isRollupIndex(job.sourceIndex, clusterService.state())) {
+                when (val rollupValidationResult = validateRollupOnRollup(job)) {
+                    is RollupJobValidationResult.Valid -> {
+                    }
+
+                    // No action taken when valid
+                    else -> return@withClosableContext rollupValidationResult
+                }
+            }
+
             // we validate target index only if there is metadata document in the rollup
             if (metadata != null) {
                 logger.debug("Attempting to create/validate target index [${job.targetIndex}] for rollup job [${job.id}]")
@@ -491,6 +507,76 @@ object RollupRunner :
                 false
             }
         }
+    }
+
+    @Suppress("ReturnCount")
+    private fun validateRollupOnRollup(job: Rollup): RollupJobValidationResult {
+        val sourceRollupJobs = clusterService.state().metadata.index(job.sourceIndex).getRollupJobs()
+        if (sourceRollupJobs == null) {
+            return RollupJobValidationResult.Invalid("Source rollup index has no rollup jobs")
+        }
+
+        val sourceJob = sourceRollupJobs.first()
+        val targetDateHistogram = job.getDateHistogram()
+        val sourceDateHistogram = sourceJob.getDateHistogram()
+
+        // Validate interval alignment
+        val sourceInterval = sourceDateHistogram.fixedInterval ?: sourceDateHistogram.calendarInterval!!
+        val targetInterval = targetDateHistogram.fixedInterval ?: targetDateHistogram.calendarInterval!!
+        val intervalValid = validateIntervalAlignment(sourceInterval, targetInterval)
+        if (!intervalValid) {
+            return RollupJobValidationResult.Invalid(
+                "Target interval [$targetInterval] must be an exact multiple of source interval [$sourceInterval]",
+            )
+        }
+
+        // Validate source field compatibility
+        val sourceDimensionFields = sourceJob.dimensions.map { it.sourceField }.toSet()
+        val sourceMetricFields = sourceJob.metrics.map { it.sourceField }.toSet()
+        val targetDimensionFields = job.dimensions.map { it.sourceField }.toSet()
+        val targetMetricFields = job.metrics.map { it.sourceField }.toSet()
+
+        val invalidDimensionFields = targetDimensionFields - sourceDimensionFields
+        val invalidMetricFields = targetMetricFields - sourceMetricFields
+
+        return when {
+            invalidDimensionFields.isNotEmpty() -> RollupJobValidationResult.Invalid(
+                "Cannot rollup on dimension fields $invalidDimensionFields that don't exist in source rollup",
+            )
+
+            invalidMetricFields.isNotEmpty() -> RollupJobValidationResult.Invalid(
+                "Cannot rollup on metric fields $invalidMetricFields that don't exist in source rollup",
+            )
+
+            else -> {
+                // Validate metric compatibility
+                val sourceMetrics = sourceJob.metrics.flatMap { it.metrics }.map { it.type.type }.toSet()
+                val targetMetrics = job.metrics.flatMap { it.metrics }.map { it.type.type }.toSet()
+                val unsupportedMetrics = targetMetrics - sourceMetrics
+
+                if (unsupportedMetrics.isNotEmpty()) {
+                    RollupJobValidationResult.Invalid(
+                        "Target rollup requests metrics $unsupportedMetrics that are not available in source rollup",
+                    )
+                } else {
+                    RollupJobValidationResult.Valid
+                }
+            }
+        }
+    }
+
+    private fun validateIntervalAlignment(sourceInterval: String, targetInterval: String): Boolean = try {
+        val sourceMillis = parseIntervalToMillis(sourceInterval)
+        val targetMillis = parseIntervalToMillis(targetInterval)
+        targetMillis % sourceMillis == 0L && targetMillis > sourceMillis
+    } catch (e: Exception) {
+        true // Let it through and fail later with better error
+    }
+
+    private fun parseIntervalToMillis(interval: String): Long = if (DateHistogramAggregationBuilder.DATE_FIELD_UNITS.containsKey(interval)) {
+        DateHistogramInterval(interval).estimateMillis()
+    } else {
+        TimeValue.parseTimeValue(interval, "parseIntervalToMillis").millis
     }
 }
 

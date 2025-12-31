@@ -1546,6 +1546,652 @@ class RollupRunnerIT : RollupRestTestCase() {
     // - Source index with pattern with invalid indices
     // - Source index with pattern mapping to some closed indices
 
+    fun `test rollup on rollup with valid subset fields`() {
+        val sourceIdxName = "source_rollup_validation"
+        val firstRollupIdxName = "first_rollup_validation"
+        val secondRollupIdxName = "second_rollup_validation"
+
+        generateNYCTaxiData(sourceIdxName)
+
+        // Create first level rollup
+        val firstRollup = Rollup(
+            id = "first_rollup_job",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "First level rollup",
+            sourceIndex = sourceIdxName,
+            targetIndex = firstRollupIdxName,
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                Terms(sourceField = "PULocationID", targetField = "PULocationID"),
+            ),
+            metrics = listOf(
+                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum())),
+                RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Average())),
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(firstRollup)
+        waitFor {
+            val rollupJob = getRollup(rollupId = firstRollup.id)
+            assertNotNull("First rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("First rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        // Create second level rollup with subset of fields (should succeed)
+        val secondRollup = Rollup(
+            id = "second_rollup_job",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "Second level rollup with subset",
+            sourceIndex = firstRollupIdxName,
+            targetIndex = secondRollupIdxName,
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1d"),
+            ),
+            metrics = listOf(
+                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum())),
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(secondRollup)
+        waitFor {
+            val rollupJob = getRollup(rollupId = secondRollup.id)
+            assertNotNull("Second rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Second rollup should succeed with subset fields", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+    }
+
+    fun `test rollup on rollup with invalid metric fields`() {
+        val sourceIdxName = "source_rollup_invalid_metrics"
+        val firstRollupIdxName = "first_rollup_invalid_metrics"
+        val secondRollupIdxName = "second_rollup_invalid_metrics"
+
+        generateNYCTaxiData(sourceIdxName)
+
+        // Create first level rollup
+        val firstRollup = Rollup(
+            id = "first_rollup_invalid_metrics_job",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "First level rollup for invalid test",
+            sourceIndex = sourceIdxName,
+            targetIndex = firstRollupIdxName,
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+            ),
+            metrics = listOf(
+                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum())),
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(firstRollup)
+        waitFor {
+            val rollupJob = getRollup(rollupId = firstRollup.id)
+            assertNotNull("First rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("First rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        // Create second level rollup with invalid field (should fail)
+        val secondRollup = Rollup(
+            id = "second_rollup_invalid_metrics_job",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "Second level rollup with invalid field",
+            sourceIndex = firstRollupIdxName,
+            targetIndex = secondRollupIdxName,
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1d"),
+            ),
+            metrics = listOf(
+                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Average())), // This field doesn't exist in first rollup
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(secondRollup)
+        waitFor {
+            val rollupJob = getRollup(rollupId = secondRollup.id)
+            assertNotNull("Second rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Second rollup should fail with invalid field", RollupMetadata.Status.FAILED, rollupMetadata.status)
+            assertTrue(
+                "Failure reason should mention invalid metric field",
+                rollupMetadata.failureReason?.contains("Target rollup requests metrics") == true,
+            )
+        }
+    }
+
+    fun `test rollup on rollup with invalid timestamp interval`() {
+        val sourceIdxName = "source_rollup_invalid_interval"
+        val firstRollupIdxName = "first_rollup_invalid_interval"
+        val secondRollupIdxName = "second_rollup_invalid_interval"
+
+        generateNYCTaxiData(sourceIdxName)
+
+        // Create first level rollup
+        val firstRollup = Rollup(
+            id = "first_rollup_invalid_interval_job",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "First level rollup for invalid test",
+            sourceIndex = sourceIdxName,
+            targetIndex = firstRollupIdxName,
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "10m"),
+            ),
+            metrics = listOf(
+                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum())),
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(firstRollup)
+        waitFor {
+            val rollupJob = getRollup(rollupId = firstRollup.id)
+            assertNotNull("First rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("First rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        // Create second level rollup with invalid field (should fail)
+        val secondRollup = Rollup(
+            id = "second_rollup_invalid_interval_job",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "Second level rollup with invalid field",
+            sourceIndex = firstRollupIdxName,
+            targetIndex = secondRollupIdxName,
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "15m"),
+            ),
+            metrics = listOf(
+                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Average())), // This field doesn't exist in first rollup
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(secondRollup)
+        waitFor {
+            val rollupJob = getRollup(rollupId = secondRollup.id)
+            assertNotNull("Second rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Second rollup should fail with invalid field", RollupMetadata.Status.FAILED, rollupMetadata.status)
+            assertTrue(
+                "Failure reason should mention invalid metric field",
+                rollupMetadata.failureReason?.contains("must be an exact multiple of source interval") == true,
+            )
+        }
+    }
+
+    fun `test rollup on rollup with invalid fields`() {
+        val sourceIdxName = "source_rollup_invalid_fields"
+        val firstRollupIdxName = "first_rollup_invalid_fields"
+        val secondRollupIdxName = "second_rollup_invalid_fields"
+
+        generateNYCTaxiData(sourceIdxName)
+
+        // Create first level rollup
+        val firstRollup = Rollup(
+            id = "first_rollup_invalid_fields_job",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "First level rollup for invalid test",
+            sourceIndex = sourceIdxName,
+            targetIndex = firstRollupIdxName,
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1s"),
+                Terms("RatecodeID", "RatecodeID"),
+            ),
+            metrics = listOf(
+                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum())),
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(firstRollup)
+        waitFor {
+            val rollupJob = getRollup(rollupId = firstRollup.id)
+            assertNotNull("First rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("First rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        // Create second level rollup with invalid field (should fail)
+        val secondRollup = Rollup(
+            id = "second_rollup_invalid_fields_job",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "Second level rollup with invalid field",
+            sourceIndex = firstRollupIdxName,
+            targetIndex = secondRollupIdxName,
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "5s"),
+                Terms("passenger_count", "passenger_count"),
+            ),
+            metrics = listOf(
+                RollupMetrics(sourceField = "passenger_count", targetField = "passenger_count", metrics = listOf(Sum())),
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(secondRollup)
+        waitFor {
+            val rollupJob = getRollup(rollupId = secondRollup.id)
+            assertNotNull("Second rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Second rollup should fail with invalid field", RollupMetadata.Status.FAILED, rollupMetadata.status)
+            assertTrue(
+                "Failure reason should mention invalid metric field",
+                rollupMetadata.failureReason?.contains("that don't exist in source rollup") == true,
+            )
+        }
+    }
+
+    fun `test multi tier rollup with all metrics 3 levels`() {
+        val sourceIdx = "ecommerce_raw_data"
+        val level1Idx = "ecommerce_hourly_rollup"
+        val level2Idx = "ecommerce_daily_rollup"
+        val level3Idx = "ecommerce_weekly_rollup"
+
+        // Create source data with NYC taxi data
+        generateNYCTaxiData(sourceIdx)
+
+        // Level 1: Raw data -> Hourly rollup (all metrics)
+        val level1Rollup = Rollup(
+            id = "ecommerce_level1_rollup",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "Level 1: Hourly rollup with all metrics",
+            sourceIndex = sourceIdx,
+            targetIndex = level1Idx,
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                Terms(sourceField = "PULocationID", targetField = "PULocationID"),
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(Sum(), Average(), Min(), Max(), ValueCount()),
+                ),
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(level1Rollup)
+        waitFor {
+            val rollupJob = getRollup(rollupId = level1Rollup.id)
+            assertNotNull("Level 1 rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Level 1 rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        // Level 2: Hourly -> Daily rollup
+        val level2Rollup = Rollup(
+            id = "ecommerce_level2_rollup",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "Level 2: Daily rollup from hourly data",
+            sourceIndex = level1Idx,
+            targetIndex = level2Idx,
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1d"),
+                Terms(sourceField = "PULocationID", targetField = "PULocationID"),
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(Sum(), Average(), Min(), Max(), ValueCount()),
+                ),
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(level2Rollup)
+        waitFor {
+            val rollupJob = getRollup(rollupId = level2Rollup.id)
+            assertNotNull("Level 2 rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Level 2 rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        // Level 3: Daily -> Weekly rollup
+        val level3Rollup = Rollup(
+            id = "ecommerce_level3_rollup",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "Level 3: Weekly rollup from daily data",
+            sourceIndex = level2Idx,
+            targetIndex = level3Idx,
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "7d"),
+                Terms(sourceField = "PULocationID", targetField = "PULocationID"),
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(Sum(), Average(), Min(), Max(), ValueCount()),
+                ),
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(level3Rollup)
+        waitFor {
+            val rollupJob = getRollup(rollupId = level3Rollup.id)
+            assertNotNull("Level 3 rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Level 3 rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+
+            // Verify data consistency across all levels
+            verifyMultiTierRollupData(sourceIdx, level3Idx)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test continuous rollup on rollup index`() {
+        val sourceIdx = "continuous_source_data"
+        val level1Idx = "continuous_level1_rollup"
+        val level2Idx = "continuous_level2_rollup"
+
+        generateNYCTaxiData(sourceIdx)
+
+        // Level 1: Non-continuous rollup to create rollup index
+        val level1Rollup = Rollup(
+            id = "continuous_level1_job",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "Level 1: Create rollup index",
+            sourceIndex = sourceIdx,
+            targetIndex = level1Idx,
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 0,
+            continuous = false,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1d"),
+                Terms(sourceField = "PULocationID", targetField = "PULocationID"),
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(Sum(), Average(), Min(), Max(), ValueCount()),
+                ),
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(level1Rollup)
+        waitFor {
+            val rollupJob = getRollup(rollupId = level1Rollup.id)
+            assertNotNull("Level 1 rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Level 1 rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        // Level 2: Continuous rollup on rollup index
+        val level2Rollup = Rollup(
+            id = "continuous_level2_job",
+            schemaVersion = 1L,
+            enabled = true,
+            jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+            jobLastUpdatedTime = Instant.now(),
+            jobEnabledTime = Instant.now(),
+            description = "Level 2: Continuous rollup on rollup index",
+            sourceIndex = level1Idx,
+            targetIndex = level2Idx,
+            targetIndexSettings = null,
+            metadataID = null,
+            roles = emptyList(),
+            pageSize = 100,
+            delay = 100,
+            continuous = true,
+            dimensions = listOf(
+                DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "7d"),
+                Terms(sourceField = "PULocationID", targetField = "PULocationID"),
+            ),
+            metrics = listOf(
+                RollupMetrics(
+                    sourceField = "passenger_count", targetField = "passenger_count",
+                    metrics = listOf(Sum(), Average(), Min(), Max(), ValueCount()),
+                ),
+            ),
+        ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(level2Rollup)
+        waitFor {
+            val rollupJob = getRollup(rollupId = level2Rollup.id)
+            assertNotNull("Level 2 rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertNotNull("Level 2 continuous metadata not found", rollupMetadata.continuous)
+            assertEquals("Level 2 rollup is not started", RollupMetadata.Status.STARTED, rollupMetadata.status)
+            assertTrue("Level 2 rollup processed no documents", rollupMetadata.stats.documentsProcessed > 0)
+            assertTrue("Level 2 rollup indexed no rollups", rollupMetadata.stats.rollupsIndexed > 0)
+
+            // Verify metrics are consistent between source and level 2 rollup
+            val aggReq = """
+                {
+                    "size": 0,
+                    "query": { "match_all": {} },
+                    "aggs": {
+                        "sum_passenger": { "sum": { "field": "passenger_count" } },
+                        "min_passenger": { "min": { "field": "passenger_count" } },
+                        "max_passenger": { "max": { "field": "passenger_count" } },
+                        "value_count_passenger": { "value_count": { "field": "passenger_count" } },
+                        "avg_passenger": { "avg": { "field": "passenger_count" } }
+                    }
+                }
+            """.trimIndent()
+
+            val sourceRes = client().makeRequest(
+                RestRequest.Method.POST.name,
+                "/$sourceIdx/_search",
+                emptyMap(),
+                StringEntity(aggReq, ContentType.APPLICATION_JSON),
+            )
+            val level2Res = client().makeRequest(
+                RestRequest.Method.POST.name,
+                "/$level2Idx/_search",
+                emptyMap(),
+                StringEntity(aggReq, ContentType.APPLICATION_JSON),
+            )
+
+            val sourceAggs = sourceRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+            val level2Aggs = level2Res.asMap()["aggregations"] as Map<String, Map<String, Any>>
+
+            assertEquals(
+                "Sum not consistent",
+                sourceAggs["sum_passenger"]!!["value"],
+                level2Aggs["sum_passenger"]!!["value"],
+            )
+            assertEquals(
+                "Min not consistent",
+                sourceAggs["min_passenger"]!!["value"],
+                level2Aggs["min_passenger"]!!["value"],
+            )
+            assertEquals(
+                "Max not consistent",
+                sourceAggs["max_passenger"]!!["value"],
+                level2Aggs["max_passenger"]!!["value"],
+            )
+            assertEquals(
+                "Value count not consistent",
+                sourceAggs["value_count_passenger"]!!["value"],
+                level2Aggs["value_count_passenger"]!!["value"],
+            )
+            assertEquals(
+                "Average not consistent",
+                sourceAggs["avg_passenger"]!!["value"],
+                level2Aggs["avg_passenger"]!!["value"],
+            )
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun verifyMultiTierRollupData(sourceIdx: String, level3Idx: String) {
+        // Verify all 5 metrics are consistent between source and final rollup
+        val aggReq = """
+            {
+                "size": 0,
+                "query": {
+                  "match_all": {}
+                },
+                "aggs": {
+                    "sum_passenger_count": {
+                        "sum": { "field": "passenger_count" }
+                    },
+                    "avg_passenger_count": {
+                        "avg": { "field": "passenger_count" }
+                    },
+                    "min_passenger_count": {
+                        "min": { "field": "passenger_count" }
+                    },
+                    "max_passenger_count": {
+                        "max": { "field": "passenger_count" }
+                    },
+                    "count_passenger_count": {
+                        "value_count": { "field": "passenger_count" }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        val sourceResponse = client().makeRequest(RestRequest.Method.POST.name, "/$sourceIdx/_search", emptyMap(), StringEntity(aggReq, ContentType.APPLICATION_JSON))
+        assertTrue("Source search should succeed", sourceResponse.restStatus() == RestStatus.OK)
+
+        val level3Response = client().makeRequest(RestRequest.Method.POST.name, "/$level3Idx/_search", emptyMap(), StringEntity(aggReq, ContentType.APPLICATION_JSON))
+        assertTrue("Level 3 search should succeed", level3Response.restStatus() == RestStatus.OK)
+
+        val sourceAggs = sourceResponse.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        val level3Aggs = level3Response.asMap()["aggregations"] as Map<String, Map<String, Any>>
+
+        // Verify all 5 metrics
+        assertEquals(
+            "Sum should be consistent",
+            sourceAggs["sum_passenger_count"]!!["value"],
+            level3Aggs["sum_passenger_count"]!!["value"],
+        )
+        assertEquals(
+            "Average should be consistent",
+            sourceAggs["avg_passenger_count"]!!["value"],
+            level3Aggs["avg_passenger_count"]!!["value"],
+        )
+        assertEquals(
+            "Min should be consistent",
+            sourceAggs["min_passenger_count"]!!["value"],
+            level3Aggs["min_passenger_count"]!!["value"],
+        )
+        assertEquals(
+            "Max should be consistent",
+            sourceAggs["max_passenger_count"]!!["value"],
+            level3Aggs["max_passenger_count"]!!["value"],
+        )
+
+        assertEquals(
+            "Value count should be consistent",
+            sourceAggs["count_passenger_count"]!!["value"],
+            level3Aggs["count_passenger_count"]!!["value"],
+        )
+    }
+
     private fun deleteRollupMetadata(metadataId: String) {
         val response = adminClient().makeRequest("DELETE", "${IndexManagementPlugin.INDEX_MANAGEMENT_INDEX}/_doc/$metadataId")
         assertEquals("Unable to delete rollup metadata $metadataId", RestStatus.OK, response.restStatus())
