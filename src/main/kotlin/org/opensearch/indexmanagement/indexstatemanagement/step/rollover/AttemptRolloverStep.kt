@@ -349,6 +349,11 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                     .isHidden(aliasMetadata.isHidden)
             aliasActions.add(aliasAction)
         }
+
+        if (aliasActions.isEmpty()) {
+            return
+        }
+
         val aliasReq = IndicesAliasesRequest()
         aliasActions.forEach { aliasReq.addAliasAction(it) }
 
