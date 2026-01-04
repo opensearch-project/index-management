@@ -310,4 +310,71 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
             verify(clusterAdminClient, never()).deleteSnapshot(any(), any())
         }
     }
+
+    fun `test delete step with delete_snapshot fails when snapshot deletion is not acknowledged`() {
+        val indexName = "test-searchable-snapshot"
+        val repository = "my-repo"
+        val snapshotName = "my-snapshot"
+
+        val indexSettings = Settings.builder()
+            .put("index.searchable_snapshot.repository", repository)
+            .put("index.searchable_snapshot.snapshot_id.name", snapshotName)
+            .build()
+        val getSettingsResponse = createGetSettingsResponse(indexName, indexSettings)
+
+        val indicesAdminClient = getIndicesAdminClient(AcknowledgedResponse(true), null, getSettingsResponse)
+        val clusterAdminClient = getClusterAdminClient(AcknowledgedResponse(false))
+        val client = getClient(getAdminClient(indicesAdminClient, clusterAdminClient))
+
+        runBlocking {
+            val managedIndexMetaData = ManagedIndexMetaData(
+                indexName, "indexUuid", "policy_id", null, null, null, null, null, null, null,
+                ActionMetaData("delete", Instant.now().toEpochMilli(), 0, false, 1, null, null), null, null, null,
+            )
+            val deleteAction = DeleteAction(0, deleteSnapshot = true)
+            val attemptDeleteStep = AttemptDeleteStep(deleteAction)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
+            attemptDeleteStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptDeleteStep, managedIndexMetaData)
+            val updatedManagedIndexMetaData = attemptDeleteStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
+
+            assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
+            verify(deleteActionMetrics.failures).add(eq(1.0), any<Tags>())
+        }
+    }
+
+    fun `test delete step with delete_snapshot fails when snapshot deletion throws exception`() {
+        val indexName = "test-searchable-snapshot"
+        val repository = "my-repo"
+        val snapshotName = "my-snapshot"
+
+        val indexSettings = Settings.builder()
+            .put("index.searchable_snapshot.repository", repository)
+            .put("index.searchable_snapshot.snapshot_id.name", snapshotName)
+            .build()
+        val getSettingsResponse = createGetSettingsResponse(indexName, indexSettings)
+
+        val indicesAdminClient = getIndicesAdminClient(AcknowledgedResponse(true), null, getSettingsResponse)
+        val clusterAdminClient: ClusterAdminClient = mock {
+            doAnswer { invocationOnMock ->
+                val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
+                listener.onFailure(RuntimeException("Snapshot deletion failed"))
+            }.whenever(this.mock).deleteSnapshot(any(), any())
+        }
+        val client = getClient(getAdminClient(indicesAdminClient, clusterAdminClient))
+
+        runBlocking {
+            val managedIndexMetaData = ManagedIndexMetaData(
+                indexName, "indexUuid", "policy_id", null, null, null, null, null, null, null,
+                ActionMetaData("delete", Instant.now().toEpochMilli(), 0, false, 1, null, null), null, null, null,
+            )
+            val deleteAction = DeleteAction(0, deleteSnapshot = true)
+            val attemptDeleteStep = AttemptDeleteStep(deleteAction)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
+            attemptDeleteStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptDeleteStep, managedIndexMetaData)
+            val updatedManagedIndexMetaData = attemptDeleteStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
+
+            assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
+            verify(deleteActionMetrics.failures).add(eq(1.0), any<Tags>())
+        }
+    }
 }
