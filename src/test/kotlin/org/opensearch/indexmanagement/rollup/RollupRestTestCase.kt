@@ -40,49 +40,89 @@ import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
 
 abstract class RollupRestTestCase : IndexManagementRestTestCase() {
-    companion object {
-        @AfterClass
-        @JvmStatic fun clearIndicesAfterClass() {
-            wipeAllIndices()
-        }
-    }
-
     @After
     @Suppress("UNCHECKED_CAST")
-    fun KillAllCancallableRunningTasks() {
+    fun killAllCancellableRunningTasks() {
         client().makeRequest("POST", "_tasks/_cancel?actions=*")
         waitFor {
             val response = client().makeRequest("GET", "_tasks")
             val nodes = response.asMap()["nodes"] as Map<String, Any?>
-            var hasCancallableRunningTasks = false
+            var hasCancellableRunningTasks = false
             nodes.forEach {
                 val tasks = (it.value as Map<String, Any?>)["tasks"] as Map<String, Any?>
                 tasks.forEach { e ->
                     if ((e.value as Map<String, Any?>)["cancellable"] as Boolean) {
-                        hasCancallableRunningTasks = true
+                        hasCancellableRunningTasks = true
                     }
                 }
             }
-            assertFalse(hasCancallableRunningTasks)
+            assertFalse(hasCancellableRunningTasks)
         }
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun waitForCancallableTasksToFinish() {
-        waitFor {
-            val response = client().makeRequest("GET", "_tasks")
-            val nodes = response.asMap()["nodes"] as Map<String, Any?>
-            var hasCancallableRunningTasks = false
-            nodes.forEach {
-                val tasks = (it.value as Map<String, Any?>)["tasks"] as Map<String, Any?>
-                tasks.forEach { e ->
-                    if ((e.value as Map<String, Any?>)["cancellable"] as Boolean) {
-                        hasCancallableRunningTasks = true
-                        logger.info("cancellable task running: ${e.key}")
+    protected fun stopAllRollupJobs(): List<String> {
+        val stoppedJobIds = mutableListOf<String>()
+        try {
+            val response = client().makeRequest("GET", "$ROLLUP_JOBS_BASE_URI?size=1000")
+            val rollupsList = response.asMap()["rollups"] as? List<Map<String, Any?>> ?: emptyList()
+
+            rollupsList.forEach { rollupMap ->
+                val rollupObj = rollupMap["rollup"] as? Map<String, Any?> ?: return@forEach
+                val id = rollupMap["_id"] as? String ?: return@forEach
+                val enabled = rollupObj["enabled"] as? Boolean ?: false
+
+                if (enabled) {
+                    try {
+                        client().makeRequest("POST", "$ROLLUP_JOBS_BASE_URI/$id/_stop")
+                        stoppedJobIds.add(id)
+                        logger.debug("Stopped rollup job during test cleanup: $id")
+                    } catch (e: Exception) {
+                        logger.debug("Failed to stop rollup $id during cleanup: ${e.message}")
                     }
                 }
             }
-            assertFalse(hasCancallableRunningTasks)
+        } catch (e: Exception) {
+            logger.warn("Error stopping rollup jobs during test cleanup", e)
+        }
+        return stoppedJobIds
+    }
+
+    /**
+     * Waits for all specified rollup jobs to be disabled.
+     *
+     * Once a job is disabled (enabled = false), it won't start new executions.
+     * Any in-flight execution will complete its current iteration, but since we're
+     * wiping all indices anyway, we just need to ensure no new executions will start.
+     */
+    protected fun waitForRollupJobsToStop(jobIds: List<String>) {
+        if (jobIds.isEmpty()) return
+
+        waitFor {
+            val allDisabled = jobIds.all { jobId -> isRollupJobDisabled(jobId) }
+            assertTrue("Rollup jobs were not disabled within timeout", allDisabled)
+        }
+    }
+
+    private fun isRollupJobDisabled(jobId: String): Boolean =
+        try {
+            val rollup = getRollup(jobId)
+            if (rollup.enabled) {
+                logger.debug("Waiting for rollup job $jobId to be disabled")
+                false
+            } else {
+                true
+            }
+        } catch (e: Exception) {
+            // Job might have been deleted, consider it disabled
+            logger.debug("Job $jobId not found: ${e.message}")
+            true
+        }
+
+    companion object {
+        @AfterClass
+        @JvmStatic fun clearIndicesAfterClass() {
+            wipeAllIndices()
         }
     }
 
