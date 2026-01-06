@@ -297,12 +297,11 @@ class RollupMapperService(
 
             val indexMappingSource = indexTypeMappings.sourceAsMap
 
-            // TODO: Check if this is required or we want to fail in case of rollup on rolled up empty indices
-//            // If source is a rollup index with no properties (no data rolled up yet), skip field validation
-//            if (isSourceRollupIndex && !indexMappingSource.containsKey("properties")) {
-//                logger.info("Source rollup index [$index] has no properties yet, skipping field validation")
-//                return RollupJobValidationResult.Valid
-//            }
+            // If source is a rollup index with no properties (no data rolled up yet), skip field validation
+            if (isSourceRollupIndex && !indexMappingSource.containsKey("properties")) {
+                logger.info("Source rollup index [$index] has no properties yet, skipping field validation")
+                return RollupJobValidationResult.Valid
+            }
 
             val issues = mutableSetOf<String>()
             // Validate source fields in dimensions

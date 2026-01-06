@@ -121,7 +121,7 @@ class RollupSearchService(
 
                     // Set bypass flag via FetchSourceContext for multi-node support
                     // Using fetchSource=false with marker in includes to avoid affecting actual source fetching
-                    val bypassMarker = "_rollup_internal_bypass_${RollupInterceptor.BYPASS_ROLLUP_SEARCH}"
+                    val bypassMarker = "${RollupInterceptor.BYPASS_MARKER_PREFIX}${RollupInterceptor.BYPASS_ROLLUP_SEARCH}"
 
                     searchRequest.source().fetchSource(
                         FetchSourceContext(false, arrayOf(bypassMarker), emptyArray()),

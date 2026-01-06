@@ -78,6 +78,13 @@ class RollupInterceptor(
          * actual documents from rollup indices (e.g., getEarliestTimestampFromRollupIndex).
          */
         const val BYPASS_SIZE_CHECK = 2
+
+        /**
+         * Marker prefix used in FetchSourceContext includes array to communicate bypass levels
+         * across nodes in a multi-node cluster. The full marker format is:
+         * "${BYPASS_MARKER_PREFIX}<level>" where <level> is an integer (BYPASS_ROLLUP_SEARCH or BYPASS_SIZE_CHECK).
+         */
+        const val BYPASS_MARKER_PREFIX = "_rollup_internal_bypass_"
     }
 
     /**
@@ -85,7 +92,7 @@ class RollupInterceptor(
      *
      * The bypass mechanism uses a special marker string in the FetchSourceContext includes array
      * to communicate bypass levels across nodes in a multi-node cluster. The marker format is:
-     * "_rollup_internal_bypass_<level>" where <level> is an integer (BYPASS_ROLLUP_SEARCH or BYPASS_SIZE_CHECK).
+     * "${BYPASS_MARKER_PREFIX}<level>" where <level> is an integer (BYPASS_ROLLUP_SEARCH or BYPASS_SIZE_CHECK).
      *
      * This marker is set by internal components before making search requests:
      * - RollupSearchService: Sets BYPASS_ROLLUP_SEARCH when querying rollup indices with composite aggregations
@@ -106,8 +113,8 @@ class RollupInterceptor(
 
         // Look for our bypass marker in the includes array and extract the bypass level
         return includes
-            ?.find { it.startsWith("_rollup_internal_bypass_") }
-            ?.substringAfter("_rollup_internal_bypass_")
+            ?.find { it.startsWith(BYPASS_MARKER_PREFIX) }
+            ?.substringAfter(BYPASS_MARKER_PREFIX)
             ?.toIntOrNull()
     }
 

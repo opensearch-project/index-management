@@ -254,7 +254,7 @@ class RollupMetadataService(
 
             // For multi-tier rollup, we would be querying a document on a rollup index
             // So we set this bypassMarker in fetchSource as a flag to help bypass the validation in RollupInterceptor
-            val bypassMarker = "_rollup_internal_bypass_${RollupInterceptor.BYPASS_SIZE_CHECK}"
+            val bypassMarker = "${RollupInterceptor.BYPASS_MARKER_PREFIX}${RollupInterceptor.BYPASS_SIZE_CHECK}"
 
             val searchRequest = SearchRequest(rollup.sourceIndex)
                 .source(
