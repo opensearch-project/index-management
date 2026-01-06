@@ -298,7 +298,7 @@ class RollupMapperService(
             val indexMappingSource = indexTypeMappings.sourceAsMap
 
             // If source is a rollup index with no properties (no data rolled up yet), skip field validation
-            if (isSourceRollupIndex && !indexMappingSource.containsKey("properties")) {
+            if (isRollupIndex(index, clusterService.state()) && !indexMappingSource.containsKey("properties")) {
                 logger.info("Source rollup index [$index] has no properties yet, skipping field validation")
                 return RollupJobValidationResult.Valid
             }
