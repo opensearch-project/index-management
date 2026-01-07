@@ -250,6 +250,11 @@ class RollupMapperService(
                 .settings(settings)
                 .mapping(IndexManagementIndices.rollupTargetMappings)
 
+        // TODO: Perhaps we can do better than this for mappings... as it'll be dynamic for rest
+        //  Can we read in the actual mappings from the source index and use that?
+        //  Can it have issues with metrics? i.e. an int mapping with 3, 5, 6 added up and divided by 3 for avg is 14/3 = 4.6666
+        //  What happens if the first indexing is an integer, i.e. 3 + 3 + 3 = 9/3 = 3 and it saves it as int
+        //  and then the next is float and it fails or rounds it up? Does elasticsearch dynamically resolve to int?
         // Create the index first
         val response = client.admin().indices().suspendUntil { create(request, it) }
 
