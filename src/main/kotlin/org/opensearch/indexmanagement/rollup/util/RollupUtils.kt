@@ -508,15 +508,15 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
             // Rewritten query: cardinality(field="user_id.hll")
 
             // Log if user specified precisionThreshold in query (it will be ignored)
-            if (aggregationBuilder.precisionThreshold() != null && aggregationBuilder.precisionThreshold() > 0) {
-                logger.debug(
-                    "Ignoring precisionThreshold parameter [{}] in cardinality query for field [{}]. " +
-                        "Rollup indices use pre-computed HLL sketches with precision determined at rollup time. " +
-                        "The query will use the precision from the rollup index mapping.",
-                    aggregationBuilder.precisionThreshold(),
-                    aggregationBuilder.field(),
-                )
-            }
+//            if (aggregationBuilder.precisionThreshold() != null && aggregationBuilder.precisionThreshold() > 0) {
+//                logger.debug(
+//                    "Ignoring precisionThreshold parameter [{}] in cardinality query for field [{}]. " +
+//                        "Rollup indices use pre-computed HLL sketches with precision determined at rollup time. " +
+//                        "The query will use the precision from the rollup index mapping.",
+//                    aggregationBuilder.precisionThreshold(),
+//                    aggregationBuilder.field(),
+//                )
+//            }
 
             CardinalityAggregationBuilder(aggregationBuilder.name)
                 .field(this.findMatchingMetricField<Cardinality>(aggregationBuilder.field()))
