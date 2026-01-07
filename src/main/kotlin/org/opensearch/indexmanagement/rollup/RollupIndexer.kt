@@ -58,11 +58,6 @@ class RollupIndexer(
     @Suppress("ReturnCount")
     suspend fun indexRollups(rollup: Rollup, internalComposite: InternalComposite): RollupIndexResult {
         try {
-            // Log all bucket aggregations for debugging
-            internalComposite.buckets.forEach { bucket ->
-                val aggDetails = bucket.aggregations.map { "${it.name}: $it" }.joinToString(", ")
-                logger.info("Bucket key: {}, docCount: {}, aggregations: [{}]", bucket.key, bucket.docCount, aggDetails)
-            }
             var requestsToRetry = convertResponseToRequests(rollup, internalComposite)
             var stats = RollupStats(0, 0, requestsToRetry.size.toLong(), 0, 0)
             val nonRetryableFailures = mutableListOf<BulkItemResponse>()
@@ -142,7 +137,6 @@ class RollupIndexer(
                     else -> error("Found aggregation in composite result that is not supported [${it.type} - ${it.name}]")
                 }
             }
-            logger.info("Computed aggResults: {}", aggResults)
             mapOfKeyValues.putAll(aggResults)
             val targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(job, job.targetIndex)
             val indexRequest =
