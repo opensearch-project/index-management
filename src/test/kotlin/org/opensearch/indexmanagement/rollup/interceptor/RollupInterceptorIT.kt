@@ -18,6 +18,7 @@ import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.RollupMetrics
 import org.opensearch.indexmanagement.rollup.model.metric.Average
+import org.opensearch.indexmanagement.rollup.model.metric.Cardinality
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Min
 import org.opensearch.indexmanagement.rollup.model.metric.Sum
@@ -517,6 +518,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                         listOf(
                             Sum(), Min(), Max(),
                             ValueCount(), Average(),
+                            Cardinality(precisionThreshold = 40000),
                         ),
                     ),
                     RollupMetrics(sourceField = "total_amount", targetField = "total_amount", metrics = listOf(Max(), Min())),
@@ -547,7 +549,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
                           "min": { "min": { "field": "passenger_count" } },
                           "max": { "max": { "field": "passenger_count" } },
                           "avg": { "avg": { "field": "passenger_count" } },
-                          "value_count": { "value_count": { "field": "passenger_count" } }
+                          "value_count": { "value_count": { "field": "passenger_count" } },
+                          "cardinality": { "cardinality": { "field": "passenger_count" } }
                         }
                     }
                 }
@@ -582,6 +585,17 @@ class RollupInterceptorIT : RollupRestTestCase() {
             assertEquals(
                 "The avg aggregation had a different value raw[$rawAggBucket] rollup[$rollupAggBucket]",
                 rawAggBucket["avg"]!!["value"], rollupAggBucket["avg"]!!["value"],
+            )
+
+            // Verify cardinality with approximate matching (HLL is approximate)
+            val rawCardinality = rawAggBucket["cardinality"]!!["value"] as Number
+            val rollupCardinality = rollupAggBucket["cardinality"]!!["value"] as Number
+            val cardinalityDiff = Math.abs(rawCardinality.toDouble() - rollupCardinality.toDouble())
+            val cardinalityErrorRate = if (rawCardinality.toDouble() > 0) cardinalityDiff / rawCardinality.toDouble() else 0.0
+
+            assertTrue(
+                "The cardinality aggregation should be approximately equal (within 5% error) raw[$rawAggBucket] rollup[$rollupAggBucket], error rate: ${cardinalityErrorRate * 100}%",
+                cardinalityErrorRate <= 0.05,
             )
         }
     }
@@ -2094,7 +2108,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 RollupMetrics(
                     sourceField = "passenger_count",
                     targetField = "passenger_count",
-                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average(), Cardinality(precisionThreshold = 40000)),
                 ),
             ),
         ).let { createRollup(it, it.id) }
@@ -2133,7 +2147,7 @@ class RollupInterceptorIT : RollupRestTestCase() {
                 RollupMetrics(
                     sourceField = "passenger_count",
                     targetField = "passenger_count",
-                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+                    metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average(), Cardinality(precisionThreshold = 40000)),
                 ),
             ),
         ).let { createRollup(it, it.id) }
@@ -2161,7 +2175,8 @@ class RollupInterceptorIT : RollupRestTestCase() {
                     "min_passenger": { "min": { "field": "passenger_count" } },
                     "max_passenger": { "max": { "field": "passenger_count" } },
                     "value_count_passenger": { "value_count": { "field": "passenger_count" } },
-                    "avg_passenger": { "avg": { "field": "passenger_count" } }
+                    "avg_passenger": { "avg": { "field": "passenger_count" } },
+                    "cardinality_passenger": { "cardinality": { "field": "passenger_count" } }
                 }
             }
         """.trimIndent()
@@ -2179,5 +2194,105 @@ class RollupInterceptorIT : RollupRestTestCase() {
         assertEquals("Max not consistent", sourceAggs["max_passenger"]!!["value"], tier2Aggs["max_passenger"]!!["value"])
         assertEquals("Value count not consistent", sourceAggs["value_count_passenger"]!!["value"], tier2Aggs["value_count_passenger"]!!["value"])
         assertEquals("Average not consistent", sourceAggs["avg_passenger"]!!["value"], tier2Aggs["avg_passenger"]!!["value"])
+
+        // Verify cardinality metric with approximate matching
+        val sourceCardinality = sourceAggs["cardinality_passenger"]!!["value"] as Number
+        val tier2Cardinality = tier2Aggs["cardinality_passenger"]!!["value"] as Number
+
+        // Cardinality uses HyperLogLog which is approximate, allow 5% error margin for multi-tier rollup
+        val cardinalityDiff = Math.abs(sourceCardinality.toDouble() - tier2Cardinality.toDouble())
+        val cardinalityErrorRate = cardinalityDiff / sourceCardinality.toDouble()
+
+        assertTrue(
+            "Cardinality should be approximately consistent in multi-tier rollup (within 5% error), source: $sourceCardinality, tier2: $tier2Cardinality, error rate: ${cardinalityErrorRate * 100}%",
+            cardinalityErrorRate <= 0.05,
+        )
+    }
+
+    fun `test rollup search with cardinality metric`() {
+        generateNYCTaxiData("source_rollup_cardinality_search")
+        val rollup =
+            Rollup(
+                id = "cardinality_rollup_search",
+                enabled = true,
+                schemaVersion = 1L,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "cardinality search test",
+                sourceIndex = "source_rollup_cardinality_search",
+                targetIndex = "target_rollup_cardinality_search",
+                targetIndexSettings = null,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                    Terms("RatecodeID", "RatecodeID"),
+                ),
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count",
+                        targetField = "passenger_count",
+                        metrics = listOf(Cardinality(precisionThreshold = 40000)),
+                    ),
+                ),
+            ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollup)
+
+        waitFor {
+            val rollupJob = getRollup(rollupId = rollup.id)
+            assertNotNull("Rollup job doesn't have metadata set", rollupJob.metadataID)
+            val rollupMetadata = getRollupMetadata(rollupJob.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        refreshAllIndices()
+
+        // Test cardinality aggregation query
+        val req =
+            """
+            {
+                "size": 0,
+                "query": {
+                    "term": {
+                        "RatecodeID": 1
+                    }
+                },
+                "aggs": {
+                    "unique_passengers": {
+                        "cardinality": {
+                            "field": "passenger_count"
+                        }
+                    }
+                }
+            }
+            """.trimIndent()
+
+        val rawRes = client().makeRequest("POST", "/source_rollup_cardinality_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rawRes.restStatus() == RestStatus.OK)
+        val rollupRes = client().makeRequest("POST", "/target_rollup_cardinality_search/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue(rollupRes.restStatus() == RestStatus.OK)
+
+        val rawAggRes = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        val rollupAggRes = rollupRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+
+        val sourceCardinality = rawAggRes.getValue("unique_passengers")["value"] as Number
+        val rollupCardinality = rollupAggRes.getValue("unique_passengers")["value"] as Number
+
+        // Cardinality uses HyperLogLog which is approximate, so we allow a small margin of error
+        // Typically HLL has ~2% error rate, so we check if values are within 5% of each other
+        val cardinalityDiff = Math.abs(sourceCardinality.toDouble() - rollupCardinality.toDouble())
+        val cardinalityErrorRate = cardinalityDiff / sourceCardinality.toDouble()
+
+        assertTrue(
+            "Cardinality should be approximately consistent (within 5% error), source: $sourceCardinality, rollup: $rollupCardinality, error rate: ${cardinalityErrorRate * 100}%",
+            cardinalityErrorRate <= 0.05,
+        )
     }
 }
