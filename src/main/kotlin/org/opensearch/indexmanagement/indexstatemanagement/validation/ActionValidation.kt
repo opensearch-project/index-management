@@ -48,6 +48,8 @@ class ActionValidation(
 
                 "stop_replication" -> ValidateStopReplication(settings, clusterService, jvmService).execute(indexName)
 
+                "search_only" -> ValidateSearchOnly(settings, clusterService, jvmService).execute(indexName)
+
                 // No validations for these actions at current stage.
                 // Reason: https://github.com/opensearch-project/index-management/issues/587
                 "notification" -> ValidateNothing(settings, clusterService, jvmService).execute(indexName)
