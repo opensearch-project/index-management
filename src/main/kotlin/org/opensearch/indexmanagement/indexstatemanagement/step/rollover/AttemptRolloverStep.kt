@@ -349,6 +349,17 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                     .isHidden(aliasMetadata.isHidden)
             aliasActions.add(aliasAction)
         }
+
+        if (aliasActions.isEmpty()) {
+            stepStatus = StepStatus.COMPLETED
+            info =
+                listOfNotNull(
+                    "message" to getSuccessNoAliasesToCopyMessage(indexName, rolledOverIndexName),
+                    if (conditions != null) "conditions" to conditions else null,
+                ).toMap()
+            return
+        }
+
         val aliasReq = IndicesAliasesRequest()
         aliasActions.forEach { aliasReq.addAliasAction(it) }
 
@@ -433,6 +444,9 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
 
         fun getSuccessCopyAliasMessage(index: String, newIndex: String) =
             "Successfully rolled over and copied alias from [index=$index] to [index=$newIndex]"
+
+        fun getSuccessNoAliasesToCopyMessage(index: String, newIndex: String) =
+            "Successfully rolled over index [index=$index] to [index=$newIndex], no additional aliases to copy"
 
         fun getFailedCopyAliasMessage(index: String, newIndex: String) =
             "Successfully rolled over but failed to copy alias from [index=$index] to [index=$newIndex]"
