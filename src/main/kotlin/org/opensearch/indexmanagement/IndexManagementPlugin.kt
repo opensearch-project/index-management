@@ -436,7 +436,7 @@ class IndexManagementPlugin :
                 .registerMapperService(RollupMapperService(client, clusterService, indexNameExpressionResolver))
                 .registerIndexer(RollupIndexer(settings, clusterService, client))
                 .registerSearcher(RollupSearchService(settings, clusterService, client))
-                .registerMetadataServices(RollupMetadataService(client, xContentRegistry))
+                .registerMetadataServices(RollupMetadataService(client, xContentRegistry, clusterService))
                 .registerConsumers()
                 .registerClusterConfigurationProvider(skipFlag)
         indexManagementIndices = IndexManagementIndices(settings, client.admin().indices(), clusterService)

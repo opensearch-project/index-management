@@ -31,15 +31,18 @@ import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
+import org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor
 import org.opensearch.indexmanagement.rollup.model.ContinuousMetadata
 import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.RollupStats
 import org.opensearch.indexmanagement.rollup.util.DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT
+import org.opensearch.indexmanagement.rollup.util.isRollupIndex
 import org.opensearch.indexmanagement.util.NO_ID
 import org.opensearch.search.aggregations.bucket.composite.InternalComposite
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
 import org.opensearch.search.builder.SearchSourceBuilder
+import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.search.sort.SortOrder
 import org.opensearch.transport.RemoteTransportException
 import org.opensearch.transport.client.Client
@@ -48,7 +51,11 @@ import java.time.Instant
 // TODO: Wrap client calls in retry for transient failures
 // Service that handles CRUD operations for rollup metadata
 @Suppress("TooManyFunctions")
-class RollupMetadataService(val client: Client, val xContentRegistry: NamedXContentRegistry) {
+class RollupMetadataService(
+    val client: Client,
+    val xContentRegistry: NamedXContentRegistry,
+    val clusterService: org.opensearch.cluster.service.ClusterService,
+) {
     private val logger = LogManager.getLogger(javaClass)
 
     // If the job does not have a metadataID then we need to initialize the first metadata
@@ -186,6 +193,12 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
     @Throws(Exception::class)
     private suspend fun getInitialStartTime(rollup: Rollup): StartingTimeResult {
         try {
+            // Check if source is a rollup index and use appropriate method
+            val isSourceRollupIndex = isRollupIndex(rollup.sourceIndex, clusterService.state())
+            if (isSourceRollupIndex) {
+                // Use min aggregation for rollup indices (RollupInterceptor blocks size > 0)
+                return getEarliestTimestampFromRollupIndex(rollup)
+            }
             // Rollup requires the first dimension to be the date histogram
             val dateHistogram = rollup.dimensions.first() as DateHistogram
             val searchSourceBuilder =
@@ -223,6 +236,60 @@ class RollupMetadataService(val client: Client, val xContentRegistry: NamedXCont
         } catch (e: Exception) {
             // TODO: Catching general exceptions for now, can make more granular
             logger.error("Error when getting initial start time for rollup [{}]: {}", rollup.id, e)
+            return StartingTimeResult.Failure(e)
+        }
+    }
+
+    /**
+     * Get the earliest timestamp from a rollup index by finding the minimum value of the date histogram field.
+     * This is used to determine the starting point for continuous rollups on rollup indices.
+     * Uses sort instead of aggregation to avoid rollup interceptor validation.
+     */
+    @Suppress("ReturnCount")
+    @Throws(Exception::class)
+    private suspend fun getEarliestTimestampFromRollupIndex(rollup: Rollup): StartingTimeResult {
+        try {
+            val dateHistogram = rollup.dimensions.first() as DateHistogram
+            val dateField = dateHistogram.sourceField
+
+            // For multi-tier rollup, we would be querying a document on a rollup index
+            // So we set this bypassMarker in fetchSource as a flag to help bypass the validation in RollupInterceptor
+            val bypassMarker = "${RollupInterceptor.BYPASS_MARKER_PREFIX}${RollupInterceptor.BYPASS_SIZE_CHECK}"
+
+            val searchRequest = SearchRequest(rollup.sourceIndex)
+                .source(
+                    SearchSourceBuilder()
+                        .size(1)
+                        .query(MatchAllQueryBuilder())
+                        .sort("$dateField.date_histogram", SortOrder.ASC)
+                        .trackTotalHits(false)
+                        .fetchSource(FetchSourceContext(false, arrayOf(bypassMarker), emptyArray()))
+                        .docValueField("$dateField.date_histogram", DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT),
+                )
+                .allowPartialSearchResults(false)
+
+            val response: SearchResponse = client.suspendUntil { search(searchRequest, it) }
+
+            if (response.hits.hits.isEmpty()) {
+                return StartingTimeResult.NoDocumentsFound
+            }
+
+            // In rollup indices, date histogram fields are named as "field.date_histogram"
+            val rollupDateField = "$dateField.date_histogram"
+            val firstHitTimestampAsString: String =
+                response.hits.hits.first().field(rollupDateField).getValue<String>()
+                    ?: return StartingTimeResult.NoDocumentsFound
+
+            val formatter = DateFormatter.forPattern(DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT)
+            val epochMillis = DateFormatters.from(formatter.parse(firstHitTimestampAsString), formatter.locale()).toInstant().toEpochMilli()
+            return StartingTimeResult.Success(getRoundedTime(epochMillis, dateHistogram))
+        } catch (e: RemoteTransportException) {
+            val unwrappedException = ExceptionsHelper.unwrapCause(e) as Exception
+            logger.error("Error when getting earliest timestamp from rollup index for rollup [{}]: {}", rollup.id, unwrappedException)
+            return StartingTimeResult.Failure(unwrappedException)
+        } catch (e: Exception) {
+            // TODO: Catching general exceptions for now, can make more granular
+            logger.error("Error when getting earliest timestamp from rollup index for rollup [{}]: {}", rollup.id, e)
             return StartingTimeResult.Failure(e)
         }
     }
