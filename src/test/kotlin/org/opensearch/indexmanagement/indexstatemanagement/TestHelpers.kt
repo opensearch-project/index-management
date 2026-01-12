@@ -244,7 +244,11 @@ fun randomTemplateScript(
 
 fun randomSnapshotActionConfig(repository: String = "repo", snapshot: String = "sp"): SnapshotAction = SnapshotAction(repository, snapshot, index = 0)
 
-fun randomRestoreActionConfig(repository: String = "repo", snapshot: String = "sp"): ConvertIndexToRemoteAction = ConvertIndexToRemoteAction(repository, snapshot, index = 0)
+fun randomRestoreActionConfig(
+    repository: String = "repo",
+    snapshot: String = "sp",
+    renamePattern: String = ConvertIndexToRemoteAction.DEFAULT_RENAME_PATTERN,
+): ConvertIndexToRemoteAction = ConvertIndexToRemoteAction(repository, snapshot, renamePattern, index = 0)
 
 /**
  * Helper functions for creating a random Conditions object
