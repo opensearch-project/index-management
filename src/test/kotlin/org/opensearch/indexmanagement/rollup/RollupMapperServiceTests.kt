@@ -14,8 +14,10 @@ import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.mockito.ArgumentMatchers.anyBoolean
 import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse
+import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.metadata.MappingMetadata
+import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.action.ActionListener
@@ -308,7 +310,15 @@ class RollupMapperServiceTests : OpenSearchTestCase() {
         }
     }
 
-    private fun getClusterService(): ClusterService = mock { on { state() } doReturn mock() }
+    private fun getClusterService(): ClusterService {
+        val mockMetadata = mock<Metadata>()
+        val mockClusterState = mock<ClusterState> {
+            on { metadata } doReturn mockMetadata
+        }
+        return mock {
+            on { state() } doReturn mockClusterState
+        }
+    }
 
     // Returns a mocked IndexNameExpressionResolver which returns the provided list of concrete indices
     private fun getIndexNameExpressionResolver(concreteIndices: List<String>): IndexNameExpressionResolver =

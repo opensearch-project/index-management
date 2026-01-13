@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 25
+    "schema_version": 26
   },
   "dynamic": "strict",
   "properties": {
@@ -380,6 +380,15 @@
                       "properties": {
                         "description": {
                           "type": "text"
+                        },
+                        "source_index": {
+                          "type": "text",
+                          "fields": {
+                            "keyword": {
+                              "type": "keyword",
+                              "ignore_above": 256
+                            }
+                          }
                         },
                         "target_index": {
                           "type": "text",
