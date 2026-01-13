@@ -7,6 +7,7 @@
 
 package org.opensearch.indexmanagement.rollup.util
 
+import org.apache.logging.log4j.LogManager
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.cluster.ClusterState
@@ -38,6 +39,7 @@ import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.metric.Average
+import org.opensearch.indexmanagement.rollup.model.metric.Cardinality
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Min
 import org.opensearch.indexmanagement.rollup.model.metric.Sum
@@ -56,6 +58,7 @@ import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregat
 import org.opensearch.search.aggregations.bucket.histogram.HistogramAggregationBuilder
 import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder
 import org.opensearch.search.aggregations.metrics.AvgAggregationBuilder
+import org.opensearch.search.aggregations.metrics.CardinalityAggregationBuilder
 import org.opensearch.search.aggregations.metrics.MaxAggregationBuilder
 import org.opensearch.search.aggregations.metrics.MinAggregationBuilder
 import org.opensearch.search.aggregations.metrics.ScriptedMetricAggregationBuilder
@@ -65,6 +68,8 @@ import org.opensearch.search.builder.SearchSourceBuilder
 
 const val DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT = "strict_date_optional_time"
 const val DATE_FIELD_EPOCH_MILLIS_FORMAT = "epoch_millis"
+
+private val logger = LogManager.getLogger("RollupUtils")
 
 @Suppress("ReturnCount")
 fun isRollupIndex(index: String, clusterState: ClusterState): Boolean {
@@ -228,6 +233,17 @@ private fun Rollup.addMetricAggregationsForRollupIndex(compositeAgg: CompositeAg
                     )
                 }
 
+                is Cardinality -> {
+                    // Cardinality aggregation for HLL++ sketches
+                    // Multi-tier: Aggregate over pre-computed HLL sketches (field.hll)
+                    // Standard: Compute HLL sketch from raw field values
+                    listOf(
+                        CardinalityAggregationBuilder(metric.targetFieldWithType(agg))
+                            .field(metric.targetFieldWithType(agg))
+                            .precisionThreshold(agg.precisionThreshold),
+                    )
+                }
+
                 else -> throw IllegalArgumentException("Found unsupported metric aggregation ${agg.type.type}")
             }
         }
@@ -298,6 +314,17 @@ private fun Rollup.addMetricAggregationsForStandardIndex(compositeAgg: Composite
                     listOf(
                         ValueCountAggregationBuilder(metric.targetFieldWithType(agg))
                             .field(metric.sourceField),
+                    )
+                }
+
+                is Cardinality -> {
+                    // Cardinality aggregation for HLL++ sketches
+                    // Multi-tier: Aggregate over pre-computed HLL sketches (field.hll)
+                    // Standard: Compute HLL sketch from raw field values
+                    listOf(
+                        CardinalityAggregationBuilder(metric.targetFieldWithType(agg))
+                            .field(metric.sourceField)
+                            .precisionThreshold(agg.precisionThreshold),
                     )
                 }
 
@@ -473,6 +500,15 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
                         "long valueCount = 0; for (vc in states) { valueCount += vc } return valueCount", emptyMap(),
                     ),
                 )
+        }
+
+        is CardinalityAggregationBuilder -> {
+            // Rewrite cardinality aggregation to use the .hll field
+            // Customer queries: cardinality(field="user_id")
+            // Rewritten query: cardinality(field="user_id.hll")
+
+            CardinalityAggregationBuilder(aggregationBuilder.name)
+                .field(this.findMatchingMetricField<Cardinality>(aggregationBuilder.field()))
         }
 
         // We do nothing otherwise, the validation logic should have already verified so not throwing an exception

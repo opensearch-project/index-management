@@ -13,6 +13,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.XCONTENT_WITHOUT
 import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.rollup.model.metric.Metric
 import org.opensearch.indexmanagement.rollup.randomAverage
+import org.opensearch.indexmanagement.rollup.randomCardinality
 import org.opensearch.indexmanagement.rollup.randomDateHistogram
 import org.opensearch.indexmanagement.rollup.randomHistogram
 import org.opensearch.indexmanagement.rollup.randomISMRollup
@@ -95,6 +96,13 @@ class XContentTests : OpenSearchTestCase() {
         val valueCountString = valueCount.toJsonString()
         val parsedValueCount = Metric.parse(parser(valueCountString))
         assertEquals("Round tripping ValueCount doesn't work", valueCount, parsedValueCount)
+    }
+
+    fun `test cardinality metric parsing`() {
+        val cardinality = randomCardinality()
+        val cardinalityString = cardinality.toJsonString()
+        val parsedCardinality = Metric.parse(parser(cardinalityString))
+        assertEquals("Round tripping Cardinality doesn't work", cardinality, parsedCardinality)
     }
 
     fun `test rollup metrics parsing`() {
