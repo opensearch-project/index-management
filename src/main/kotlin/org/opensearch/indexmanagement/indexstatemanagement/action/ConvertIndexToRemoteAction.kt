@@ -16,6 +16,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 class ConvertIndexToRemoteAction(
     val repository: String,
     val snapshot: String,
+    val renamePattern: String = DEFAULT_RENAME_PATTERN,
     index: Int,
 ) : Action(name, index) {
 
@@ -23,6 +24,8 @@ class ConvertIndexToRemoteAction(
         const val name = "convert_index_to_remote"
         const val REPOSITORY_FIELD = "repository"
         const val SNAPSHOT_FIELD = "snapshot"
+        const val RENAME_PATTERN_FIELD = "rename_pattern"
+        const val DEFAULT_RENAME_PATTERN = "\$1_remote"
     }
 
     private val attemptRestoreStep = AttemptRestoreStep(this)
@@ -37,12 +40,16 @@ class ConvertIndexToRemoteAction(
         builder.startObject(type)
         builder.field(REPOSITORY_FIELD, repository)
         builder.field(SNAPSHOT_FIELD, snapshot)
+        if (renamePattern != DEFAULT_RENAME_PATTERN) {
+            builder.field(RENAME_PATTERN_FIELD, renamePattern)
+        }
         builder.endObject()
     }
 
     override fun populateAction(out: StreamOutput) {
         out.writeString(repository)
         out.writeString(snapshot)
+        out.writeString(renamePattern)
         out.writeInt(actionIndex)
     }
 }
