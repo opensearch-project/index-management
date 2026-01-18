@@ -33,11 +33,6 @@ class ValidateSearchOnly(
             return this
         }
 
-        if (isAlreadySearchOnly(indexMetadata, indexName)) {
-            validationStatus = ValidationStatus.FAILED
-            return this
-        }
-
         if (!hasRemoteStorePrerequisites(indexMetadata, indexName)) {
             validationStatus = ValidationStatus.FAILED
             return this
@@ -45,17 +40,6 @@ class ValidateSearchOnly(
 
         validationMessage = getValidationPassedMessage(indexName)
         return this
-    }
-
-    private fun isAlreadySearchOnly(indexMetadata: IndexMetadata, indexName: String): Boolean {
-        val isSearchOnly = indexMetadata.settings.getAsBoolean(INDEX_BLOCKS_SEARCH_ONLY_SETTING, false)
-        if (isSearchOnly) {
-            val message = getAlreadySearchOnlyMessage(indexName)
-            logger.warn(message)
-            validationMessage = message
-            return true
-        }
-        return false
     }
 
     @Suppress("ReturnCount")
@@ -96,8 +80,6 @@ class ValidateSearchOnly(
         private const val CLUSTER_REMOTE_STORE_ENABLED_SETTING = "cluster.remote_store.enabled"
 
         fun getNoIndexMessage(index: String) = "No such index [index=$index] for search_only action."
-
-        fun getAlreadySearchOnlyMessage(index: String) = "Index [index=$index] is already in search-only mode."
 
         fun getRemoteStoreDisabledMessage(index: String) = "Cannot scale to zero without remote store enabled [index=$index]"
 

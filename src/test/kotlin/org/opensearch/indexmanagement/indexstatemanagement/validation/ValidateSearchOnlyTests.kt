@@ -40,14 +40,14 @@ class ValidateSearchOnlyTests : OpenSearchTestCase() {
         assertTrue("Message should indicate no such index", result.validationMessage!!.contains("No such index"))
     }
 
-    fun `test validation fails when index is already in search-only mode`() {
+    fun `test validation passes when index is already in search-only mode`() {
         val clusterService = getClusterService("test-index", true)
         val validate = ValidateSearchOnly(settings, clusterService, jvmService)
 
         val result = validate.execute("test-index")
 
-        assertEquals("Validation status should be FAILED", Validate.ValidationStatus.FAILED, result.validationStatus)
-        assertTrue("Message should indicate already in search-only mode", result.validationMessage!!.contains("already"))
+        assertEquals("Validation status should be PASSED", Validate.ValidationStatus.PASSED, result.validationStatus)
+        assertTrue("Message should indicate validation passed", result.validationMessage!!.contains("validation passed"))
     }
 
     fun `test validation fails when remote store is disabled`() {
