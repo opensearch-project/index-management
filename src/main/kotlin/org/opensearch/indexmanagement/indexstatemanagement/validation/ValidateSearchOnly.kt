@@ -61,7 +61,7 @@ class ValidateSearchOnly(
     @Suppress("ReturnCount")
     private fun hasRemoteStorePrerequisites(indexMetadata: IndexMetadata, indexName: String): Boolean {
         val clusterSettings = clusterService.state().metadata.settings()
-        val isRemoteStoreEnabled = clusterSettings.getAsBoolean("cluster.remote_store.enabled", false)
+        val isRemoteStoreEnabled = clusterSettings.getAsBoolean(CLUSTER_REMOTE_STORE_ENABLED_SETTING, false)
 
         if (!isRemoteStoreEnabled) {
             val message = getRemoteStoreDisabledMessage(indexName)
@@ -93,6 +93,7 @@ class ValidateSearchOnly(
     companion object {
         const val name = "validate_search_only"
         private const val INDEX_BLOCKS_SEARCH_ONLY_SETTING = "index.blocks.search_only"
+        private const val CLUSTER_REMOTE_STORE_ENABLED_SETTING = "cluster.remote_store.enabled"
 
         fun getNoIndexMessage(index: String) = "No such index [index=$index] for search_only action."
 
