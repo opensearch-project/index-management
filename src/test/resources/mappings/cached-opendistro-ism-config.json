@@ -591,6 +591,9 @@
                     }
                   }
                 },
+                "search_only": {
+                  "type": "object"
+                },
                 "custom": {
                   "enabled": false,
                   "type":  "object"

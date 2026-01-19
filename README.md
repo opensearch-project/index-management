@@ -43,6 +43,7 @@ The current supported actions are:
 * Read write
 * Replica count
 * Rollover
+* SearchOnly
 
 The current supported transition conditions are:
 
