@@ -131,6 +131,7 @@ class RollupIndexer(
                     is InternalCardinality -> {
                         // Store only the sketch for multi-tier rollup support
                         // The cardinality estimate can be computed from the sketch when needed
+                        // If the sketch is null (no data in bucket), store null
                         aggResults[it.name] = extractHLLSketch(it)
                     }
 
@@ -157,16 +158,23 @@ class RollupIndexer(
      * @return Serialized HLL++ sketch as byte array
      * @throws IllegalStateException if serialization fails
      */
-    private fun extractHLLSketch(cardinality: InternalCardinality): ByteArray = try {
+    private fun extractHLLSketch(cardinality: InternalCardinality): ByteArray? = try {
         // Extract the HLL++ sketch from InternalCardinality
         // The HLL field type expects raw sketch bytes from AbstractHyperLogLogPlusPlus.writeTo()
         val sketch = cardinality.counts
-        val output = BytesStreamOutput()
 
-        // Serialize just the sketch, not the full InternalCardinality
-        // AbstractHyperLogLogPlusPlus.writeTo() requires bucket ordinal (0 for single bucket)
-        sketch.writeTo(0L, output)
-        output.bytes().toBytesRef().bytes
+        // If there's no data (empty bucket), return null instead of crashing
+        if (sketch == null) {
+            logger.debug("No HLL sketch data available for cardinality aggregation ${cardinality.name}")
+            null
+        } else {
+            val output = BytesStreamOutput()
+
+            // Serialize just the sketch, not the full InternalCardinality
+            // AbstractHyperLogLogPlusPlus.writeTo() requires bucket ordinal (0 for single bucket)
+            sketch.writeTo(0L, output)
+            output.bytes().toBytesRef().bytes
+        }
     } catch (e: Exception) {
         logger.error("Failed to extract HLL++ sketch from cardinality aggregation: ${e.message}", e)
         throw IllegalStateException("Failed to serialize HLL++ sketch for storage", e)
