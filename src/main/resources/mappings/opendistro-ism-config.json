@@ -478,6 +478,13 @@
                                 },
                                 "value_count": {
                                   "type": "object"
+                                },
+                                "cardinality": {
+                                  "properties": {
+                                    "precision_threshold": {
+                                      "type": "long"
+                                    }
+                                  }
                                 }
                               }
                             }
@@ -1126,6 +1133,13 @@
                 },
                 "value_count": {
                   "type": "object"
+                },
+                "cardinality": {
+                  "properties": {
+                    "precision_threshold": {
+                      "type": "long"
+                    }
+                  }
                 }
               }
             }

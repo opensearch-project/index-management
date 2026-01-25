@@ -14,6 +14,7 @@ import org.opensearch.action.bulk.BulkRequest
 import org.opensearch.action.bulk.BulkResponse
 import org.opensearch.action.index.IndexRequest
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.rest.RestStatus
@@ -29,6 +30,7 @@ import org.opensearch.indexmanagement.util.IndexUtils.Companion.ODFE_MAGIC_NULL
 import org.opensearch.indexmanagement.util.IndexUtils.Companion.hashToFixedSize
 import org.opensearch.search.aggregations.bucket.composite.InternalComposite
 import org.opensearch.search.aggregations.metrics.InternalAvg
+import org.opensearch.search.aggregations.metrics.InternalCardinality
 import org.opensearch.search.aggregations.metrics.InternalMax
 import org.opensearch.search.aggregations.metrics.InternalMin
 import org.opensearch.search.aggregations.metrics.InternalSum
@@ -126,6 +128,13 @@ class RollupIndexer(
 
                     is InternalAvg -> aggResults[it.name] = it.value
 
+                    is InternalCardinality -> {
+                        // Store only the sketch for multi-tier rollup support
+                        // The cardinality estimate can be computed from the sketch when needed
+                        // If the sketch is null (no data in bucket), store null
+                        aggResults[it.name] = extractHLLSketch(it)
+                    }
+
                     else -> error("Found aggregation in composite result that is not supported [${it.type} - ${it.name}]")
                 }
             }
@@ -138,6 +147,37 @@ class RollupIndexer(
             requests.add(indexRequest)
         }
         return requests
+    }
+
+    /**
+     * Extracts and serializes the HLL++ sketch from a cardinality aggregation result.
+     * The serialized sketch can be stored in an HLL field and later merged with other sketches
+     * for multi-tier rollup support.
+     *
+     * @param cardinality The cardinality aggregation result
+     * @return Serialized HLL++ sketch as byte array
+     * @throws IllegalStateException if serialization fails
+     */
+    private fun extractHLLSketch(cardinality: InternalCardinality): ByteArray? = try {
+        // Extract the HLL++ sketch from InternalCardinality
+        // The HLL field type expects raw sketch bytes from AbstractHyperLogLogPlusPlus.writeTo()
+        val sketch = cardinality.counts
+
+        // If there's no data (empty bucket), return null instead of crashing
+        if (sketch == null) {
+            logger.debug("No HLL sketch data available for cardinality aggregation ${cardinality.name}")
+            null
+        } else {
+            val output = BytesStreamOutput()
+
+            // Serialize just the sketch, not the full InternalCardinality
+            // AbstractHyperLogLogPlusPlus.writeTo() requires bucket ordinal (0 for single bucket)
+            sketch.writeTo(0L, output)
+            output.bytes().toBytesRef().bytes
+        }
+    } catch (e: Exception) {
+        logger.error("Failed to extract HLL++ sketch from cardinality aggregation: ${e.message}", e)
+        throw IllegalStateException("Failed to serialize HLL++ sketch for storage", e)
     }
 }
 
