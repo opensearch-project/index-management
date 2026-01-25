@@ -113,7 +113,7 @@ class ConvertIndexToRemoteActionIT : IndexStateManagementRestTestCase() {
             )
         }
 
-        val remoteIndexName = "${indexName}_remote"
+        val remoteIndexName = "remote_$indexName"
         waitFor { assertIndexExists(remoteIndexName) }
 
         val isRemote = isIndexRemote(remoteIndexName)
