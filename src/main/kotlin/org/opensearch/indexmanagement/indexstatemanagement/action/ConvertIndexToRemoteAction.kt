@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.Version
 import org.opensearch.core.common.io.stream.StreamOutput
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.core.xcontent.XContentBuilder
@@ -49,7 +50,9 @@ class ConvertIndexToRemoteAction(
     override fun populateAction(out: StreamOutput) {
         out.writeString(repository)
         out.writeString(snapshot)
-        out.writeString(renamePattern)
+        if (out.version.onOrAfter(Version.V_3_5_0)) {
+            out.writeString(renamePattern)
+        }
         out.writeInt(actionIndex)
     }
 }

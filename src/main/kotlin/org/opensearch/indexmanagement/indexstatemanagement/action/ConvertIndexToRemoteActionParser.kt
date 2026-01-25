@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.Version
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
@@ -20,7 +21,11 @@ class ConvertIndexToRemoteActionParser : ActionParser() {
     override fun fromStreamInput(sin: StreamInput): Action {
         val repository = sin.readString()
         val snapshot = sin.readString()
-        val renamePattern = sin.readString()
+        val renamePattern = if (sin.version.onOrAfter(Version.V_3_5_0)) {
+            sin.readString()
+        } else {
+            DEFAULT_RENAME_PATTERN
+        }
         val index = sin.readInt()
         return ConvertIndexToRemoteAction(repository, snapshot, renamePattern, index)
     }
