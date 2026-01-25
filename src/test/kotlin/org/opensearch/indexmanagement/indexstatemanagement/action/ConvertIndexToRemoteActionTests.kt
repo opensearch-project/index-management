@@ -5,13 +5,17 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.Version
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.common.io.stream.InputStreamStreamInput
 import org.opensearch.core.common.io.stream.OutputStreamStreamOutput
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.DEFAULT_RENAME_PATTERN
 import org.opensearch.indexmanagement.opensearchapi.string
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionRetry
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionTimeout
 import org.opensearch.test.OpenSearchTestCase
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -233,5 +237,84 @@ class ConvertIndexToRemoteActionTests : OpenSearchTestCase() {
         assertThrows(IllegalArgumentException::class.java) {
             ISMActionsParser.instance.parse(parser, 0)
         }
+    }
+
+    fun `test backward compatibility - old version without renamePattern`() {
+        val baos = ByteArrayOutputStream()
+        val osso = OutputStreamStreamOutput(baos)
+        osso.version = Version.V_3_4_0
+
+        osso.writeString("convert_index_to_remote")
+        osso.writeOptionalWriteable(null) // configTimeout
+        osso.writeOptionalWriteable(null) // configRetry
+        osso.writeString("my-repo")
+        osso.writeString("{{ctx.index}}")
+        // renamePattern is NOT written for old version
+        osso.writeInt(0)
+
+        val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray()))
+        input.version = Version.V_3_4_0
+        val deserializedAction = ISMActionsParser.instance.fromStreamInput(input) as ConvertIndexToRemoteAction
+
+        assertEquals("repository should be preserved", "my-repo", deserializedAction.repository)
+        assertEquals("snapshot should be preserved", "{{ctx.index}}", deserializedAction.snapshot)
+        assertEquals("renamePattern should default", DEFAULT_RENAME_PATTERN, deserializedAction.renamePattern)
+    }
+
+    fun `test forward compatibility - new version with renamePattern`() {
+        val originalAction = ConvertIndexToRemoteAction(
+            repository = "my-repo",
+            snapshot = "{{ctx.index}}",
+            renamePattern = "remote_\$1",
+            index = 0,
+        )
+
+        val baos = ByteArrayOutputStream()
+        val osso = OutputStreamStreamOutput(baos)
+        osso.version = Version.V_3_5_0
+        originalAction.writeTo(osso)
+
+        val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray()))
+        input.version = Version.V_3_5_0
+        val deserializedAction = ISMActionsParser.instance.fromStreamInput(input) as ConvertIndexToRemoteAction
+
+        assertEquals("repository should be preserved", originalAction.repository, deserializedAction.repository)
+        assertEquals("snapshot should be preserved", originalAction.snapshot, deserializedAction.snapshot)
+        assertEquals("renamePattern should be preserved", originalAction.renamePattern, deserializedAction.renamePattern)
+    }
+
+    fun `test version compatibility - writing to old version skips renamePattern`() {
+        val action = ConvertIndexToRemoteAction(
+            repository = "my-repo",
+            snapshot = "{{ctx.index}}",
+            renamePattern = "remote_\$1",
+            index = 0,
+        )
+
+        val baos = ByteArrayOutputStream()
+        val osso = OutputStreamStreamOutput(baos)
+        osso.version = Version.V_3_4_0
+
+        osso.writeString("convert_index_to_remote")
+        osso.writeOptionalWriteable(action.configTimeout)
+        osso.writeOptionalWriteable(action.configRetry)
+        action.populateAction(osso)
+
+        val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray()))
+        input.version = Version.V_3_4_0
+
+        input.readString() // action type
+        input.readOptionalWriteable(::ActionTimeout)
+        input.readOptionalWriteable(::ActionRetry)
+
+        val repository = input.readString()
+        val snapshot = input.readString()
+        // Old version doesn't read renamePattern
+        val actionIndex = input.readInt()
+
+        assertEquals("repository should match", action.repository, repository)
+        assertEquals("snapshot should match", action.snapshot, snapshot)
+        assertEquals("actionIndex should match", action.actionIndex, actionIndex)
+        assertEquals("Stream should be fully consumed", 0, input.available())
     }
 }
