@@ -155,15 +155,15 @@ class ISMRollupTests : OpenSearchTestCase() {
         assertNull(parsed.sourceIndex)
     }
 
-    fun `test ism rollup stream serialization without source index on V3_0_0`() {
+    fun `test ism rollup stream serialization without source index on V3_5_0`() {
         val ismRollup = randomISMRollup().copy(sourceIndex = null)
 
         val output = BytesStreamOutput()
-        output.version = Version.V_3_0_0
+        output.version = Version.V_3_5_0
         ismRollup.writeTo(output)
 
         val input = StreamInput.wrap(output.bytes().toBytesRef().bytes)
-        input.version = Version.V_3_0_0
+        input.version = Version.V_3_5_0
         val parsed = ISMRollup(input)
 
         assertEquals(ismRollup.description, parsed.description)
@@ -174,16 +174,16 @@ class ISMRollupTests : OpenSearchTestCase() {
         assertNull(parsed.sourceIndex)
     }
 
-    fun `test ism rollup stream serialization with source index on V3_0_0`() {
+    fun `test ism rollup stream serialization with source index on V3_5_0`() {
         val sourceIndex = "my-source-index"
         val ismRollup = randomISMRollup().copy(sourceIndex = sourceIndex)
 
         val output = BytesStreamOutput()
-        output.version = Version.V_3_0_0
+        output.version = Version.V_3_5_0
         ismRollup.writeTo(output)
 
         val input = StreamInput.wrap(output.bytes().toBytesRef().bytes)
-        input.version = Version.V_3_0_0
+        input.version = Version.V_3_5_0
         val parsed = ISMRollup(input)
 
         assertEquals(ismRollup.description, parsed.description)
@@ -292,11 +292,11 @@ class ISMRollupTests : OpenSearchTestCase() {
 
         // Stream round trip
         val output = BytesStreamOutput()
-        output.version = Version.V_3_0_0
+        output.version = Version.V_3_5_0
         original.writeTo(output)
 
         val input = StreamInput.wrap(output.bytes().toBytesRef().bytes)
-        input.version = Version.V_3_0_0
+        input.version = Version.V_3_5_0
         val parsedFromStream = ISMRollup(input)
 
         assertEquals(original.description, parsedFromStream.description)
