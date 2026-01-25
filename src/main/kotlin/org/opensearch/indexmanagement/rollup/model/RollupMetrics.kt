@@ -15,6 +15,7 @@ import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.indexmanagement.rollup.model.metric.Average
+import org.opensearch.indexmanagement.rollup.model.metric.Cardinality
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Metric
 import org.opensearch.indexmanagement.rollup.model.metric.Min
@@ -53,6 +54,7 @@ data class RollupMetrics(
                         Metric.Type.MIN -> Min(it)
                         Metric.Type.SUM -> Sum(it)
                         Metric.Type.VALUE_COUNT -> ValueCount(it)
+                        Metric.Type.CARDINALITY -> Cardinality(it)
                     },
                 )
             }
@@ -77,6 +79,7 @@ data class RollupMetrics(
                 is Min -> metric.writeTo(out)
                 is Sum -> metric.writeTo(out)
                 is ValueCount -> metric.writeTo(out)
+                is Cardinality -> metric.writeTo(out)
             }
         }
     }
@@ -87,6 +90,7 @@ data class RollupMetrics(
         is Max -> "$targetField.max"
         is Min -> "$targetField.min"
         is ValueCount -> "$targetField.value_count"
+        is Cardinality -> "$targetField.hll"
         else -> throw IllegalArgumentException("Found unsupported metric aggregation ${metric.type.type}")
     }
 

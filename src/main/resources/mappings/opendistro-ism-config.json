@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 26
+    "schema_version": 27
   },
   "dynamic": "strict",
   "properties": {
@@ -475,6 +475,13 @@
                                 },
                                 "value_count": {
                                   "type": "object"
+                                },
+                                "cardinality": {
+                                  "properties": {
+                                    "precision_threshold": {
+                                      "type": "long"
+                                    }
+                                  }
                                 }
                               }
                             }
@@ -587,6 +594,9 @@
                       "type": "boolean"
                     }
                   }
+                },
+                "search_only": {
+                  "type": "object"
                 },
                 "custom": {
                   "enabled": false,
@@ -1120,6 +1130,13 @@
                 },
                 "value_count": {
                   "type": "object"
+                },
+                "cardinality": {
+                  "properties": {
+                    "precision_threshold": {
+                      "type": "long"
+                    }
+                  }
                 }
               }
             }

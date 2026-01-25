@@ -109,7 +109,6 @@ data class ISMRollup(
     constructor(sin: StreamInput) : this(
         description = sin.readString(),
         targetIndex = sin.readString(),
-        // TODO: Update to Version.V_3_5_0 once OpenSearch 3.5.0 is released and the constant is available
         targetIndexSettings = if (sin.version.onOrAfter(Version.V_3_0_0) && sin.readBoolean()) {
             Settings.readSettingsFromStream(sin)
         } else {
@@ -133,8 +132,7 @@ data class ISMRollup(
             dimensionsList.toList()
         },
         metrics = sin.readList(::RollupMetrics),
-        // TODO: Update to Version.V_3_5_0 once OpenSearch 3.5.0 is released and the constant is available
-        sourceIndex = if (sin.version.onOrAfter(Version.V_3_0_0) && sin.readBoolean()) {
+        sourceIndex = if (sin.version.onOrAfter(Version.V_3_5_0) && sin.readBoolean()) {
             sin.readString()
         } else {
             null
@@ -163,7 +161,6 @@ data class ISMRollup(
     override fun writeTo(out: StreamOutput) {
         out.writeString(description)
         out.writeString(targetIndex)
-        // TODO: Update to Version.V_3_5_0 once OpenSearch 3.5.0 is released and the constant is available
         if (out.version.onOrAfter(Version.V_3_0_0)) {
             out.writeBoolean(targetIndexSettings != null)
             if (targetIndexSettings != null) Settings.writeSettingsToStream(targetIndexSettings, out)
@@ -179,8 +176,7 @@ data class ISMRollup(
             }
         }
         out.writeCollection(metrics)
-        // TODO: Update to Version.V_3_5_0 once OpenSearch 3.5.0 is released and the constant is available
-        if (out.version.onOrAfter(Version.V_3_0_0)) {
+        if (out.version.onOrAfter(Version.V_3_5_0)) {
             out.writeBoolean(sourceIndex != null)
             if (sourceIndex != null) out.writeString(sourceIndex)
         }

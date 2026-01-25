@@ -21,6 +21,7 @@ abstract class Metric(val type: Type) :
         MAX("max"),
         MIN("min"),
         VALUE_COUNT("value_count"),
+        CARDINALITY("cardinality"),
         ;
 
         override fun toString(): String = type
@@ -44,6 +45,7 @@ abstract class Metric(val type: Type) :
                         Type.MIN.type -> Min.parse(xcp)
                         Type.SUM.type -> Sum.parse(xcp)
                         Type.VALUE_COUNT.type -> ValueCount.parse(xcp)
+                        Type.CARDINALITY.type -> Cardinality.parse(xcp)
                         else -> throw IllegalArgumentException("Invalid metric type [$fieldName] found in metrics")
                     }
             }

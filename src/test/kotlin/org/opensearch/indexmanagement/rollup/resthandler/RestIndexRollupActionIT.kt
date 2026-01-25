@@ -17,6 +17,7 @@ import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.model.RollupMetrics
 import org.opensearch.indexmanagement.rollup.model.metric.Average
+import org.opensearch.indexmanagement.rollup.model.metric.Cardinality
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Metric
 import org.opensearch.indexmanagement.rollup.model.metric.Min
@@ -268,6 +269,7 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
                                 Metric.Type.MIN -> Sum()
                                 Metric.Type.SUM -> ValueCount()
                                 Metric.Type.VALUE_COUNT -> Average()
+                                Metric.Type.CARDINALITY -> Cardinality()
                             }
                         },
                     )
@@ -296,6 +298,21 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
                     "status" to 400,
                 )
             assertEquals(expectedErrorMessage, actualMessage)
+        }
+    }
+
+    @Throws(Exception::class)
+    fun `test creating rollup with wildcards in target_index fails`() {
+        try {
+            val rollup = randomRollup().copy(targetIndex = "target_with_wildcard*")
+            client().makeRequest("PUT", "$ROLLUP_JOBS_BASE_URI/${rollup.id}", emptyMap(), rollup.toHttpEntity())
+            fail("Expected 400 BAD_REQUEST response")
+        } catch (e: ResponseException) {
+            assertEquals("Unexpected status", RestStatus.BAD_REQUEST, e.response.restStatus())
+            val actualMessage = e.response.asMap()
+            val errorMap = actualMessage["error"] as Map<*, *>
+            val reason = errorMap["reason"] as String
+            assertTrue("Error message should mention wildcards or invalid target_index", reason.contains("target_index"))
         }
     }
 }
