@@ -32,6 +32,7 @@ import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.RollupMetrics
 import org.opensearch.indexmanagement.rollup.model.RollupStats
 import org.opensearch.indexmanagement.rollup.model.metric.Average
+import org.opensearch.indexmanagement.rollup.model.metric.Cardinality
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Metric
 import org.opensearch.indexmanagement.rollup.model.metric.Min
@@ -82,7 +83,9 @@ fun randomSum(): Sum = Sum()
 
 fun randomValueCount(): ValueCount = ValueCount()
 
-val metrics = listOf(randomAverage(), randomMax(), randomMin(), randomSum(), randomValueCount())
+fun randomCardinality(): Cardinality = Cardinality()
+
+val metrics = listOf(randomAverage(), randomMax(), randomMin(), randomSum(), randomValueCount(), randomCardinality())
 
 fun randomMetric(): Metric =
     OpenSearchRestTestCase.randomSubsetOf(1, metrics).first()
@@ -245,6 +248,8 @@ fun Min.toJsonString(): String = this.toXContent(XContentFactory.jsonBuilder(), 
 fun Sum.toJsonString(): String = this.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string()
 
 fun ValueCount.toJsonString(): String = this.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string()
+
+fun Cardinality.toJsonString(): String = this.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string()
 
 fun RollupMetrics.toJsonString(): String = this.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string()
 
