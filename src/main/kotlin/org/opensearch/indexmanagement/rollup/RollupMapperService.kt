@@ -316,9 +316,22 @@ class RollupMapperService(
             val indexMappingSource = indexTypeMappings.sourceAsMap
 
             // If source is a rollup index with no properties (no data rolled up yet), skip field validation
-            if (isRollupIndex(index, clusterService.state()) && !indexMappingSource.containsKey("properties")) {
-                logger.info("Source rollup index [$index] has no properties yet, skipping field validation")
-                return RollupJobValidationResult.Valid
+            // This includes cases where only metric mappings exist (e.g., HLL fields) but no dimension fields
+            if (isRollupIndex(index, clusterService.state())) {
+                if (!indexMappingSource.containsKey("properties")) {
+                    logger.info("Source rollup index [$index] has no properties yet, skipping field validation")
+                    return RollupJobValidationResult.Valid
+                }
+
+                // Check if rollup index has dimension fields - if not, it's empty (only metric mappings exist)
+                val hasDimensionFields = rollup.dimensions.any { dimension ->
+                    isFieldInMappings(dimension.sourceField, indexMappingSource)
+                }
+
+                if (!hasDimensionFields) {
+                    logger.info("Source rollup index [$index] has no dimension fields yet (only metric mappings), skipping field validation")
+                    return RollupJobValidationResult.Valid
+                }
             }
 
             val issues = mutableSetOf<String>()
