@@ -276,6 +276,23 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
                 logger.info("Skipping wipeAllIndices...")
                 return
             }
+
+            // Wait for cluster health to be GREEN before deleting indices.
+            // This prevents interrupting ongoing shard recoveries which can cause
+            // ClosedByInterruptException and corrupt the node lock.
+            if (isMultiNode) {
+                try {
+                    waitFor {
+                        val healthResponse = client.performRequest(Request("GET", "/_cluster/health"))
+                        val healthMap = entityAsMap(healthResponse)
+                        val status = healthMap["status"] as String
+                        assertEquals("Waiting for cluster health GREEN before deleting indices", "green", status)
+                    }
+                } catch (e: AssertionError) {
+                    logger.warn("Timed out waiting for cluster health GREEN: ${e.message}. Proceeding with index deletion.")
+                }
+            }
+
             try {
                 client.performRequest(Request("DELETE", "_data_stream/*"))
             } catch (e: ResponseException) {
