@@ -41,7 +41,7 @@ class ConvertIndexToRemoteActionIT : IndexStateManagementRestTestCase() {
         val convertAction = ConvertIndexToRemoteAction(
             repository = repository,
             snapshot = indexName,
-            0,
+            index = 0,
         )
 
         val snapshotState = State(
@@ -114,6 +114,106 @@ class ConvertIndexToRemoteActionIT : IndexStateManagementRestTestCase() {
         }
 
         val remoteIndexName = "${indexName}_remote"
+        waitFor { assertIndexExists(remoteIndexName) }
+
+        val isRemote = isIndexRemote(remoteIndexName)
+        assertTrue("Index $remoteIndexName is not a remote index", isRemote)
+    }
+
+    fun `test convert to remote with custom rename_pattern`() {
+        val indexName = "${testIndexName}_index_custom_rename"
+        val policyID = "${testIndexName}_policy_custom_rename"
+        val repository = "repository_custom"
+
+        createIndex(indexName, null)
+        indexDoc(indexName, "1", """{"field": "value1"}""")
+
+        createRepository(repository)
+
+        val snapshotAction = SnapshotAction(
+            repository = repository,
+            snapshot = indexName,
+            index = 0,
+        )
+
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = repository,
+            snapshot = indexName,
+            renamePattern = "remote_\$1",
+            index = 0,
+        )
+
+        val snapshotState = State(
+            name = "snapshotState",
+            actions = listOf(snapshotAction),
+            transitions = listOf(Transition(stateName = "convertToRemoteState", conditions = null)),
+        )
+
+        val convertToRemoteState = State(
+            name = "convertToRemoteState",
+            actions = listOf(convertAction),
+            transitions = listOf(),
+        )
+
+        val policy = Policy(
+            id = policyID,
+            description = "$testIndexName description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = snapshotState.name,
+            states = listOf(snapshotState, convertToRemoteState),
+        )
+
+        createPolicy(policy, policyID)
+        addPolicyToIndex(indexName, policyID)
+
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val explainMetaData = getExplainManagedIndexMetaData(indexName)
+            assertEquals(
+                "Successfully initialized policy: $policyID",
+                explainMetaData.info?.get("message"),
+            )
+        }
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val explainMetaData = getExplainManagedIndexMetaData(indexName)
+            assertEquals(
+                AttemptSnapshotStep.getSuccessMessage(indexName),
+                explainMetaData.info?.get("message"),
+            )
+        }
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val explainMetaData = getExplainManagedIndexMetaData(indexName)
+            assertEquals(
+                WaitForSnapshotStep.getSuccessMessage(indexName),
+                explainMetaData.info?.get("message"),
+            )
+        }
+
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val explainMetaData = getExplainManagedIndexMetaData(indexName)
+            assertEquals(
+                "Transitioning to convertToRemoteState [index=$indexName]",
+                explainMetaData.info?.get("message"),
+            )
+        }
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val explainMetaData = getExplainManagedIndexMetaData(indexName)
+            assertEquals(
+                AttemptRestoreStep.getSuccessMessage(indexName),
+                explainMetaData.info?.get("message"),
+            )
+        }
+
+        // With rename_pattern = "remote_$1", the new index should be "remote_<indexName>"
+        val remoteIndexName = "remote_$indexName"
         waitFor { assertIndexExists(remoteIndexName) }
 
         val isRemote = isIndexRemote(remoteIndexName)
