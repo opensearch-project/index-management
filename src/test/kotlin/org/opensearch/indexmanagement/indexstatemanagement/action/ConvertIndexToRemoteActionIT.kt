@@ -411,4 +411,5 @@ class ConvertIndexToRemoteActionIT : IndexStateManagementRestTestCase() {
         val isRemote = isIndexRemote(remoteIndexName)
         assertTrue("Index $remoteIndexName is not a remote index", isRemote)
     }
+
 }
