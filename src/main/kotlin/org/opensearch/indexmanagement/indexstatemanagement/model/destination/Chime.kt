@@ -55,6 +55,7 @@ data class Chime(val url: String) :
                 xcp.nextToken()
                 when (fieldName) {
                     URL -> url = xcp.text()
+
                     else -> {
                         error("Unexpected field: $fieldName, while parsing Chime destination")
                     }

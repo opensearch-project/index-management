@@ -257,7 +257,7 @@ class IndexManagementPlugin :
 
     override fun getGuiceServiceClasses(): Collection<Class<out LifecycleComponent?>> = mutableListOf<Class<out LifecycleComponent?>>(GuiceHolder::class.java)
 
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     override fun getJobParser(): ScheduledJobParser {
         return ScheduledJobParser { xcp, id, jobDocVersion ->
             ensureExpectedToken(Token.START_OBJECT, xcp.nextToken(), xcp)
@@ -269,30 +269,39 @@ class IndexManagementPlugin :
                     ManagedIndexConfig.MANAGED_INDEX_TYPE -> {
                         return@ScheduledJobParser ManagedIndexConfig.parse(xcp, id, jobDocVersion.seqNo, jobDocVersion.primaryTerm)
                     }
+
                     Policy.POLICY_TYPE -> {
                         return@ScheduledJobParser null
                     }
+
                     Rollup.ROLLUP_TYPE -> {
                         return@ScheduledJobParser Rollup.parse(xcp, id, jobDocVersion.seqNo, jobDocVersion.primaryTerm)
                     }
+
                     RollupMetadata.ROLLUP_METADATA_TYPE -> {
                         return@ScheduledJobParser null
                     }
+
                     Transform.TRANSFORM_TYPE -> {
                         return@ScheduledJobParser Transform.parse(xcp, id, jobDocVersion.seqNo, jobDocVersion.primaryTerm)
                     }
+
                     TransformMetadata.TRANSFORM_METADATA_TYPE -> {
                         return@ScheduledJobParser null
                     }
+
                     ManagedIndexMetaData.MANAGED_INDEX_METADATA_TYPE -> {
                         return@ScheduledJobParser null
                     }
+
                     SMPolicy.SM_TYPE -> {
                         return@ScheduledJobParser SMPolicy.parse(xcp, id, jobDocVersion.seqNo, jobDocVersion.primaryTerm)
                     }
+
                     SMMetadata.SM_METADATA_TYPE -> {
                         return@ScheduledJobParser null
                     }
+
                     else -> {
                         logger.warn("Unsupported document was indexed in $INDEX_MANAGEMENT_INDEX with type: $fieldName")
                         xcp.skipChildren()
@@ -427,7 +436,7 @@ class IndexManagementPlugin :
                 .registerMapperService(RollupMapperService(client, clusterService, indexNameExpressionResolver))
                 .registerIndexer(RollupIndexer(settings, clusterService, client))
                 .registerSearcher(RollupSearchService(settings, clusterService, client))
-                .registerMetadataServices(RollupMetadataService(client, xContentRegistry))
+                .registerMetadataServices(RollupMetadataService(client, xContentRegistry, clusterService))
                 .registerConsumers()
                 .registerClusterConfigurationProvider(skipFlag)
         indexManagementIndices = IndexManagementIndices(settings, client.admin().indices(), clusterService)

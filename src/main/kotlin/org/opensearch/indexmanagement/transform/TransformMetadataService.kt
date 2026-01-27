@@ -75,7 +75,7 @@ class TransformMetadataService(private val client: Client, val xContentRegistry:
         return writeMetadata(metadata)
     }
 
-    @Suppress("BlockingMethodInNonBlockingContext", "ThrowsCount", "ComplexMethod")
+    @Suppress("BlockingMethodInNonBlockingContext", "ThrowsCount", "CyclomaticComplexMethod")
     suspend fun writeMetadata(metadata: TransformMetadata, updating: Boolean = false): TransformMetadata {
         val errorMessage = "Failed to ${if (updating) "update" else "create"} metadata doc ${metadata.id} for transform job ${metadata.transformId}"
         try {
@@ -96,6 +96,7 @@ class TransformMetadataService(private val client: Client, val xContentRegistry:
                 DocWriteResponse.Result.CREATED, DocWriteResponse.Result.UPDATED -> {
                     metadata.copy(seqNo = response.seqNo, primaryTerm = response.primaryTerm)
                 }
+
                 else -> {
                     logger.error(errorMessage)
                     throw TransformMetadataException("Failed to write metadata, received ${response.result?.lowercase} status")

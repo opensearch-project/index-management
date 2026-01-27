@@ -103,7 +103,7 @@ data class ActionMetaData(
             }
         }
 
-        @Suppress("ComplexMethod")
+        @Suppress("CyclomaticComplexMethod")
         fun parse(xcp: XContentParser): ActionMetaData {
             var name: String? = null
             var startTime: Long? = null
@@ -120,11 +120,17 @@ data class ActionMetaData(
 
                 when (fieldName) {
                     NAME -> name = xcp.text()
+
                     START_TIME -> startTime = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.longValue()
+
                     INDEX -> index = xcp.intValue()
+
                     FAILED -> failed = xcp.booleanValue()
+
                     CONSUMED_RETRIES -> consumedRetries = xcp.intValue()
+
                     LAST_RETRY_TIME -> lastRetryTime = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else xcp.longValue()
+
                     ActionProperties.ACTION_PROPERTIES ->
                         actionProperties = if (xcp.currentToken() == XContentParser.Token.VALUE_NULL) null else ActionProperties.parse(xcp)
                 }

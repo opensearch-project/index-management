@@ -41,6 +41,7 @@ import org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval
 import org.opensearch.search.aggregations.bucket.histogram.HistogramAggregationBuilder
 import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder
 import org.opensearch.search.aggregations.metrics.AvgAggregationBuilder
+import org.opensearch.search.aggregations.metrics.CardinalityAggregationBuilder
 import org.opensearch.search.aggregations.metrics.MaxAggregationBuilder
 import org.opensearch.search.aggregations.metrics.MinAggregationBuilder
 import org.opensearch.search.aggregations.metrics.SumAggregationBuilder
@@ -64,6 +65,59 @@ class RollupInterceptor(
     @Volatile private var searchAllJobs = RollupSettings.ROLLUP_SEARCH_ALL_JOBS.get(settings)
 
     @Volatile private var searchRawRollupIndices = RollupSettings.ROLLUP_SEARCH_SOURCE_INDICES.get(settings)
+
+    companion object {
+        /**
+         * Bypass level that skips all rollup search validations and rewriting.
+         * Used when the system needs to query rollup indices directly using composite aggregation.
+         */
+        const val BYPASS_ROLLUP_SEARCH = 1
+
+        /**
+         * Bypass level that allows non-zero size in rollup searches.
+         * Used for internal operations like continuous rollup initialization that need to fetch
+         * actual documents from rollup indices (e.g., getEarliestTimestampFromRollupIndex).
+         */
+        const val BYPASS_SIZE_CHECK = 2
+
+        /**
+         * Marker prefix used in FetchSourceContext includes array to communicate bypass levels
+         * across nodes in a multi-node cluster. The full marker format is:
+         * "${BYPASS_MARKER_PREFIX}<level>" where <level> is an integer (BYPASS_ROLLUP_SEARCH or BYPASS_SIZE_CHECK).
+         */
+        const val BYPASS_MARKER_PREFIX = "_rollup_internal_bypass_"
+    }
+
+    /**
+     * Reads the bypass value from the request's FetchSourceContext.
+     *
+     * The bypass mechanism uses a special marker string in the FetchSourceContext includes array
+     * to communicate bypass levels across nodes in a multi-node cluster. The marker format is:
+     * "${BYPASS_MARKER_PREFIX}<level>" where <level> is an integer (BYPASS_ROLLUP_SEARCH or BYPASS_SIZE_CHECK).
+     *
+     * This marker is set by internal components before making search requests:
+     * - RollupSearchService: Sets BYPASS_ROLLUP_SEARCH when querying rollup indices with composite aggregations
+     *   during the rollup process (multi-tier rollup scenario where a rollup index is the source)
+     * - RollupMetadataService: Sets BYPASS_SIZE_CHECK when fetching the earliest timestamp document from
+     *   a rollup index during continuous rollup initialization (needs size=1 to retrieve actual documents)
+     *
+     * The marker is placed in the FetchSourceContext includes array because:
+     * 1. It's serialized and transmitted across nodes in the cluster
+     * 2. It doesn't affect the actual source fetching behavior (fetchSource is set to false)
+     * 3. It provides a clean way to pass metadata without modifying the core search request structure
+     *
+     * @param request The shard search request to check for bypass markers
+     * @return The bypass level if the marker is present in includes array, null otherwise
+     */
+    internal fun getBypassFromFetchSource(request: ShardSearchRequest): Int? {
+        val includes = request.source()?.fetchSource()?.includes()
+
+        // Look for our bypass marker in the includes array and extract the bypass level
+        return includes
+            ?.find { it.startsWith(BYPASS_MARKER_PREFIX) }
+            ?.substringAfter(BYPASS_MARKER_PREFIX)
+            ?.toIntOrNull()
+    }
 
     init {
         clusterService.clusterSettings.addSettingsUpdateConsumer(RollupSettings.ROLLUP_SEARCH_ENABLED) {
@@ -89,7 +143,22 @@ class RollupInterceptor(
                 val index = request.shardId().indexName
                 val isRollupIndex = isRollupIndex(index, clusterService.state())
                 if (isRollupIndex) {
-                    if (request.source().size() != 0) {
+                    // Check bypass from FetchSourceContext
+                    val bypassLevel = getBypassFromFetchSource(request)
+
+                    logger.debug("RollupInterceptor bypass check - bypassLevel: $bypassLevel")
+
+                    // BYPASS_ROLLUP_SEARCH: Skip all validations and query rewriting
+                    // Used for composite aggregation queries when rolling up rollup indices
+                    if (bypassLevel == BYPASS_ROLLUP_SEARCH) {
+                        actualHandler.messageReceived(request, channel, task)
+                        return
+                    }
+
+                    // BYPASS_SIZE_CHECK: Allow non-zero size for internal operations that need to
+                    // fetch documents (e.g., fetching earliest timestamp document for continuous rollup initialization)
+                    // Normal rollup searches must have size=0 since they should only return aggregations
+                    if (bypassLevel != BYPASS_SIZE_CHECK && request.source().size() != 0) {
                         throw IllegalArgumentException("Rollup search must have size explicitly set to 0, but found ${request.source().size()}")
                     }
 
@@ -161,7 +230,7 @@ class RollupInterceptor(
         return allMatchingRollupJobs
     }
 
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     private fun getAggregationMetadata(
         aggregationBuilders: Collection<AggregationBuilder>?,
         fieldMappings: MutableSet<RollupFieldMapping> = mutableSetOf(),
@@ -171,27 +240,39 @@ class RollupInterceptor(
                 is TermsAggregationBuilder -> {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, it.field(), it.type))
                 }
+
                 is DateHistogramAggregationBuilder -> {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, it.field(), it.type))
                 }
+
                 is HistogramAggregationBuilder -> {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, it.field(), it.type))
                 }
+
                 is SumAggregationBuilder -> {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.METRIC, it.field(), it.type))
                 }
+
                 is AvgAggregationBuilder -> {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.METRIC, it.field(), it.type))
                 }
+
                 is MaxAggregationBuilder -> {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.METRIC, it.field(), it.type))
                 }
+
                 is MinAggregationBuilder -> {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.METRIC, it.field(), it.type))
                 }
+
                 is ValueCountAggregationBuilder -> {
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.METRIC, it.field(), it.type))
                 }
+
+                is CardinalityAggregationBuilder -> {
+                    fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.METRIC, it.field(), it.type))
+                }
+
                 else -> throw IllegalArgumentException("The ${it.type} aggregation is not currently supported in rollups")
             }
             if (it.subAggregations?.isNotEmpty() == true) {
@@ -201,7 +282,7 @@ class RollupInterceptor(
         return fieldMappings
     }
 
-    @Suppress("ComplexMethod", "ThrowsCount", "LongMethod")
+    @Suppress("CyclomaticComplexMethod", "ThrowsCount", "LongMethod")
     private fun getQueryMetadata(
         query: QueryBuilder?,
         concreteSourceIndexName: String?,
@@ -214,31 +295,39 @@ class RollupInterceptor(
             is TermQueryBuilder -> {
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
             }
+
             is TermsQueryBuilder -> {
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
             }
+
             is RangeQueryBuilder -> {
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), UNKNOWN_MAPPING))
             }
+
             is MatchAllQueryBuilder -> {
                 // do nothing
             }
+
             is BoolQueryBuilder -> {
                 query.must()?.forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
                 query.mustNot()?.forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
                 query.should()?.forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
                 query.filter()?.forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
             }
+
             is BoostingQueryBuilder -> {
                 this.getQueryMetadata(query.positiveQuery(), concreteSourceIndexName, fieldMappings)
                 this.getQueryMetadata(query.negativeQuery(), concreteSourceIndexName, fieldMappings)
             }
+
             is ConstantScoreQueryBuilder -> {
                 this.getQueryMetadata(query.innerQuery(), concreteSourceIndexName, fieldMappings)
             }
+
             is DisMaxQueryBuilder -> {
                 query.innerQueries().forEach { this.getQueryMetadata(it, concreteSourceIndexName, fieldMappings) }
             }
+
             is MatchPhraseQueryBuilder -> {
                 if (!query.analyzer().isNullOrEmpty() ||
                     query.slop() != MatchQuery.DEFAULT_PHRASE_SLOP ||
@@ -250,6 +339,7 @@ class RollupInterceptor(
                 }
                 fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, query.fieldName(), Dimension.Type.TERMS.type))
             }
+
             is QueryStringQueryBuilder -> {
                 if (concreteSourceIndexName.isNullOrEmpty()) {
                     throw IllegalArgumentException("Can't parse query_string query without sourceIndex mappings!")
@@ -263,6 +353,7 @@ class RollupInterceptor(
                     fieldMappings.add(RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, field, Dimension.Type.TERMS.type))
                 }
             }
+
             else -> {
                 throw IllegalArgumentException("The ${query.name} query is currently not supported in rollups")
             }
@@ -271,7 +362,7 @@ class RollupInterceptor(
     }
 
     // TODO: How does this job matching work with roles/security?
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     private fun findMatchingRollupJobs(
         fieldMappings: Set<RollupFieldMapping>,
         rollupJobs: List<Rollup>,

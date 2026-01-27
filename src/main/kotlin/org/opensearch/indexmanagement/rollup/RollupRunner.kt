@@ -34,7 +34,11 @@ import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.RollupStats
 import org.opensearch.indexmanagement.rollup.model.incrementStats
 import org.opensearch.indexmanagement.rollup.model.mergeStats
+import org.opensearch.indexmanagement.rollup.model.metric.Cardinality
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
+import org.opensearch.indexmanagement.rollup.util.getDateHistogram
+import org.opensearch.indexmanagement.rollup.util.getRollupJobs
+import org.opensearch.indexmanagement.rollup.util.isRollupIndex
 import org.opensearch.indexmanagement.util.acquireLockForScheduledJob
 import org.opensearch.indexmanagement.util.releaseLockForScheduledJob
 import org.opensearch.indexmanagement.util.renewLockForScheduledJob
@@ -44,6 +48,8 @@ import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.script.ScriptService
 import org.opensearch.search.aggregations.bucket.composite.InternalComposite
+import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
+import org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval
 import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.client.Client
 
@@ -129,7 +135,7 @@ object RollupRunner :
 
     fun registerConsumers(): RollupRunner = this
 
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     override fun runJob(job: ScheduledJobParameter, context: JobExecutionContext) {
         if (job !is Rollup) {
             throw IllegalArgumentException("Invalid job type, found ${job.javaClass.simpleName} with id: ${context.jobId}")
@@ -144,7 +150,9 @@ object RollupRunner :
                     metadata =
                         when (val getMetadataResult = rollupMetadataService.getExistingMetadata(job)) {
                             is MetadataResult.Success -> getMetadataResult.metadata
+
                             is MetadataResult.NoMetadata -> null
+
                             is MetadataResult.Failure ->
                                 throw RollupMetadataException("Failed to get existing rollup metadata [${job.metadataID}]", getMetadataResult.cause)
                         }
@@ -177,6 +185,7 @@ object RollupRunner :
                             releaseLockForScheduledJob(context, lock)
                         }
                     }
+
                     else -> {}
                 }
             }
@@ -191,7 +200,7 @@ object RollupRunner :
      *  There is a rollup.metadataID and doc but theres no job in target index?
      *        -> index was deleted and recreated as rollup -> just recreate (but we would have to start over)? Or move to FAILED?
      * */
-    @Suppress("ReturnCount", "NestedBlockDepth", "ComplexMethod", "LongMethod", "ThrowsCount")
+    @Suppress("ReturnCount", "NestedBlockDepth", "CyclomaticComplexMethod", "LongMethod", "ThrowsCount")
     private suspend fun runRollupJob(job: Rollup, context: JobExecutionContext, lock: LockModel) {
         logger.debug("Running rollup job [${job.id}]")
         var updatableLock = lock
@@ -202,11 +211,13 @@ object RollupRunner :
                     setFailedMetadataAndDisableJob(job, jobValidity.reason)
                     return
                 }
+
                 is RollupJobValidationResult.Failure -> {
                     logger.error("Failed to validate [${job.id}]: [${jobValidity.message}]")
                     setFailedMetadataAndDisableJob(job, jobValidity.message)
                     return
                 }
+
                 else -> {}
             }
 
@@ -214,10 +225,13 @@ object RollupRunner :
             var metadata =
                 when (val initMetadataResult = rollupMetadataService.init(job)) {
                     is MetadataResult.Success -> initMetadataResult.metadata
+
                     is MetadataResult.NoMetadata -> {
                         logger.info("Init metadata NoMetadata returning early")
                         return
-                    } // No-op this execution
+                    }
+
+                    // No-op this execution
                     is MetadataResult.Failure ->
                         throw RollupMetadataException("Failed to initialize rollup metadata", initMetadataResult.cause)
                 }
@@ -232,6 +246,7 @@ object RollupRunner :
             if (updatableJob.metadataID == null && metadata.status == RollupMetadata.Status.INIT) {
                 when (val updateRollupJobResult = updateRollupJob(updatableJob.copy(metadataID = metadata.id), metadata)) {
                     is RollupJobResult.Success -> updatableJob = updateRollupJobResult.rollup
+
                     is RollupJobResult.Failure -> {
                         logger.error(
                             "Failed to update the rollup job [${updatableJob.id}] with metadata id [${metadata.id}]", updateRollupJobResult.cause,
@@ -252,10 +267,12 @@ object RollupRunner :
                     setFailedMetadataAndDisableJob(updatableJob, result.message, metadata)
                     return
                 }
+
                 is RollupJobValidationResult.Invalid -> {
                     setFailedMetadataAndDisableJob(updatableJob, result.reason, metadata)
                     return
                 }
+
                 else -> {}
             }
 
@@ -266,7 +283,7 @@ object RollupRunner :
                             withClosableContext(
                                 IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user),
                             ) {
-                                rollupSearchService.executeCompositeSearch(updatableJob, metadata)
+                                rollupSearchService.executeCompositeSearch(updatableJob, metadata, clusterService)
                             }
                         val rollupResult =
                             when (rollupSearchResult) {
@@ -284,6 +301,7 @@ object RollupRunner :
                                         is RollupIndexResult.Failure -> RollupResult.Failure(rollupIndexResult.message, rollupIndexResult.cause)
                                     }
                                 }
+
                                 is RollupSearchResult.Failure -> {
                                     RollupResult.Failure(rollupSearchResult.message, rollupSearchResult.cause)
                                 }
@@ -304,6 +322,7 @@ object RollupRunner :
                                         }.rollup ?: error("Unable to get rollup job")
                                     }
                             }
+
                             is RollupResult.Failure -> {
                                 rollupMetadataService.updateMetadata(
                                     metadata.copy(status = RollupMetadata.Status.FAILED, failureReason = rollupResult.cause.message),
@@ -376,9 +395,11 @@ object RollupRunner :
             val errorMessage = "An error occurred when updating rollup job [${job.id}]"
             return when (val setFailedMetadataResult = rollupMetadataService.setFailedMetadata(job, errorMessage, metadata)) {
                 is MetadataResult.Success -> RollupJobResult.Failure(errorMessage, e)
+
                 // If the metadata update failed as well, throw an exception to end the runner execution
                 is MetadataResult.Failure ->
                     throw RollupMetadataException(setFailedMetadataResult.message, setFailedMetadataResult.cause)
+
                 // Should not get NoMetadata here
                 is MetadataResult.NoMetadata ->
                     throw RollupMetadataException("Unexpected state when updating metadata", null)
@@ -388,7 +409,7 @@ object RollupRunner :
 
     // TODO: Source index could be a pattern but it's used at runtime so it could match new indices which weren't matched before
     //  which means we always need to validate the source index on every execution?
-    @Suppress("ReturnCount", "ComplexMethod")
+    @Suppress("ReturnCount", "CyclomaticComplexMethod")
     private suspend fun isJobValid(job: Rollup): RollupJobValidationResult {
         return withClosableContext(
             IndexManagementSecurityContext(job.id, settings, threadPool.threadContext, job.user),
@@ -399,7 +420,9 @@ object RollupRunner :
                 metadata =
                     when (val getMetadataResult = rollupMetadataService.getExistingMetadata(job)) {
                         is MetadataResult.Success -> getMetadataResult.metadata
+
                         is MetadataResult.NoMetadata -> null
+
                         is MetadataResult.Failure ->
                             throw RollupMetadataException("Failed to get existing rollup metadata [${job.metadataID}]", getMetadataResult.cause)
                     }
@@ -408,8 +431,21 @@ object RollupRunner :
             logger.debug("Validating source index [${job.sourceIndex}] for rollup job [${job.id}]")
             when (val sourceIndexValidationResult = rollupMapperService.isSourceIndexValid(job)) {
                 is RollupJobValidationResult.Valid -> {
-                } // No action taken when valid
+                }
+
+                // No action taken when valid
                 else -> return@withClosableContext sourceIndexValidationResult
+            }
+
+            // Additional validation for rollup-on-rollup scenarios
+            if (isRollupIndex(job.sourceIndex, clusterService.state())) {
+                when (val rollupValidationResult = validateRollupOnRollup(job)) {
+                    is RollupJobValidationResult.Valid -> {
+                    }
+
+                    // No action taken when valid
+                    else -> return@withClosableContext rollupValidationResult
+                }
             }
 
             // we validate target index only if there is metadata document in the rollup
@@ -432,8 +468,10 @@ object RollupRunner :
         val updatedMetadata =
             when (val setFailedMetadataResult = rollupMetadataService.setFailedMetadata(job, reason, existingMetadata)) {
                 is MetadataResult.Success -> setFailedMetadataResult.metadata
+
                 is MetadataResult.Failure ->
                     throw RollupMetadataException(setFailedMetadataResult.message, setFailedMetadataResult.cause)
+
                 // Should not get NoMetadata here
                 is MetadataResult.NoMetadata ->
                     throw RollupMetadataException("Unexpected state when setting failed metadata", null)
@@ -464,11 +502,131 @@ object RollupRunner :
 
         return when (val updateRollupJobResult = updateRollupJob(updatedRollupJob, metadata)) {
             is RollupJobResult.Success -> true
+
             is RollupJobResult.Failure -> {
                 logger.error("Failed to disable rollup job [${job.id}]", updateRollupJobResult.cause)
                 false
             }
         }
+    }
+
+    @Suppress("ReturnCount")
+    private fun validateRollupOnRollup(job: Rollup): RollupJobValidationResult {
+        val sourceRollupJobs = clusterService.state().metadata.index(job.sourceIndex).getRollupJobs()
+        if (sourceRollupJobs == null) {
+            return RollupJobValidationResult.Invalid("Source rollup index has no rollup jobs")
+        }
+
+        val sourceJob = sourceRollupJobs.first()
+        val targetDateHistogram = job.getDateHistogram()
+        val sourceDateHistogram = sourceJob.getDateHistogram()
+
+        // Validate interval alignment
+        val sourceInterval = sourceDateHistogram.fixedInterval ?: sourceDateHistogram.calendarInterval!!
+        val targetInterval = targetDateHistogram.fixedInterval ?: targetDateHistogram.calendarInterval!!
+        val intervalValid = validateIntervalAlignment(sourceInterval, targetInterval)
+        if (!intervalValid) {
+            return RollupJobValidationResult.Invalid(
+                "Target interval [$targetInterval] must be an exact multiple of source interval [$sourceInterval]",
+            )
+        }
+
+        // Validate source field compatibility
+        val sourceDimensionFields = sourceJob.dimensions.map { it.sourceField }.toSet()
+        val sourceMetricFields = sourceJob.metrics.map { it.sourceField }.toSet()
+        val targetDimensionFields = job.dimensions.map { it.sourceField }.toSet()
+        val targetMetricFields = job.metrics.map { it.sourceField }.toSet()
+
+        val invalidDimensionFields = targetDimensionFields - sourceDimensionFields
+        val invalidMetricFields = targetMetricFields - sourceMetricFields
+
+        return when {
+            invalidDimensionFields.isNotEmpty() -> RollupJobValidationResult.Invalid(
+                "Cannot rollup on dimension fields $invalidDimensionFields that don't exist in source rollup",
+            )
+
+            invalidMetricFields.isNotEmpty() -> RollupJobValidationResult.Invalid(
+                "Cannot rollup on metric fields $invalidMetricFields that don't exist in source rollup",
+            )
+
+            else -> {
+                // Validate metric compatibility
+                val sourceMetrics = sourceJob.metrics.flatMap { it.metrics }.map { it.type.type }.toSet()
+                val targetMetrics = job.metrics.flatMap { it.metrics }.map { it.type.type }.toSet()
+                val unsupportedMetrics = targetMetrics - sourceMetrics
+
+                if (unsupportedMetrics.isNotEmpty()) {
+                    RollupJobValidationResult.Invalid(
+                        "Target rollup requests metrics $unsupportedMetrics that are not available in source rollup",
+                    )
+                } else {
+                    // Validate cardinality precisionThreshold compatibility
+                    val precisionThresholdValidation = validateCardinalityPrecisionThreshold(sourceJob, job)
+                    if (precisionThresholdValidation is RollupJobValidationResult.Invalid) {
+                        return precisionThresholdValidation
+                    }
+
+                    RollupJobValidationResult.Valid
+                }
+            }
+        }
+    }
+
+    /**
+     * Validates that cardinality precisionThreshold values match between source and target rollups.
+     * This prevents runtime HLL++ sketch precision mismatch errors during multi-tier rollup execution.
+     */
+    private fun validateCardinalityPrecisionThreshold(
+        sourceJob: Rollup,
+        targetJob: Rollup,
+    ): RollupJobValidationResult {
+        // Extract cardinality metrics from source rollup
+        val sourceCardinalityThresholds = sourceJob.metrics
+            .flatMap { metric ->
+                metric.metrics
+                    .filterIsInstance<Cardinality>()
+                    .map { metric.sourceField to it.precisionThreshold }
+            }
+            .toMap()
+
+        // Check target cardinality metrics for mismatches
+        val mismatches = mutableListOf<String>()
+
+        targetJob.metrics.forEach { targetMetric ->
+            targetMetric.metrics.filterIsInstance<Cardinality>().forEach { targetCardinality ->
+                val sourceThreshold = sourceCardinalityThresholds[targetMetric.sourceField]
+
+                // Only validate if source has cardinality for this field
+                if (sourceThreshold != null && sourceThreshold != targetCardinality.precisionThreshold) {
+                    mismatches.add(
+                        "field [${targetMetric.sourceField}]: source uses precisionThreshold $sourceThreshold, " +
+                            "but target specifies precisionThreshold ${targetCardinality.precisionThreshold}",
+                    )
+                }
+            }
+        }
+
+        return if (mismatches.isNotEmpty()) {
+            val errorMessage = "Cardinality precisionThreshold mismatch for ${mismatches.joinToString("; ")}. " +
+                "Use matching precisionThreshold values for multi-tier rollup compatibility."
+            RollupJobValidationResult.Invalid(errorMessage)
+        } else {
+            RollupJobValidationResult.Valid
+        }
+    }
+
+    private fun validateIntervalAlignment(sourceInterval: String, targetInterval: String): Boolean = try {
+        val sourceMillis = parseIntervalToMillis(sourceInterval)
+        val targetMillis = parseIntervalToMillis(targetInterval)
+        targetMillis % sourceMillis == 0L && targetMillis > sourceMillis
+    } catch (e: Exception) {
+        true // Let it through and fail later with better error
+    }
+
+    private fun parseIntervalToMillis(interval: String): Long = if (DateHistogramAggregationBuilder.DATE_FIELD_UNITS.containsKey(interval)) {
+        DateHistogramInterval(interval).estimateMillis()
+    } else {
+        TimeValue.parseTimeValue(interval, "parseIntervalToMillis").millis
     }
 }
 

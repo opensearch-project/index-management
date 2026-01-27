@@ -11,11 +11,13 @@ import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
 import org.opensearch.indexmanagement.common.model.dimension.Histogram
 import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.rollup.model.metric.Average
+import org.opensearch.indexmanagement.rollup.model.metric.Cardinality
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Min
 import org.opensearch.indexmanagement.rollup.model.metric.Sum
 import org.opensearch.indexmanagement.rollup.model.metric.ValueCount
 import org.opensearch.indexmanagement.rollup.randomAverage
+import org.opensearch.indexmanagement.rollup.randomCardinality
 import org.opensearch.indexmanagement.rollup.randomContinuousMetadata
 import org.opensearch.indexmanagement.rollup.randomDateHistogram
 import org.opensearch.indexmanagement.rollup.randomExplainRollup
@@ -96,6 +98,14 @@ class WriteableTests : OpenSearchTestCase() {
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
         val streamedValueCount = ValueCount(sin)
         assertEquals("Round tripping ValueCount stream doesn't work", valueCount, streamedValueCount)
+    }
+
+    fun `test cardinality metric as stream`() {
+        val cardinality = randomCardinality()
+        val out = BytesStreamOutput().also { cardinality.writeTo(it) }
+        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
+        val streamedCardinality = Cardinality(sin)
+        assertEquals("Round tripping Cardinality stream doesn't work", cardinality, streamedCardinality)
     }
 
     fun `test rollup metrics as stream`() {

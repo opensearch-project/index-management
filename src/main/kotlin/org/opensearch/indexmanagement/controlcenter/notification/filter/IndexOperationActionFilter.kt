@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.action.ActionRequest
 import org.opensearch.action.support.ActionFilter
 import org.opensearch.action.support.ActionFilterChain
+import org.opensearch.action.support.ActionRequestMetadata
 import org.opensearch.action.support.ActiveShardsObserver
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
@@ -33,6 +34,7 @@ class IndexOperationActionFilter(
         task: Task,
         action: String,
         request: Request,
+        actionRequestMetadata: ActionRequestMetadata<Request, Response>,
         listener: ActionListener<Response>,
         chain: ActionFilterChain<Request, Response>,
     ) {

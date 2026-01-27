@@ -18,6 +18,15 @@
           "type" : "date"
         }
       }
+    },
+    {
+      "cardinality_sketches": {
+        "path_match": "*.hll",
+        "mapping": {
+          "type": "hll",
+          "doc_values": true
+        }
+      }
     }
   ]
 }

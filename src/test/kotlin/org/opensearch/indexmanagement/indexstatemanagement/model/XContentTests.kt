@@ -10,6 +10,7 @@ import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.destination.DestinationType
 import org.opensearch.indexmanagement.indexstatemanagement.nonNullRandomConditions
@@ -30,6 +31,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadWriteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomRestoreActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRollupActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomShrinkAction
@@ -168,6 +170,140 @@ class XContentTests : OpenSearchTestCase() {
             "Round tripping SnapshotAction doesn't work",
             snapshotAction.convertToMap(), parsedSnapshotAction.convertToMap(),
         )
+    }
+
+    fun `test convert index to remote action config parsing with defaults`() {
+        val convertAction = randomRestoreActionConfig("repository", "snapshot")
+
+        val convertActionString = convertAction.toJsonString()
+        val parsedConvertAction = ISMActionsParser.instance.parse(parser(convertActionString), 0)
+        assertEquals(
+            "Round tripping ConvertIndexToRemoteAction doesn't work with defaults",
+            convertAction.convertToMap(), parsedConvertAction.convertToMap(),
+        )
+    }
+
+    fun `test convert index to remote action config parsing with include_aliases and ignore_index_settings`() {
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = "repository",
+            snapshot = "snapshot",
+            includeAliases = true,
+            ignoreIndexSettings = "index.refresh_interval,index.number_of_replicas",
+            numberOfReplicas = 0,
+            deleteOriginalIndex = false,
+            index = 0,
+        )
+
+        val convertActionString = convertAction.toJsonString()
+        val parsedConvertAction = ISMActionsParser.instance.parse(parser(convertActionString), 0) as ConvertIndexToRemoteAction
+        assertEquals(
+            "Round tripping ConvertIndexToRemoteAction doesn't work with include_aliases and ignore_index_settings",
+            convertAction.convertToMap(), parsedConvertAction.convertToMap(),
+        )
+        assertEquals("includeAliases should be true", true, parsedConvertAction.includeAliases)
+        assertEquals("ignoreIndexSettings should match", "index.refresh_interval,index.number_of_replicas", parsedConvertAction.ignoreIndexSettings)
+    }
+
+    fun `test convert index to remote action config parsing with only include_aliases`() {
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = "repository",
+            snapshot = "snapshot",
+            includeAliases = true,
+            ignoreIndexSettings = "",
+            numberOfReplicas = 0,
+            deleteOriginalIndex = false,
+            index = 0,
+        )
+
+        val convertActionString = convertAction.toJsonString()
+        val parsedConvertAction = ISMActionsParser.instance.parse(parser(convertActionString), 0) as ConvertIndexToRemoteAction
+        assertEquals(
+            "Round tripping ConvertIndexToRemoteAction doesn't work with only include_aliases",
+            convertAction.convertToMap(), parsedConvertAction.convertToMap(),
+        )
+        assertEquals("includeAliases should be true", true, parsedConvertAction.includeAliases)
+        assertEquals("ignoreIndexSettings should be empty", "", parsedConvertAction.ignoreIndexSettings)
+    }
+
+    fun `test convert index to remote action config parsing with only ignore_index_settings`() {
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = "repository",
+            snapshot = "snapshot",
+            includeAliases = false,
+            ignoreIndexSettings = "index.refresh_interval",
+            numberOfReplicas = 0,
+            deleteOriginalIndex = false,
+            index = 0,
+        )
+
+        val convertActionString = convertAction.toJsonString()
+        val parsedConvertAction = ISMActionsParser.instance.parse(parser(convertActionString), 0) as ConvertIndexToRemoteAction
+        assertEquals(
+            "Round tripping ConvertIndexToRemoteAction doesn't work with only ignore_index_settings",
+            convertAction.convertToMap(), parsedConvertAction.convertToMap(),
+        )
+        assertEquals("includeAliases should be false", false, parsedConvertAction.includeAliases)
+        assertEquals("ignoreIndexSettings should match", "index.refresh_interval", parsedConvertAction.ignoreIndexSettings)
+    }
+
+    fun `test convert index to remote action config parsing with number_of_replicas`() {
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = "repository",
+            snapshot = "snapshot",
+            includeAliases = false,
+            ignoreIndexSettings = "",
+            numberOfReplicas = 2,
+            deleteOriginalIndex = false,
+            index = 0,
+        )
+
+        val convertActionString = convertAction.toJsonString()
+        val parsedConvertAction = ISMActionsParser.instance.parse(parser(convertActionString), 0) as ConvertIndexToRemoteAction
+        assertEquals(
+            "Round tripping ConvertIndexToRemoteAction doesn't work with number_of_replicas",
+            convertAction.convertToMap(), parsedConvertAction.convertToMap(),
+        )
+        assertEquals("numberOfReplicas should be 2", 2, parsedConvertAction.numberOfReplicas)
+    }
+
+    fun `test convert index to remote action config parsing with delete_original_index`() {
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = "repository",
+            snapshot = "snapshot",
+            includeAliases = false,
+            ignoreIndexSettings = "",
+            numberOfReplicas = 0,
+            deleteOriginalIndex = true,
+            index = 0,
+        )
+
+        val convertActionString = convertAction.toJsonString()
+        val parsedConvertAction = ISMActionsParser.instance.parse(parser(convertActionString), 0) as ConvertIndexToRemoteAction
+        assertEquals(
+            "Round tripping ConvertIndexToRemoteAction doesn't work with delete_original_index",
+            convertAction.convertToMap(), parsedConvertAction.convertToMap(),
+        )
+        assertEquals("deleteOriginalIndex should be true", true, parsedConvertAction.deleteOriginalIndex)
+    }
+
+    fun `test convert index to remote action config parsing with delete_original_index false`() {
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = "repository",
+            snapshot = "snapshot",
+            includeAliases = false,
+            ignoreIndexSettings = "",
+            numberOfReplicas = 0,
+            deleteOriginalIndex = false,
+            index = 0,
+        )
+
+        val convertActionString = convertAction.toJsonString()
+        val parsedConvertAction = ISMActionsParser.instance.parse(parser(convertActionString), 0) as ConvertIndexToRemoteAction
+        assertEquals(
+            "Round tripping ConvertIndexToRemoteAction doesn't work with delete_original_index false",
+            convertAction.convertToMap(), parsedConvertAction.convertToMap(),
+        )
+        assertEquals("deleteOriginalIndex should be false", false, parsedConvertAction.deleteOriginalIndex)
     }
 
     fun `test allocation action config parsing`() {

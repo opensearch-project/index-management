@@ -18,6 +18,7 @@ import org.mockito.ArgumentMatchers.eq
 import org.opensearch.action.admin.indices.rollover.RolloverResponse
 import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.ClusterState
+import org.opensearch.cluster.metadata.AliasMetadata
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.cluster.service.ClusterService
@@ -53,6 +54,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
     private val oldIndexName = "old_index"
     private val newIndexName = "new_index"
     val alias = "alias"
+    val additionalAlias = "additional_alias"
     private lateinit var metricsRegistry: MetricsRegistry
     private lateinit var rolloverActionMetrics: RolloverActionMetrics
 
@@ -85,6 +87,14 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
 
         // mock rolloverInfos
         whenever(metadata.index(oldIndexName).rolloverInfos).thenReturn(mapOf(alias to mock()))
+
+        // Mock the aliases: rollover alias + an additional alias to copy
+        whenever(indexMetadata.aliases).thenReturn(
+            mapOf(
+                alias to AliasMetadata.builder(alias).build(),
+                additionalAlias to AliasMetadata.builder(additionalAlias).build(),
+            ),
+        )
     }
 
     fun `test copy alias in rollover step is not acknowledged`() {
@@ -94,7 +104,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(rolloverResponse, aliasResponse, null, null)))
 
         runBlocking {
-            val rolloverAction = RolloverAction(null, null, null, null, true, 0)
+            val rolloverAction = RolloverAction(null, null, null, null, true, false, 0)
             val managedIndexMetaData =
                 ManagedIndexMetaData(
                     oldIndexName, "indexUuid", "policy_id",
@@ -120,7 +130,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(rolloverResponse, null, null, exception)))
 
         runBlocking {
-            val rolloverAction = RolloverAction(null, null, null, null, true, 0)
+            val rolloverAction = RolloverAction(null, null, null, null, true, false, 0)
             val managedIndexMetaData =
                 ManagedIndexMetaData(
                     oldIndexName, "indexUuid", "policy_id",
@@ -146,7 +156,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(rolloverResponse, null, null, exception)))
 
         runBlocking {
-            val rolloverAction = RolloverAction(null, null, null, null, true, 0)
+            val rolloverAction = RolloverAction(null, null, null, null, true, false, 0)
             val managedIndexMetaData =
                 ManagedIndexMetaData(
                     oldIndexName, "indexUuid", "policy_id",
@@ -172,7 +182,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(rolloverResponse, aliasResponse, null, null)))
 
         runBlocking {
-            val rolloverAction = RolloverAction(null, null, null, null, true, 0)
+            val rolloverAction = RolloverAction(null, null, null, null, true, false, 0)
             val managedIndexMetaData =
                 ManagedIndexMetaData(
                     oldIndexName, "indexUuid", "policy_id",
@@ -191,6 +201,35 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
         }
     }
 
+    fun `test copy alias in rollover step with no additional aliases to copy`() {
+        val rolloverResponse = RolloverResponse(oldIndexName, newIndexName, mapOf(), false, true, true, true)
+        val client = getClient(getAdminClient(getIndicesAdminClient(rolloverResponse, null, null, null)))
+
+        // Override setup to have only rollover alias (no additional aliases to copy)
+        val metadata = clusterService.state().metadata()
+        val indexMetadata = metadata.index(oldIndexName)
+        whenever(indexMetadata.aliases).thenReturn(mapOf(alias to AliasMetadata.builder(alias).build()))
+
+        runBlocking {
+            val rolloverAction = RolloverAction(null, null, null, null, true, false, 0)
+            val managedIndexMetaData =
+                ManagedIndexMetaData(
+                    oldIndexName, "indexUuid", "policy_id",
+                    null, null, null,
+                    null, null, null,
+                    null, ActionMetaData("rollover", Instant.now().toEpochMilli(), 0, false, 1, null, null), null,
+                    null, null, rolledOverIndexName = newIndexName,
+                )
+            val attemptRolloverStep = AttemptRolloverStep(rolloverAction)
+            val context = StepContext(managedIndexMetaData, clusterService, client, null, null, scriptService, settings, lockService)
+            attemptRolloverStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptRolloverStep, managedIndexMetaData)
+            val updatedManagedIndexMetaData = attemptRolloverStep.getUpdatedManagedIndexMetadata(managedIndexMetaData)
+            assertEquals("Step status is not COMPLETED", Step.StepStatus.COMPLETED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
+            assertEquals("message info is not matched", AttemptRolloverStep.getSuccessNoAliasesToCopyMessage(oldIndexName, newIndexName), updatedManagedIndexMetaData.info?.get("message"))
+            verify(rolloverActionMetrics.successes).add(eq(1.0), any<Tags>())
+        }
+    }
+
     private fun getClient(adminClient: AdminClient): Client = mock { on { admin() } doReturn adminClient }
 
     private fun getAdminClient(indicesAdminClient: IndicesAdminClient): AdminClient = mock { on { indices() } doReturn indicesAdminClient }
@@ -205,10 +244,13 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
             "Must provide one and only one response or exception",
             (rolloverResponse != null).xor(rolloverException != null),
         )
-        assertTrue(
-            "Must provide one and only one response or exception",
-            (aliasResponse != null).xor(aliasException != null),
-        )
+        // Allow both aliasResponse and aliasException to be null (for tests where aliases() is not called)
+        if (aliasResponse != null || aliasException != null) {
+            assertTrue(
+                "Must provide one and only one response or exception",
+                (aliasResponse != null).xor(aliasException != null),
+            )
+        }
         return mock {
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
@@ -223,9 +265,10 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
                 val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
                 if (aliasResponse != null) {
                     listener.onResponse(aliasResponse)
-                } else {
+                } else if (aliasException != null) {
                     listener.onFailure(aliasException)
                 }
+                // If both are null, do nothing (for tests where aliases() should not be called)
             }.whenever(this.mock).aliases(any(), any())
         }
     }

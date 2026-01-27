@@ -256,7 +256,7 @@ object ManagedIndexRunner :
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    @Suppress("ReturnCount", "ComplexMethod", "LongMethod", "ComplexCondition", "NestedBlockDepth")
+    @Suppress("ReturnCount", "CyclomaticComplexMethod", "LongMethod", "ComplexCondition", "NestedBlockDepth")
     private suspend fun runManagedIndexConfig(managedIndexConfig: ManagedIndexConfig, jobContext: JobExecutionContext) {
         logger.debug("Run job for index ${managedIndexConfig.index}")
         // doing a check of local cluster health as we do not want to overload cluster manager node with potentially a lot of calls
@@ -591,7 +591,7 @@ object ManagedIndexRunner :
         }
     }
 
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     private suspend fun getInitializedManagedIndexMetaData(
         managedIndexConfig: ManagedIndexConfig,
         policy: Policy?,
@@ -694,7 +694,7 @@ object ManagedIndexRunner :
      * Initializes the change policy process where we will get the policy using the change policy's policyID, update the [ManagedIndexMetaData]
      * to reflect the new policy, and save the new policy to the [ManagedIndexConfig] while resetting the change policy to null
      */
-    @Suppress("ReturnCount", "ComplexMethod")
+    @Suppress("ReturnCount", "CyclomaticComplexMethod")
     private suspend fun initChangePolicy(
         managedIndexConfig: ManagedIndexConfig,
         managedIndexMetaData: ManagedIndexMetaData,
@@ -744,7 +744,7 @@ object ManagedIndexRunner :
                 )
             }
 
-        /**
+        /*
          * The freshness of isSafe may change between runs, and we use it to decide whether to enter this method
          * n [shouldChangePolicy]. So here we check the safeness again
          */
@@ -759,7 +759,7 @@ object ManagedIndexRunner :
             }
         }
 
-        /**
+        /*
          * Try to update the ManagedIndexMetaData, we need to do this first before updating the
          * ManagedIndexConfig because if this fails we can fail early and still retry this whole process on the next
          * execution whereas if we do the update to ManagedIndexConfig first we lose the ChangePolicy on the job and

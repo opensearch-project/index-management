@@ -18,7 +18,7 @@ class AliasAction(
     val actions: List<IndicesAliasesRequest.AliasActions>,
     index: Int,
 ) : Action(name, index) {
-    /**
+    /*
      * Allowing the alias action to be only applicable on the managed index for ADD and REMOVE actions only.
      * https://github.com/opensearch-project/OpenSearch/blob/4d045a164e12a382881140e32f9285a3224fecc7/server/src/main/java/org/opensearch/action/admin/indices/alias/IndicesAliasesRequest.java#L105
      */

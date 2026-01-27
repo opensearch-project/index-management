@@ -141,7 +141,9 @@ constructor(
                                 val nonWildcardIds = ids.filter { !it.contains("*") }.map { it to null }.toMap(mutableMapOf())
                                 actionListener.onResponse(ExplainRollupResponse(nonWildcardIds))
                             }
+
                             is RemoteTransportException -> actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
+
                             else -> actionListener.onFailure(e)
                         }
                     }

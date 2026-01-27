@@ -16,6 +16,7 @@ import org.opensearch.core.common.io.stream.InputStreamStreamInput
 import org.opensearch.core.common.io.stream.OutputStreamStreamOutput
 import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomAllocationActionConfig
@@ -31,6 +32,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomOpenActionConfi
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadWriteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomRestoreActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRolloverActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomRollupActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomShrinkAction
@@ -159,6 +161,143 @@ class ActionTests : OpenSearchTestCase() {
 
     fun `test shrink action round trip`() {
         roundTripAction(randomShrinkAction())
+    }
+
+    fun `test convert index to remote action round trip with defaults`() {
+        roundTripAction(randomRestoreActionConfig())
+    }
+
+    fun `test convert index to remote action round trip with all fields`() {
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = "test-repo",
+            snapshot = "test-snapshot",
+            includeAliases = true,
+            ignoreIndexSettings = "index.refresh_interval,index.number_of_replicas",
+            numberOfReplicas = 2,
+            deleteOriginalIndex = true,
+            index = 0,
+        )
+        roundTripAction(convertAction)
+    }
+
+    fun `test convert index to remote action round trip with includeAliases only`() {
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = "test-repo",
+            snapshot = "test-snapshot",
+            includeAliases = true,
+            ignoreIndexSettings = "",
+            numberOfReplicas = 0,
+            deleteOriginalIndex = false,
+            index = 0,
+        )
+        roundTripAction(convertAction)
+    }
+
+    fun `test convert index to remote action round trip with ignoreIndexSettings only`() {
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = "test-repo",
+            snapshot = "test-snapshot",
+            includeAliases = false,
+            ignoreIndexSettings = "index.refresh_interval",
+            numberOfReplicas = 0,
+            deleteOriginalIndex = false,
+            index = 0,
+        )
+        roundTripAction(convertAction)
+    }
+
+    fun `test convert index to remote action round trip with numberOfReplicas only`() {
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = "test-repo",
+            snapshot = "test-snapshot",
+            includeAliases = false,
+            ignoreIndexSettings = "",
+            numberOfReplicas = 3,
+            deleteOriginalIndex = false,
+            index = 0,
+        )
+        roundTripAction(convertAction)
+    }
+
+    fun `test convert index to remote action round trip with deleteOriginalIndex only`() {
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = "test-repo",
+            snapshot = "test-snapshot",
+            includeAliases = false,
+            ignoreIndexSettings = "",
+            numberOfReplicas = 0,
+            deleteOriginalIndex = true,
+            index = 0,
+        )
+        roundTripAction(convertAction)
+    }
+
+    fun `test convert index to remote action backward compatibility with older version`() {
+        // Test that reading from an older version (before V_3_3_0) uses defaults for new fields
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = "test-repo",
+            snapshot = "test-snapshot",
+            includeAliases = true,
+            ignoreIndexSettings = "index.refresh_interval",
+            numberOfReplicas = 2,
+            deleteOriginalIndex = true,
+            index = 0,
+        )
+
+        // Write with older version (should not write new fields)
+        val baos = ByteArrayOutputStream()
+        val osso = OutputStreamStreamOutput(baos).also {
+            it.version = org.opensearch.Version.V_3_2_0 // Version before V_3_3_0
+        }
+        convertAction.writeTo(osso)
+
+        // Read with older version (should use defaults)
+        val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray())).also {
+            it.version = org.opensearch.Version.V_3_2_0
+        }
+        val parsedAction = ISMActionsParser.instance.fromStreamInput(input) as ConvertIndexToRemoteAction
+
+        // Verify that new fields use defaults when reading from older version
+        assertEquals("repository should match", "test-repo", parsedAction.repository)
+        assertEquals("snapshot should match", "test-snapshot", parsedAction.snapshot)
+        assertEquals("includeAliases should default to false", false, parsedAction.includeAliases)
+        assertEquals("ignoreIndexSettings should default to empty", "", parsedAction.ignoreIndexSettings)
+        assertEquals("numberOfReplicas should default to 0", 0, parsedAction.numberOfReplicas)
+        assertEquals("deleteOriginalIndex should default to false", false, parsedAction.deleteOriginalIndex)
+    }
+
+    fun `test convert index to remote action forward compatibility with newer version`() {
+        // Test that reading from a newer version includes all fields
+        val convertAction = ConvertIndexToRemoteAction(
+            repository = "test-repo",
+            snapshot = "test-snapshot",
+            includeAliases = true,
+            ignoreIndexSettings = "index.refresh_interval",
+            numberOfReplicas = 2,
+            deleteOriginalIndex = true,
+            index = 0,
+        )
+
+        // Write with newer version (should write all fields)
+        val baos = ByteArrayOutputStream()
+        val osso = OutputStreamStreamOutput(baos).also {
+            it.version = org.opensearch.Version.V_3_3_0
+        }
+        convertAction.writeTo(osso)
+
+        // Read with newer version (should read all fields)
+        val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray())).also {
+            it.version = org.opensearch.Version.V_3_3_0
+        }
+        val parsedAction = ISMActionsParser.instance.fromStreamInput(input) as ConvertIndexToRemoteAction
+
+        // Verify that all fields are preserved
+        assertEquals("repository should match", "test-repo", parsedAction.repository)
+        assertEquals("snapshot should match", "test-snapshot", parsedAction.snapshot)
+        assertEquals("includeAliases should be true", true, parsedAction.includeAliases)
+        assertEquals("ignoreIndexSettings should match", "index.refresh_interval", parsedAction.ignoreIndexSettings)
+        assertEquals("numberOfReplicas should be 2", 2, parsedAction.numberOfReplicas)
+        assertEquals("deleteOriginalIndex should be true", true, parsedAction.deleteOriginalIndex)
     }
 
     fun `test action timeout and retry round trip`() {

@@ -62,7 +62,7 @@ data class Destination(
         const val SLACK = "slack"
         const val CUSTOMWEBHOOK = "custom_webhook"
 
-        @Suppress("ComplexMethod")
+        @Suppress("CyclomaticComplexMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): Destination {
@@ -112,6 +112,7 @@ data class Destination(
                         .withMessage(messageContent)
                         .build()
             }
+
             DestinationType.SLACK -> {
                 val messageContent = slack?.constructMessageContent(compiledSubject, compiledMessage)
                 destinationMessage =
@@ -120,6 +121,7 @@ data class Destination(
                         .withMessage(messageContent)
                         .build()
             }
+
             DestinationType.CUSTOM_WEBHOOK -> {
                 destinationMessage =
                     LegacyCustomWebhookMessage.Builder("custom_webhook")

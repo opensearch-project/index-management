@@ -7,6 +7,7 @@
 
 package org.opensearch.indexmanagement.rollup.util
 
+import org.apache.logging.log4j.LogManager
 import org.opensearch.action.get.GetResponse
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.cluster.ClusterState
@@ -38,6 +39,7 @@ import org.opensearch.indexmanagement.rollup.model.Rollup
 import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
 import org.opensearch.indexmanagement.rollup.model.RollupMetadata
 import org.opensearch.indexmanagement.rollup.model.metric.Average
+import org.opensearch.indexmanagement.rollup.model.metric.Cardinality
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Min
 import org.opensearch.indexmanagement.rollup.model.metric.Sum
@@ -56,6 +58,7 @@ import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregat
 import org.opensearch.search.aggregations.bucket.histogram.HistogramAggregationBuilder
 import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder
 import org.opensearch.search.aggregations.metrics.AvgAggregationBuilder
+import org.opensearch.search.aggregations.metrics.CardinalityAggregationBuilder
 import org.opensearch.search.aggregations.metrics.MaxAggregationBuilder
 import org.opensearch.search.aggregations.metrics.MinAggregationBuilder
 import org.opensearch.search.aggregations.metrics.ScriptedMetricAggregationBuilder
@@ -65,6 +68,8 @@ import org.opensearch.search.builder.SearchSourceBuilder
 
 const val DATE_FIELD_STRICT_DATE_OPTIONAL_TIME_FORMAT = "strict_date_optional_time"
 const val DATE_FIELD_EPOCH_MILLIS_FORMAT = "epoch_millis"
+
+private val logger = LogManager.getLogger("RollupUtils")
 
 @Suppress("ReturnCount")
 fun isRollupIndex(index: String, clusterState: ClusterState): Boolean {
@@ -81,10 +86,19 @@ fun isRollupIndex(index: String, clusterState: ClusterState): Boolean {
 
 fun Rollup.isTargetIndexAlias(): Boolean = RollupFieldValueExpressionResolver.indexAliasUtils.isAlias(targetIndex)
 
-fun Rollup.getRollupSearchRequest(metadata: RollupMetadata): SearchRequest {
+fun Rollup.getRollupSearchRequest(metadata: RollupMetadata, clusterState: ClusterState): SearchRequest {
+    // In case of multi-tier rollup the source index will not have raw field stored, so need to handle this for continuous jobs
+    val isSourceRollupIndex = isRollupIndex(this.sourceIndex, clusterState)
+    val dateHistogram = this.getDateHistogram()
+    val dateField = if (isSourceRollupIndex) {
+        "${dateHistogram.sourceField}.date_histogram"
+    } else {
+        dateHistogram.sourceField
+    }
+
     val query =
         if (metadata.continuous != null) {
-            RangeQueryBuilder(this.getDateHistogram().sourceField)
+            RangeQueryBuilder(dateField)
                 .from(metadata.continuous.nextWindowStartTime.toEpochMilli(), true)
                 .to(metadata.continuous.nextWindowEndTime.toEpochMilli(), false)
                 .format(DATE_FIELD_EPOCH_MILLIS_FORMAT)
@@ -95,39 +109,229 @@ fun Rollup.getRollupSearchRequest(metadata: RollupMetadata): SearchRequest {
         SearchSourceBuilder()
             .trackTotalHits(false)
             .size(0)
-            .aggregation(this.getCompositeAggregationBuilder(metadata.afterKey))
+            .aggregation(this.getCompositeAggregationBuilder(metadata.afterKey, clusterState))
             .query(query)
     return SearchRequest(this.sourceIndex)
         .source(searchSourceBuilder)
         .allowPartialSearchResults(false)
 }
 
-@Suppress("ComplexMethod", "NestedBlockDepth")
-fun Rollup.getCompositeAggregationBuilder(afterKey: Map<String, Any>?): CompositeAggregationBuilder {
+/**
+ * Builds a composite aggregation for rollup jobs, with support for multi-tier rollups
+ *
+ * This method handles two scenarios:
+ * 1. Rolling up raw data from a regular index
+ * 2. Rolling up pre-aggregated data from a rollup index (multi-tier rollup)
+ *
+ * For multi-tier rollups, the source index is itself a rollup index, which means:
+ * - Dimension fields are stored with type suffixes (e.g., "field.date_histogram", "field.terms")
+ * - Metric fields are stored as pre-computed aggregations (e.g., "field.sum", "field.min")
+ * - We need to aggregate the pre-aggregated values to maintain correctness
+ *
+ * @param afterKey Optional pagination key for composite aggregation continuation
+ * @param clusterState Current cluster state used to determine if source is a rollup index
+ * @return CompositeAggregationBuilder configured for either raw data or rollup-on-rollup aggregation
+ */
+@Suppress("CyclomaticComplexMethod", "NestedBlockDepth", "LongMethod")
+fun Rollup.getCompositeAggregationBuilder(afterKey: Map<String, Any>?, clusterState: ClusterState): CompositeAggregationBuilder {
+    // Determine if the source index is a rollup index to adjust field references accordingly
+    val isRollupIndex = isRollupIndex(this.sourceIndex, clusterState)
+
+    return if (isRollupIndex) {
+        buildCompositeAggregationForRollupIndex(afterKey)
+    } else {
+        buildCompositeAggregationForStandardIndex(afterKey)
+    }
+}
+
+/**
+ * Builds composite aggregation for multi-tier rollup (source is a rollup index).
+ *
+ * In multi-tier rollups:
+ * - Dimension fields are stored with type suffixes (e.g., "field.date_histogram", "field.terms")
+ * - Metric fields are pre-computed aggregations that need to be re-aggregated
+ * - Average is stored as separate sum and value_count fields
+ * - ValueCount is stored as a sum that needs to be summed again
+ */
+private fun Rollup.buildCompositeAggregationForRollupIndex(afterKey: Map<String, Any>?): CompositeAggregationBuilder {
     val sources = mutableListOf<CompositeValuesSourceBuilder<*>>()
-    this.dimensions.forEach { dimension -> sources.add(dimension.toSourceBuilder(appendType = true)) }
+
+    // Build dimension sources with type suffixes
+    this.dimensions.forEach { dimension ->
+        val sourceBuilder = dimension.toSourceBuilder(appendType = true)
+        when (dimension) {
+            is DateHistogram -> {
+                sourceBuilder.field("${dimension.targetField}.${dimension.type.type}")
+            }
+
+            is Terms -> {
+                sourceBuilder.field("${dimension.targetField}.${dimension.type.type}")
+            }
+
+            is Histogram -> {
+                sourceBuilder.field("${dimension.targetField}.${dimension.type.type}")
+            }
+        }
+        sources.add(sourceBuilder)
+    }
+
     return CompositeAggregationBuilder(this.id, sources).size(this.pageSize).also { compositeAgg ->
         afterKey?.let { compositeAgg.aggregateAfter(it) }
-        this.metrics.forEach { metric ->
-            val subAggs =
-                metric.metrics.flatMap { agg ->
-                    when (agg) {
-                        is Average -> {
-                            listOf(
-                                SumAggregationBuilder(metric.targetFieldWithType(agg) + ".sum").field(metric.sourceField),
-                                ValueCountAggregationBuilder(metric.targetFieldWithType(agg) + ".value_count").field(metric.sourceField),
-                            )
-                        }
-                        is Sum -> listOf(SumAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
-                        is Max -> listOf(MaxAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
-                        is Min -> listOf(MinAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
-                        is ValueCount -> listOf(ValueCountAggregationBuilder(metric.targetFieldWithType(agg)).field(metric.sourceField))
-                        // This shouldn't be possible as rollup will fail to initialize with an unsupported metric
-                        else -> throw IllegalArgumentException("Found unsupported metric aggregation ${agg.type.type}")
-                    }
+        addMetricAggregationsForRollupIndex(compositeAgg)
+    }
+}
+
+/**
+ * Adds metric aggregations for multi-tier rollup to the composite aggregation.
+ * Handles re-aggregation of pre-computed metrics from rollup indices.
+ */
+private fun Rollup.addMetricAggregationsForRollupIndex(compositeAgg: CompositeAggregationBuilder) {
+    this.metrics.forEach { metric ->
+        val subAggs = metric.metrics.flatMap { agg ->
+            when (agg) {
+                is Average -> {
+                    // Average is stored as separate sum and value_count fields
+                    // Sum both components to aggregate across multiple rollup documents
+                    listOf(
+                        SumAggregationBuilder(metric.targetFieldWithType(agg) + ".sum")
+                            .field(metric.targetFieldWithType(agg) + ".sum"),
+                        SumAggregationBuilder(metric.targetFieldWithType(agg) + ".value_count")
+                            .field(metric.targetFieldWithType(agg) + ".value_count"),
+                    )
                 }
-            subAggs.forEach { compositeAgg.subAggregation(it) }
+
+                is Sum -> {
+                    // Sum the pre-computed sum values
+                    listOf(
+                        SumAggregationBuilder(metric.targetFieldWithType(agg))
+                            .field(metric.targetFieldWithType(agg)),
+                    )
+                }
+
+                is Max -> {
+                    // Take max of pre-computed max values (max of maxes)
+                    listOf(
+                        MaxAggregationBuilder(metric.targetFieldWithType(agg))
+                            .field(metric.targetFieldWithType(agg)),
+                    )
+                }
+
+                is Min -> {
+                    // Take min of pre-computed min values (min of mins)
+                    listOf(
+                        MinAggregationBuilder(metric.targetFieldWithType(agg))
+                            .field(metric.targetFieldWithType(agg)),
+                    )
+                }
+
+                is ValueCount -> {
+                    // Sum the pre-computed value_count fields
+                    // Each rollup document contains a count of raw documents it represents
+                    listOf(
+                        SumAggregationBuilder(metric.targetFieldWithType(agg))
+                            .field(metric.targetFieldWithType(agg)),
+                    )
+                }
+
+                is Cardinality -> {
+                    // Cardinality aggregation for HLL++ sketches
+                    // Multi-tier: Aggregate over pre-computed HLL sketches (field.hll)
+                    // Standard: Compute HLL sketch from raw field values
+                    listOf(
+                        CardinalityAggregationBuilder(metric.targetFieldWithType(agg))
+                            .field(metric.targetFieldWithType(agg))
+                            .precisionThreshold(agg.precisionThreshold),
+                    )
+                }
+
+                else -> throw IllegalArgumentException("Found unsupported metric aggregation ${agg.type.type}")
+            }
         }
+        subAggs.forEach { compositeAgg.subAggregation(it) }
+    }
+}
+
+/**
+ * Builds composite aggregation for standard rollup (source is a regular index with raw data).
+ *
+ * Uses the original source fields directly and computes aggregations from raw data.
+ */
+private fun Rollup.buildCompositeAggregationForStandardIndex(afterKey: Map<String, Any>?): CompositeAggregationBuilder {
+    val sources = this.dimensions.map { dimension ->
+        dimension.toSourceBuilder(appendType = true)
+    }
+
+    return CompositeAggregationBuilder(this.id, sources).size(this.pageSize).also { compositeAgg ->
+        afterKey?.let { compositeAgg.aggregateAfter(it) }
+        addMetricAggregationsForStandardIndex(compositeAgg)
+    }
+}
+
+/**
+ * Adds metric aggregations for standard rollup to the composite aggregation.
+ * Computes aggregations from raw data fields.
+ */
+private fun Rollup.addMetricAggregationsForStandardIndex(compositeAgg: CompositeAggregationBuilder) {
+    this.metrics.forEach { metric ->
+        val subAggs = metric.metrics.flatMap { agg ->
+            when (agg) {
+                is Average -> {
+                    // Compute sum and count from raw data
+                    listOf(
+                        SumAggregationBuilder(metric.targetFieldWithType(agg) + ".sum")
+                            .field(metric.sourceField),
+                        ValueCountAggregationBuilder(metric.targetFieldWithType(agg) + ".value_count")
+                            .field(metric.sourceField),
+                    )
+                }
+
+                is Sum -> {
+                    // Sum the raw field values
+                    listOf(
+                        SumAggregationBuilder(metric.targetFieldWithType(agg))
+                            .field(metric.sourceField),
+                    )
+                }
+
+                is Max -> {
+                    // Take max of raw field values
+                    listOf(
+                        MaxAggregationBuilder(metric.targetFieldWithType(agg))
+                            .field(metric.sourceField),
+                    )
+                }
+
+                is Min -> {
+                    // Take min of raw field values
+                    listOf(
+                        MinAggregationBuilder(metric.targetFieldWithType(agg))
+                            .field(metric.sourceField),
+                    )
+                }
+
+                is ValueCount -> {
+                    // Count the raw documents
+                    listOf(
+                        ValueCountAggregationBuilder(metric.targetFieldWithType(agg))
+                            .field(metric.sourceField),
+                    )
+                }
+
+                is Cardinality -> {
+                    // Cardinality aggregation for HLL++ sketches
+                    // Multi-tier: Aggregate over pre-computed HLL sketches (field.hll)
+                    // Standard: Compute HLL sketch from raw field values
+                    listOf(
+                        CardinalityAggregationBuilder(metric.targetFieldWithType(agg))
+                            .field(metric.sourceField)
+                            .precisionThreshold(agg.precisionThreshold),
+                    )
+                }
+
+                else -> throw IllegalArgumentException("Found unsupported metric aggregation ${agg.type.type}")
+            }
+        }
+        subAggs.forEach { compositeAgg.subAggregation(it) }
     }
 }
 
@@ -157,7 +361,7 @@ inline fun <reified T> Rollup.findMatchingMetricField(field: String): String {
     error("Did not find matching rollup metric")
 }
 
-@Suppress("NestedBlockDepth", "ComplexMethod")
+@Suppress("NestedBlockDepth", "CyclomaticComplexMethod")
 fun IndexMetadata.getRollupJobs(): List<Rollup>? {
     val rollupJobs = mutableListOf<Rollup>()
     val source = this.mapping()?.source() ?: return null
@@ -187,10 +391,12 @@ fun IndexMetadata.getRollupJobs(): List<Rollup>? {
                                 rollupJobs.add(Rollup.parse(xcp, rollupID))
                             }
                         }
+
                         else -> xcp.skipChildren()
                     }
                 }
             }
+
             else -> xcp.skipChildren()
         }
     }
@@ -199,7 +405,7 @@ fun IndexMetadata.getRollupJobs(): List<Rollup>? {
 }
 
 // TODO: If we have to set this manually for each aggregation builder then it means we could miss new ones settings in the future
-@Suppress("ComplexMethod", "LongMethod")
+@Suppress("CyclomaticComplexMethod", "LongMethod")
 fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): AggregationBuilder {
     val aggFactory =
         AggregatorFactories.builder().also { factories ->
@@ -213,18 +419,22 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
             val dim = this.findMatchingDimension(aggregationBuilder.field(), Dimension.Type.TERMS) as Terms
             dim.getRewrittenAggregation(aggregationBuilder, aggFactory)
         }
+
         is DateHistogramAggregationBuilder -> {
             val dim = this.findMatchingDimension(aggregationBuilder.field(), Dimension.Type.DATE_HISTOGRAM) as DateHistogram
             dim.getRewrittenAggregation(aggregationBuilder, aggFactory)
         }
+
         is HistogramAggregationBuilder -> {
             val dim = this.findMatchingDimension(aggregationBuilder.field(), Dimension.Type.HISTOGRAM) as Histogram
             dim.getRewrittenAggregation(aggregationBuilder, aggFactory)
         }
+
         is SumAggregationBuilder -> {
             SumAggregationBuilder(aggregationBuilder.name)
                 .field(this.findMatchingMetricField<Sum>(aggregationBuilder.field()))
         }
+
         is AvgAggregationBuilder -> {
             ScriptedMetricAggregationBuilder(aggregationBuilder.name)
                 .initScript(Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, "state.sums = 0D; state.counts = 0L;", emptyMap()))
@@ -250,14 +460,17 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
                     ),
                 )
         }
+
         is MaxAggregationBuilder -> {
             MaxAggregationBuilder(aggregationBuilder.name)
                 .field(this.findMatchingMetricField<Max>(aggregationBuilder.field()))
         }
+
         is MinAggregationBuilder -> {
             MinAggregationBuilder(aggregationBuilder.name)
                 .field(this.findMatchingMetricField<Min>(aggregationBuilder.field()))
         }
+
         is ValueCountAggregationBuilder -> {
             /*
              * A value count aggs of a pre-computed value count is incorrect as it just returns the number of
@@ -288,12 +501,22 @@ fun Rollup.rewriteAggregationBuilder(aggregationBuilder: AggregationBuilder): Ag
                     ),
                 )
         }
+
+        is CardinalityAggregationBuilder -> {
+            // Rewrite cardinality aggregation to use the .hll field
+            // Customer queries: cardinality(field="user_id")
+            // Rewritten query: cardinality(field="user_id.hll")
+
+            CardinalityAggregationBuilder(aggregationBuilder.name)
+                .field(this.findMatchingMetricField<Cardinality>(aggregationBuilder.field()))
+        }
+
         // We do nothing otherwise, the validation logic should have already verified so not throwing an exception
         else -> aggregationBuilder
     }
 }
 
-@Suppress("ComplexMethod", "LongMethod")
+@Suppress("CyclomaticComplexMethod", "LongMethod")
 fun Rollup.rewriteQueryBuilder(
     queryBuilder: QueryBuilder,
     fieldNameMappingTypeMap: Map<String, String>,
@@ -305,12 +528,14 @@ fun Rollup.rewriteQueryBuilder(
         updatedTermQueryBuilder.boost(queryBuilder.boost())
         updatedTermQueryBuilder.queryName(queryBuilder.queryName())
     }
+
     is TermsQueryBuilder -> {
         val updatedFieldName = queryBuilder.fieldName() + "." + Dimension.Type.TERMS.type
         val updatedTermsQueryBuilder = TermsQueryBuilder(updatedFieldName, queryBuilder.values())
         updatedTermsQueryBuilder.boost(queryBuilder.boost())
         updatedTermsQueryBuilder.queryName(queryBuilder.queryName())
     }
+
     is RangeQueryBuilder -> {
         val updatedFieldName = queryBuilder.fieldName() + "." + fieldNameMappingTypeMap.getValue(queryBuilder.fieldName())
         val updatedRangeQueryBuilder = RangeQueryBuilder(updatedFieldName)
@@ -324,6 +549,7 @@ fun Rollup.rewriteQueryBuilder(
         updatedRangeQueryBuilder.queryName(queryBuilder.queryName())
         updatedRangeQueryBuilder.boost(queryBuilder.boost())
     }
+
     is BoolQueryBuilder -> {
         val newBoolQueryBuilder = BoolQueryBuilder()
         queryBuilder.must()?.forEach {
@@ -347,6 +573,7 @@ fun Rollup.rewriteQueryBuilder(
         newBoolQueryBuilder.queryName(queryBuilder.queryName())
         newBoolQueryBuilder.boost(queryBuilder.boost())
     }
+
     is BoostingQueryBuilder -> {
         val newPositiveQueryBuilder = this.rewriteQueryBuilder(queryBuilder.positiveQuery(), fieldNameMappingTypeMap, concreteIndexName)
         val newNegativeQueryBuilder = this.rewriteQueryBuilder(queryBuilder.negativeQuery(), fieldNameMappingTypeMap, concreteIndexName)
@@ -355,12 +582,14 @@ fun Rollup.rewriteQueryBuilder(
         newBoostingQueryBuilder.queryName(queryBuilder.queryName())
         newBoostingQueryBuilder.boost(queryBuilder.boost())
     }
+
     is ConstantScoreQueryBuilder -> {
         val newInnerQueryBuilder = this.rewriteQueryBuilder(queryBuilder.innerQuery(), fieldNameMappingTypeMap, concreteIndexName)
         val newConstantScoreQueryBuilder = ConstantScoreQueryBuilder(newInnerQueryBuilder)
         newConstantScoreQueryBuilder.boost(queryBuilder.boost())
         newConstantScoreQueryBuilder.queryName(queryBuilder.queryName())
     }
+
     is DisMaxQueryBuilder -> {
         val newDisMaxQueryBuilder = DisMaxQueryBuilder()
         queryBuilder.innerQueries().forEach {
@@ -370,15 +599,18 @@ fun Rollup.rewriteQueryBuilder(
         newDisMaxQueryBuilder.queryName(queryBuilder.queryName())
         newDisMaxQueryBuilder.boost(queryBuilder.boost())
     }
+
     is MatchPhraseQueryBuilder -> {
         val newFieldName = queryBuilder.fieldName() + "." + Dimension.Type.TERMS.type
         val newMatchPhraseQueryBuilder = MatchPhraseQueryBuilder(newFieldName, queryBuilder.value())
         newMatchPhraseQueryBuilder.queryName(queryBuilder.queryName())
         newMatchPhraseQueryBuilder.boost(queryBuilder.boost())
     }
+
     is QueryStringQueryBuilder -> {
         QueryStringQueryUtil.rewriteQueryStringQuery(queryBuilder, concreteIndexName)
     }
+
     // We do nothing otherwise, the validation logic should have already verified so not throwing an exception
     else -> queryBuilder
 }
@@ -406,7 +638,7 @@ fun Rollup.populateFieldMappings(): Set<RollupFieldMapping> {
 
 // TODO: Not a fan of this.. but I can't find a way to overwrite the aggregations on the shallow copy or original
 //  so we need to instantiate a new one so we can add the rewritten aggregation builders
-@Suppress("ComplexMethod")
+@Suppress("CyclomaticComplexMethod")
 fun SearchSourceBuilder.rewriteSearchSourceBuilder(
     jobs: Set<Rollup>,
     fieldNameMappingTypeMap: Map<String, String>,

@@ -129,7 +129,9 @@ object TargetIndexMappingService {
 
             when (token) {
                 XContentParser.Token.VALUE_NUMBER -> builder.field(fieldName, xcp.intValue())
+
                 XContentParser.Token.VALUE_STRING -> builder.field(fieldName, xcp.text())
+
                 XContentParser.Token.START_OBJECT -> {
                     if (fieldName != null) {
                         builder.startObject(fieldName)
@@ -137,8 +139,11 @@ object TargetIndexMappingService {
                         builder.startObject()
                     }
                 }
+
                 XContentParser.Token.END_OBJECT -> builder.endObject()
+
                 XContentParser.Token.START_ARRAY -> builder.startArray(fieldName)
+
                 XContentParser.Token.END_ARRAY -> {
                     builder.endArray()
                     // Add target index date fields mappings only if the date field mappings are present
@@ -148,6 +153,7 @@ object TargetIndexMappingService {
                         builder.endObject()
                     }
                 }
+
                 else -> {
                     xcp.nextToken()
                     continue@loop

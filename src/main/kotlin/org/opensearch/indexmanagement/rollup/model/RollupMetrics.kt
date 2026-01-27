@@ -15,6 +15,7 @@ import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.indexmanagement.rollup.model.metric.Average
+import org.opensearch.indexmanagement.rollup.model.metric.Cardinality
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Metric
 import org.opensearch.indexmanagement.rollup.model.metric.Min
@@ -53,6 +54,7 @@ data class RollupMetrics(
                         Metric.Type.MIN -> Min(it)
                         Metric.Type.SUM -> Sum(it)
                         Metric.Type.VALUE_COUNT -> ValueCount(it)
+                        Metric.Type.CARDINALITY -> Cardinality(it)
                     },
                 )
             }
@@ -77,6 +79,7 @@ data class RollupMetrics(
                 is Min -> metric.writeTo(out)
                 is Sum -> metric.writeTo(out)
                 is ValueCount -> metric.writeTo(out)
+                is Cardinality -> metric.writeTo(out)
             }
         }
     }
@@ -87,6 +90,7 @@ data class RollupMetrics(
         is Max -> "$targetField.max"
         is Min -> "$targetField.min"
         is ValueCount -> "$targetField.value_count"
+        is Cardinality -> "$targetField.hll"
         else -> throw IllegalArgumentException("Found unsupported metric aggregation ${metric.type.type}")
     }
 
@@ -95,7 +99,7 @@ data class RollupMetrics(
         const val TARGET_FIELD_FIELD = "target_field"
         const val METRICS_FIELD = "metrics"
 
-        @Suppress("ComplexMethod", "LongMethod")
+        @Suppress("CyclomaticComplexMethod", "LongMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): RollupMetrics {
@@ -110,13 +114,16 @@ data class RollupMetrics(
 
                 when (fieldName) {
                     SOURCE_FIELD_FIELD -> sourceField = xcp.text()
+
                     TARGET_FIELD_FIELD -> targetField = xcp.text()
+
                     METRICS_FIELD -> {
                         ensureExpectedToken(Token.START_ARRAY, xcp.currentToken(), xcp)
                         while (xcp.nextToken() != Token.END_ARRAY) {
                             metrics.add(Metric.parse(xcp))
                         }
                     }
+
                     else -> throw IllegalArgumentException("Invalid dimension type [$fieldName] found in rollup metrics")
                 }
             }

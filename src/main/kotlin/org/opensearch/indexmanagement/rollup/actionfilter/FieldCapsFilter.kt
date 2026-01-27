@@ -12,6 +12,7 @@ import org.opensearch.action.fieldcaps.FieldCapabilitiesRequest
 import org.opensearch.action.fieldcaps.FieldCapabilitiesResponse
 import org.opensearch.action.support.ActionFilter
 import org.opensearch.action.support.ActionFilterChain
+import org.opensearch.action.support.ActionRequestMetadata
 import org.opensearch.action.support.IndicesOptions
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
@@ -31,7 +32,7 @@ import org.opensearch.transport.RemoteClusterAware
 
 private val logger = LogManager.getLogger(FieldCapsFilter::class.java)
 
-@Suppress("UNCHECKED_CAST", "SpreadOperator", "TooManyFunctions", "ComplexMethod", "NestedBlockDepth")
+@Suppress("UNCHECKED_CAST", "SpreadOperator", "TooManyFunctions", "CyclomaticComplexMethod", "NestedBlockDepth")
 class FieldCapsFilter(
     val clusterService: ClusterService,
     val settings: Settings,
@@ -49,6 +50,7 @@ class FieldCapsFilter(
         task: Task,
         action: String,
         request: Request,
+        actionRequestMetadata: ActionRequestMetadata<Request, Response>,
         listener: ActionListener<Response>,
         chain: ActionFilterChain<Request, Response>,
     ) {
@@ -87,14 +89,14 @@ class FieldCapsFilter(
                 return chain.proceed(task, action, request, listener)
             }
 
-            /**
+            /*
              * The request can be one of two cases:
              * 1  Just rollup indices
              * 2  Rollup + NonRollup indices
              * If 1 we forward the request to chain and discard the whole response from chain when rewriting.
              * If 2 we forward the request to chain with only non rollup indices and append rollup data to response when rewriting.
              * We are calling with rollup indices in 1 instead of an empty request since empty is defaulted to returning all indices in cluster.
-             **/
+             */
             if (nonRollupIndices.isNotEmpty()) {
                 request.indices(*nonRollupIndices.toTypedArray())
             }

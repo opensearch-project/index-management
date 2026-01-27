@@ -75,10 +75,12 @@ data class Rollup(
                         val cronSchedule = jobSchedule as CronSchedule
                         CronSchedule(cronSchedule.cronExpression, cronSchedule.timeZone, delay ?: 0)
                     }
+
                     is IntervalSchedule -> {
                         val intervalSchedule = jobSchedule as IntervalSchedule
                         IntervalSchedule(intervalSchedule.startTime, intervalSchedule.interval, intervalSchedule.unit, delay ?: 0)
                     }
+
                     else -> jobSchedule
                 }
         }
@@ -86,6 +88,7 @@ data class Rollup(
             is CronSchedule -> {
                 // Job scheduler already correctly throws errors for this
             }
+
             is IntervalSchedule -> {
                 require((jobSchedule as IntervalSchedule).interval >= MINIMUM_JOB_INTERVAL) { "Rollup job schedule interval must be greater than 0" }
             }
@@ -279,7 +282,7 @@ data class Rollup(
         const val ROLLUP_DOC_SCHEMA_VERSION_FIELD = "$ROLLUP_TYPE._$SCHEMA_VERSION_FIELD"
         const val USER_FIELD = "user"
 
-        @Suppress("ComplexMethod", "LongMethod", "NestedBlockDepth")
+        @Suppress("CyclomaticComplexMethod", "LongMethod", "NestedBlockDepth")
         @JvmStatic
         @JvmOverloads
         @Throws(IOException::class)
@@ -316,19 +319,30 @@ data class Rollup(
                     ROLLUP_ID_FIELD -> {
                         requireNotNull(xcp.text()) { "The rollup_id field is null" } // Just used for searching
                     }
+
                     ENABLED_FIELD -> enabled = xcp.booleanValue()
+
                     SCHEDULE_FIELD -> schedule = ScheduleParser.parse(xcp)
+
                     SCHEMA_VERSION_FIELD -> schemaVersion = xcp.longValue()
+
                     ENABLED_TIME_FIELD -> enabledTime = xcp.instant()
+
                     LAST_UPDATED_TIME_FIELD -> lastUpdatedTime = xcp.instant()
+
                     DESCRIPTION_FIELD -> description = xcp.text()
+
                     SOURCE_INDEX_FIELD -> sourceIndex = xcp.text()
+
                     TARGET_INDEX_FIELD -> targetIndex = xcp.text()
+
                     TARGET_INDEX_SETTINGS_FIELD -> {
                         ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
                         targetIndexSettings = Settings.fromXContent(xcp)
                     }
+
                     METADATA_ID_FIELD -> metadataID = xcp.textOrNull()
+
                     ROLES_FIELD -> {
                         // Parsing but not storing the field, deprecated
                         ensureExpectedToken(Token.START_ARRAY, xcp.currentToken(), xcp)
@@ -336,24 +350,31 @@ data class Rollup(
                             xcp.text()
                         }
                     }
+
                     PAGE_SIZE_FIELD -> pageSize = xcp.intValue()
+
                     DELAY_FIELD -> delay = if (xcp.currentToken() == Token.VALUE_NULL) null else xcp.longValue()
+
                     CONTINUOUS_FIELD -> continuous = xcp.booleanValue()
+
                     DIMENSIONS_FIELD -> {
                         ensureExpectedToken(Token.START_ARRAY, xcp.currentToken(), xcp)
                         while (xcp.nextToken() != Token.END_ARRAY) {
                             dimensions.add(Dimension.parse(xcp))
                         }
                     }
+
                     METRICS_FIELD -> {
                         ensureExpectedToken(Token.START_ARRAY, xcp.currentToken(), xcp)
                         while (xcp.nextToken() != Token.END_ARRAY) {
                             metrics.add(RollupMetrics.parse(xcp))
                         }
                     }
+
                     USER_FIELD -> {
                         user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)
                     }
+
                     else -> throw IllegalArgumentException("Invalid field [$fieldName] found in Rollup.")
                 }
             }

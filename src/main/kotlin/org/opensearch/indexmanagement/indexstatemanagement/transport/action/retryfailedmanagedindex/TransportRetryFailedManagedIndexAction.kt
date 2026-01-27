@@ -121,6 +121,7 @@ constructor(
                                             "User doesn't have required index permissions on one or more requested indices: ${e.localizedMessage}",
                                             RestStatus.FORBIDDEN,
                                         )
+
                                     false -> e
                                 },
                             ),
@@ -220,7 +221,7 @@ constructor(
             )
         }
 
-        @Suppress("ComplexMethod")
+        @Suppress("CyclomaticComplexMethod")
         private fun onMgetMetadataResponse(mgetResponse: MultiGetResponse) {
             val metadataMap = mgetResponseToMap(mgetResponse)
             indicesToRetry.forEach { (indexUuid, indexName) ->
@@ -229,13 +230,17 @@ constructor(
                 when {
                     indicesManagedState[indexUuid] == false ->
                         failedIndices.add(FailedIndex(indexName, indexUuid, "This index is not being managed."))
+
                     mgetFailure != null ->
                         failedIndices.add(FailedIndex(indexName, indexUuid, "Failed to get managed index metadata, $mgetFailure"))
+
                     managedIndexMetadata == null -> {
                         failedIndices.add(FailedIndex(indexName, indexUuid, "This index has no metadata information"))
                     }
+
                     !managedIndexMetadata.isFailed ->
                         failedIndices.add(FailedIndex(indexName, indexUuid, "This index is not in failed state."))
+
                     else ->
                         listOfMetadata.add(managedIndexMetadata)
                 }

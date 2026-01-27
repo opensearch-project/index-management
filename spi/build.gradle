@@ -2,6 +2,8 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
+
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.opensearch.gradle.test.RestIntegTestTask
 
 plugins {
@@ -25,11 +27,15 @@ ext {
 }
 
 plugins.withId('java') {
-    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_21
+    java {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
 }
 
 plugins.withId('org.jetbrains.kotlin.jvm') {
-    compileKotlin.kotlinOptions.jvmTarget = compileTestKotlin.kotlinOptions.jvmTarget = JavaVersion.VERSION_21
+    compileKotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
+    compileTestKotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
 }
 
 jacoco {
@@ -41,7 +47,7 @@ jacocoTestReport {
     reports {
         xml.required.set(false)
         csv.required.set(false)
-        html.destination file("${buildDir}/jacoco/")
+        html.outputLocation.set(file("${buildDir}/jacoco/"))
     }
 }
 

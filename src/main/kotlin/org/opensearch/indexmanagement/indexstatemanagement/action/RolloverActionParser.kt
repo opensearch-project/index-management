@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.Version
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.common.unit.ByteSizeValue
@@ -20,9 +21,14 @@ class RolloverActionParser : ActionParser() {
         val minAge = sin.readOptionalTimeValue()
         val minPrimaryShardSize = sin.readOptionalWriteable(::ByteSizeValue)
         val copyAlias = sin.readBoolean()
+        val preventEmptyRollover = if (sin.version.onOrAfter(Version.V_3_4_0)) {
+            sin.readBoolean()
+        } else {
+            false
+        }
         val index = sin.readInt()
 
-        return RolloverAction(minSize, minDocs, minAge, minPrimaryShardSize, copyAlias, index)
+        return RolloverAction(minSize, minDocs, minAge, minPrimaryShardSize, copyAlias, preventEmptyRollover, index)
     }
 
     override fun fromXContent(xcp: XContentParser, index: Int): Action {
@@ -31,6 +37,7 @@ class RolloverActionParser : ActionParser() {
         var minAge: TimeValue? = null
         var minPrimaryShardSize: ByteSizeValue? = null
         var copyAlias = false
+        var preventEmptyRollover = false
 
         ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
         while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
@@ -39,8 +46,11 @@ class RolloverActionParser : ActionParser() {
 
             when (fieldName) {
                 RolloverAction.MIN_SIZE_FIELD -> minSize = ByteSizeValue.parseBytesSizeValue(xcp.text(), RolloverAction.MIN_SIZE_FIELD)
+
                 RolloverAction.MIN_DOC_COUNT_FIELD -> minDocs = xcp.longValue()
+
                 RolloverAction.MIN_INDEX_AGE_FIELD -> minAge = TimeValue.parseTimeValue(xcp.text(), RolloverAction.MIN_INDEX_AGE_FIELD)
+
                 RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD ->
                     minPrimaryShardSize =
                         ByteSizeValue.parseBytesSizeValue(
@@ -48,12 +58,16 @@ class RolloverActionParser : ActionParser() {
                             RolloverAction
                                 .MIN_PRIMARY_SHARD_SIZE_FIELD,
                         )
+
                 RolloverAction.COPY_ALIAS_FIELD -> copyAlias = xcp.booleanValue()
+
+                RolloverAction.PREVENT_EMPTY_ROLLOVER_FIELD -> preventEmptyRollover = xcp.booleanValue()
+
                 else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in RolloverAction.")
             }
         }
 
-        return RolloverAction(minSize, minDocs, minAge, minPrimaryShardSize, copyAlias, index)
+        return RolloverAction(minSize, minDocs, minAge, minPrimaryShardSize, copyAlias, preventEmptyRollover, index)
     }
 
     override fun getActionType(): String = RolloverAction.name

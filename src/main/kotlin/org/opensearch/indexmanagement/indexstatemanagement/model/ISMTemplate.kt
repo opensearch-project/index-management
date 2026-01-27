@@ -57,7 +57,7 @@ data class ISMTemplate(
         const val PRIORITY = "priority"
         const val LAST_UPDATED_TIME_FIELD = "last_updated_time"
 
-        @Suppress("ComplexMethod")
+        @Suppress("CyclomaticComplexMethod")
         fun parse(xcp: XContentParser): ISMTemplate {
             val indexPatterns: MutableList<String> = mutableListOf()
             var priority = 0
@@ -75,8 +75,11 @@ data class ISMTemplate(
                             indexPatterns.add(xcp.text())
                         }
                     }
+
                     PRIORITY -> priority = if (xcp.currentToken() == Token.VALUE_NULL) 0 else xcp.intValue()
+
                     LAST_UPDATED_TIME_FIELD -> lastUpdatedTime = xcp.instant()
+
                     else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ISMTemplate.")
                 }
             }

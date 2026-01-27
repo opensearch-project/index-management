@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 24
+    "schema_version": 27
   },
   "dynamic": "strict",
   "properties": {
@@ -226,6 +226,21 @@
                     },
                     "snapshot": {
                       "type": "keyword"
+                    },
+                    "include_aliases": {
+                      "type": "boolean"
+                    },
+                    "ignore_index_settings": {
+                      "type": "keyword"
+                    },
+                    "number_of_replicas": {
+                      "type": "integer"
+                    },
+                    "delete_original_index": {
+                      "type": "boolean"
+                    },
+                    "rename_pattern": {
+                      "type": "keyword"
                     }
                   }
                 },
@@ -244,6 +259,9 @@
                       "type": "keyword"
                     },
                     "copy_alias": {
+                      "type": "boolean"
+                    },
+                    "prevent_empty_rollover": {
                       "type": "boolean"
                     }
                   }
@@ -374,6 +392,15 @@
                         "description": {
                           "type": "text"
                         },
+                        "source_index": {
+                          "type": "text",
+                          "fields": {
+                            "keyword": {
+                              "type": "keyword",
+                              "ignore_above": 256
+                            }
+                          }
+                        },
                         "target_index": {
                           "type": "text",
                           "fields": {
@@ -463,6 +490,13 @@
                                 },
                                 "value_count": {
                                   "type": "object"
+                                },
+                                "cardinality": {
+                                  "properties": {
+                                    "precision_threshold": {
+                                      "type": "long"
+                                    }
+                                  }
                                 }
                               }
                             }
@@ -575,6 +609,9 @@
                       "type": "boolean"
                     }
                   }
+                },
+                "search_only": {
+                  "type": "object"
                 },
                 "custom": {
                   "enabled": false,
@@ -1108,6 +1145,13 @@
                 },
                 "value_count": {
                   "type": "object"
+                },
+                "cardinality": {
+                  "properties": {
+                    "precision_threshold": {
+                      "type": "long"
+                    }
+                  }
                 }
               }
             }

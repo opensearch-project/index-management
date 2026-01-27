@@ -71,6 +71,7 @@ class IndexUtils {
                                     require(version > -1)
                                     return version
                                 }
+
                                 else -> xcp.nextToken()
                             }
                         }

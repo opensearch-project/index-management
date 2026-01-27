@@ -110,10 +110,14 @@ fun randomConditions(
 
     return when (type) {
         Conditions.MIN_INDEX_AGE_FIELD -> Conditions(indexAge = value as TimeValue)
+
         Conditions.MIN_DOC_COUNT_FIELD -> Conditions(docCount = value as Long)
+
         Conditions.MIN_SIZE_FIELD -> Conditions(size = value as ByteSizeValue)
-//        Conditions.CRON_FIELD -> Conditions(cron = value as CronSchedule) // TODO: Uncomment after issues are fixed
+
+        //        Conditions.CRON_FIELD -> Conditions(cron = value as CronSchedule) // TODO: Uncomment after issues are fixed
         Conditions.MIN_ROLLOVER_AGE_FIELD -> Conditions(rolloverAge = value as TimeValue)
+
         else -> throw IllegalArgumentException("Invalid field: [$type] given for random Conditions.")
     }
 }
@@ -133,6 +137,7 @@ fun randomRolloverActionConfig(
     minDocs = minDocs,
     minAge = minAge,
     minPrimaryShardSize = minPrimaryShardSize,
+    preventEmptyRollover = false,
     index = 0,
 )
 
@@ -239,7 +244,20 @@ fun randomTemplateScript(
 
 fun randomSnapshotActionConfig(repository: String = "repo", snapshot: String = "sp"): SnapshotAction = SnapshotAction(repository, snapshot, index = 0)
 
-fun randomRestoreActionConfig(repository: String = "repo", snapshot: String = "sp"): ConvertIndexToRemoteAction = ConvertIndexToRemoteAction(repository, snapshot, index = 0)
+fun randomRestoreActionConfig(
+    repository: String = "repo",
+    snapshot: String = "sp",
+    renamePattern: String = ConvertIndexToRemoteAction.DEFAULT_RENAME_PATTERN,
+): ConvertIndexToRemoteAction = ConvertIndexToRemoteAction(
+    repository,
+    snapshot,
+    includeAliases = false,
+    ignoreIndexSettings = "",
+    numberOfReplicas = 0,
+    deleteOriginalIndex = false,
+    renamePattern,
+    index = 0,
+)
 
 /**
  * Helper functions for creating a random Conditions object
@@ -467,6 +485,11 @@ fun OpenAction.toJsonString(): String {
 }
 
 fun AliasAction.toJsonString(): String {
+    val builder = XContentFactory.jsonBuilder()
+    return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
+}
+
+fun ConvertIndexToRemoteAction.toJsonString(): String {
     val builder = XContentFactory.jsonBuilder()
     return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
 }

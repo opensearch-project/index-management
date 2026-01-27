@@ -40,7 +40,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
     private var info: Map<String, Any>? = null
     private var newIndex: String? = null // this variable holds the new index name if rollover is successful in this run
 
-    @Suppress("ComplexMethod", "LongMethod")
+    @Suppress("CyclomaticComplexMethod", "LongMethod")
     override suspend fun execute(): Step {
         val context = this.context ?: return this
         val indexName = context.metadata.index
@@ -74,6 +74,25 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         val statsResponse = getIndexStatsOrUpdateInfo(context)
         // If statsResponse is null we already updated failed info from getIndexStatsOrUpdateInfo and can return early
         statsResponse ?: return this
+
+        // Check for empty index if prevent_empty_rollover is enabled
+        if (action.preventEmptyRollover) {
+            val numDocs = statsResponse.primaries.docs?.count ?: 0
+            if (numDocs == 0L) {
+                stepStatus = StepStatus.CONDITION_NOT_MET
+                info = mapOf(
+                    "message" to getPreventedEmptyRolloverMessage(indexName),
+                    "conditions" to mapOf(
+                        "prevent_empty_rollover" to mapOf(
+                            "condition" to "index must have at least 1 document",
+                            "current" to 0,
+                        ),
+                    ),
+                )
+                logger.info("$indexName rollover prevented: index is empty (0 documents)")
+                return this
+            }
+        }
 
         val indexCreationDate = clusterService.state().metadata().index(indexName).creationDate
         val indexAgeTimeValue =
@@ -220,7 +239,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         return null
     }
 
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     private suspend fun executeRollover(
         context: StepContext,
         rolloverTarget: String,
@@ -286,7 +305,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
      * TODO This method can be deprecated once this issue finished
      * https://github.com/opensearch-project/index-management/issues/849 finished
      */
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     private suspend fun copyAlias(
         clusterService: ClusterService,
         indexName: String,
@@ -330,6 +349,17 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                     .isHidden(aliasMetadata.isHidden)
             aliasActions.add(aliasAction)
         }
+
+        if (aliasActions.isEmpty()) {
+            stepStatus = StepStatus.COMPLETED
+            info =
+                listOfNotNull(
+                    "message" to getSuccessNoAliasesToCopyMessage(indexName, rolledOverIndexName),
+                    if (conditions != null) "conditions" to conditions else null,
+                ).toMap()
+            return
+        }
+
         val aliasReq = IndicesAliasesRequest()
         aliasActions.forEach { aliasReq.addAliasAction(it) }
 
@@ -415,6 +445,9 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         fun getSuccessCopyAliasMessage(index: String, newIndex: String) =
             "Successfully rolled over and copied alias from [index=$index] to [index=$newIndex]"
 
+        fun getSuccessNoAliasesToCopyMessage(index: String, newIndex: String) =
+            "Successfully rolled over index [index=$index] to [index=$newIndex], no additional aliases to copy"
+
         fun getFailedCopyAliasMessage(index: String, newIndex: String) =
             "Successfully rolled over but failed to copy alias from [index=$index] to [index=$newIndex]"
 
@@ -426,5 +459,8 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
 
         fun getCopyAliasRolledOverIndexNotFoundMessage(index: String?) =
             "Successfully rolled over [index=$index] but ISM cannot find rolled over index from metadata to copy aliases to, please manually copy"
+
+        fun getPreventedEmptyRolloverMessage(index: String) =
+            "Rollover prevented: index is empty (0 documents) [index=$index]"
     }
 }

@@ -22,6 +22,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ReadWriteActio
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupActionParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.SearchOnlyActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.SnapshotActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.StopReplicationActionParser
@@ -51,6 +52,7 @@ class ISMActionsParser private constructor() {
             ReplicaCountActionParser(),
             RollupActionParser(),
             RolloverActionParser(),
+            SearchOnlyActionParser(),
             ShrinkActionParser(),
             SnapshotActionParser(),
             TransformActionParser(),
@@ -97,7 +99,9 @@ class ISMActionsParser private constructor() {
             xcp.nextToken()
             when (type) {
                 ActionTimeout.TIMEOUT_FIELD -> timeout = ActionTimeout.parse(xcp)
+
                 ActionRetry.RETRY_FIELD -> retry = ActionRetry.parse(xcp)
+
                 Action.CUSTOM_ACTION_FIELD -> {
                     // The "custom" wrapper allows extensions to create arbitrary actions without updating the config mappings
                     // We consume the full custom wrapper and parse the action in this step
@@ -107,6 +111,7 @@ class ISMActionsParser private constructor() {
                     action = parseAction(xcp, totalActions, customActionType)
                     XContentParserUtils.ensureExpectedToken(XContentParser.Token.END_OBJECT, xcp.nextToken(), xcp)
                 }
+
                 else -> {
                     action = parseAction(xcp, totalActions, type)
                 }

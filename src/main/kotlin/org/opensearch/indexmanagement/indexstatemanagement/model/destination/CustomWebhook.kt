@@ -89,7 +89,7 @@ data class CustomWebhook(
         const val USERNAME_FIELD = "username"
         const val PASSWORD_FIELD = "password"
 
-        @Suppress("ComplexMethod")
+        @Suppress("CyclomaticComplexMethod")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser): CustomWebhook {
@@ -109,14 +109,23 @@ data class CustomWebhook(
                 xcp.nextToken()
                 when (fieldName) {
                     URL -> url = xcp.textOrNull()
+
                     SCHEME_FIELD -> scheme = xcp.textOrNull()
+
                     HOST_FIELD -> host = xcp.textOrNull()
+
                     PORT_FIELD -> port = xcp.intValue()
+
                     PATH_FIELD -> path = xcp.textOrNull()
+
                     QUERY_PARAMS_FIELD -> queryParams = xcp.mapStrings()
+
                     HEADER_PARAMS_FIELD -> headerParams = xcp.mapStrings()
+
                     USERNAME_FIELD -> username = xcp.textOrNull()
+
                     PASSWORD_FIELD -> password = xcp.textOrNull()
+
                     else -> {
                         error("Unexpected field: $fieldName, while parsing custom webhook destination")
                     }

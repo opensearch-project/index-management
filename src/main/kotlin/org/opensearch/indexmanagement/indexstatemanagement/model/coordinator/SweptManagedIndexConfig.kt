@@ -30,7 +30,7 @@ data class SweptManagedIndexConfig(
     val changePolicy: ChangePolicy?,
 ) {
     companion object {
-        @Suppress("ComplexMethod", "UNUSED_PARAMETER")
+        @Suppress("CyclomaticComplexMethod", "UNUSED_PARAMETER")
         @JvmStatic
         @Throws(IOException::class)
         fun parse(xcp: XContentParser, id: String = NO_ID, seqNo: Long, primaryTerm: Long): SweptManagedIndexConfig {
@@ -47,11 +47,15 @@ data class SweptManagedIndexConfig(
 
                 when (fieldName) {
                     ManagedIndexConfig.INDEX_FIELD -> index = xcp.text()
+
                     ManagedIndexConfig.INDEX_UUID_FIELD -> uuid = xcp.text()
+
                     ManagedIndexConfig.POLICY_ID_FIELD -> policyID = xcp.text()
+
                     ManagedIndexConfig.POLICY_FIELD -> {
                         policy = if (xcp.currentToken() == Token.VALUE_NULL) null else Policy.parse(xcp)
                     }
+
                     ManagedIndexConfig.CHANGE_POLICY_FIELD -> {
                         changePolicy = if (xcp.currentToken() == Token.VALUE_NULL) null else ChangePolicy.parse(xcp)
                     }

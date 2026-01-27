@@ -23,7 +23,7 @@ jobs:
       fail-fast: false
       # This starts three jobs, setting these environment variables uniquely for the different jobs
       matrix:
-        java: [21, 24]
+        java: [21, 25]
         feature: [ism, non-ism]
         include:
           - feature: ism
@@ -42,13 +42,13 @@ jobs:
         run: ${{ needs.Get-CI-Image-Tag.outputs.ci-image-start-command }}
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
       - name: Set Up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin # Temurin is a distribution of adoptium
           java-version: ${{ matrix.java }}
       # build index management
       - name: Checkout Branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       # This is a hack, but this step creates a link to the X: mounted drive, which makes the path
       # short enough to work on Windows
       - name: Build with Gradle
@@ -61,7 +61,7 @@ jobs:
         run: |
           su `id -un 1000` -c "./gradlew jacocoTestReport"
       - name: Upload coverage XML
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always() && matrix.java == 21
         with:
           name: coverage-xml-${{ matrix.java }}-${{ matrix.feature }}
@@ -69,14 +69,14 @@ jobs:
           if-no-files-found: warn
           overwrite: 'true'
       - name: Upload failed logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: ${{ failure() }}
         with:
           name: logs-${{ matrix.java }}-${{ matrix.feature }}
           path: build/testclusters/integTest-*/logs/*
           overwrite: 'true'
       - name: Upload test reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: ${{ failure() }}
         with:
           name: test-reports-linux-${{ matrix.java }}-${{ matrix.feature }}
@@ -89,7 +89,7 @@ jobs:
       # This step uses the upload-artifact Github action: https://github.com/actions/upload-artifact
       - name: Upload Artifacts
         # v4 requires node.js 20 which is not supported
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: index-management-plugin-ubuntu-latest-${{ matrix.java }}-${{ matrix.feature }}
           path: index-management-artifacts
@@ -123,13 +123,13 @@ jobs:
     steps:
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
       - name: Set Up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin # Temurin is a distribution of adoptium
           java-version: ${{ matrix.java }}
       # build index management
       - name: Checkout Branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       # This is a hack, but this step creates a link to the X: mounted drive, which makes the path
       # short enough to work on Windows
       - name: Shorten Path
@@ -146,7 +146,7 @@ jobs:
           cp ./build/distributions/*.zip index-management-artifacts
       # This step uses the upload-artifact Github action: https://github.com/actions/upload-artifact
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: index-management-plugin-${{ matrix.os }}-${{ matrix.java }}-${{ matrix.feature }}
           path: index-management-artifacts
@@ -157,8 +157,8 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v5
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v7
         with:
           path: downloaded-artifacts
           pattern: coverage-xml-*

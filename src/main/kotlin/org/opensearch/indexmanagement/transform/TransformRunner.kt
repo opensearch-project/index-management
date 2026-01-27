@@ -99,7 +99,7 @@ object TransformRunner :
     }
 
     // TODO: Add circuit breaker checks - [cluster healthy, utilization within limit]
-    @Suppress("NestedBlockDepth", "ComplexMethod", "LongMethod", "ReturnCount")
+    @Suppress("NestedBlockDepth", "CyclomaticComplexMethod", "LongMethod", "ReturnCount")
     private suspend fun executeJob(transform: Transform, metadata: TransformMetadata, context: JobExecutionContext) {
         var newGlobalCheckpoints: Map<ShardId, Long>? = null
         var newGlobalCheckpointTime: Instant? = null
@@ -123,10 +123,12 @@ object TransformRunner :
                         logger.warn("Cannot acquire lock for transform job ${transform.id}")
                         return
                     }
+
                     listOf(TransformMetadata.Status.STOPPED, TransformMetadata.Status.FINISHED).contains(metadata.status) -> {
                         logger.warn("Transform job ${transform.id} is in ${metadata.status} status. Skipping execution")
                         return
                     }
+
                     else -> {
                         val validatedMetadata = validateTransform(transform, currentMetadata)
                         if (validatedMetadata.status == TransformMetadata.Status.FAILED) {

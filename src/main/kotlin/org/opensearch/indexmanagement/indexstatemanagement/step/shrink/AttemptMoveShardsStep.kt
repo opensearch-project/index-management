@@ -305,7 +305,7 @@ class AttemptMoveShardsStep(private val action: ShrinkAction) : ShrinkStep(name,
     /*
      * Returns the list of available nodes for shrink, in increasing order of space available
      */
-    @SuppressWarnings("NestedBlockDepth", "ComplexMethod", "LongMethod")
+    @SuppressWarnings("NestedBlockDepth", "CyclomaticComplexMethod", "LongMethod")
     private suspend fun findSuitableNodes(
         stepContext: StepContext,
         shardStats: Array<ShardStats>,

@@ -23,7 +23,7 @@ jobs:
       fail-fast: false
       # This starts three jobs, setting these environment variables uniquely for the different jobs
       matrix:
-        java: [ 21, 24 ]
+        java: [ 21, 25 ]
     container:
       # using the same image which is used by opensearch-build team to build the OpenSearch Distribution
       # this image tag is subject to change as more dependencies and updates will arrive over time
@@ -35,19 +35,19 @@ jobs:
         run: ${{ needs.Get-CI-Image-Tag.outputs.ci-image-start-command }}
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
       - name: Set Up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin # Temurin is a distribution of adoptium
           java-version: ${{ matrix.java }}
       # index-management
       - name: Checkout Branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Run integration tests
         run: | 
           chown -R 1000:1000 `pwd`
           su `id -un 1000` -c "./gradlew integTest -Dsecurity=true -Dhttps=true --tests '*SecurityBehaviorIT'"
       - name: Upload failed logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: logs
