@@ -53,7 +53,16 @@ class ConvertIndexToRemoteActionParser : ActionParser() {
             DEFAULT_RENAME_PATTERN
         }
         val index = sin.readInt()
-        return ConvertIndexToRemoteAction(repository, snapshot, includeAliases, ignoreIndexSettings, numberOfReplicas, deleteOriginalIndex, renamePattern, index)
+        return ConvertIndexToRemoteAction(
+            repository = repository,
+            snapshot = snapshot,
+            includeAliases = includeAliases,
+            ignoreIndexSettings = ignoreIndexSettings,
+            numberOfReplicas = numberOfReplicas,
+            deleteOriginalIndex = deleteOriginalIndex,
+            renamePattern = renamePattern,
+            index = index,
+        )
     }
 
     override fun fromXContent(xcp: XContentParser, index: Int): Action {
