@@ -17,6 +17,10 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 class ConvertIndexToRemoteAction(
     val repository: String,
     val snapshot: String,
+    val includeAliases: Boolean = false,
+    val ignoreIndexSettings: String = "",
+    val numberOfReplicas: Int = 0,
+    val deleteOriginalIndex: Boolean = false,
     val renamePattern: String = DEFAULT_RENAME_PATTERN,
     index: Int,
 ) : Action(name, index) {
@@ -25,8 +29,18 @@ class ConvertIndexToRemoteAction(
         const val name = "convert_index_to_remote"
         const val REPOSITORY_FIELD = "repository"
         const val SNAPSHOT_FIELD = "snapshot"
+        const val INCLUDE_ALIASES_FIELD = "include_aliases"
+        const val IGNORE_INDEX_SETTINGS_FIELD = "ignore_index_settings"
+        const val NUMBER_OF_REPLICAS_FIELD = "number_of_replicas"
+        const val DELETE_ORIGINAL_INDEX_FIELD = "delete_original_index"
         const val RENAME_PATTERN_FIELD = "rename_pattern"
         const val DEFAULT_RENAME_PATTERN = "\$1_remote"
+
+        // Version in which this PR is merged. Use merge-target version for BWC: during rolling upgrade,
+        // nodes not yet upgraded (e.g. Cluster Manager) must be able to parse the stream; new fields
+        // are only written when version is on or after this, so older nodes never receive them.
+        val VERSION_WITH_NEW_FIELDS = Version.V_3_5_0
+        val VERSION_WITH_RENAME_PATTERN = Version.V_3_5_0
     }
 
     private val attemptRestoreStep = AttemptRestoreStep(this)
@@ -41,6 +55,10 @@ class ConvertIndexToRemoteAction(
         builder.startObject(type)
         builder.field(REPOSITORY_FIELD, repository)
         builder.field(SNAPSHOT_FIELD, snapshot)
+        builder.field(INCLUDE_ALIASES_FIELD, includeAliases)
+        builder.field(IGNORE_INDEX_SETTINGS_FIELD, ignoreIndexSettings)
+        builder.field(NUMBER_OF_REPLICAS_FIELD, numberOfReplicas)
+        builder.field(DELETE_ORIGINAL_INDEX_FIELD, deleteOriginalIndex)
         if (renamePattern != DEFAULT_RENAME_PATTERN) {
             builder.field(RENAME_PATTERN_FIELD, renamePattern)
         }
@@ -50,7 +68,13 @@ class ConvertIndexToRemoteAction(
     override fun populateAction(out: StreamOutput) {
         out.writeString(repository)
         out.writeString(snapshot)
-        if (out.version.onOrAfter(Version.V_3_5_0)) {
+        if (out.version.onOrAfter(VERSION_WITH_NEW_FIELDS)) {
+            out.writeBoolean(includeAliases)
+            out.writeString(ignoreIndexSettings)
+            out.writeInt(numberOfReplicas)
+            out.writeBoolean(deleteOriginalIndex)
+        }
+        if (out.version.onOrAfter(VERSION_WITH_RENAME_PATTERN)) {
             out.writeString(renamePattern)
         }
         out.writeInt(actionIndex)
