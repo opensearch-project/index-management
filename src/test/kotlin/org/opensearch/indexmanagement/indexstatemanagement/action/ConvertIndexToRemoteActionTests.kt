@@ -239,7 +239,8 @@ class ConvertIndexToRemoteActionTests : OpenSearchTestCase() {
         }
     }
 
-    fun `test backward compatibility - old version without renamePattern`() {
+    fun `test backward compatibility - old version without new fields`() {
+        // Stream written by pre-3.5.0 node: only repository, snapshot, index (no new fields, no renamePattern)
         val baos = ByteArrayOutputStream()
         val osso = OutputStreamStreamOutput(baos)
         osso.version = Version.V_3_4_0
@@ -249,12 +250,7 @@ class ConvertIndexToRemoteActionTests : OpenSearchTestCase() {
         osso.writeOptionalWriteable(null) // configRetry
         osso.writeString("my-repo")
         osso.writeString("{{ctx.index}}")
-        // V_3_4_0 >= V_3_3_0, so new fields are written
-        osso.writeBoolean(false) // includeAliases
-        osso.writeString("") // ignoreIndexSettings
-        osso.writeInt(0) // numberOfReplicas
-        osso.writeBoolean(false) // deleteOriginalIndex
-        // renamePattern is NOT written for V_3_4_0 (< V_3_5_0)
+        // V_3_4_0 < V_3_5_0: new fields and renamePattern are NOT written
         osso.writeInt(0) // actionIndex
 
         val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray()))
@@ -264,6 +260,10 @@ class ConvertIndexToRemoteActionTests : OpenSearchTestCase() {
         assertEquals("repository should be preserved", "my-repo", deserializedAction.repository)
         assertEquals("snapshot should be preserved", "{{ctx.index}}", deserializedAction.snapshot)
         assertEquals("renamePattern should default", DEFAULT_RENAME_PATTERN, deserializedAction.renamePattern)
+        assertEquals("includeAliases should default", false, deserializedAction.includeAliases)
+        assertEquals("ignoreIndexSettings should default", "", deserializedAction.ignoreIndexSettings)
+        assertEquals("numberOfReplicas should default", 0, deserializedAction.numberOfReplicas)
+        assertEquals("deleteOriginalIndex should default", false, deserializedAction.deleteOriginalIndex)
     }
 
     fun `test forward compatibility - new version with renamePattern`() {
@@ -288,7 +288,7 @@ class ConvertIndexToRemoteActionTests : OpenSearchTestCase() {
         assertEquals("renamePattern should be preserved", originalAction.renamePattern, deserializedAction.renamePattern)
     }
 
-    fun `test version compatibility - writing to old version skips renamePattern`() {
+    fun `test version compatibility - writing to old version skips new fields and renamePattern`() {
         val action = ConvertIndexToRemoteAction(
             repository = "my-repo",
             snapshot = "{{ctx.index}}",
@@ -312,22 +312,13 @@ class ConvertIndexToRemoteActionTests : OpenSearchTestCase() {
         input.readOptionalWriteable(::ActionTimeout)
         input.readOptionalWriteable(::ActionRetry)
 
+        // V_3_4_0 < V_3_5_0: new fields and renamePattern are NOT written, so we only read repository, snapshot, actionIndex
         val repository = input.readString()
         val snapshot = input.readString()
-        // V_3_4_0 >= V_3_3_0, so new fields are read
-        val includeAliases = input.readBoolean()
-        val ignoreIndexSettings = input.readString()
-        val numberOfReplicas = input.readInt()
-        val deleteOriginalIndex = input.readBoolean()
-        // renamePattern is NOT read for V_3_4_0 (< V_3_5_0)
         val actionIndex = input.readInt()
 
         assertEquals("repository should match", action.repository, repository)
         assertEquals("snapshot should match", action.snapshot, snapshot)
-        assertEquals("includeAliases should match", action.includeAliases, includeAliases)
-        assertEquals("ignoreIndexSettings should match", action.ignoreIndexSettings, ignoreIndexSettings)
-        assertEquals("numberOfReplicas should match", action.numberOfReplicas, numberOfReplicas)
-        assertEquals("deleteOriginalIndex should match", action.deleteOriginalIndex, deleteOriginalIndex)
         assertEquals("actionIndex should match", action.actionIndex, actionIndex)
         assertEquals("Stream should be fully consumed", 0, input.available())
     }
