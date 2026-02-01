@@ -233,7 +233,7 @@ class ActionTests : OpenSearchTestCase() {
     }
 
     fun `test convert index to remote action backward compatibility with older version`() {
-        // Test that reading from an older version (before V_3_3_0) uses defaults for new fields
+        // Test that reading from an older version (before V_3_5_0) uses defaults for new fields
         val convertAction = ConvertIndexToRemoteAction(
             repository = "test-repo",
             snapshot = "test-snapshot",
@@ -247,7 +247,7 @@ class ActionTests : OpenSearchTestCase() {
         // Write with older version (should not write new fields)
         val baos = ByteArrayOutputStream()
         val osso = OutputStreamStreamOutput(baos).also {
-            it.version = org.opensearch.Version.V_3_2_0 // Version before V_3_3_0
+            it.version = org.opensearch.Version.V_3_2_0 // Version before V_3_5_0
         }
         convertAction.writeTo(osso)
 
@@ -278,16 +278,16 @@ class ActionTests : OpenSearchTestCase() {
             index = 0,
         )
 
-        // Write with newer version (should write all fields)
+        // Write with newer version (should write all fields) - V_3_5_0 is when new fields were added
         val baos = ByteArrayOutputStream()
         val osso = OutputStreamStreamOutput(baos).also {
-            it.version = org.opensearch.Version.V_3_3_0
+            it.version = org.opensearch.Version.V_3_5_0
         }
         convertAction.writeTo(osso)
 
         // Read with newer version (should read all fields)
         val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray())).also {
-            it.version = org.opensearch.Version.V_3_3_0
+            it.version = org.opensearch.Version.V_3_5_0
         }
         val parsedAction = ISMActionsParser.instance.fromStreamInput(input) as ConvertIndexToRemoteAction
 
