@@ -133,7 +133,7 @@ publishing {
     }
     publications {
         shadow(MavenPublication) {
-            project.shadow.component(it)
+            from components.shadow
 
             artifact sourcesJar
             artifact javadocJar
