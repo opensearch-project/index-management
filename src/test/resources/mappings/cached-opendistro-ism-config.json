@@ -227,6 +227,18 @@
                     "snapshot": {
                       "type": "keyword"
                     },
+                    "include_aliases": {
+                      "type": "boolean"
+                    },
+                    "ignore_index_settings": {
+                      "type": "keyword"
+                    },
+                    "number_of_replicas": {
+                      "type": "integer"
+                    },
+                    "delete_original_index": {
+                      "type": "boolean"
+                    },
                     "rename_pattern": {
                       "type": "keyword"
                     }

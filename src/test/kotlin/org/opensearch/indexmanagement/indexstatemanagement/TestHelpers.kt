@@ -248,7 +248,16 @@ fun randomRestoreActionConfig(
     repository: String = "repo",
     snapshot: String = "sp",
     renamePattern: String = ConvertIndexToRemoteAction.DEFAULT_RENAME_PATTERN,
-): ConvertIndexToRemoteAction = ConvertIndexToRemoteAction(repository, snapshot, renamePattern, index = 0)
+): ConvertIndexToRemoteAction = ConvertIndexToRemoteAction(
+    repository,
+    snapshot,
+    includeAliases = false,
+    ignoreIndexSettings = "",
+    numberOfReplicas = 0,
+    deleteOriginalIndex = false,
+    renamePattern,
+    index = 0,
+)
 
 /**
  * Helper functions for creating a random Conditions object
@@ -476,6 +485,11 @@ fun OpenAction.toJsonString(): String {
 }
 
 fun AliasAction.toJsonString(): String {
+    val builder = XContentFactory.jsonBuilder()
+    return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
+}
+
+fun ConvertIndexToRemoteAction.toJsonString(): String {
     val builder = XContentFactory.jsonBuilder()
     return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
 }
