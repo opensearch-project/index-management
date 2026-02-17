@@ -16,12 +16,14 @@ import org.junit.Before
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mockito.doAnswer
-import org.opensearch.action.admin.indices.settings.get.GetSettingsRequest
-import org.opensearch.action.admin.indices.settings.get.GetSettingsResponse
 import org.opensearch.action.support.clustermanager.AcknowledgedResponse
+import org.opensearch.cluster.ClusterState
+import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.action.ActionListener
+import org.opensearch.core.index.Index
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.step.delete.AttemptDeleteStep
@@ -51,6 +53,7 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
     private val lockService: LockService = mock()
     private lateinit var metricsRegistry: MetricsRegistry
     private lateinit var deleteActionMetrics: DeleteActionMetrics
+    private val metadata: Metadata = mock()
 
     @Before
     fun setup() {
@@ -61,6 +64,10 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
         IndexManagementActionsMetrics.instance.initialize(metricsRegistry)
         ManagedIndexRunner.registerIndexManagementActionMetrics(IndexManagementActionsMetrics.instance)
         deleteActionMetrics = IndexManagementActionsMetrics.instance.getActionMetrics(IndexManagementActionsMetrics.DELETE) as DeleteActionMetrics
+        val clusterState: ClusterState = mock()
+        whenever(clusterService.state()).thenReturn(clusterState)
+        whenever(clusterState.metadata()).thenReturn(metadata)
+        whenever(clusterState.metadata).thenReturn(metadata)
     }
 
     fun `test delete step sets step status to completed when successful`() {
@@ -153,38 +160,11 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
         }
     }
 
-    private fun getIndicesAdminClient(
-        deleteResponse: AcknowledgedResponse?,
-        deleteException: Exception?,
-        getSettingsResponse: GetSettingsResponse?,
-    ): IndicesAdminClient = mock {
-        doAnswer { invocationOnMock ->
-            val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
-            if (deleteResponse != null) {
-                listener.onResponse(deleteResponse)
-            } else {
-                listener.onFailure(deleteException)
-            }
-        }.whenever(this.mock).delete(any(), any())
-
-        doAnswer { invocationOnMock ->
-            val listener = invocationOnMock.getArgument<ActionListener<GetSettingsResponse>>(1)
-            listener.onResponse(getSettingsResponse)
-        }.whenever(this.mock).getSettings(any(), any())
-    }
-
     private fun getClusterAdminClient(deleteSnapshotResponse: AcknowledgedResponse): ClusterAdminClient = mock {
         doAnswer { invocationOnMock ->
             val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
             listener.onResponse(deleteSnapshotResponse)
         }.whenever(this.mock).deleteSnapshot(any(), any())
-    }
-
-    private fun createGetSettingsResponse(indexName: String, settings: Settings): GetSettingsResponse {
-        val indexToSettings = mapOf(indexName to settings)
-        return mock {
-            on { this.indexToSettings } doReturn indexToSettings
-        }
     }
 
     fun `test delete step with delete_snapshot deletes both index and snapshot`() {
@@ -196,9 +176,12 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
             .put("index.searchable_snapshot.repository", repository)
             .put("index.searchable_snapshot.snapshot_id.name", snapshotName)
             .build()
-        val getSettingsResponse = createGetSettingsResponse(indexName, indexSettings)
-
-        val indicesAdminClient = getIndicesAdminClient(AcknowledgedResponse(true), null, getSettingsResponse)
+        val indexMetadata: IndexMetadata = mock()
+        whenever(indexMetadata.settings).thenReturn(indexSettings)
+        whenever(indexMetadata.index).thenReturn(Index(indexName, "uuid"))
+        whenever(metadata.index(indexName)).thenReturn(indexMetadata)
+        whenever(metadata.indices).thenReturn(mapOf(indexName to indexMetadata))
+        val indicesAdminClient = getIndicesAdminClient(AcknowledgedResponse(true), null)
         val clusterAdminClient = getClusterAdminClient(AcknowledgedResponse(true))
         val client = getClient(getAdminClient(indicesAdminClient, clusterAdminClient))
 
@@ -227,9 +210,11 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
 
         // Normal index without searchable snapshot settings
         val indexSettings = Settings.builder().build()
-        val getSettingsResponse = createGetSettingsResponse(indexName, indexSettings)
+        val indexMetadata: IndexMetadata = mock()
+        whenever(indexMetadata.settings).thenReturn(indexSettings)
+        whenever(metadata.index(indexName)).thenReturn(indexMetadata)
 
-        val indicesAdminClient = getIndicesAdminClient(AcknowledgedResponse(true), null, getSettingsResponse)
+        val indicesAdminClient = getIndicesAdminClient(AcknowledgedResponse(true), null)
         val clusterAdminClient: ClusterAdminClient = mock()
         val client = getClient(getAdminClient(indicesAdminClient, clusterAdminClient))
 
@@ -261,36 +246,18 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
             .put("index.searchable_snapshot.snapshot_id.name", snapshotName)
             .build()
 
-        // Mock getSettings to return both indices when querying "*"
-        val allIndicesSettings = mapOf(
-            indexName to indexSettings,
-            otherIndexName to indexSettings,
-        )
-        val getSettingsResponseForIndex: GetSettingsResponse = mock {
-            on { this.indexToSettings } doReturn mapOf(indexName to indexSettings)
-        }
-        val getSettingsResponseForAll: GetSettingsResponse = mock {
-            on { this.indexToSettings } doReturn allIndicesSettings
-        }
+        val indexMetadata: IndexMetadata = mock()
+        whenever(indexMetadata.settings).thenReturn(indexSettings)
+        whenever(indexMetadata.index).thenReturn(Index(indexName, "uuid"))
 
-        val indicesAdminClient: IndicesAdminClient = mock {
-            doAnswer { invocationOnMock ->
-                val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
-                listener.onResponse(AcknowledgedResponse(true))
-            }.whenever(this.mock).delete(any(), any())
+        val otherIndexMetadata: IndexMetadata = mock()
+        whenever(otherIndexMetadata.settings).thenReturn(indexSettings)
+        whenever(otherIndexMetadata.index).thenReturn(Index(otherIndexName, "uuid2"))
 
-            doAnswer { invocationOnMock ->
-                val request = invocationOnMock.getArgument<GetSettingsRequest>(0)
-                val listener = invocationOnMock.getArgument<ActionListener<GetSettingsResponse>>(1)
-                // Return different response based on indices pattern
-                if (request.indices().contentEquals(arrayOf("*"))) {
-                    listener.onResponse(getSettingsResponseForAll)
-                } else {
-                    listener.onResponse(getSettingsResponseForIndex)
-                }
-            }.whenever(this.mock).getSettings(any(), any())
-        }
+        whenever(metadata.index(indexName)).thenReturn(indexMetadata)
+        whenever(metadata.indices).thenReturn(mapOf(indexName to indexMetadata, otherIndexName to otherIndexMetadata))
 
+        val indicesAdminClient = getIndicesAdminClient(AcknowledgedResponse(true), null)
         val clusterAdminClient: ClusterAdminClient = mock()
         val client = getClient(getAdminClient(indicesAdminClient, clusterAdminClient))
 
@@ -320,9 +287,13 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
             .put("index.searchable_snapshot.repository", repository)
             .put("index.searchable_snapshot.snapshot_id.name", snapshotName)
             .build()
-        val getSettingsResponse = createGetSettingsResponse(indexName, indexSettings)
+        val indexMetadata: IndexMetadata = mock()
+        whenever(indexMetadata.settings).thenReturn(indexSettings)
+        whenever(indexMetadata.index).thenReturn(Index(indexName, "uuid"))
+        whenever(metadata.index(indexName)).thenReturn(indexMetadata)
+        whenever(metadata.indices).thenReturn(mapOf(indexName to indexMetadata))
 
-        val indicesAdminClient = getIndicesAdminClient(AcknowledgedResponse(true), null, getSettingsResponse)
+        val indicesAdminClient = getIndicesAdminClient(AcknowledgedResponse(true), null)
         val clusterAdminClient = getClusterAdminClient(AcknowledgedResponse(false))
         val client = getClient(getAdminClient(indicesAdminClient, clusterAdminClient))
 
@@ -351,9 +322,13 @@ class AttemptDeleteStepTests : OpenSearchTestCase() {
             .put("index.searchable_snapshot.repository", repository)
             .put("index.searchable_snapshot.snapshot_id.name", snapshotName)
             .build()
-        val getSettingsResponse = createGetSettingsResponse(indexName, indexSettings)
+        val indexMetadata: IndexMetadata = mock()
+        whenever(indexMetadata.settings).thenReturn(indexSettings)
+        whenever(indexMetadata.index).thenReturn(Index(indexName, "uuid"))
+        whenever(metadata.index(indexName)).thenReturn(indexMetadata)
+        whenever(metadata.indices).thenReturn(mapOf(indexName to indexMetadata))
 
-        val indicesAdminClient = getIndicesAdminClient(AcknowledgedResponse(true), null, getSettingsResponse)
+        val indicesAdminClient = getIndicesAdminClient(AcknowledgedResponse(true), null)
         val clusterAdminClient: ClusterAdminClient = mock {
             doAnswer { invocationOnMock ->
                 val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)

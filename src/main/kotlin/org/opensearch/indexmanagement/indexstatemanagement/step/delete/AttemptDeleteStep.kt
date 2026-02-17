@@ -9,8 +9,6 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
 import org.opensearch.action.admin.indices.delete.DeleteIndexRequest
-import org.opensearch.action.admin.indices.settings.get.GetSettingsRequest
-import org.opensearch.action.admin.indices.settings.get.GetSettingsResponse
 import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
@@ -35,8 +33,7 @@ class AttemptDeleteStep(private val action: DeleteAction) : Step(name) {
 
         if (action.deleteSnapshot) {
             try {
-                val settingsResponse = getIndexSettings(indexName)
-                val settings = settingsResponse.indexToSettings[indexName]
+                val settings = context.clusterService.state().metadata.index(indexName).settings
                 snapshotRepository = settings?.get(SEARCHABLE_SNAPSHOT_REPOSITORY_SETTING)
                 snapshotName = settings?.get(SEARCHABLE_SNAPSHOT_NAME_SETTING)
 
@@ -95,30 +92,22 @@ class AttemptDeleteStep(private val action: DeleteAction) : Step(name) {
         return this
     }
 
-    private suspend fun getIndexSettings(indexName: String): GetSettingsResponse {
-        val context = this.context!!
-        return context.client.admin().indices()
-            .suspendUntil { getSettings(GetSettingsRequest().indices(indexName), it) }
-    }
-
-    private suspend fun findOtherIndicesUsingSameSnapshot(
+    private fun findOtherIndicesUsingSameSnapshot(
         currentIndex: String,
         repository: String,
         snapshotName: String,
     ): List<String> {
         val context = this.context!!
-        val allSettingsResponse: GetSettingsResponse =
-            context.client.admin().indices()
-                .suspendUntil { getSettings(GetSettingsRequest().indices("*"), it) }
+        val metadata = context.clusterService.state().metadata
 
-        return allSettingsResponse.indexToSettings
-            .filter { (indexName, settings) ->
-                indexName != currentIndex &&
+        return metadata.indices.values
+            .filter { indexMetadata ->
+                val settings = indexMetadata.settings
+                indexMetadata.index.name != currentIndex &&
                     settings.get(SEARCHABLE_SNAPSHOT_REPOSITORY_SETTING) == repository &&
                     settings.get(SEARCHABLE_SNAPSHOT_NAME_SETTING) == snapshotName
             }
-            .keys
-            .toList()
+            .map { it.index.name }
     }
 
     private suspend fun deleteSnapshot(indexName: String, repository: String, snapshotName: String) {
