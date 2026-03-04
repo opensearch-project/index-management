@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit
 buildscript {
     ext {
         isSnapshot = "true" == System.getProperty("build.snapshot", "true")
-        opensearch_version = System.getProperty("opensearch.version", "2.19.4-SNAPSHOT")
+        opensearch_version = System.getProperty("opensearch.version", "2.19.5-SNAPSHOT")
         buildVersionQualifier = System.getProperty("build.version_qualifier", "")
         // 2.2.0-SNAPSHOT -> 2.2.0.0-SNAPSHOT
         version_tokens = opensearch_version.tokenize('-')
@@ -650,8 +650,8 @@ configurations {
     bwcZip
 }
 dependencies {
-    bwcZip "org.opensearch.plugin:opensearch-job-scheduler:${bwcMinVersion}-SNAPSHOT@zip"
-    bwcZip "org.opensearch.plugin:opensearch-index-management:${bwcMinVersion}-SNAPSHOT@zip"
+    bwcZip "org.opensearch.plugin:opensearch-job-scheduler:${bwcMinVersion}@zip"
+    bwcZip "org.opensearch.plugin:opensearch-index-management:${bwcMinVersion}@zip"
 }
 ext.resolvebwcZipFile = { pluginId ->
     return new Callable<RegularFile>() {
@@ -723,7 +723,7 @@ Integer bwcNumNodes = 3
                 }
             } else {
                 versions = [
-                        "2.9.0-SNAPSHOT", opensearch_version
+                        "2.18.0-SNAPSHOT", opensearch_version
                 ]
                 plugin(provider(resolvebwcZipFile("opensearch-job-scheduler")))
                 plugin(provider(resolvebwcZipFile("opensearch-index-management")))
