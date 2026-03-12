@@ -311,7 +311,9 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             waitFor {
                 if (!isMultiNode) {
                     waitForRunningTasks(client)
-                    waitForPendingTasks(client)
+                    waitForPendingTasks(client) { taskName ->
+                        taskName.startsWith("segrep_") || taskName.startsWith("indices:admin/publishCheckpoint")
+                    }
                     waitForThreadPools(client)
                 } else {
                     // Multi node test is not suitable to waitFor
@@ -344,14 +346,19 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
                 val nodeTasks = nodeInfo["tasks"] as Map<String, Any>?
                 for ((_, value1) in nodeTasks!!) {
                     val task = value1 as Map<String, Any>
-                    // Ignore the task list API - it doesn't count against us
-                    if (task["action"] == ListTasksAction.NAME || task["action"] == ListTasksAction.NAME + "[n]") continue
+                    val action = task["action"] as String
+                    if (isIgnorableTask(action)) continue
                     // runningTasks.add(task["action"].toString() + " | " + task["description"].toString())
                     runningTasks.add(task.toString())
                 }
             }
             return runningTasks
         }
+
+        // Ignore the task list API and segment replication background tasks (always running on Remote Store clusters)
+        private fun isIgnorableTask(action: String): Boolean =
+            action == ListTasksAction.NAME || action == ListTasksAction.NAME + "[n]" ||
+                action.startsWith("segrep_") || action == "indices:admin/publishCheckpoint[p]"
 
         @JvmStatic
         protected fun waitForThreadPools(client: RestClient) {
