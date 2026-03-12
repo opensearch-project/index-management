@@ -17,6 +17,7 @@ import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.rollup.model.RollupMetrics
 import org.opensearch.indexmanagement.rollup.model.metric.Average
+import org.opensearch.indexmanagement.rollup.model.metric.Cardinality
 import org.opensearch.indexmanagement.rollup.model.metric.Max
 import org.opensearch.indexmanagement.rollup.model.metric.Metric
 import org.opensearch.indexmanagement.rollup.model.metric.Min
@@ -268,6 +269,7 @@ class RestIndexRollupActionIT : RollupRestAPITestCase() {
                                 Metric.Type.MIN -> Sum()
                                 Metric.Type.SUM -> ValueCount()
                                 Metric.Type.VALUE_COUNT -> Average()
+                                Metric.Type.CARDINALITY -> Cardinality()
                             }
                         },
                     )
