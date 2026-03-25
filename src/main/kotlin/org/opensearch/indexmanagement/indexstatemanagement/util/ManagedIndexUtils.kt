@@ -266,10 +266,12 @@ fun Transition.hasStatsConditions(): Boolean = this.conditions?.docCount != null
 fun RolloverAction.evaluateConditions(
     indexAgeTimeValue: TimeValue,
     numDocs: Long,
+    primaryShardNumDocs: Long,
     indexSize: ByteSizeValue,
     primaryShardSize: ByteSizeValue,
 ): Boolean {
     if (this.minDocs == null &&
+        this.minPrimaryShardDocs == null &&
         this.minAge == null &&
         this.minSize == null &&
         this.minPrimaryShardSize == null
@@ -280,6 +282,10 @@ fun RolloverAction.evaluateConditions(
 
     if (this.minDocs != null) {
         if (this.minDocs <= numDocs) return true
+    }
+
+    if (this.minPrimaryShardDocs != null) {
+        if (this.minPrimaryShardDocs <= primaryShardNumDocs) return true
     }
 
     if (this.minAge != null) {

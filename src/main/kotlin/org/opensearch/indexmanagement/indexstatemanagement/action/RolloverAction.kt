@@ -19,6 +19,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 class RolloverAction(
     val minSize: ByteSizeValue?,
     val minDocs: Long?,
+    val minPrimaryShardDocs: Long?,
     val minAge: TimeValue?,
     val minPrimaryShardSize: ByteSizeValue?,
     val copyAlias: Boolean = false,
@@ -34,6 +35,7 @@ class RolloverAction(
             }
         }
         if (minDocs != null) require(minDocs > 0) { "RolloverAction minDocs value must be greater than 0" }
+        if (minPrimaryShardDocs != null) require(minPrimaryShardDocs > 0) { "RolloverAction minPrimaryShardDocs value must be greater than 0" }
     }
 
     private val attemptRolloverStep = AttemptRolloverStep(this)
@@ -47,6 +49,7 @@ class RolloverAction(
         builder.startObject(type)
         if (minSize != null) builder.field(MIN_SIZE_FIELD, minSize.stringRep)
         if (minDocs != null) builder.field(MIN_DOC_COUNT_FIELD, minDocs)
+        if (minPrimaryShardDocs != null) builder.field(MIN_PRIMARY_SHARD_DOC_COUNT_FIELD, minPrimaryShardDocs)
         if (minAge != null) builder.field(MIN_INDEX_AGE_FIELD, minAge.stringRep)
         if (minPrimaryShardSize != null) builder.field(MIN_PRIMARY_SHARD_SIZE_FIELD, minPrimaryShardSize.stringRep)
         builder.field(COPY_ALIAS_FIELD, copyAlias)
@@ -57,6 +60,7 @@ class RolloverAction(
     override fun populateAction(out: StreamOutput) {
         out.writeOptionalWriteable(minSize)
         out.writeOptionalLong(minDocs)
+        out.writeOptionalLong(minPrimaryShardDocs)
         out.writeOptionalTimeValue(minAge)
         out.writeOptionalWriteable(minPrimaryShardSize)
         out.writeBoolean(copyAlias)
@@ -70,6 +74,7 @@ class RolloverAction(
         const val name = "rollover"
         const val MIN_SIZE_FIELD = "min_size"
         const val MIN_DOC_COUNT_FIELD = "min_doc_count"
+        const val MIN_PRIMARY_SHARD_DOC_COUNT_FIELD = "min_primary_shard_doc_count"
         const val MIN_INDEX_AGE_FIELD = "min_index_age"
         const val MIN_PRIMARY_SHARD_SIZE_FIELD = "min_primary_shard_size"
         const val COPY_ALIAS_FIELD = "copy_alias"

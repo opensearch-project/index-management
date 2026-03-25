@@ -18,6 +18,7 @@ class RolloverActionParser : ActionParser() {
     override fun fromStreamInput(sin: StreamInput): Action {
         val minSize = sin.readOptionalWriteable(::ByteSizeValue)
         val minDocs = sin.readOptionalLong()
+        val minPrimaryShardDocs = sin.readOptionalLong()
         val minAge = sin.readOptionalTimeValue()
         val minPrimaryShardSize = sin.readOptionalWriteable(::ByteSizeValue)
         val copyAlias = sin.readBoolean()
@@ -28,12 +29,13 @@ class RolloverActionParser : ActionParser() {
         }
         val index = sin.readInt()
 
-        return RolloverAction(minSize, minDocs, minAge, minPrimaryShardSize, copyAlias, preventEmptyRollover, index)
+        return RolloverAction(minSize, minDocs, minPrimaryShardDocs, minAge, minPrimaryShardSize, copyAlias, preventEmptyRollover, index)
     }
 
     override fun fromXContent(xcp: XContentParser, index: Int): Action {
         var minSize: ByteSizeValue? = null
         var minDocs: Long? = null
+        var minPrimaryShardDocs: Long? = null
         var minAge: TimeValue? = null
         var minPrimaryShardSize: ByteSizeValue? = null
         var copyAlias = false
@@ -48,6 +50,8 @@ class RolloverActionParser : ActionParser() {
                 RolloverAction.MIN_SIZE_FIELD -> minSize = ByteSizeValue.parseBytesSizeValue(xcp.text(), RolloverAction.MIN_SIZE_FIELD)
 
                 RolloverAction.MIN_DOC_COUNT_FIELD -> minDocs = xcp.longValue()
+
+                RolloverAction.MIN_PRIMARY_SHARD_DOC_COUNT_FIELD -> minPrimaryShardDocs = xcp.longValue()
 
                 RolloverAction.MIN_INDEX_AGE_FIELD -> minAge = TimeValue.parseTimeValue(xcp.text(), RolloverAction.MIN_INDEX_AGE_FIELD)
 
@@ -67,7 +71,7 @@ class RolloverActionParser : ActionParser() {
             }
         }
 
-        return RolloverAction(minSize, minDocs, minAge, minPrimaryShardSize, copyAlias, preventEmptyRollover, index)
+        return RolloverAction(minSize, minDocs, minPrimaryShardDocs, minAge, minPrimaryShardSize, copyAlias, preventEmptyRollover, index)
     }
 
     override fun getActionType(): String = RolloverAction.name
