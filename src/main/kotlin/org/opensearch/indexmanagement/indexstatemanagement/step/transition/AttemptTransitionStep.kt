@@ -59,6 +59,7 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             }
             val stepStartTime = getStepStartTime(context.metadata)
             var numDocs: Long? = null
+            var numDocsMostCrowdedShard: Long? = null
             var indexSize: ByteSizeValue? = null
 
             val rolloverDate: Instant? = if (inCluster) indexMetadata.getOldestRolloverTime() else null
@@ -94,6 +95,15 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
                         return this
                     }
                     numDocs = statsResponse.primaries.getDocs()?.count ?: 0
+                    for (shard in statsResponse.getShards()) {
+                        if (shard.getShardRouting().primary()) {
+                            val currentShardNumDocs: Long? = shard.getStats().getDocs()?.count
+                            if (numDocsMostCrowdedShard == null || (currentShardNumDocs != null && currentShardNumDocs > numDocsMostCrowdedShard)) {
+                                numDocsMostCrowdedShard = currentShardNumDocs
+                            }
+                        }
+                    }
+                    numDocsMostCrowdedShard = numDocsMostCrowdedShard ?: 0
                     indexSize = ByteSizeValue(statsResponse.primaries.getDocs()?.totalSizeInBytes ?: 0)
                 } else {
                     logger.warn("Cannot use index size/doc count transition conditions for index [$indexName] that does not exist in cluster")
@@ -110,6 +120,7 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
                         TransitionConditionContext(
                             indexCreationDate = indexCreationDateInstant,
                             numDocs = numDocs,
+                            primaryShardNumDocs = numDocsMostCrowdedShard,
                             indexSize = indexSize,
                             transitionStartTime = stepStartTime,
                             rolloverDate = rolloverDate,
@@ -123,7 +134,7 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             if (stateName != null) {
                 logger.info(
                     "$indexName transition conditions evaluated to true [indexCreationDate=$indexCreationDate," +
-                        " numDocs=$numDocs, indexSize=${indexSize?.bytes},stepStartTime=${stepStartTime.toEpochMilli()}]",
+                        " numDocs=$numDocs, primaryShardNumDocs=$numDocsMostCrowdedShard, indexSize=${indexSize?.bytes},stepStartTime=${stepStartTime.toEpochMilli()}]",
                 )
                 stepStatus = StepStatus.COMPLETED
                 message = getSuccessMessage(indexName, stateName)

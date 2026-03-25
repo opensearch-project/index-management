@@ -187,6 +187,7 @@ fun getSweptManagedIndexSearchRequest(scroll: Boolean = false, size: Int = Manag
 data class TransitionConditionContext(
     val indexCreationDate: Instant,
     val numDocs: Long?,
+    val primaryShardNumDocs: Long?,
     val indexSize: ByteSizeValue?,
     val transitionStartTime: Instant,
     val rolloverDate: Instant?,
@@ -200,6 +201,7 @@ fun Transition.evaluateConditions(
 ): Boolean {
     val conditions = this.conditions ?: return true
     if (checkDocCount(conditions, context)) return true
+    if (checkPrimaryShardDocCount(conditions, context)) return true
     if (checkIndexAge(conditions, context)) return true
     if (checkSize(conditions, context)) return true
     if (checkCron(conditions, context)) return true
@@ -213,6 +215,11 @@ private fun checkDocCount(conditions: Conditions, context: TransitionConditionCo
     conditions.docCount != null &&
         context.numDocs != null &&
         conditions.docCount <= context.numDocs
+
+private fun checkPrimaryShardDocCount(conditions: Conditions, context: TransitionConditionContext): Boolean =
+    conditions.primaryShardDocCount != null &&
+        context.primaryShardNumDocs != null &&
+        conditions.primaryShardDocCount <= context.primaryShardNumDocs
 
 @Suppress("ReturnCount")
 private fun checkIndexAge(conditions: Conditions, context: TransitionConditionContext): Boolean {

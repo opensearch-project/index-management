@@ -247,6 +247,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                     TransitionConditionContext(
                         indexCreationDate = Instant.now(),
                         numDocs = null,
+                        primaryShardNumDocs = null,
                         indexSize = null,
                         transitionStartTime = Instant.now(),
                         rolloverDate = null,
@@ -266,6 +267,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                     TransitionConditionContext(
                         indexCreationDate = Instant.now(),
                         numDocs = null,
+                        primaryShardNumDocs = null,
                         indexSize = null,
                         transitionStartTime = Instant.now(),
                         rolloverDate = null,
@@ -279,6 +281,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                     TransitionConditionContext(
                         indexCreationDate = Instant.now().minusSeconds(10),
                         numDocs = null,
+                        primaryShardNumDocs = null,
                         indexSize = null,
                         transitionStartTime = Instant.now(),
                         rolloverDate = null,
@@ -292,6 +295,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                     TransitionConditionContext(
                         indexCreationDate = Instant.ofEpochMilli(-1L),
                         numDocs = null,
+                        primaryShardNumDocs = null,
                         indexSize = null,
                         transitionStartTime = Instant.now(),
                         rolloverDate = null,
@@ -311,6 +315,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                     TransitionConditionContext(
                         indexCreationDate = Instant.now(),
                         numDocs = null,
+                        primaryShardNumDocs = null,
                         indexSize = null,
                         transitionStartTime = Instant.now(),
                         rolloverDate = Instant.now(),
@@ -324,6 +329,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                     TransitionConditionContext(
                         indexCreationDate = Instant.now().minusSeconds(10),
                         numDocs = null,
+                        primaryShardNumDocs = null,
                         indexSize = null,
                         transitionStartTime = Instant.now(),
                         rolloverDate = Instant.now().minusSeconds(10),
@@ -337,6 +343,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                     TransitionConditionContext(
                         indexCreationDate = Instant.ofEpochMilli(-1L),
                         numDocs = null,
+                        primaryShardNumDocs = null,
                         indexSize = null,
                         transitionStartTime = Instant.now(),
                         rolloverDate = null,
@@ -355,6 +362,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 TransitionConditionContext(
                     indexCreationDate = Instant.now(),
                     numDocs = null,
+                    primaryShardNumDocs = null,
                     indexSize = null,
                     transitionStartTime = Instant.now(),
                     rolloverDate = null,
@@ -369,6 +377,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 TransitionConditionContext(
                     indexCreationDate = Instant.now(),
                     numDocs = null,
+                    primaryShardNumDocs = null,
                     indexSize = null,
                     transitionStartTime = Instant.now(),
                     rolloverDate = null,
@@ -389,6 +398,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 TransitionConditionContext(
                     indexCreationDate = Instant.now(),
                     numDocs = null,
+                    primaryShardNumDocs = null,
                     indexSize = null,
                     transitionStartTime = Instant.now(),
                     rolloverDate = null,
@@ -403,6 +413,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 TransitionConditionContext(
                     indexCreationDate = Instant.now(),
                     numDocs = null,
+                    primaryShardNumDocs = null,
                     indexSize = null,
                     transitionStartTime = Instant.now(),
                     rolloverDate = null,
@@ -424,6 +435,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 TransitionConditionContext(
                     indexCreationDate = Instant.now(),
                     numDocs = null,
+                    primaryShardNumDocs = null,
                     indexSize = null,
                     transitionStartTime = Instant.now(),
                     rolloverDate = null,
@@ -440,6 +452,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 TransitionConditionContext(
                     indexCreationDate = Instant.now(),
                     numDocs = null,
+                    primaryShardNumDocs = null,
                     indexSize = null,
                     transitionStartTime = Instant.now(),
                     rolloverDate = null,
