@@ -104,7 +104,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(rolloverResponse, aliasResponse, null, null)))
 
         runBlocking {
-            val rolloverAction = RolloverAction(null, null, null, null, true, false, 0)
+            val rolloverAction = RolloverAction(null, null, null, null, null, true, false, 0)
             val managedIndexMetaData =
                 ManagedIndexMetaData(
                     oldIndexName, "indexUuid", "policy_id",
@@ -130,7 +130,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(rolloverResponse, null, null, exception)))
 
         runBlocking {
-            val rolloverAction = RolloverAction(null, null, null, null, true, false, 0)
+            val rolloverAction = RolloverAction(null, null, null, null, null, true, false, 0)
             val managedIndexMetaData =
                 ManagedIndexMetaData(
                     oldIndexName, "indexUuid", "policy_id",
@@ -156,7 +156,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(rolloverResponse, null, null, exception)))
 
         runBlocking {
-            val rolloverAction = RolloverAction(null, null, null, null, true, false, 0)
+            val rolloverAction = RolloverAction(null, null, null, null, null, true, false, 0)
             val managedIndexMetaData =
                 ManagedIndexMetaData(
                     oldIndexName, "indexUuid", "policy_id",
@@ -182,7 +182,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
         val client = getClient(getAdminClient(getIndicesAdminClient(rolloverResponse, aliasResponse, null, null)))
 
         runBlocking {
-            val rolloverAction = RolloverAction(null, null, null, null, true, false, 0)
+            val rolloverAction = RolloverAction(null, null, null, null, null, true, false, 0)
             val managedIndexMetaData =
                 ManagedIndexMetaData(
                     oldIndexName, "indexUuid", "policy_id",
@@ -211,7 +211,7 @@ class AttemptRolloverStepTests : OpenSearchTestCase() {
         whenever(indexMetadata.aliases).thenReturn(mapOf(alias to AliasMetadata.builder(alias).build()))
 
         runBlocking {
-            val rolloverAction = RolloverAction(null, null, null, null, true, false, 0)
+            val rolloverAction = RolloverAction(null, null, null, null, null, true, false, 0)
             val managedIndexMetaData =
                 ManagedIndexMetaData(
                     oldIndexName, "indexUuid", "policy_id",

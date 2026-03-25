@@ -23,10 +23,56 @@ import java.io.ByteArrayOutputStream
 
 class RolloverActionTests : OpenSearchTestCase() {
 
+    fun `test XContent serialization with minPrimaryShardDocs null`() {
+        val action = RolloverAction(
+            minSize = ByteSizeValue.parseBytesSizeValue("50gb", "test"),
+            minDocs = 1000L,
+            minPrimaryShardDocs = null,
+            minAge = TimeValue.parseTimeValue("7d", "test"),
+            minPrimaryShardSize = ByteSizeValue.parseBytesSizeValue("30gb", "test"),
+            copyAlias = false,
+            preventEmptyRollover = true,
+            index = 0,
+        )
+
+        val builder = XContentFactory.jsonBuilder()
+        builder.startObject()
+        action.populateAction(builder, org.opensearch.core.xcontent.ToXContent.EMPTY_PARAMS)
+        builder.endObject()
+
+        val jsonString = builder.string()
+        assertTrue("XContent should contain prevent_empty_rollover field", jsonString.contains("\"prevent_empty_rollover\":true"))
+    }
+
+    fun `test XContent serialization with minPrimaryShardDocs set to 2000000000`() {
+        val action = RolloverAction(
+            minSize = ByteSizeValue.parseBytesSizeValue("50gb", "test"),
+            minDocs = null,
+            minPrimaryShardDocs = 2000000000,
+            minAge = TimeValue.parseTimeValue("7d", "test"),
+            minPrimaryShardSize = ByteSizeValue.parseBytesSizeValue("30gb", "test"),
+            copyAlias = false,
+            preventEmptyRollover = false,
+            index = 0,
+        )
+
+        val builder = XContentFactory.jsonBuilder()
+        builder.startObject()
+        action.populateAction(builder, org.opensearch.core.xcontent.ToXContent.EMPTY_PARAMS)
+        builder.endObject()
+
+        val jsonString = builder.string()
+        assertFalse(
+            "XContent should NOT contain prevent_empty_rollover field when false",
+            jsonString.contains("prevent_empty_rollover"),
+        )
+    }
+
     fun `test XContent serialization with preventEmptyRollover true`() {
         val action = RolloverAction(
             minSize = ByteSizeValue.parseBytesSizeValue("50gb", "test"),
             minDocs = 1000L,
+            minPrimaryShardDocs = null,
             minAge = TimeValue.parseTimeValue("7d", "test"),
             minPrimaryShardSize = ByteSizeValue.parseBytesSizeValue("30gb", "test"),
             copyAlias = false,
@@ -47,6 +93,7 @@ class RolloverActionTests : OpenSearchTestCase() {
         val action = RolloverAction(
             minSize = ByteSizeValue.parseBytesSizeValue("50gb", "test"),
             minDocs = 1000L,
+            minPrimaryShardDocs = null,
             minAge = TimeValue.parseTimeValue("7d", "test"),
             minPrimaryShardSize = ByteSizeValue.parseBytesSizeValue("30gb", "test"),
             copyAlias = false,
@@ -70,6 +117,7 @@ class RolloverActionTests : OpenSearchTestCase() {
         val originalAction = RolloverAction(
             minSize = ByteSizeValue.parseBytesSizeValue("50gb", "test"),
             minDocs = 1000L,
+            minPrimaryShardDocs = null,
             minAge = TimeValue.parseTimeValue("7d", "test"),
             minPrimaryShardSize = ByteSizeValue.parseBytesSizeValue("30gb", "test"),
             copyAlias = true,
@@ -125,6 +173,7 @@ class RolloverActionTests : OpenSearchTestCase() {
         val action = RolloverAction(
             minSize = ByteSizeValue.parseBytesSizeValue("50gb", "test"),
             minDocs = null,
+            minPrimaryShardDocs = null,
             minAge = null,
             minPrimaryShardSize = null,
             copyAlias = false,
@@ -139,6 +188,7 @@ class RolloverActionTests : OpenSearchTestCase() {
         val action = RolloverAction(
             minSize = null,
             minDocs = null,
+            minPrimaryShardDocs = null,
             minAge = TimeValue.parseTimeValue("7d", "test"),
             minPrimaryShardSize = null,
             copyAlias = false,
@@ -153,6 +203,7 @@ class RolloverActionTests : OpenSearchTestCase() {
         val action = RolloverAction(
             minSize = ByteSizeValue.parseBytesSizeValue("50gb", "test"),
             minDocs = 1000L,
+            minPrimaryShardDocs = null,
             minAge = TimeValue.parseTimeValue("7d", "test"),
             minPrimaryShardSize = ByteSizeValue.parseBytesSizeValue("30gb", "test"),
             copyAlias = true,
@@ -175,6 +226,7 @@ class RolloverActionTests : OpenSearchTestCase() {
         val originalAction = RolloverAction(
             minSize = ByteSizeValue.parseBytesSizeValue("50gb", "test"),
             minDocs = 1000L,
+            minPrimaryShardDocs = null,
             minAge = TimeValue.parseTimeValue("7d", "test"),
             minPrimaryShardSize = ByteSizeValue.parseBytesSizeValue("30gb", "test"),
             copyAlias = true,
@@ -208,6 +260,7 @@ class RolloverActionTests : OpenSearchTestCase() {
         val action = RolloverAction(
             minSize = null,
             minDocs = null,
+            minPrimaryShardDocs = null,
             minAge = TimeValue.parseTimeValue("1d", "test"),
             minPrimaryShardSize = null,
             copyAlias = false,
@@ -226,6 +279,7 @@ class RolloverActionTests : OpenSearchTestCase() {
         val action = RolloverAction(
             minSize = null,
             minDocs = 100L,
+            minPrimaryShardDocs = null,
             minAge = null,
             minPrimaryShardSize = null,
             copyAlias = false,
@@ -244,6 +298,7 @@ class RolloverActionTests : OpenSearchTestCase() {
         val action = RolloverAction(
             minSize = null,
             minDocs = null,
+            minPrimaryShardDocs = null,
             minAge = TimeValue.parseTimeValue("1d", "test"),
             minPrimaryShardSize = null,
             copyAlias = true,
@@ -259,6 +314,7 @@ class RolloverActionTests : OpenSearchTestCase() {
         val originalAction = RolloverAction(
             minSize = ByteSizeValue.parseBytesSizeValue("10gb", "test"),
             minDocs = null,
+            minPrimaryShardDocs = null,
             minAge = TimeValue.parseTimeValue("3d", "test"),
             minPrimaryShardSize = null,
             copyAlias = false,
@@ -295,6 +351,7 @@ class RolloverActionTests : OpenSearchTestCase() {
         // Manually write fields as an old version would (without preventEmptyRollover)
         osso.writeOptionalWriteable(ByteSizeValue.parseBytesSizeValue("50gb", "test"))
         osso.writeOptionalLong(1000L)
+        osso.writeOptionalLong(1000L)
         osso.writeOptionalTimeValue(TimeValue.parseTimeValue("7d", "test"))
         osso.writeOptionalWriteable(ByteSizeValue.parseBytesSizeValue("30gb", "test"))
         osso.writeBoolean(true) // copyAlias
@@ -319,6 +376,7 @@ class RolloverActionTests : OpenSearchTestCase() {
         val originalAction = RolloverAction(
             minSize = ByteSizeValue.parseBytesSizeValue("50gb", "test"),
             minDocs = 1000L,
+            minPrimaryShardDocs = null,
             minAge = TimeValue.parseTimeValue("7d", "test"),
             minPrimaryShardSize = ByteSizeValue.parseBytesSizeValue("30gb", "test"),
             copyAlias = true,
@@ -348,6 +406,7 @@ class RolloverActionTests : OpenSearchTestCase() {
         val action = RolloverAction(
             minSize = ByteSizeValue.parseBytesSizeValue("50gb", "test"),
             minDocs = 1000L,
+            minPrimaryShardDocs = null,
             minAge = TimeValue.parseTimeValue("7d", "test"),
             minPrimaryShardSize = ByteSizeValue.parseBytesSizeValue("30gb", "test"),
             copyAlias = true,
@@ -381,6 +440,7 @@ class RolloverActionTests : OpenSearchTestCase() {
         // Read fields as old version would
         val minSize = input.readOptionalWriteable(::ByteSizeValue)
         val minDocs = input.readOptionalLong()
+        val minPrimaryShardDocs = input.readOptionalLong()
         val minAge = input.readOptionalTimeValue()
         val minPrimaryShardSize = input.readOptionalWriteable(::ByteSizeValue)
         val copyAlias = input.readBoolean()
@@ -389,6 +449,7 @@ class RolloverActionTests : OpenSearchTestCase() {
 
         assertEquals("minSize should match", action.minSize, minSize)
         assertEquals("minDocs should match", action.minDocs, minDocs)
+        assertEquals("minPrimaryShardDocs should match", action.minPrimaryShardDocs, minPrimaryShardDocs)
         assertEquals("minAge should match", action.minAge, minAge)
         assertEquals("minPrimaryShardSize should match", action.minPrimaryShardSize, minPrimaryShardSize)
         assertEquals("copyAlias should match", action.copyAlias, copyAlias)

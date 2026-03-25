@@ -130,11 +130,13 @@ fun randomDeleteActionConfig(): DeleteAction = DeleteAction(index = 0)
 fun randomRolloverActionConfig(
     minSize: ByteSizeValue = randomByteSizeValue(),
     minDocs: Long = OpenSearchRestTestCase.randomLongBetween(1, 1000),
+    minPrimaryShardDocs: Long = OpenSearchRestTestCase.randomLongBetween(900, 1000),
     minAge: TimeValue = randomTimeValueObject(),
     minPrimaryShardSize: ByteSizeValue = randomByteSizeValue(),
 ): RolloverAction = RolloverAction(
     minSize = minSize,
     minDocs = minDocs,
+    minPrimaryShardDocs = minPrimaryShardDocs,
     minAge = minAge,
     minPrimaryShardSize = minPrimaryShardSize,
     preventEmptyRollover = false,
