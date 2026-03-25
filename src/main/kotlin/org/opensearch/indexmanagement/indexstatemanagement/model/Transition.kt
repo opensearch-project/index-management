@@ -78,6 +78,7 @@ data class Transition(
 data class Conditions(
     val indexAge: TimeValue? = null,
     val docCount: Long? = null,
+    val primaryShardDocCount: Long? = null,
     val size: ByteSizeValue? = null,
     val cron: CronSchedule? = null,
     val rolloverAge: TimeValue? = null,
@@ -100,6 +101,7 @@ data class Conditions(
         builder.startObject()
         if (indexAge != null) builder.field(MIN_INDEX_AGE_FIELD, indexAge.stringRep)
         if (docCount != null) builder.field(MIN_DOC_COUNT_FIELD, docCount)
+        if (primaryShardDocCount != null) builder.field(MIN_PRIMARY_SHARD_DOC_COUNT_FIELD, primaryShardDocCount)
         if (size != null) builder.field(MIN_SIZE_FIELD, size.stringRep)
         if (cron != null) builder.field(CRON_FIELD, cron)
         if (rolloverAge != null) builder.field(MIN_ROLLOVER_AGE_FIELD, rolloverAge.stringRep)
@@ -135,6 +137,7 @@ data class Conditions(
     companion object {
         const val MIN_INDEX_AGE_FIELD = "min_index_age"
         const val MIN_DOC_COUNT_FIELD = "min_doc_count"
+        const val MIN_PRIMARY_SHARD_DOC_COUNT_FIELD = "min_primary_shard_doc_count"
         const val MIN_SIZE_FIELD = "min_size"
         const val CRON_FIELD = "cron"
         const val MIN_ROLLOVER_AGE_FIELD = "min_rollover_age"
@@ -146,6 +149,7 @@ data class Conditions(
         fun parse(xcp: XContentParser): Conditions {
             var indexAge: TimeValue? = null
             var docCount: Long? = null
+            var primaryShardDocCount: Long? = null
             var size: ByteSizeValue? = null
             var cron: CronSchedule? = null
             var rolloverAge: TimeValue? = null
@@ -160,6 +164,7 @@ data class Conditions(
                 when (fieldName) {
                     MIN_INDEX_AGE_FIELD -> indexAge = TimeValue.parseTimeValue(xcp.text(), MIN_INDEX_AGE_FIELD)
                     MIN_DOC_COUNT_FIELD -> docCount = xcp.longValue()
+                    MIN_PRIMARY_SHARD_DOC_COUNT_FIELD -> primaryShardDocCount = xcp.longValue()
                     MIN_SIZE_FIELD -> size = ByteSizeValue.parseBytesSizeValue(xcp.text(), MIN_SIZE_FIELD)
                     CRON_FIELD -> cron = ScheduleParser.parse(xcp) as? CronSchedule
                     MIN_ROLLOVER_AGE_FIELD -> rolloverAge = TimeValue.parseTimeValue(xcp.text(), MIN_ROLLOVER_AGE_FIELD)
@@ -169,7 +174,7 @@ data class Conditions(
                 }
             }
 
-            return Conditions(indexAge, docCount, size, cron, rolloverAge, noAlias, minStateAge)
+            return Conditions(indexAge, docCount, primaryShardDocCount, size, cron, rolloverAge, noAlias, minStateAge)
         }
     }
 }
