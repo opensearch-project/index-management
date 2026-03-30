@@ -39,8 +39,8 @@ class ConvertIndexToRemoteAction(
         // Version in which this PR is merged. Use merge-target version for BWC: during rolling upgrade,
         // nodes not yet upgraded (e.g. Cluster Manager) must be able to parse the stream; new fields
         // are only written when version is on or after this, so older nodes never receive them.
-        val VERSION_WITH_NEW_FIELDS = Version.V_3_5_0
-        val VERSION_WITH_RENAME_PATTERN = Version.V_3_5_0
+        val VERSION_WITH_NEW_FIELDS = Version.V_3_6_0
+        val VERSION_WITH_RENAME_PATTERN = Version.V_3_6_0
     }
 
     private val attemptRestoreStep = AttemptRestoreStep(this)

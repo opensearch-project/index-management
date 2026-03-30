@@ -240,7 +240,7 @@ class ConvertIndexToRemoteActionTests : OpenSearchTestCase() {
     }
 
     fun `test backward compatibility - old version without new fields`() {
-        // Stream written by pre-3.5.0 node: only repository, snapshot, index (no new fields, no renamePattern)
+        // Stream written by pre-3.6.0 node: only repository, snapshot, index (no new fields, no renamePattern)
         val baos = ByteArrayOutputStream()
         val osso = OutputStreamStreamOutput(baos)
         osso.version = Version.V_3_4_0
@@ -250,7 +250,7 @@ class ConvertIndexToRemoteActionTests : OpenSearchTestCase() {
         osso.writeOptionalWriteable(null) // configRetry
         osso.writeString("my-repo")
         osso.writeString("{{ctx.index}}")
-        // V_3_4_0 < V_3_5_0: new fields and renamePattern are NOT written
+        // V_3_4_0 < V_3_6_0: new fields and renamePattern are NOT written
         osso.writeInt(0) // actionIndex
 
         val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray()))
@@ -276,11 +276,11 @@ class ConvertIndexToRemoteActionTests : OpenSearchTestCase() {
 
         val baos = ByteArrayOutputStream()
         val osso = OutputStreamStreamOutput(baos)
-        osso.version = Version.V_3_5_0
+        osso.version = Version.V_3_6_0
         originalAction.writeTo(osso)
 
         val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray()))
-        input.version = Version.V_3_5_0
+        input.version = Version.V_3_6_0
         val deserializedAction = ISMActionsParser.instance.fromStreamInput(input) as ConvertIndexToRemoteAction
 
         assertEquals("repository should be preserved", originalAction.repository, deserializedAction.repository)
@@ -312,7 +312,7 @@ class ConvertIndexToRemoteActionTests : OpenSearchTestCase() {
         input.readOptionalWriteable(::ActionTimeout)
         input.readOptionalWriteable(::ActionRetry)
 
-        // V_3_4_0 < V_3_5_0: new fields and renamePattern are NOT written, so we only read repository, snapshot, actionIndex
+        // V_3_4_0 < V_3_6_0: new fields and renamePattern are NOT written, so we only read repository, snapshot, actionIndex
         val repository = input.readString()
         val snapshot = input.readString()
         val actionIndex = input.readInt()
