@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit
 buildscript {
     ext {
         isSnapshot = "true" == System.getProperty("build.snapshot", "true")
-        opensearch_version = System.getProperty("opensearch.version", "3.5.0-SNAPSHOT")
+        opensearch_version = System.getProperty("opensearch.version", "3.6.0-SNAPSHOT")
         buildVersionQualifier = System.getProperty("build.version_qualifier", "")
         // 2.2.0-SNAPSHOT -> 2.2.0.0-SNAPSHOT
         version_tokens = opensearch_version.tokenize('-')
@@ -117,7 +117,7 @@ configurations.all {
         force 'commons-beanutils:commons-beanutils:1.11.0'
         force 'com.google.guava:guava:30.1.1-jre'
         force 'com.puppycrawl.tools:checkstyle:8.45.1'
-        force 'commons-codec:commons-codec:1.17.2'
+        force 'commons-codec:commons-codec:1.21.0'
         force "com.fasterxml.jackson.core:jackson-databind:${versions.jackson_databind}"
         force "org.yaml:snakeyaml:${versions.snakeyaml}"
         force 'org.codehaus.plexus:plexus-utils:3.6.0'
@@ -617,6 +617,9 @@ integTest {
         exclude 'org/opensearch/indexmanagement/controlcenter/notification/filter/NotificationActionListenerIT.class'
     }
 
+    // SearchOnlyActionIT requires Remote Store cluster, run via remoteStoreIntegTest
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/SearchOnlyActionIT.class'
+
     if (project.hasProperty('includeTests')) {
         String includeTests = project.property('includeTests')
         println("Include tests ${includeTests}")
@@ -629,6 +632,71 @@ integTest {
         println("Exclude tests ${excludeTests}")
         filter {
             excludeTestsMatching excludeTests
+        }
+    }
+}
+
+// === Remote Store integration test ===
+File remoteStoreRepo = layout.buildDirectory.dir("testclusters/remote-store-repo").get().asFile
+
+testClusters.register('remoteStoreIntegTest') {
+    testDistribution = "ARCHIVE"
+    numberOfNodes = 2
+
+    // Remote Store with fs type repository (node attributes)
+    setting 'node.attr.remote_store.segment.repository', 'my-segment-repo'
+    setting 'node.attr.remote_store.translog.repository', 'my-translog-repo'
+    setting 'node.attr.remote_store.state.repository', 'my-state-repo'
+    setting 'node.attr.remote_store.repository.my-segment-repo.type', 'fs'
+    setting 'node.attr.remote_store.repository.my-segment-repo.settings.location', remoteStoreRepo.absolutePath + '/segment'
+    setting 'node.attr.remote_store.repository.my-translog-repo.type', 'fs'
+    setting 'node.attr.remote_store.repository.my-translog-repo.settings.location', remoteStoreRepo.absolutePath + '/translog'
+    setting 'node.attr.remote_store.repository.my-state-repo.type', 'fs'
+    setting 'node.attr.remote_store.repository.my-state-repo.settings.location', remoteStoreRepo.absolutePath + '/state'
+
+    // Segment Replication
+    setting 'cluster.indices.replication.strategy', 'SEGMENT'
+
+    // Node 0: cluster_manager + data + warm
+    nodes[0].setting 'node.roles', '[cluster_manager,data,warm]'
+    nodes[0].setting 'node.search.cache.size', '100mb'
+    // Node 1: search only
+    nodes[1].setting 'node.roles', '[search]'
+    nodes[1].setting 'node.search.cache.size', '100mb'
+
+    // Exclude search node from initial cluster manager nodes
+    setting 'cluster.initial_cluster_manager_nodes', '[remoteStoreIntegTest-0]'
+
+    setting 'path.repo', remoteStoreRepo.absolutePath
+
+    // Install dependency plugins before index-management
+    plugin(provider(jobSchedulerFile))
+    plugin(provider(notificationsCoreFile))
+    plugin(provider(notificationsFile))
+    plugin(provider(ccrFile))
+    plugin(project.tasks.bundlePlugin.archiveFile)
+}
+
+task remoteStoreIntegTest(type: StandaloneRestIntegTestTask) {
+    useCluster testClusters.remoteStoreIntegTest
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    systemProperty 'tests.security.manager', 'false'
+    systemProperty 'java.io.tmpdir', opensearch_tmp_dir.absolutePath
+    systemProperty 'buildDir', layout.buildDirectory.get().asFile.path
+    systemProperty 'tests.clustername', 'remoteStoreIntegTest'
+
+    nonInputProperties.systemProperty('tests.rest.cluster', "${-> testClusters.remoteStoreIntegTest.getFirstNode().getAllHttpSocketURI().join(",")}")
+    nonInputProperties.systemProperty('tests.cluster', "${-> testClusters.remoteStoreIntegTest.getFirstNode().getAllHttpSocketURI().join(",")}")
+
+    filter {
+        includeTestsMatching "org.opensearch.indexmanagement.indexstatemanagement.action.SearchOnlyActionIT"
+    }
+
+    doFirst {
+        systemProperty 'cluster.number_of_nodes', '1'
+        getClusters().forEach { cluster ->
+            waitForClusterSetup(cluster, false)
         }
     }
 }
