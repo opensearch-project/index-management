@@ -49,7 +49,7 @@ fun validateFormat(indexPatterns: List<String>): OpenSearchException? {
         if (patternToValidate.startsWith("_")) {
             indexPatternFormatErrors.add("index_pattern [$indexPattern] must not start with '_'")
         }
-        if (!Strings.validFileNameExcludingAstrix(patternToValidate)) {
+        if (!Strings.validFileNameExcludingAsterisk(patternToValidate)) {
             indexPatternFormatErrors.add(
                 "index_pattern [" + indexPattern + "] must not contain the following characters " +
                     Strings.INVALID_FILENAME_CHARS,

@@ -89,7 +89,7 @@ class ISMTemplateServiceTests : OpenSearchTestCase() {
         val patterns = listOf("")
         val exception = validateFormat(patterns)
         // Empty string is treated as an inclusion pattern, so it should not fail the "only exclusions" check
-        // It may fail other validations depending on Strings.validFileNameExcludingAstrix
+        // It may fail other validations depending on Strings.validFileNameExcludingAsterisk
         // For now, we're just testing that it doesn't fail the exclusion-only check
         if (exception != null) {
             assertFalse(exception.message!!.contains("must contain at least one inclusion pattern"))
