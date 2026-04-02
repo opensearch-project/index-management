@@ -243,6 +243,9 @@
                     "min_doc_count": {
                       "type": "keyword"
                     },
+                    "min_primary_shard_doc_count": {
+                      "type": "keyword"
+                    },
                     "min_primary_shard_size": {
                       "type": "keyword"
                     },

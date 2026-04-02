@@ -611,7 +611,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_rollover_policy_ndps"
 
         // Create the rollover policy
-        val rolloverAction = RolloverAction(null, null, 3, TimeValue.timeValueDays(2), null, false, false, 0)
+        val rolloverAction = RolloverAction(null, null, 3, null, null, false, false, 0)
         val states = listOf(State(name = "default", actions = listOf(rolloverAction), transitions = listOf()))
         val policy =
             Policy(
