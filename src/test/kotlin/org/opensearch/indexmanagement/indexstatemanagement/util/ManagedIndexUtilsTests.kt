@@ -194,7 +194,24 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
         assertTrue(
             "More docs should pass",
             minDocsConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 10, primaryShardNumDocs = 1, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 10, primaryShardNumDocs = 10, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+        )
+
+        val minPrimaryDocsConfig = RolloverAction(minSize = null, minDocs = null, minPrimaryShardDocs = 5, minAge = null, minPrimaryShardSize = null, preventEmptyRollover = false, index = 0)
+        assertFalse(
+            "Less docs should not pass",
+            minPrimaryDocsConfig
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 3, primaryShardNumDocs = 1, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+        )
+        assertTrue(
+            "Equal docs should pass",
+            minPrimaryDocsConfig
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 15, primaryShardNumDocs = 5, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+        )
+        assertTrue(
+            "More docs should pass",
+            minPrimaryDocsConfig
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 30, primaryShardNumDocs = 10, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
         )
 
         val minAgeConfig = RolloverAction(minSize = null, minDocs = null, minPrimaryShardDocs = null, minAge = TimeValue.timeValueSeconds(5), minPrimaryShardSize = null, preventEmptyRollover = false, index = 0)
