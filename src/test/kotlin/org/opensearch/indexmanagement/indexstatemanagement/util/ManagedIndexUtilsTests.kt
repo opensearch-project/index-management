@@ -388,7 +388,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 ),
         )
         assertTrue(
-            "Enough documents in primary shard should not pass",
+            "Enough documents in primary shard should pass",
             primaryShardDocCountTransition
                 .evaluateConditions(
                     TransitionConditionContext(
