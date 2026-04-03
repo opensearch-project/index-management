@@ -368,6 +368,40 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 ),
         )
 
+        val primaryShardDocCountTransition =
+            Transition(
+                stateName = "some_state",
+                conditions = Conditions(primaryShardDocCount = 10),
+            )
+        assertFalse(
+            "Not enough documents in primary shard should not pass",
+            primaryShardDocCountTransition
+                .evaluateConditions(
+                    TransitionConditionContext(
+                        indexCreationDate = Instant.now(),
+                        numDocs = null,
+                        primaryShardNumDocs = 5,
+                        indexSize = null,
+                        transitionStartTime = Instant.now(),
+                        rolloverDate = null,
+                    ),
+                ),
+        )
+        assertTrue(
+            "Enough documents in primary shard should not pass",
+            primaryShardDocCountTransition
+                .evaluateConditions(
+                    TransitionConditionContext(
+                        indexCreationDate = Instant.now(),
+                        numDocs = null,
+                        primaryShardNumDocs = 10,
+                        indexSize = null,
+                        transitionStartTime = Instant.now(),
+                        rolloverDate = null,
+                    ),
+                ),
+        )
+
         // Test noAlias = true: should only transition if there are no aliases
         val noAliasTransition = Transition(
             stateName = "next_state",
