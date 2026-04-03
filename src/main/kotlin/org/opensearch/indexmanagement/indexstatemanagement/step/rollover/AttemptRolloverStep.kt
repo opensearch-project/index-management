@@ -161,7 +161,8 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         if (action.evaluateConditions(indexAgeTimeValue, numDocs, numDocsMostCrowdedShard, indexSize, largestPrimaryShardSize)) {
             logger.info(
                 "$indexName rollover conditions evaluated to true [indexCreationDate=$indexCreationDate," +
-                    " numDocs=$numDocs, primaryShardNumDocs=$numDocsMostCrowdedShard, indexSize=${indexSize.bytes}, primaryShardSize=${largestPrimaryShardSize.bytes}]",
+                    " numDocs=$numDocs, primaryShardNumDocs=$numDocsMostCrowdedShard," +
+                    " indexSize=${indexSize.bytes}, primaryShardSize=${largestPrimaryShardSize.bytes}]",
             )
             executeRollover(context, rolloverTarget, isDataStream, conditions)
             copyAlias(clusterService, indexName, context.client, rolloverTarget, context.metadata)

@@ -269,7 +269,7 @@ private fun checkMinStateAge(conditions: Conditions, context: TransitionConditio
 
 fun Transition.hasStatsConditions(): Boolean = this.conditions?.docCount != null || this.conditions?.size != null
 
-@Suppress("ReturnCount", "ComplexCondition")
+@Suppress("ReturnCount", "ComplexCondition", "CyclomaticComplexMethod")
 fun RolloverAction.evaluateConditions(
     indexAgeTimeValue: TimeValue,
     numDocs: Long,

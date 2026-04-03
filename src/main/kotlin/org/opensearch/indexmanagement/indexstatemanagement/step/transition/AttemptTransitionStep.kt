@@ -134,7 +134,8 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             if (stateName != null) {
                 logger.info(
                     "$indexName transition conditions evaluated to true [indexCreationDate=$indexCreationDate," +
-                        " numDocs=$numDocs, primaryShardNumDocs=$numDocsMostCrowdedShard, indexSize=${indexSize?.bytes},stepStartTime=${stepStartTime.toEpochMilli()}]",
+                        " numDocs=$numDocs, primaryShardNumDocs=$numDocsMostCrowdedShard," +
+                        " indexSize=${indexSize?.bytes},stepStartTime=${stepStartTime.toEpochMilli()}]",
                 )
                 stepStatus = StepStatus.COMPLETED
                 message = getSuccessMessage(indexName, stateName)
