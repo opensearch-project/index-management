@@ -267,7 +267,8 @@ private fun checkMinStateAge(conditions: Conditions, context: TransitionConditio
         context.stateStartTime != null &&
         (System.currentTimeMillis() - context.stateStartTime.toEpochMilli() >= conditions.minStateAge.millis)
 
-fun Transition.hasStatsConditions(): Boolean = this.conditions?.docCount != null || this.conditions?.size != null
+fun Transition.hasStatsConditions(): Boolean = this.conditions?.docCount != null || this.conditions?.primaryShardDocCount != null ||
+    this.conditions?.size != null
 
 @Suppress("ReturnCount", "ComplexCondition", "CyclomaticComplexMethod")
 fun RolloverAction.evaluateConditions(

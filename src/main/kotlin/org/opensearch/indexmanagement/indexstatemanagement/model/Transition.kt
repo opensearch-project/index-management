@@ -87,11 +87,12 @@ data class Conditions(
 ) : ToXContentObject,
     Writeable {
     init {
-        val conditionsList = listOf(indexAge, docCount, size, cron, rolloverAge, noAlias, minStateAge)
+        val conditionsList = listOf(indexAge, docCount, primaryShardDocCount, size, cron, rolloverAge, noAlias, minStateAge)
         require(conditionsList.filterNotNull().size == 1) { "Cannot provide more than one Transition condition" }
 
         // Validate doc count condition
         if (docCount != null) require(docCount > 0) { "Transition doc count condition must be greater than 0" }
+        if (primaryShardDocCount != null) require(primaryShardDocCount > 0) { "Transition pimary shard doc count condition must be greater than 0" }
 
         // Validate size condition
         if (size != null) require(size.bytes > 0) { "Transition size condition must be greater than 0" }
@@ -114,6 +115,7 @@ data class Conditions(
     constructor(sin: StreamInput) : this(
         indexAge = sin.readOptionalTimeValue(),
         docCount = sin.readOptionalLong(),
+        primaryShardDocCount = sin.readOptionalLong(),
         size = sin.readOptionalWriteable(::ByteSizeValue),
         cron = sin.readOptionalWriteable(::CronSchedule),
         rolloverAge = sin.readOptionalTimeValue(),
