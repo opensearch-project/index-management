@@ -9,7 +9,7 @@ Compatible with OpenSearch and OpenSearch Dashboards version 3.6.0
 
 ### Infrastructure
 
-* Add Remote Store integration test infrastructure with search-only ISM action test (`SearchOnlyActionIT`) ([#1589](https://github.com/opensearch-project/index-management/pull/1589))
+* Add Remote Store integration test infrastructure with SearchOnlyActionIT for ISM testing against Remote Store enabled clusters ([#1589](https://github.com/opensearch-project/index-management/pull/1589))
 * Update shadow plugin usage to replace deprecated Gradle API ([#1587](https://github.com/opensearch-project/index-management/pull/1587))
 
 ### Maintenance
