@@ -187,6 +187,7 @@ fun getSweptManagedIndexSearchRequest(scroll: Boolean = false, size: Int = Manag
 data class TransitionConditionContext(
     val indexCreationDate: Instant,
     val numDocs: Long?,
+    val primaryShardNumDocs: Long?,
     val indexSize: ByteSizeValue?,
     val transitionStartTime: Instant,
     val rolloverDate: Instant?,
@@ -200,6 +201,7 @@ fun Transition.evaluateConditions(
 ): Boolean {
     val conditions = this.conditions ?: return true
     if (checkDocCount(conditions, context)) return true
+    if (checkPrimaryShardDocCount(conditions, context)) return true
     if (checkIndexAge(conditions, context)) return true
     if (checkSize(conditions, context)) return true
     if (checkCron(conditions, context)) return true
@@ -213,6 +215,11 @@ private fun checkDocCount(conditions: Conditions, context: TransitionConditionCo
     conditions.docCount != null &&
         context.numDocs != null &&
         conditions.docCount <= context.numDocs
+
+private fun checkPrimaryShardDocCount(conditions: Conditions, context: TransitionConditionContext): Boolean =
+    conditions.primaryShardDocCount != null &&
+        context.primaryShardNumDocs != null &&
+        conditions.primaryShardDocCount <= context.primaryShardNumDocs
 
 @Suppress("ReturnCount")
 private fun checkIndexAge(conditions: Conditions, context: TransitionConditionContext): Boolean {
@@ -260,16 +267,19 @@ private fun checkMinStateAge(conditions: Conditions, context: TransitionConditio
         context.stateStartTime != null &&
         (System.currentTimeMillis() - context.stateStartTime.toEpochMilli() >= conditions.minStateAge.millis)
 
-fun Transition.hasStatsConditions(): Boolean = this.conditions?.docCount != null || this.conditions?.size != null
+fun Transition.hasStatsConditions(): Boolean = this.conditions?.docCount != null || this.conditions?.primaryShardDocCount != null ||
+    this.conditions?.size != null
 
-@Suppress("ReturnCount", "ComplexCondition")
+@Suppress("ReturnCount", "ComplexCondition", "CyclomaticComplexMethod")
 fun RolloverAction.evaluateConditions(
     indexAgeTimeValue: TimeValue,
     numDocs: Long,
+    primaryShardNumDocs: Long,
     indexSize: ByteSizeValue,
     primaryShardSize: ByteSizeValue,
 ): Boolean {
     if (this.minDocs == null &&
+        this.minPrimaryShardDocs == null &&
         this.minAge == null &&
         this.minSize == null &&
         this.minPrimaryShardSize == null
@@ -280,6 +290,10 @@ fun RolloverAction.evaluateConditions(
 
     if (this.minDocs != null) {
         if (this.minDocs <= numDocs) return true
+    }
+
+    if (this.minPrimaryShardDocs != null) {
+        if (this.minPrimaryShardDocs <= primaryShardNumDocs) return true
     }
 
     if (this.minAge != null) {

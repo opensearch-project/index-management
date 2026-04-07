@@ -129,112 +129,129 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
     }
 
     fun `test rollover action config evaluate conditions`() {
-        val noConditionsConfig = RolloverAction(minSize = null, minDocs = null, minAge = null, minPrimaryShardSize = null, preventEmptyRollover = false, index = 0)
+        val noConditionsConfig = RolloverAction(minSize = null, minDocs = null, minPrimaryShardDocs = null, minAge = null, minPrimaryShardSize = null, preventEmptyRollover = false, index = 0)
         assertTrue(
             "No conditions should always pass",
             noConditionsConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(0), numDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(0), numDocs = 0, primaryShardNumDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
         )
         assertTrue(
             "No conditions should always pass",
             noConditionsConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(100), numDocs = 5, indexSize = ByteSizeValue(5), primaryShardSize = ByteSizeValue(5)),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(100), numDocs = 5, primaryShardNumDocs = 5, indexSize = ByteSizeValue(5), primaryShardSize = ByteSizeValue(5)),
         )
         assertTrue(
             "No conditions should always pass",
             noConditionsConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(6000), numDocs = 5, indexSize = ByteSizeValue(5), primaryShardSize = ByteSizeValue(5)),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(6000), numDocs = 5, primaryShardNumDocs = 5, indexSize = ByteSizeValue(5), primaryShardSize = ByteSizeValue(5)),
         )
 
-        val minSizeConfig = RolloverAction(minSize = ByteSizeValue(5), minDocs = null, minAge = null, minPrimaryShardSize = null, preventEmptyRollover = false, index = 0)
+        val minSizeConfig = RolloverAction(minSize = ByteSizeValue(5), minDocs = null, minPrimaryShardDocs = null, minAge = null, minPrimaryShardSize = null, preventEmptyRollover = false, index = 0)
         assertFalse(
             "Less bytes should not pass",
             minSizeConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, primaryShardNumDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
         )
         assertTrue(
             "Equal bytes should pass",
             minSizeConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, indexSize = ByteSizeValue(5), primaryShardSize = ByteSizeValue(5)),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, primaryShardNumDocs = 0, indexSize = ByteSizeValue(5), primaryShardSize = ByteSizeValue(5)),
         )
         assertTrue(
             "More bytes should pass",
             minSizeConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, indexSize = ByteSizeValue(10), primaryShardSize = ByteSizeValue(10)),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, primaryShardNumDocs = 0, indexSize = ByteSizeValue(10), primaryShardSize = ByteSizeValue(10)),
         )
 
-        val minPrimarySizeConfig = RolloverAction(minSize = null, minDocs = null, minAge = null, minPrimaryShardSize = ByteSizeValue(5), preventEmptyRollover = false, index = 0)
+        val minPrimarySizeConfig = RolloverAction(minSize = null, minDocs = null, minPrimaryShardDocs = null, minAge = null, minPrimaryShardSize = ByteSizeValue(5), preventEmptyRollover = false, index = 0)
         assertFalse(
             "Less primary bytes should not pass",
             minPrimarySizeConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, primaryShardNumDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
         )
         assertTrue(
             "Equal primary bytes should pass",
             minPrimarySizeConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, indexSize = ByteSizeValue(5), primaryShardSize = ByteSizeValue(5)),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, primaryShardNumDocs = 0, indexSize = ByteSizeValue(5), primaryShardSize = ByteSizeValue(5)),
         )
         assertTrue(
             "More primary bytes should pass",
             minPrimarySizeConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, indexSize = ByteSizeValue(10), primaryShardSize = ByteSizeValue(10)),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, primaryShardNumDocs = 0, indexSize = ByteSizeValue(10), primaryShardSize = ByteSizeValue(10)),
         )
 
-        val minDocsConfig = RolloverAction(minSize = null, minDocs = 5, minAge = null, minPrimaryShardSize = null, preventEmptyRollover = false, index = 0)
+        val minDocsConfig = RolloverAction(minSize = null, minDocs = 5, minPrimaryShardDocs = null, minAge = null, minPrimaryShardSize = null, preventEmptyRollover = false, index = 0)
         assertFalse(
             "Less docs should not pass",
             minDocsConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, primaryShardNumDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
         )
         assertTrue(
             "Equal docs should pass",
             minDocsConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 5, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 5, primaryShardNumDocs = 5, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
         )
         assertTrue(
             "More docs should pass",
             minDocsConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 10, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 10, primaryShardNumDocs = 10, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
         )
 
-        val minAgeConfig = RolloverAction(minSize = null, minDocs = null, minAge = TimeValue.timeValueSeconds(5), minPrimaryShardSize = null, preventEmptyRollover = false, index = 0)
+        val minPrimaryDocsConfig = RolloverAction(minSize = null, minDocs = null, minPrimaryShardDocs = 5, minAge = null, minPrimaryShardSize = null, preventEmptyRollover = false, index = 0)
+        assertFalse(
+            "Less docs should not pass",
+            minPrimaryDocsConfig
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 3, primaryShardNumDocs = 1, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+        )
+        assertTrue(
+            "Equal docs should pass",
+            minPrimaryDocsConfig
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 15, primaryShardNumDocs = 5, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+        )
+        assertTrue(
+            "More docs should pass",
+            minPrimaryDocsConfig
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 30, primaryShardNumDocs = 10, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+        )
+
+        val minAgeConfig = RolloverAction(minSize = null, minDocs = null, minPrimaryShardDocs = null, minAge = TimeValue.timeValueSeconds(5), minPrimaryShardSize = null, preventEmptyRollover = false, index = 0)
         assertFalse(
             "Index age that is too young should not pass",
             minAgeConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(1000), numDocs = 0, primaryShardNumDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
         )
         assertTrue(
             "Index age that is older should pass",
             minAgeConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(10000), numDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(10000), numDocs = 0, primaryShardNumDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
         )
 
-        val multiConfig = RolloverAction(minSize = ByteSizeValue(1), minDocs = 1, minAge = TimeValue.timeValueSeconds(5), minPrimaryShardSize = ByteSizeValue(1), preventEmptyRollover = false, index = 0)
+        val multiConfig = RolloverAction(minSize = ByteSizeValue(1), minDocs = 1, minPrimaryShardDocs = 1000, minAge = TimeValue.timeValueSeconds(5), minPrimaryShardSize = ByteSizeValue(1), preventEmptyRollover = false, index = 0)
         assertFalse(
             "No conditions met should not pass",
             multiConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(0), numDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(0), numDocs = 0, primaryShardNumDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
         )
         assertTrue(
             "Multi condition, age should pass",
             multiConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(10000), numDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(10000), numDocs = 0, primaryShardNumDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
         )
         assertTrue(
             "Multi condition, docs should pass",
             multiConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(0), numDocs = 2, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(0), numDocs = 2, primaryShardNumDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue.ZERO),
         )
         assertTrue(
             "Multi condition, size should pass",
             multiConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(0), numDocs = 0, indexSize = ByteSizeValue(2), primaryShardSize = ByteSizeValue.ZERO),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(0), numDocs = 0, primaryShardNumDocs = 0, indexSize = ByteSizeValue(2), primaryShardSize = ByteSizeValue.ZERO),
         )
 
         assertTrue(
             "Multi condition, primary size should pass",
             multiConfig
-                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(0), numDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue(2)),
+                .evaluateConditions(indexAgeTimeValue = TimeValue.timeValueMillis(0), numDocs = 0, primaryShardNumDocs = 0, indexSize = ByteSizeValue.ZERO, primaryShardSize = ByteSizeValue(2)),
         )
     }
 
@@ -247,6 +264,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                     TransitionConditionContext(
                         indexCreationDate = Instant.now(),
                         numDocs = null,
+                        primaryShardNumDocs = null,
                         indexSize = null,
                         transitionStartTime = Instant.now(),
                         rolloverDate = null,
@@ -266,6 +284,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                     TransitionConditionContext(
                         indexCreationDate = Instant.now(),
                         numDocs = null,
+                        primaryShardNumDocs = null,
                         indexSize = null,
                         transitionStartTime = Instant.now(),
                         rolloverDate = null,
@@ -279,6 +298,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                     TransitionConditionContext(
                         indexCreationDate = Instant.now().minusSeconds(10),
                         numDocs = null,
+                        primaryShardNumDocs = null,
                         indexSize = null,
                         transitionStartTime = Instant.now(),
                         rolloverDate = null,
@@ -292,6 +312,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                     TransitionConditionContext(
                         indexCreationDate = Instant.ofEpochMilli(-1L),
                         numDocs = null,
+                        primaryShardNumDocs = null,
                         indexSize = null,
                         transitionStartTime = Instant.now(),
                         rolloverDate = null,
@@ -311,6 +332,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                     TransitionConditionContext(
                         indexCreationDate = Instant.now(),
                         numDocs = null,
+                        primaryShardNumDocs = null,
                         indexSize = null,
                         transitionStartTime = Instant.now(),
                         rolloverDate = Instant.now(),
@@ -324,6 +346,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                     TransitionConditionContext(
                         indexCreationDate = Instant.now().minusSeconds(10),
                         numDocs = null,
+                        primaryShardNumDocs = null,
                         indexSize = null,
                         transitionStartTime = Instant.now(),
                         rolloverDate = Instant.now().minusSeconds(10),
@@ -337,6 +360,41 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                     TransitionConditionContext(
                         indexCreationDate = Instant.ofEpochMilli(-1L),
                         numDocs = null,
+                        primaryShardNumDocs = null,
+                        indexSize = null,
+                        transitionStartTime = Instant.now(),
+                        rolloverDate = null,
+                    ),
+                ),
+        )
+
+        val primaryShardDocCountTransition =
+            Transition(
+                stateName = "some_state",
+                conditions = Conditions(primaryShardDocCount = 10),
+            )
+        assertFalse(
+            "Not enough documents in primary shard should not pass",
+            primaryShardDocCountTransition
+                .evaluateConditions(
+                    TransitionConditionContext(
+                        indexCreationDate = Instant.now(),
+                        numDocs = null,
+                        primaryShardNumDocs = 5,
+                        indexSize = null,
+                        transitionStartTime = Instant.now(),
+                        rolloverDate = null,
+                    ),
+                ),
+        )
+        assertTrue(
+            "Enough documents in primary shard should pass",
+            primaryShardDocCountTransition
+                .evaluateConditions(
+                    TransitionConditionContext(
+                        indexCreationDate = Instant.now(),
+                        numDocs = null,
+                        primaryShardNumDocs = 10,
                         indexSize = null,
                         transitionStartTime = Instant.now(),
                         rolloverDate = null,
@@ -355,6 +413,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 TransitionConditionContext(
                     indexCreationDate = Instant.now(),
                     numDocs = null,
+                    primaryShardNumDocs = null,
                     indexSize = null,
                     transitionStartTime = Instant.now(),
                     rolloverDate = null,
@@ -369,6 +428,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 TransitionConditionContext(
                     indexCreationDate = Instant.now(),
                     numDocs = null,
+                    primaryShardNumDocs = null,
                     indexSize = null,
                     transitionStartTime = Instant.now(),
                     rolloverDate = null,
@@ -389,6 +449,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 TransitionConditionContext(
                     indexCreationDate = Instant.now(),
                     numDocs = null,
+                    primaryShardNumDocs = null,
                     indexSize = null,
                     transitionStartTime = Instant.now(),
                     rolloverDate = null,
@@ -403,6 +464,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 TransitionConditionContext(
                     indexCreationDate = Instant.now(),
                     numDocs = null,
+                    primaryShardNumDocs = null,
                     indexSize = null,
                     transitionStartTime = Instant.now(),
                     rolloverDate = null,
@@ -424,6 +486,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 TransitionConditionContext(
                     indexCreationDate = Instant.now(),
                     numDocs = null,
+                    primaryShardNumDocs = null,
                     indexSize = null,
                     transitionStartTime = Instant.now(),
                     rolloverDate = null,
@@ -440,6 +503,7 @@ class ManagedIndexUtilsTests : OpenSearchTestCase() {
                 TransitionConditionContext(
                     indexCreationDate = Instant.now(),
                     numDocs = null,
+                    primaryShardNumDocs = null,
                     indexSize = null,
                     transitionStartTime = Instant.now(),
                     rolloverDate = null,

@@ -104,6 +104,15 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                 TimeValue.timeValueMillis(Instant.now().toEpochMilli() - indexCreationDate)
             }
         val numDocs = statsResponse.primaries.docs?.count ?: 0
+        var numDocsMostCrowdedShard: Long = 0
+        for (shard in statsResponse.getShards()) {
+            if (shard.getShardRouting().primary()) {
+                val currentShardNumDocs: Long? = shard.getStats().getDocs()?.count
+                if (currentShardNumDocs != null && currentShardNumDocs > numDocsMostCrowdedShard) {
+                    numDocsMostCrowdedShard = currentShardNumDocs
+                }
+            }
+        }
         val indexSize = ByteSizeValue(statsResponse.primaries.docs?.totalSizeInBytes ?: 0)
         val largestPrimaryShard = statsResponse.shards.maxByOrNull { it.stats.docs?.totalSizeInBytes ?: 0 }
         val largestPrimaryShardSize = ByteSizeValue(largestPrimaryShard?.stats?.docs?.totalSizeInBytes ?: 0)
@@ -125,6 +134,13 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                             "current" to numDocs,
                         )
                 },
+                action.minPrimaryShardDocs?.let {
+                    RolloverAction.MIN_PRIMARY_SHARD_DOC_COUNT_FIELD to
+                        mapOf(
+                            "condition" to it,
+                            "current" to numDocsMostCrowdedShard,
+                        )
+                },
                 action.minSize?.let {
                     RolloverAction.MIN_SIZE_FIELD to
                         mapOf(
@@ -142,10 +158,11 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                 },
             ).toMap()
 
-        if (action.evaluateConditions(indexAgeTimeValue, numDocs, indexSize, largestPrimaryShardSize)) {
+        if (action.evaluateConditions(indexAgeTimeValue, numDocs, numDocsMostCrowdedShard, indexSize, largestPrimaryShardSize)) {
             logger.info(
                 "$indexName rollover conditions evaluated to true [indexCreationDate=$indexCreationDate," +
-                    " numDocs=$numDocs, indexSize=${indexSize.bytes}, primaryShardSize=${largestPrimaryShardSize.bytes}]",
+                    " numDocs=$numDocs, primaryShardNumDocs=$numDocsMostCrowdedShard," +
+                    " indexSize=${indexSize.bytes}, primaryShardSize=${largestPrimaryShardSize.bytes}]",
             )
             executeRollover(context, rolloverTarget, isDataStream, conditions)
             copyAlias(clusterService, indexName, context.client, rolloverTarget, context.metadata)

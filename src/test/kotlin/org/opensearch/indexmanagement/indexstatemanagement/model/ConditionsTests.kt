@@ -30,6 +30,15 @@ class ConditionsTests : OpenSearchTestCase() {
         }
     }
 
+    fun `test primary shard doc count condition of zero fails`() {
+        assertFailsWith(
+            IllegalArgumentException::class,
+            "Expected IllegalArgumentException for primary shard doc count condition less than 1",
+        ) {
+            Conditions(primaryShardDocCount = 0)
+        }
+    }
+
     fun `test size condition of zero fails`() {
         assertFailsWith(
             IllegalArgumentException::class,
