@@ -148,6 +148,47 @@ class TransitionActionIT : IndexStateManagementRestTestCase() {
         waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
     }
 
+    fun `test primary shard doc count transition for index`() {
+        val indexName = "${testIndexName}_rollover_primary_shard_doc_count-01"
+        val policyID = "${testIndexName}_rollover_primary_shard_doc_count_policy"
+        val secondStateName = "second"
+        val states =
+            listOf(
+                State("first", listOf(), listOf(Transition(secondStateName, Conditions(primaryShardDocCount = 5)))),
+                State(secondStateName, listOf(), listOf()),
+            )
+
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
+
+        createPolicy(policy, policyID)
+        createIndex(indexName, policyID)
+
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+
+        // Initializing the policy/metadata
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+
+        // Add 6 documents (>5)
+        insertSampleData(indexName, 6)
+
+        // Evaluating transition conditions for first time
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+
+        // Should have evaluated to true
+        waitFor { assertEquals(AttemptTransitionStep.getSuccessMessage(indexName, secondStateName), getExplainManagedIndexMetaData(indexName).info?.get("message")) }
+    }
+
     fun `test noAlias transition condition`() {
         val indexName = "${testIndexName}_no_alias"
         val policyID = "${testIndexName}_no_alias_policy"

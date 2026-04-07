@@ -69,8 +69,20 @@ class ActionTests : OpenSearchTestCase() {
     }
 
     fun `test rollover action minimum doc count of zero fails`() {
-        assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for minDoc less than 1") {
+        assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for minDocs less than 1") {
             randomRolloverActionConfig(minDocs = 0)
+        }
+    }
+
+    fun `test rollover action minimum primary shard size of zero fails`() {
+        assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for minPrimaryShardSize less than 1") {
+            randomRolloverActionConfig(minPrimaryShardSize = ByteSizeValue.parseBytesSizeValue("0", "min_primary_shard_size_test"))
+        }
+    }
+
+    fun `test rollover action minimum primary shard doc count of zero fails`() {
+        assertFailsWith(IllegalArgumentException::class, "Expected IllegalArgumentException for minPrimaryShardDocs less than 1") {
+            randomRolloverActionConfig(minPrimaryShardDocs = 0)
         }
     }
 

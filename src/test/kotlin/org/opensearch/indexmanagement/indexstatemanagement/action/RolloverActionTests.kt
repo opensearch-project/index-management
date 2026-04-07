@@ -62,9 +62,9 @@ class RolloverActionTests : OpenSearchTestCase() {
         builder.endObject()
 
         val jsonString = builder.string()
-        assertFalse(
-            "XContent should NOT contain prevent_empty_rollover field when false",
-            jsonString.contains("prevent_empty_rollover"),
+        assertTrue(
+            "XContent should contain min_primary_shard_doc_count field",
+            jsonString.contains("min_primary_shard_doc_count"),
         )
     }
 
@@ -117,7 +117,7 @@ class RolloverActionTests : OpenSearchTestCase() {
         val originalAction = RolloverAction(
             minSize = ByteSizeValue.parseBytesSizeValue("50gb", "test"),
             minDocs = 1000L,
-            minPrimaryShardDocs = null,
+            minPrimaryShardDocs = 1000,
             minAge = TimeValue.parseTimeValue("7d", "test"),
             minPrimaryShardSize = ByteSizeValue.parseBytesSizeValue("30gb", "test"),
             copyAlias = true,
@@ -135,6 +135,7 @@ class RolloverActionTests : OpenSearchTestCase() {
         assertEquals("minSize should be preserved", originalAction.minSize, deserializedAction.minSize)
         assertEquals("minDocs should be preserved", originalAction.minDocs, deserializedAction.minDocs)
         assertEquals("minAge should be preserved", originalAction.minAge, deserializedAction.minAge)
+        assertEquals("minPrimaryShardDocs should be preserved", originalAction.minPrimaryShardDocs, deserializedAction.minPrimaryShardDocs)
         assertEquals("minPrimaryShardSize should be preserved", originalAction.minPrimaryShardSize, deserializedAction.minPrimaryShardSize)
         assertEquals("copyAlias should be preserved", originalAction.copyAlias, deserializedAction.copyAlias)
         assertEquals("preventEmptyRollover should be preserved", originalAction.preventEmptyRollover, deserializedAction.preventEmptyRollover)
