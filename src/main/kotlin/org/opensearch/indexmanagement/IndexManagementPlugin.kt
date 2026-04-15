@@ -60,6 +60,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestGetPo
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestIndexPolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestRemovePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestRetryFailedManagedIndexAction
+import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestSimulatePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.addpolicy.AddPolicyAction
@@ -82,6 +83,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.remo
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.removepolicy.TransportRemovePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.RetryFailedManagedIndexAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.retryfailedmanagedindex.TransportRetryFailedManagedIndexAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.SimulatePolicyAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.TransportSimulatePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.validation.ActionValidation
 import org.opensearch.indexmanagement.refreshanalyzer.RefreshSearchAnalyzerAction
@@ -351,6 +354,7 @@ class IndexManagementPlugin :
         RestDeletePolicyAction(),
         RestExplainAction(),
         RestRetryFailedManagedIndexAction(),
+        RestSimulatePolicyAction(),
         RestAddPolicyAction(),
         RestRemovePolicyAction(),
         RestChangePolicyAction(),
@@ -591,6 +595,7 @@ class IndexManagementPlugin :
         ActionPlugin.ActionHandler(ChangePolicyAction.INSTANCE, TransportChangePolicyAction::class.java),
         ActionPlugin.ActionHandler(IndexPolicyAction.INSTANCE, TransportIndexPolicyAction::class.java),
         ActionPlugin.ActionHandler(ExplainAction.INSTANCE, TransportExplainAction::class.java),
+        ActionPlugin.ActionHandler(SimulatePolicyAction.INSTANCE, TransportSimulatePolicyAction::class.java),
         ActionPlugin.ActionHandler(DeletePolicyAction.INSTANCE, TransportDeletePolicyAction::class.java),
         ActionPlugin.ActionHandler(GetPolicyAction.INSTANCE, TransportGetPolicyAction::class.java),
         ActionPlugin.ActionHandler(GetPoliciesAction.INSTANCE, TransportGetPoliciesAction::class.java),
