@@ -226,6 +226,9 @@
                     },
                     "snapshot": {
                       "type": "keyword"
+                    },
+                    "rename_pattern": {
+                      "type": "keyword"
                     }
                   }
                 },
