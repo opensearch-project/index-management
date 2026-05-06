@@ -172,6 +172,50 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
         }
     }
 
+    fun `test refresh succeeds with metadata write block`() {
+        val buildDir = System.getProperty("buildDir")
+        val numNodes = System.getProperty("cluster.number_of_nodes", "1").toInt()
+        val indexName = "${testIndexName}_index_4"
+
+        for (i in 0 until numNodes) {
+            writeToFile("$buildDir/testclusters/integTest-$i/config/pacman_synonyms.txt", "hello, hola")
+        }
+
+        val settings: Settings = Settings.builder()
+            .loadFromSource(getSearchAnalyzerSettings(), XContentType.JSON)
+            .build()
+        createIndex(indexName, settings, getAnalyzerMapping())
+        ingestData(indexName)
+
+        // Verify initial synonym works
+        assertTrue(queryData(indexName, "hola").contains("hello world"))
+
+        // Add read_only block (levels: WRITE + METADATA_WRITE), simulates CCR follower block
+        val addBlockRequest = Request("PUT", "/$indexName/_settings")
+        addBlockRequest.setJsonEntity("""{"index.blocks.read_only": true}""")
+        client().performRequest(addBlockRequest)
+
+        // Update synonym file on disk
+        for (i in 0 until numNodes) {
+            writeToFile("$buildDir/testclusters/integTest-$i/config/pacman_synonyms.txt", "hello, hola, namaste")
+        }
+
+        // Refresh should succeed despite the METADATA_WRITE block
+        refreshAnalyzer(indexName)
+
+        // New synonym should be active in search
+        assertTrue(queryData(indexName, "namaste").contains("hello world"))
+
+        // Remove block and clean up
+        val removeBlockRequest = Request("PUT", "/$indexName/_settings")
+        removeBlockRequest.setJsonEntity("""{"index.blocks.read_only": false}""")
+        client().performRequest(removeBlockRequest)
+
+        for (i in 0 until numNodes) {
+            deleteFile("$buildDir/testclusters/integTest-$i/config/pacman_synonyms.txt")
+        }
+    }
+
     companion object {
         fun writeToFile(filePath: String, contents: String) {
             val path = org.opensearch.common.io.PathUtils.get(filePath)
