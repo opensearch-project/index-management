@@ -304,4 +304,97 @@ class ISMRollupTests : OpenSearchTestCase() {
         assertEquals(original.sourceIndex, parsedFromStream.sourceIndex)
         assertEquals(original.pageSize, parsedFromStream.pageSize)
     }
+
+    fun `test ism rollup routing field must match a terms dimension`() {
+        assertFailsWith(IllegalArgumentException::class, "Routing field must match a terms dimension") {
+            randomISMRollup().copy(routingField = "nonexistent_field")
+        }
+    }
+
+    fun `test ism rollup routing field accepts valid terms dimension`() {
+        val terms = randomTerms()
+        val dimensions = listOf(randomDateHistogram(), terms)
+        // Should not throw
+        randomISMRollup().copy(dimensions = dimensions, routingField = terms.sourceField)
+    }
+
+    fun `test ism rollup routing field accepts null`() {
+        // Should not throw
+        randomISMRollup().copy(routingField = null)
+    }
+
+    fun `test ism rollup toRollup preserves routing field`() {
+        val terms = randomTerms()
+        val dimensions = listOf(randomDateHistogram(), terms)
+        val ismRollup = randomISMRollup().copy(dimensions = dimensions, routingField = terms.sourceField)
+        val rollup = ismRollup.toRollup("source-index")
+        assertEquals(terms.sourceField, rollup.routingField)
+    }
+
+    fun `test ism rollup toRollup preserves null routing field`() {
+        val ismRollup = randomISMRollup().copy(routingField = null)
+        val rollup = ismRollup.toRollup("source-index")
+        assertNull(rollup.routingField)
+    }
+
+    fun `test ism rollup serialization with routing field`() {
+        val terms = randomTerms()
+        val dimensions = listOf(randomDateHistogram(), terms)
+        val ismRollup = randomISMRollup().copy(dimensions = dimensions, routingField = terms.sourceField)
+        val jsonString = ismRollup.toJsonString()
+
+        assertTrue(jsonString.contains("routing_field"))
+
+        val parser = createParser(XContentType.JSON.xContent(), jsonString)
+        parser.nextToken()
+        val parsed = ISMRollup.parse(parser)
+
+        assertEquals(terms.sourceField, parsed.routingField)
+    }
+
+    fun `test ism rollup serialization without routing field`() {
+        val ismRollup = randomISMRollup().copy(routingField = null)
+        val jsonString = ismRollup.toJsonString()
+
+        assertFalse(jsonString.contains("routing_field"))
+
+        val parser = createParser(XContentType.JSON.xContent(), jsonString)
+        parser.nextToken()
+        val parsed = ISMRollup.parse(parser)
+
+        assertNull(parsed.routingField)
+    }
+
+    fun `test ism rollup stream serialization with routing field on V3_6_0`() {
+        val terms = randomTerms()
+        val dimensions = listOf(randomDateHistogram(), terms)
+        val ismRollup = randomISMRollup().copy(dimensions = dimensions, routingField = terms.sourceField, sourceIndex = null)
+
+        val output = BytesStreamOutput()
+        output.version = Version.V_3_6_0
+        ismRollup.writeTo(output)
+
+        val input = StreamInput.wrap(output.bytes().toBytesRef().bytes)
+        input.version = Version.V_3_6_0
+        val parsed = ISMRollup(input)
+
+        assertEquals(terms.sourceField, parsed.routingField)
+    }
+
+    fun `test ism rollup stream serialization backward compatibility routing field with V3_5_0`() {
+        val terms = randomTerms()
+        val dimensions = listOf(randomDateHistogram(), terms)
+        val ismRollup = randomISMRollup().copy(dimensions = dimensions, routingField = terms.sourceField, sourceIndex = null)
+
+        val output = BytesStreamOutput()
+        output.version = Version.V_3_5_0
+        ismRollup.writeTo(output)
+
+        val input = StreamInput.wrap(output.bytes().toBytesRef().bytes)
+        input.version = Version.V_3_5_0
+        val parsed = ISMRollup(input)
+
+        // routingField should be null when reading from older version
+        assertNull(parsed.routingField)
+    }
 }
