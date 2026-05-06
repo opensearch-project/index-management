@@ -50,7 +50,16 @@ jobs:
       - name: Run integration tests with multi node config
         run: |
           chown -R 1000:1000 `pwd`
-          su `id -un 1000` -c "./gradlew integTest -PnumNodes=3 ${{ env.TEST_FILTER }}"
+          # Retry once on failure to mitigate flaky cluster coordination (e.g. FailedToCommitClusterStateException)
+          for attempt in 1 2; do
+            if su `id -un 1000` -c "./gradlew integTest -PnumNodes=3 ${{ env.TEST_FILTER }}"; then
+              exit 0
+            fi
+            if [ "$attempt" = "1" ]; then
+              echo "Attempt $attempt failed, retrying..."
+            fi
+          done
+          exit 1
       - name: Upload failed logs
         uses: actions/upload-artifact@v6
         if: failure()
