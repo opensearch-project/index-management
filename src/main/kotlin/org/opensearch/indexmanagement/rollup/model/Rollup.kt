@@ -59,6 +59,7 @@ data class Rollup(
     val dimensions: List<Dimension>,
     val metrics: List<RollupMetrics>,
     val user: User? = null,
+    val routingField: String? = null,
 ) : ScheduledJobParameter,
     Writeable {
     init {
@@ -105,6 +106,11 @@ data class Rollup(
         if (delay != null) {
             require(delay >= MINIMUM_DELAY) { "Delay must be non-negative if set" }
             require(delay <= Instant.now().toEpochMilli()) { "Delay must be less than the current unix time" }
+        }
+        if (routingField != null) {
+            require(dimensions.any { it is Terms && it.sourceField == routingField }) {
+                "Routing field [$routingField] must match a terms dimension"
+            }
         }
     }
 
@@ -172,6 +178,11 @@ data class Rollup(
         } else {
             null
         },
+        routingField = if (sin.getVersion().onOrAfter(Version.V_3_6_0)) {
+            sin.readOptionalString()
+        } else {
+            null
+        },
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -192,6 +203,9 @@ data class Rollup(
             .field(CONTINUOUS_FIELD, continuous)
             .field(DIMENSIONS_FIELD, dimensions.toTypedArray())
             .field(RollupMetrics.METRICS_FIELD, metrics.toTypedArray())
+        if (routingField != null) {
+            builder.field(ROUTING_FIELD, routingField)
+        }
         if (targetIndexSettings != null) {
             builder.startObject(TARGET_INDEX_SETTINGS_FIELD)
             targetIndexSettings.toXContent(builder, params)
@@ -241,6 +255,9 @@ data class Rollup(
         out.writeCollection(metrics)
         out.writeBoolean(user != null)
         user?.writeTo(out)
+        if (out.version.onOrAfter(Version.V_3_6_0)) {
+            out.writeOptionalString(routingField)
+        }
     }
 
     companion object {
@@ -269,6 +286,7 @@ data class Rollup(
         const val CONTINUOUS_FIELD = "continuous"
         const val DIMENSIONS_FIELD = "dimensions"
         const val METRICS_FIELD = "metrics"
+        const val ROUTING_FIELD = "routing_field"
         const val MINIMUM_JOB_INTERVAL = 1
         const val MINIMUM_DELAY = 0
         const val MINIMUM_PAGE_SIZE = 1
@@ -308,6 +326,7 @@ data class Rollup(
             val dimensions = mutableListOf<Dimension>()
             val metrics = mutableListOf<RollupMetrics>()
             var user: User? = null
+            var routingField: String? = null
 
             ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
 
@@ -375,6 +394,8 @@ data class Rollup(
                         user = if (xcp.currentToken() == Token.VALUE_NULL) null else User.parse(xcp)
                     }
 
+                    ROUTING_FIELD -> routingField = xcp.textOrNull()
+
                     else -> throw IllegalArgumentException("Invalid field [$fieldName] found in Rollup.")
                 }
             }
@@ -413,6 +434,7 @@ data class Rollup(
                 dimensions = dimensions,
                 metrics = metrics,
                 user = user,
+                routingField = routingField,
             )
         }
     }

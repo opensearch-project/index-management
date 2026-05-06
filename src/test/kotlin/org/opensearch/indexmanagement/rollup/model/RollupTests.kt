@@ -125,4 +125,29 @@ class RollupTests : OpenSearchTestCase() {
             )
         assertNull(nonContinuousRollup.jobSchedule.delay)
     }
+
+    fun `test rollup routing field must match a terms dimension`() {
+        assertFailsWith(IllegalArgumentException::class, "Routing field must match a terms dimension") {
+            randomRollup().copy(routingField = "nonexistent_field")
+        }
+    }
+
+    fun `test rollup routing field cannot be a date histogram dimension`() {
+        val dimensions = listOf(randomDateHistogram(), randomTerms())
+        assertFailsWith(IllegalArgumentException::class, "Routing field must match a terms dimension") {
+            randomRollup().copy(dimensions = dimensions, routingField = dimensions[0].sourceField)
+        }
+    }
+
+    fun `test rollup routing field accepts valid terms dimension`() {
+        val terms = randomTerms()
+        val dimensions = listOf(randomDateHistogram(), terms)
+        // Should not throw
+        randomRollup().copy(dimensions = dimensions, routingField = terms.sourceField)
+    }
+
+    fun `test rollup routing field accepts null`() {
+        // Should not throw
+        randomRollup().copy(routingField = null)
+    }
 }

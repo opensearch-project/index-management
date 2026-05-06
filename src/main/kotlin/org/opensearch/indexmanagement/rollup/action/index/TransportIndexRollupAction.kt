@@ -155,6 +155,7 @@ constructor(
             if (rollup.metrics != newRollup.metrics) modified.add(Rollup.METRICS_FIELD)
             if (rollup.sourceIndex != newRollup.sourceIndex) modified.add(Rollup.SOURCE_INDEX_FIELD)
             if (rollup.targetIndex != newRollup.targetIndex) modified.add(Rollup.TARGET_INDEX_FIELD)
+            if (rollup.routingField != newRollup.routingField) modified.add(Rollup.ROUTING_FIELD)
             return modified.toList()
         }
 
