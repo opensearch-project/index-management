@@ -429,6 +429,7 @@ testClusters.integTest {
     }
     plugin(provider(ccrFile))
     setting 'path.repo', repo.absolutePath
+    setting 'opensearch.experimental.feature.pluggable.dataformat.enabled', 'true'
 }
 
 // Re-write WaitForHttpResource with updated code to support security plugin use case

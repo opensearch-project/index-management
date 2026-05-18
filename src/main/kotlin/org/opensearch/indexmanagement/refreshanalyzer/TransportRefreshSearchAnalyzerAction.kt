@@ -76,7 +76,7 @@ class TransportRefreshSearchAnalyzerAction :
     @Throws(IOException::class)
     override fun shardOperation(request: RefreshSearchAnalyzerRequest, shardRouting: ShardRouting): RefreshSearchAnalyzerShardResponse {
         val indexShard: IndexShard = indicesService.indexServiceSafe(shardRouting.shardId().index).getShard(shardRouting.shardId().id())
-        val reloadedAnalyzers: List<String> = indexShard.mapperService().reloadSearchAnalyzers(analysisRegistry, request.reloadCachedResources)
+        val reloadedAnalyzers: List<String> = indexShard.mapperService().reloadSearchAnalyzers(analysisRegistry)
         log.info(
             "Reload successful, index: ${shardRouting.shardId().index.name}, shard: ${shardRouting.shardId().id}, " +
                 "is_primary: ${shardRouting.primary()}, reloadCachedResources: ${request.reloadCachedResources}",
