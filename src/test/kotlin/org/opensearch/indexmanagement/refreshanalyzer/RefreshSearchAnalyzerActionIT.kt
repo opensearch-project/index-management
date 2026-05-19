@@ -175,6 +175,134 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
         }
     }
 
+    fun `test refresh succeeds with metadata write block`() {
+        val buildDir = System.getProperty("buildDir")
+        val numNodes = System.getProperty("cluster.number_of_nodes", "1").toInt()
+        val indexName = "${testIndexName}_index_4"
+
+        for (i in 0 until numNodes) {
+            writeToFile("$buildDir/testclusters/integTest-$i/config/pacman_synonyms.txt", "hello, hola")
+        }
+
+        val settings: Settings = Settings.builder()
+            .loadFromSource(getSearchAnalyzerSettings(), XContentType.JSON)
+            .build()
+        createIndex(indexName, settings, getAnalyzerMapping())
+        ingestData(indexName)
+
+        // Verify initial synonym works
+        assertTrue(queryData(indexName, "hola").contains("hello world"))
+
+        // Add read_only block (levels: WRITE + METADATA_WRITE), simulates CCR follower block
+        val addBlockRequest = Request("PUT", "/$indexName/_settings")
+        addBlockRequest.setJsonEntity("""{"index.blocks.read_only": true}""")
+        client().performRequest(addBlockRequest)
+
+        // Update synonym file on disk
+        for (i in 0 until numNodes) {
+            writeToFile("$buildDir/testclusters/integTest-$i/config/pacman_synonyms.txt", "hello, hola, namaste")
+        }
+
+        // Refresh should succeed despite the METADATA_WRITE block
+        refreshAnalyzer(indexName)
+
+        // New synonym should be active in search
+        assertTrue(queryData(indexName, "namaste").contains("hello world"))
+
+        // Remove block and clean up
+        val removeBlockRequest = Request("PUT", "/$indexName/_settings")
+        removeBlockRequest.setJsonEntity("""{"index.blocks.read_only": false}""")
+        client().performRequest(removeBlockRequest)
+
+        for (i in 0 until numNodes) {
+            deleteFile("$buildDir/testclusters/integTest-$i/config/pacman_synonyms.txt")
+        }
+    }
+
+    fun `test hunspell dictionary reload with reload_cached_resources`() {
+        val buildDir = System.getProperty("buildDir")
+        val numNodes = System.getProperty("cluster.number_of_nodes", "1").toInt()
+        val indexName = "${testIndexName}_hunspell_1"
+
+        // Create hunspell dictionary files on all nodes
+        for (i in 0 until numNodes) {
+            val hunspellDir = "$buildDir/testclusters/integTest-$i/config/analyzers/pkg-1/hunspell/en_US"
+            Files.createDirectories(org.opensearch.common.io.PathUtils.get(hunspellDir))
+            writeToFile("$hunspellDir/en_US.aff", "SET UTF-8\nSFX S Y 1\nSFX S 0 s .")
+            writeToFile("$hunspellDir/en_US.dic", "3\napple/S\nbanana/S\nmango/S")
+        }
+
+        // Create index with hunspell analyzer (updateable=true)
+        val settings: Settings = Settings.builder()
+            .loadFromSource(
+                """
+                {
+                    "index": {
+                        "number_of_shards": 3,
+                        "number_of_replicas": 0,
+                        "analysis": {
+                            "analyzer": {
+                                "my_hunspell_analyzer": {
+                                    "tokenizer": "standard",
+                                    "filter": ["my_hunspell_filter"]
+                                }
+                            },
+                            "filter": {
+                                "my_hunspell_filter": {
+                                    "type": "hunspell",
+                                    "ref_path": "analyzers/pkg-1",
+                                    "locale": "en_US",
+                                    "updateable": true
+                                }
+                            }
+                        }
+                    }
+                }
+                """.trimIndent(),
+                XContentType.JSON,
+            )
+            .build()
+        createIndex(
+            indexName, settings,
+            """
+                "properties": {
+                    "content": {
+                        "type": "text",
+                        "analyzer": "standard",
+                        "search_analyzer": "my_hunspell_analyzer"
+                    }
+                }
+            """.trimIndent(),
+        )
+
+        // Verify initial stemming: "apples" -> "apple"
+        val result1 = analyzeHunspell(indexName, "apples")
+        assertTrue("Expected 'apple' in result but got: $result1", result1.contains("apple"))
+
+        // Update dictionary on all nodes: add "kiwi"
+        for (i in 0 until numNodes) {
+            val hunspellDir = "$buildDir/testclusters/integTest-$i/config/analyzers/pkg-1/hunspell/en_US"
+            writeToFile("$hunspellDir/en_US.dic", "4\napple/S\nbanana/S\nmango/S\nkiwi/S")
+        }
+
+        // Refresh WITHOUT reload_cached_resources - "kiwis" should NOT stem
+        refreshAnalyzer(indexName)
+        val result2 = analyzeHunspell(indexName, "kiwis")
+        assertTrue("Expected 'kiwis' unchanged without cache reload but got: $result2", result2.contains("kiwis"))
+
+        // Refresh WITH reload_cached_resources=true - "kiwis" should stem to "kiwi"
+        val reloadRequest = Request("POST", "$REFRESH_SEARCH_ANALYZER_BASE_URI/$indexName?reload_cached_resources=true")
+        client().performRequest(reloadRequest)
+        val result3 = analyzeHunspell(indexName, "kiwis")
+        assertTrue("Expected 'kiwi' after cache reload but got: $result3", result3.contains("\"token\":\"kiwi\""))
+
+        // Clean up hunspell files
+        for (i in 0 until numNodes) {
+            val hunspellDir = "$buildDir/testclusters/integTest-$i/config/analyzers/pkg-1"
+            org.opensearch.common.io.PathUtils.get(hunspellDir).toFile().deleteRecursively()
+        }
+    }
+
     companion object {
         fun writeToFile(filePath: String, contents: String) {
             val path = org.opensearch.common.io.PathUtils.get(filePath)
@@ -264,5 +392,12 @@ class RefreshSearchAnalyzerActionIT : IndexManagementRestTestCase() {
                         }
                     }
         """.trimIndent()
+
+        fun analyzeHunspell(indexName: String, text: String): String {
+            val request = Request("POST", "/$indexName/_analyze")
+            request.setJsonEntity("""{"analyzer": "my_hunspell_analyzer", "text": "$text"}""")
+            val response = client().performRequest(request)
+            return Streams.copyToString(InputStreamReader(response.entity.content, StandardCharsets.UTF_8))
+        }
     }
 }

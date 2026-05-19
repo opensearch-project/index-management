@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit
 buildscript {
     ext {
         isSnapshot = "true" == System.getProperty("build.snapshot", "true")
-        opensearch_version = System.getProperty("opensearch.version", "3.6.0-SNAPSHOT")
+        opensearch_version = System.getProperty("opensearch.version", "3.7.0-SNAPSHOT")
         buildVersionQualifier = System.getProperty("build.version_qualifier", "")
         // 2.2.0-SNAPSHOT -> 2.2.0.0-SNAPSHOT
         version_tokens = opensearch_version.tokenize('-')
@@ -247,8 +247,8 @@ dependencies {
     configurations.ktlint {
         resolutionStrategy{
             force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.25"
-            force "ch.qos.logback:logback-classic:1.5.26"
-            force "ch.qos.logback:logback-core:1.5.26"
+            force "ch.qos.logback:logback-classic:1.5.32"
+            force "ch.qos.logback:logback-core:1.5.32"
         }
     }
 

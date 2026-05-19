@@ -44,9 +44,10 @@ class RestRefreshSearchAnalyzerAction : BaseRestHandler() {
             throw IllegalArgumentException("Missing indices")
         }
 
+        val reloadCachedResources = request.paramAsBoolean("reload_cached_resources", false)
+
         val refreshSearchAnalyzerRequest: RefreshSearchAnalyzerRequest =
-            RefreshSearchAnalyzerRequest()
-                .indices(*indices)
+            RefreshSearchAnalyzerRequest(*indices, reloadCachedResources = reloadCachedResources)
 
         return RestChannelConsumer { channel ->
             client.execute(RefreshSearchAnalyzerAction.INSTANCE, refreshSearchAnalyzerRequest, RestToXContentListener(channel))

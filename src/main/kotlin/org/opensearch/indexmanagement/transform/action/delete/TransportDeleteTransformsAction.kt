@@ -76,7 +76,7 @@ constructor(
             )
             // Use Multi-Get Request
             val getRequest = MultiGetRequest()
-            val fetchSourceContext = FetchSourceContext(true)
+            val fetchSourceContext = FetchSourceContext.FETCH_SOURCE
             request.ids.forEach { id ->
                 getRequest.add(MultiGetRequest.Item(INDEX_MANAGEMENT_INDEX, id).fetchSourceContext(fetchSourceContext))
             }

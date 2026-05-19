@@ -10,7 +10,6 @@ import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.broadcast.node.TransportBroadcastByNodeAction
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.block.ClusterBlockException
-import org.opensearch.cluster.block.ClusterBlockLevel
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.routing.ShardRouting
 import org.opensearch.cluster.routing.ShardsIterator
@@ -77,10 +76,10 @@ class TransportRefreshSearchAnalyzerAction :
     @Throws(IOException::class)
     override fun shardOperation(request: RefreshSearchAnalyzerRequest, shardRouting: ShardRouting): RefreshSearchAnalyzerShardResponse {
         val indexShard: IndexShard = indicesService.indexServiceSafe(shardRouting.shardId().index).getShard(shardRouting.shardId().id())
-        val reloadedAnalyzers: List<String> = indexShard.mapperService().reloadSearchAnalyzers(analysisRegistry)
+        val reloadedAnalyzers: List<String> = indexShard.mapperService().reloadSearchAnalyzers(analysisRegistry, request.reloadCachedResources)
         log.info(
             "Reload successful, index: ${shardRouting.shardId().index.name}, shard: ${shardRouting.shardId().id}, " +
-                "is_primary: ${shardRouting.primary()}",
+                "is_primary: ${shardRouting.primary()}, reloadCachedResources: ${request.reloadCachedResources}",
         )
         return RefreshSearchAnalyzerShardResponse(shardRouting.shardId(), reloadedAnalyzers)
     }
@@ -91,9 +90,8 @@ class TransportRefreshSearchAnalyzerAction :
     override fun shards(clusterState: ClusterState, request: RefreshSearchAnalyzerRequest?, concreteIndices: Array<String?>?): ShardsIterator? =
         clusterState.routingTable().allShards(concreteIndices)
 
-    override fun checkGlobalBlock(state: ClusterState, request: RefreshSearchAnalyzerRequest?): ClusterBlockException? =
-        state.blocks().globalBlockedException(ClusterBlockLevel.METADATA_WRITE)
+    // No block check needed: this action only reloads synonym files from disk into memory.
+    override fun checkGlobalBlock(state: ClusterState, request: RefreshSearchAnalyzerRequest?): ClusterBlockException? = null
 
-    override fun checkRequestBlock(state: ClusterState, request: RefreshSearchAnalyzerRequest?, concreteIndices: Array<String?>?): ClusterBlockException? =
-        state.blocks().indicesBlockedException(ClusterBlockLevel.METADATA_WRITE, concreteIndices)
+    override fun checkRequestBlock(state: ClusterState, request: RefreshSearchAnalyzerRequest?, concreteIndices: Array<String?>?): ClusterBlockException? = null
 }
