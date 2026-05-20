@@ -731,6 +731,12 @@ class RollupRunnerIT : RollupRestTestCase() {
             assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
             assertNull("Had a failure reason", rollupMetadata.failureReason)
         }
+
+        client().makeRequest(
+            "PUT",
+            "/_cluster/settings",
+            StringEntity("""{"persistent":{"search.max_buckets":null, "${ROLLUP_SEARCH_BACKOFF_COUNT.key}": null}}""", ContentType.APPLICATION_JSON),
+        )
     }
 
     // Tests that a continuous rollup will not be processed until the end of the interval plus delay passes
