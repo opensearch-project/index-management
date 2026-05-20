@@ -36,6 +36,7 @@ data class ISMRollup(
     val dimensions: List<Dimension>,
     val metrics: List<RollupMetrics>,
     val sourceIndex: String? = null,
+    val routingField: String? = null,
 ) : ToXContentObject,
     Writeable {
     // TODO: This can be moved to a common place, since this is shared between Rollup and ISMRollup
@@ -50,6 +51,11 @@ data class ISMRollup(
             "Must specify precisely one date histogram dimension"
         }
         require(dimensions.first().type == Dimension.Type.DATE_HISTOGRAM) { "The first dimension must be a date histogram" }
+        if (routingField != null) {
+            require(dimensions.any { it is Terms && it.sourceField == routingField }) {
+                "Routing field [$routingField] must match a terms dimension"
+            }
+        }
     }
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -61,6 +67,9 @@ data class ISMRollup(
             .field(Rollup.METRICS_FIELD, metrics)
         if (sourceIndex != null) {
             builder.field(Rollup.SOURCE_INDEX_FIELD, sourceIndex)
+        }
+        if (routingField != null) {
+            builder.field(Rollup.ROUTING_FIELD, routingField)
         }
         if (targetIndexSettings != null) {
             builder.startObject(Rollup.TARGET_INDEX_SETTINGS_FIELD)
@@ -102,6 +111,7 @@ data class ISMRollup(
             dimensions = dimensions,
             metrics = metrics,
             user = user,
+            routingField = routingField,
         )
     }
 
@@ -134,6 +144,11 @@ data class ISMRollup(
         metrics = sin.readList(::RollupMetrics),
         sourceIndex = if (sin.version.onOrAfter(Version.V_3_5_0) && sin.readBoolean()) {
             sin.readString()
+        } else {
+            null
+        },
+        routingField = if (sin.version.onOrAfter(Version.V_3_6_0)) {
+            sin.readOptionalString()
         } else {
             null
         },
@@ -180,6 +195,9 @@ data class ISMRollup(
             out.writeBoolean(sourceIndex != null)
             if (sourceIndex != null) out.writeString(sourceIndex)
         }
+        if (out.version.onOrAfter(Version.V_3_6_0)) {
+            out.writeOptionalString(routingField)
+        }
     }
 
     companion object {
@@ -196,6 +214,7 @@ data class ISMRollup(
             var pageSize = 0
             val dimensions = mutableListOf<Dimension>()
             val metrics = mutableListOf<RollupMetrics>()
+            var routingField: String? = null
 
             XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
 
@@ -243,6 +262,8 @@ data class ISMRollup(
                         }
                     }
 
+                    Rollup.ROUTING_FIELD -> routingField = xcp.textOrNull()
+
                     else -> throw IllegalArgumentException("Invalid field, [$fieldName] not supported in ISM Rollup.")
                 }
             }
@@ -255,6 +276,7 @@ data class ISMRollup(
                 targetIndex = targetIndex,
                 targetIndexSettings = targetIndexSettings,
                 sourceIndex = sourceIndex,
+                routingField = routingField,
             )
         }
     }

@@ -18,6 +18,8 @@ import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.common.model.dimension.Dimension
+import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.opensearchapi.retry
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.rollup.model.Rollup
@@ -144,6 +146,17 @@ class RollupIndexer(
                 IndexRequest(targetIndexResolvedName)
                     .id(documentId)
                     .source(mapOfKeyValues, XContentType.JSON)
+            if (job.routingField != null) {
+                val routingKey = job.dimensions
+                    .firstOrNull { dim -> dim is Terms && dim.sourceField == job.routingField }
+                    ?.let { dim -> "${dim.targetField}.${Dimension.Type.TERMS.type}" }
+                if (routingKey != null) {
+                    val routingValue = it.key[routingKey]?.toString()
+                    if (routingValue != null) {
+                        indexRequest.routing(routingValue)
+                    }
+                }
+            }
             requests.add(indexRequest)
         }
         return requests

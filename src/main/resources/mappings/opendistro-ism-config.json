@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 27
+    "schema_version": 28
   },
   "dynamic": "strict",
   "properties": {
@@ -489,6 +489,9 @@
                               }
                             }
                           }
+                        },
+                        "routing_field": {
+                          "type": "keyword"
                         }
                       }
                     }
@@ -1052,6 +1055,9 @@
         "continuous": {
           "type": "boolean"
         },
+        "routing_field": {
+          "type": "keyword"
+        },
         "roles": {
           "type": "text",
           "fields": {
@@ -1418,6 +1424,9 @@
         },
         "continuous": {
           "type": "boolean"
+        },
+        "routing_field": {
+          "type": "keyword"
         }
       }
     },
