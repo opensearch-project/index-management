@@ -13,6 +13,7 @@ import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.transform.TransformRestTestCase
 import org.opensearch.indexmanagement.transform.action.get.GetTransformsRequest.Companion.DEFAULT_SIZE
 import org.opensearch.indexmanagement.transform.randomTransform
+import org.opensearch.indexmanagement.waitFor
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.test.junit.annotations.TestLogging
 
@@ -52,12 +53,13 @@ class RestGetTransformActionIT : TransformRestTestCase() {
     fun `test getting all transforms`() {
         val transforms = randomList(1, 15) { createTransform(randomTransform()) }
 
-        // TODO: Delete existing transforms before test once delete API is available
         // Using a larger response size than the default in case leftover transforms prevent the ones created in this test from being returned
-        val res = client().makeRequest("GET", "$TRANSFORM_BASE_URI?size=100")
-        val map = res.asMap()
-        val totalTransforms = map["total_transforms"] as Int
-        val resTransforms = map["transforms"] as List<Map<String, Any?>>
+        // Wrap in waitFor to handle transient shard recovery (IllegalIndexShardStateException)
+        val resMap = waitFor {
+            client().makeRequest("GET", "$TRANSFORM_BASE_URI?size=100").asMap()
+        }
+        val totalTransforms = resMap["total_transforms"] as Int
+        val resTransforms = resMap["transforms"] as List<Map<String, Any?>>
 
         // There can be leftover transforms from previous tests, so we will have at least transforms.size or more
         assertTrue("Total transforms was not the same", transforms.size <= totalTransforms)
