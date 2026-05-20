@@ -210,23 +210,33 @@ class RollupInterceptor(
     }
 
     /*
-     * Validate that all indices have rollup job which matches field mappings from request
-     * TODO return compiled list of issues here instead of just throwing exception
+     * Validate that at least one index has a rollup job which matches field mappings from request.
+     * Indices whose rollup jobs don't cover the queried fields are skipped, allowing queries across
+     * multiple rollup indices with different dimension schemas.
      * */
-    private fun validateIndicies(concreteIndices: Array<String>, fieldMappings: Set<RollupFieldMapping>): Map<Rollup, Set<RollupFieldMapping>> {
+    internal fun validateIndicies(concreteIndices: Array<String>, fieldMappings: Set<RollupFieldMapping>): Map<Rollup, Set<RollupFieldMapping>> {
         var allMatchingRollupJobs: Map<Rollup, Set<RollupFieldMapping>> = mapOf()
         for (concreteIndex in concreteIndices) {
             val rollupJobs = clusterService.state().metadata.index(concreteIndex).getRollupJobs()
             if (rollupJobs != null) {
                 val (matchingRollupJobs, issues) = findMatchingRollupJobs(fieldMappings, rollupJobs)
-                if (issues.isNotEmpty() || matchingRollupJobs.isEmpty()) {
-                    throw IllegalArgumentException("Could not find a rollup job that can answer this query because $issues")
+                if (matchingRollupJobs.isNotEmpty()) {
+                    allMatchingRollupJobs += matchingRollupJobs
+                } else {
+                    logger.debug("Skipping rollup index [$concreteIndex] as it does not match query fields: $issues")
                 }
-                allMatchingRollupJobs += matchingRollupJobs
             } else if (!searchRawRollupIndices) {
                 throw IllegalArgumentException("Not all indices have rollup job")
             }
         }
+
+        if (allMatchingRollupJobs.isEmpty()) {
+            throw IllegalArgumentException(
+                "Could not find a rollup job that can answer this query because " +
+                    "${fieldMappings.map { it.toIssue(true) }}",
+            )
+        }
+
         return allMatchingRollupJobs
     }
 
@@ -363,7 +373,7 @@ class RollupInterceptor(
 
     // TODO: How does this job matching work with roles/security?
     @Suppress("CyclomaticComplexMethod")
-    private fun findMatchingRollupJobs(
+    internal fun findMatchingRollupJobs(
         fieldMappings: Set<RollupFieldMapping>,
         rollupJobs: List<Rollup>,
     ): Pair<Map<Rollup, Set<RollupFieldMapping>>, Set<String>> {
