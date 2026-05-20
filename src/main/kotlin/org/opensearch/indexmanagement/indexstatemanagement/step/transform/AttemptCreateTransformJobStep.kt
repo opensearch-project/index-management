@@ -24,6 +24,7 @@ import org.opensearch.indexmanagement.transform.action.index.IndexTransformReque
 import org.opensearch.indexmanagement.transform.action.index.IndexTransformResponse
 import org.opensearch.indexmanagement.transform.action.start.StartTransformAction
 import org.opensearch.indexmanagement.transform.action.start.StartTransformRequest
+import org.opensearch.indexmanagement.util.PluggableDataFormatUtils
 import org.opensearch.transport.RemoteTransportException
 import org.opensearch.transport.client.Client
 
@@ -45,6 +46,15 @@ class AttemptCreateTransformJobStep(
         val transform = action.ismTransform.toTransform(indexName, context.user)
         transformId = transform.id
         logger.info("Attempting to create a transform job $transformId for index $indexName")
+
+        require(
+            !PluggableDataFormatUtils.hasPluggableDataFormatEnabled(
+                context.clusterService.state().metadata(),
+                arrayOf(indexName),
+            ),
+        ) {
+            "Transform is not supported with Optimized Engine currently"
+        }
 
         val indexTransformRequest = IndexTransformRequest(transform, WriteRequest.RefreshPolicy.IMMEDIATE)
 

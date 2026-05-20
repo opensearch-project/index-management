@@ -14,7 +14,9 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
+import org.opensearch.action.support.IndicesOptions
 import org.opensearch.action.support.clustermanager.AcknowledgedResponse
+import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.settings.Settings
@@ -32,6 +34,7 @@ import org.opensearch.indexmanagement.rollup.util.RollupFieldValueExpressionReso
 import org.opensearch.indexmanagement.rollup.util.parseRollup
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.util.PluggableDataFormatUtils
 import org.opensearch.indexmanagement.util.SecurityUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
@@ -49,6 +52,7 @@ constructor(
     actionFilters: ActionFilters,
     val indexManagementIndices: IndexManagementIndices,
     val clusterService: ClusterService,
+    val indexNameExpressionResolver: IndexNameExpressionResolver,
     val settings: Settings,
     val xContentRegistry: NamedXContentRegistry,
 ) : HandledTransportAction<IndexRollupRequest, IndexRollupResponse>(
@@ -83,6 +87,14 @@ constructor(
             client.threadPool().threadContext.stashContext().use {
                 if (!validateUserConfiguration(user, filterByEnabled, actionListener)) {
                     return
+                }
+                if (hasPluggableDataFormatSource(request.rollup.sourceIndex)) {
+                    return actionListener.onFailure(
+                        OpenSearchStatusException(
+                            "Rollup is not supported with Optimized Engine currently",
+                            RestStatus.BAD_REQUEST,
+                        ),
+                    )
                 }
                 indexManagementIndices.checkAndUpdateIMConfigIndex(ActionListener.wrap(::onCreateMappingsResponse, actionListener::onFailure))
             }
@@ -193,5 +205,12 @@ constructor(
             val targetIndexResolvedName = RollupFieldValueExpressionResolver.resolve(request.rollup, request.rollup.targetIndex)
             return !targetIndexResolvedName.contains("*") && !targetIndexResolvedName.contains("?")
         }
+    }
+
+    private fun hasPluggableDataFormatSource(sourceIndex: String): Boolean {
+        val state = clusterService.state()
+        val concreteIndices =
+            indexNameExpressionResolver.concreteIndexNames(state, IndicesOptions.lenientExpand(), true, sourceIndex)
+        return PluggableDataFormatUtils.hasPluggableDataFormatEnabled(state.metadata(), concreteIndices)
     }
 }
