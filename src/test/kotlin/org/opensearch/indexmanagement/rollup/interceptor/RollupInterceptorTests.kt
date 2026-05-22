@@ -52,7 +52,7 @@ class RollupInterceptorTests : OpenSearchTestCase() {
     fun `test getBypassFromFetchSource returns null when no includes array`() {
         val request = mock(ShardSearchRequest::class.java)
         val source = SearchSourceBuilder()
-        source.fetchSource(FetchSourceContext(true))
+        source.fetchSource(FetchSourceContext.FETCH_SOURCE)
 
         `when`(request.source()).thenReturn(source)
 
