@@ -105,6 +105,7 @@ data class IndexSimulateResult(
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
         builder.startObject()
         builder.field(INDEX_NAME_FIELD, indexName)
+        builder.field(INDEX_UUID_FIELD, indexUUID)
         builder.field(POLICY_ID_FIELD, policyId)
         builder.field(IS_MANAGED_FIELD, isManaged)
         if (error != null) {
@@ -124,6 +125,7 @@ data class IndexSimulateResult(
 
     companion object {
         const val INDEX_NAME_FIELD = "index_name"
+        const val INDEX_UUID_FIELD = "index_uuid"
         const val POLICY_ID_FIELD = "policy_id"
         const val IS_MANAGED_FIELD = "is_managed"
         const val CURRENT_STATE_FIELD = "current_state"

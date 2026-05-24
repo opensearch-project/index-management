@@ -15,11 +15,10 @@ import org.opensearch.action.admin.indices.stats.IndicesStatsRequest
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.action.get.GetRequest
 import org.opensearch.action.get.GetResponse
-import org.opensearch.action.get.MultiGetRequest
-import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.action.support.HandledTransportAction
 import org.opensearch.action.support.IndicesOptions
+import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
@@ -80,12 +79,14 @@ constructor(
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     val policy = resolvePolicy()
+                    val clusterState = clusterService.state()
                     val results = mutableListOf<IndexSimulateResult>()
-                    for (indexName in expandIndices(request.indices)) {
-                        results.add(simulateIndex(indexName, policy))
+                    for (indexName in expandIndices(request.indices, clusterState)) {
+                        results.add(simulateIndex(indexName, policy, clusterState))
                     }
                     actionListener.onResponse(SimulatePolicyResponse(results))
                 } catch (e: Exception) {
+                    log.error("Failed to simulate policy", e)
                     actionListener.onFailure(ExceptionsHelper.unwrapCause(e) as Exception)
                 }
             }
@@ -97,8 +98,7 @@ constructor(
          * wildcards) are kept as-is so that [simulateIndex] can return a proper "not found" error
          * for indices that don't exist in the cluster.
          */
-        private fun expandIndices(indices: List<String>): List<String> {
-            val clusterState = clusterService.state()
+        private fun expandIndices(indices: List<String>, clusterState: ClusterState): List<String> {
             val result = mutableListOf<String>()
             for (index in indices) {
                 if (index.contains('*') || index.contains('?')) {
@@ -121,7 +121,9 @@ constructor(
 
             val policyId = requireNotNull(request.policyId) { "policyId must not be null when policy is not provided" }
             val getRequest = GetRequest(INDEX_MANAGEMENT_INDEX, policyId)
-            val getResponse: GetResponse = client.suspendUntil { get(getRequest, it) }
+            val getResponse: GetResponse = client.threadPool().threadContext.stashContext().use {
+                client.suspendUntil { get(getRequest, it) }
+            }
             if (!getResponse.isExists) {
                 throw OpenSearchStatusException("Policy '$policyId' not found", RestStatus.NOT_FOUND)
             }
@@ -130,8 +132,7 @@ constructor(
 
         /** Runs the full simulation for a single index and returns its result. */
         @Suppress("ReturnCount", "CyclomaticComplexMethod")
-        private suspend fun simulateIndex(indexName: String, policy: Policy): IndexSimulateResult {
-            val clusterState = clusterService.state()
+        private suspend fun simulateIndex(indexName: String, policy: Policy, clusterState: ClusterState): IndexSimulateResult {
             val indexMetadata = clusterState.metadata().index(indexName)
                 ?: return IndexSimulateResult(
                     indexName = indexName, indexUUID = null, policyId = policy.id,
@@ -157,8 +158,8 @@ constructor(
                     error = "State '$currentStateName' referenced in metadata not found in policy",
                 )
 
-            val currentAction: String? = if (managedMetadata != null) {
-                currentState.getActionToExecute(managedMetadata, indexMetadataProvider)?.type
+            val currentAction: String? = if (isManaged) {
+                currentState.getActionToExecute(managedMetadata!!, indexMetadataProvider)?.type
             } else {
                 currentState.actions.firstOrNull()?.type ?: TransitionsAction.name
             }
@@ -198,9 +199,11 @@ constructor(
         ): Pair<Long?, ByteSizeValue?> {
             if (transitions.none { it.hasStatsConditions() }) return Pair(null, null)
             val statsRequest = IndicesStatsRequest().indices(indexName).clear().docs(true)
-            val statsResponse: IndicesStatsResponse = client.admin().indices().suspendUntil { stats(statsRequest, it) }
+            val statsResponse: IndicesStatsResponse = client.threadPool().threadContext.stashContext().use {
+                client.admin().indices().suspendUntil { stats(statsRequest, it) }
+            }
             val docs = statsResponse.primaries.getDocs()
-            return Pair(docs?.count ?: 0, ByteSizeValue(docs?.totalSizeInBytes ?: 0))
+            return Pair(docs?.count, docs?.totalSizeInBytes?.let { ByteSizeValue(it) })
         }
 
         /** Builds a [TransitionConditionContext] from index and managed metadata. */
@@ -226,15 +229,11 @@ constructor(
          * Returns null if the index is not currently managed.
          */
         private suspend fun fetchManagedIndexMetadata(indexUUID: String): ManagedIndexMetaData? {
-            val mgetReq = MultiGetRequest()
-            mgetReq.add(MultiGetRequest.Item(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(indexUUID)).routing(indexUUID))
-            val mgetResponse: MultiGetResponse = client.suspendUntil { multiGet(mgetReq, it) }
-
-            val getResponse = mgetResponse.responses
-                .firstOrNull()
-                ?.response
-                ?.takeIf { it.isExists && it.sourceAsBytesRef != null }
-                ?: return null
+            val getReq = GetRequest(INDEX_MANAGEMENT_INDEX, managedIndexMetadataID(indexUUID)).routing(indexUUID)
+            val getResponse: GetResponse = client.threadPool().threadContext.stashContext().use {
+                client.suspendUntil { get(getReq, it) }
+            }
+            if (!getResponse.isExists || getResponse.sourceAsBytesRef == null) return null
 
             return try {
                 val xcp = XContentHelper.createParser(
