@@ -17,15 +17,15 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
 import org.opensearch.indexmanagement.indexstatemanagement.randomState
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.SimulatePolicyResponse.Companion.SIMULATE_RESULTS_FIELD
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.IndexSimulateResult.Companion.CURRENT_ACTION_FIELD
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.IndexSimulateResult.Companion.CURRENT_STATE_FIELD
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.IndexSimulateResult.Companion.ERROR_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.IndexSimulateResult.Companion.INDEX_NAME_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.IndexSimulateResult.Companion.INDEX_UUID_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.IndexSimulateResult.Companion.IS_MANAGED_FIELD
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.IndexSimulateResult.Companion.CURRENT_STATE_FIELD
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.IndexSimulateResult.Companion.CURRENT_ACTION_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.IndexSimulateResult.Companion.NEXT_STATE_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.IndexSimulateResult.Companion.TRANSITION_EVALUATION_FIELD
-import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.IndexSimulateResult.Companion.ERROR_FIELD
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.SimulatePolicyResponse.Companion.SIMULATE_RESULTS_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.TransitionSimulateResult.Companion.CONDITION_MET_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.TransitionSimulateResult.Companion.CONDITION_TYPE_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.simulate.TransitionSimulateResult.Companion.STATE_NAME_FIELD
@@ -143,19 +143,19 @@ class RestSimulatePolicyActionIT : IndexStateManagementRestTestCase() {
 
     fun `test simulate with wildcard expands to multiple indices`() {
         val prefix = "$testIndexName-wild"
-        createIndex("${prefix}-1", null)
-        createIndex("${prefix}-2", null)
-        createIndex("${prefix}-3", null)
+        createIndex("$prefix-1", null)
+        createIndex("$prefix-2", null)
+        createIndex("$prefix-3", null)
         val policy = createPolicy(randomPolicy(states = listOf(randomState(transitions = listOf()))))
 
         val results = simulateResults(
-            """{"policy_id":"${policy.id}","indices":["${prefix}-*"]}""",
+            """{"policy_id":"${policy.id}","indices":["$prefix-*"]}""",
         )
 
         val returnedNames = results.map { it[INDEX_NAME_FIELD] as String }.toSet()
-        assertTrue("${prefix}-1 should be in results", returnedNames.contains("${prefix}-1"))
-        assertTrue("${prefix}-2 should be in results", returnedNames.contains("${prefix}-2"))
-        assertTrue("${prefix}-3 should be in results", returnedNames.contains("${prefix}-3"))
+        assertTrue("$prefix-1 should be in results", returnedNames.contains("$prefix-1"))
+        assertTrue("$prefix-2 should be in results", returnedNames.contains("$prefix-2"))
+        assertTrue("$prefix-3 should be in results", returnedNames.contains("$prefix-3"))
     }
 
     // -------------------------------------------------------------------------
