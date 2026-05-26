@@ -5,7 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
-import org.opensearch.Version
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
@@ -18,8 +17,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexTo
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.RENAME_PATTERN_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.REPOSITORY_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.SNAPSHOT_FIELD
-import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.VERSION_WITH_NEW_FIELDS
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.VERSION_WITH_RENAME_PATTERN
+import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.VERSION_WITH_RESTORE_OPTIONS
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
 import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
 
@@ -27,22 +26,23 @@ class ConvertIndexToRemoteActionParser : ActionParser() {
     override fun fromStreamInput(sin: StreamInput): Action {
         val repository = sin.readString()
         val snapshot = sin.readString()
-        val includeAliases = if (sin.version.onOrAfter(VERSION_WITH_NEW_FIELDS)) {
+        val includeAliases = if (sin.version.onOrAfter(VERSION_WITH_RESTORE_OPTIONS)) {
             sin.readBoolean()
         } else {
             false
         }
-        val ignoreIndexSettings = if (sin.version.onOrAfter(VERSION_WITH_NEW_FIELDS)) {
+        val ignoreIndexSettings = if (sin.version.onOrAfter(VERSION_WITH_RESTORE_OPTIONS)) {
             sin.readString()
         } else {
             ""
         }
-        val numberOfReplicas = if (sin.version.onOrAfter(VERSION_WITH_NEW_FIELDS)) {
-            sin.readInt()
+        val numberOfReplicas = if (sin.version.onOrAfter(VERSION_WITH_RESTORE_OPTIONS)) {
+            val v = sin.readInt()
+            if (v < 0) null else v
         } else {
-            0
+            null
         }
-        val deleteOriginalIndex = if (sin.version.onOrAfter(VERSION_WITH_NEW_FIELDS)) {
+        val deleteOriginalIndex = if (sin.version.onOrAfter(VERSION_WITH_RESTORE_OPTIONS)) {
             sin.readBoolean()
         } else {
             false
@@ -70,7 +70,7 @@ class ConvertIndexToRemoteActionParser : ActionParser() {
         var snapshot: String? = null
         var includeAliases: Boolean = false
         var ignoreIndexSettings: String = ""
-        var numberOfReplicas: Int = 0
+        var numberOfReplicas: Int? = null
         var deleteOriginalIndex: Boolean = false
         var renamePattern: String = DEFAULT_RENAME_PATTERN
 
@@ -84,7 +84,7 @@ class ConvertIndexToRemoteActionParser : ActionParser() {
                 SNAPSHOT_FIELD -> snapshot = xcp.text()
                 INCLUDE_ALIASES_FIELD -> includeAliases = xcp.booleanValue()
                 IGNORE_INDEX_SETTINGS_FIELD -> ignoreIndexSettings = xcp.text()
-                NUMBER_OF_REPLICAS_FIELD -> numberOfReplicas = xcp.intValue()
+                NUMBER_OF_REPLICAS_FIELD -> numberOfReplicas = xcp.intValue().let { if (it < 0) null else it }
                 DELETE_ORIGINAL_INDEX_FIELD -> deleteOriginalIndex = xcp.booleanValue()
                 RENAME_PATTERN_FIELD -> renamePattern = xcp.text()
                 else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ConvertIndexToRemoteAction.")

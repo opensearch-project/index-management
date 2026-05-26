@@ -186,7 +186,7 @@ class ActionTests : OpenSearchTestCase() {
             snapshot = "test-snapshot",
             includeAliases = true,
             ignoreIndexSettings = "",
-            numberOfReplicas = 0,
+            numberOfReplicas = null,
             deleteOriginalIndex = false,
             index = 0,
         )
@@ -199,7 +199,7 @@ class ActionTests : OpenSearchTestCase() {
             snapshot = "test-snapshot",
             includeAliases = false,
             ignoreIndexSettings = "index.refresh_interval",
-            numberOfReplicas = 0,
+            numberOfReplicas = null,
             deleteOriginalIndex = false,
             index = 0,
         )
@@ -225,7 +225,7 @@ class ActionTests : OpenSearchTestCase() {
             snapshot = "test-snapshot",
             includeAliases = false,
             ignoreIndexSettings = "",
-            numberOfReplicas = 0,
+            numberOfReplicas = null,
             deleteOriginalIndex = true,
             index = 0,
         )
@@ -262,7 +262,7 @@ class ActionTests : OpenSearchTestCase() {
         assertEquals("snapshot should match", "test-snapshot", parsedAction.snapshot)
         assertEquals("includeAliases should default to false", false, parsedAction.includeAliases)
         assertEquals("ignoreIndexSettings should default to empty", "", parsedAction.ignoreIndexSettings)
-        assertEquals("numberOfReplicas should default to 0", 0, parsedAction.numberOfReplicas)
+        assertNull("numberOfReplicas should default to null", parsedAction.numberOfReplicas)
         assertEquals("deleteOriginalIndex should default to false", false, parsedAction.deleteOriginalIndex)
     }
 

@@ -19,7 +19,7 @@ class ConvertIndexToRemoteAction(
     val snapshot: String,
     val includeAliases: Boolean = false,
     val ignoreIndexSettings: String = "",
-    val numberOfReplicas: Int = 0,
+    val numberOfReplicas: Int? = null,
     val deleteOriginalIndex: Boolean = false,
     val renamePattern: String = DEFAULT_RENAME_PATTERN,
     index: Int,
@@ -36,7 +36,7 @@ class ConvertIndexToRemoteAction(
         const val RENAME_PATTERN_FIELD = "rename_pattern"
         const val DEFAULT_RENAME_PATTERN = "\$1_remote"
 
-        val VERSION_WITH_NEW_FIELDS = Version.V_3_7_0
+        val VERSION_WITH_RESTORE_OPTIONS = Version.V_3_7_0
         val VERSION_WITH_RENAME_PATTERN = Version.V_3_5_0
     }
 
@@ -54,7 +54,9 @@ class ConvertIndexToRemoteAction(
         builder.field(SNAPSHOT_FIELD, snapshot)
         builder.field(INCLUDE_ALIASES_FIELD, includeAliases)
         builder.field(IGNORE_INDEX_SETTINGS_FIELD, ignoreIndexSettings)
-        builder.field(NUMBER_OF_REPLICAS_FIELD, numberOfReplicas)
+        if (numberOfReplicas != null) {
+            builder.field(NUMBER_OF_REPLICAS_FIELD, numberOfReplicas)
+        }
         builder.field(DELETE_ORIGINAL_INDEX_FIELD, deleteOriginalIndex)
         if (renamePattern != DEFAULT_RENAME_PATTERN) {
             builder.field(RENAME_PATTERN_FIELD, renamePattern)
@@ -65,10 +67,10 @@ class ConvertIndexToRemoteAction(
     override fun populateAction(out: StreamOutput) {
         out.writeString(repository)
         out.writeString(snapshot)
-        if (out.version.onOrAfter(VERSION_WITH_NEW_FIELDS)) {
+        if (out.version.onOrAfter(VERSION_WITH_RESTORE_OPTIONS)) {
             out.writeBoolean(includeAliases)
             out.writeString(ignoreIndexSettings)
-            out.writeInt(numberOfReplicas)
+            out.writeInt(numberOfReplicas ?: -1)
             out.writeBoolean(deleteOriginalIndex)
         }
         if (out.version.onOrAfter(VERSION_WITH_RENAME_PATTERN)) {

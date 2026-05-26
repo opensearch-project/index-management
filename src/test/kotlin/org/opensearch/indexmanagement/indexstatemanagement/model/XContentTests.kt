@@ -189,7 +189,7 @@ class XContentTests : OpenSearchTestCase() {
             snapshot = "snapshot",
             includeAliases = true,
             ignoreIndexSettings = "index.refresh_interval,index.number_of_replicas",
-            numberOfReplicas = 0,
+            numberOfReplicas = null,
             deleteOriginalIndex = false,
             index = 0,
         )
@@ -210,7 +210,7 @@ class XContentTests : OpenSearchTestCase() {
             snapshot = "snapshot",
             includeAliases = true,
             ignoreIndexSettings = "",
-            numberOfReplicas = 0,
+            numberOfReplicas = null,
             deleteOriginalIndex = false,
             index = 0,
         )
@@ -231,7 +231,7 @@ class XContentTests : OpenSearchTestCase() {
             snapshot = "snapshot",
             includeAliases = false,
             ignoreIndexSettings = "index.refresh_interval",
-            numberOfReplicas = 0,
+            numberOfReplicas = null,
             deleteOriginalIndex = false,
             index = 0,
         )
@@ -272,7 +272,7 @@ class XContentTests : OpenSearchTestCase() {
             snapshot = "snapshot",
             includeAliases = false,
             ignoreIndexSettings = "",
-            numberOfReplicas = 0,
+            numberOfReplicas = null,
             deleteOriginalIndex = true,
             index = 0,
         )
@@ -292,7 +292,7 @@ class XContentTests : OpenSearchTestCase() {
             snapshot = "snapshot",
             includeAliases = false,
             ignoreIndexSettings = "",
-            numberOfReplicas = 0,
+            numberOfReplicas = null,
             deleteOriginalIndex = false,
             index = 0,
         )

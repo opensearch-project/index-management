@@ -262,7 +262,7 @@ class ConvertIndexToRemoteActionTests : OpenSearchTestCase() {
         assertEquals("renamePattern should default", DEFAULT_RENAME_PATTERN, deserializedAction.renamePattern)
         assertEquals("includeAliases should default", false, deserializedAction.includeAliases)
         assertEquals("ignoreIndexSettings should default", "", deserializedAction.ignoreIndexSettings)
-        assertEquals("numberOfReplicas should default", 0, deserializedAction.numberOfReplicas)
+        assertNull("numberOfReplicas should default to null", deserializedAction.numberOfReplicas)
         assertEquals("deleteOriginalIndex should default", false, deserializedAction.deleteOriginalIndex)
     }
 

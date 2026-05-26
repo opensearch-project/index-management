@@ -253,7 +253,7 @@ fun randomRestoreActionConfig(
     snapshot,
     includeAliases = false,
     ignoreIndexSettings = "",
-    numberOfReplicas = 0,
+    numberOfReplicas = null,
     deleteOriginalIndex = false,
     renamePattern,
     index = 0,

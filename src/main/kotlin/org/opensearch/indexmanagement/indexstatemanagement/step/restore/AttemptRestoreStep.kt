@@ -48,9 +48,15 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
         val repository = action.repository
         val snapshot = action.snapshot
 
-        if (action.numberOfReplicas < 0) {
+        if (action.numberOfReplicas != null && action.numberOfReplicas < 0) {
             stepStatus = StepStatus.FAILED
             info = mapOf("message" to getFailedMessage(indexName, "number_of_replicas must be non-negative"))
+            return this
+        }
+
+        if (action.renamePattern.isBlank() || !action.renamePattern.contains("\$1")) {
+            stepStatus = StepStatus.FAILED
+            info = mapOf("message" to getFailedMessage(indexName, "rename_pattern must be non-empty and contain '\$1'"))
             return this
         }
 
@@ -103,7 +109,13 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
 
             if (remoteIndexExists) {
                 if (action.deleteOriginalIndex) {
-                    deleteOriginalIndex(context, indexName, mutableInfo)
+                    val deleted = deleteOriginalIndex(context, indexName, mutableInfo)
+                    if (!deleted) {
+                        stepStatus = StepStatus.FAILED
+                        mutableInfo["message"] = getFailedMessage(indexName, "Failed to delete original index")
+                        info = mutableInfo.toMap()
+                        return this
+                    }
                 }
                 stepStatus = StepStatus.COMPLETED
                 mutableInfo["message"] = getSuccessMessage(indexName)
@@ -127,8 +139,13 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
         return this
     }
 
-    private fun checkRemoteIndexExists(context: StepContext, remoteIndexName: String): Boolean =
-        context.clusterService.state().metadata().hasIndex(remoteIndexName)
+    private fun checkRemoteIndexExists(context: StepContext, remoteIndexName: String): Boolean {
+        val metadata = context.clusterService.state().metadata()
+        if (!metadata.hasIndex(remoteIndexName)) return false
+        val indexMetadata = metadata.index(remoteIndexName) ?: return false
+        val storeType = indexMetadata.settings.get("index.store.type") ?: return false
+        return storeType == "remote_snapshot"
+    }
 
     private suspend fun performRestore(
         context: StepContext,
@@ -151,10 +168,12 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
             restoreSnapshotRequest.ignoreIndexSettings(*settingsList.toTypedArray())
         }
 
-        val indexSettings = Settings.builder()
-            .put(SETTING_NUMBER_OF_REPLICAS, action.numberOfReplicas)
-            .build()
-        restoreSnapshotRequest.indexSettings(indexSettings)
+        if (action.numberOfReplicas != null) {
+            val indexSettings = Settings.builder()
+                .put(SETTING_NUMBER_OF_REPLICAS, action.numberOfReplicas)
+                .build()
+            restoreSnapshotRequest.indexSettings(indexSettings)
+        }
 
         val response: RestoreSnapshotResponse = context.client.admin().cluster().suspendUntil {
             restoreSnapshot(restoreSnapshotRequest, it)
@@ -181,23 +200,26 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
         context: StepContext,
         indexName: String,
         mutableInfo: MutableMap<String, Any>,
-    ) {
-        // Restore accepted, delete original index
+    ): Boolean {
         try {
             val deleteResponse: AcknowledgedResponse = context.client.admin().indices().suspendUntil {
                 delete(DeleteIndexRequest(indexName), it)
             }
             if (deleteResponse.isAcknowledged) {
-                logger.info("Successfully deleted original index [$indexName] after restore was accepted")
+                logger.info("Successfully deleted original index [$indexName] after remote index was confirmed")
                 mutableInfo["deleted_original_index"] = true
+                return true
             } else {
                 logger.warn("Delete request for original index [$indexName] was not acknowledged")
                 mutableInfo["deleted_original_index"] = false
+                mutableInfo["delete_error"] = "Delete request was not acknowledged"
+                return false
             }
         } catch (e: Exception) {
-            logger.warn("Failed to delete original index [$indexName] after restore was accepted: ${e.message}", e)
+            logger.warn("Failed to delete original index [$indexName]: ${e.message}", e)
             mutableInfo["deleted_original_index"] = false
             mutableInfo["delete_error"] = e.message ?: "Unknown error"
+            return false
         }
     }
 
