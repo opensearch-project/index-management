@@ -250,7 +250,7 @@ class ConvertIndexToRemoteActionTests : OpenSearchTestCase() {
         osso.writeOptionalWriteable(null) // configRetry
         osso.writeString("my-repo")
         osso.writeString("{{ctx.index}}")
-        // V_3_4_0 < V_3_6_0: new fields and renamePattern are NOT written
+        // V_3_4_0 < V_3_7_0: new fields and renamePattern are NOT written
         osso.writeInt(0) // actionIndex
 
         val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray()))
@@ -312,7 +312,7 @@ class ConvertIndexToRemoteActionTests : OpenSearchTestCase() {
         input.readOptionalWriteable(::ActionTimeout)
         input.readOptionalWriteable(::ActionRetry)
 
-        // V_3_4_0 < V_3_6_0: new fields and renamePattern are NOT written, so we only read repository, snapshot, actionIndex
+        // V_3_4_0 < V_3_7_0: new fields and renamePattern are NOT written, so we only read repository, snapshot, actionIndex
         val repository = input.readString()
         val snapshot = input.readString()
         val actionIndex = input.readInt()

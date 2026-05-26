@@ -27,6 +27,7 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.action.ActionListener
+import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction
 import org.opensearch.indexmanagement.indexstatemanagement.randomRestoreActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SNAPSHOT_DENY_LIST
 import org.opensearch.indexmanagement.indexstatemanagement.step.restore.AttemptRestoreStep
@@ -123,6 +124,70 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
                 "Did not get cause from exception",
                 "example",
                 updatedMetadata.info!!["cause"],
+            )
+        }
+    }
+
+    fun `test rename_pattern validation fails when blank`() {
+        val action = ConvertIndexToRemoteAction(
+            repository = "repo",
+            snapshot = "sp",
+            renamePattern = "",
+            index = 0,
+        )
+        val client = getClient(getAdminClient(getClusterAdminClient(GetSnapshotsResponse(emptyList()), null, null)))
+
+        runBlocking {
+            val step = AttemptRestoreStep(action)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
+            step.preExecute(logger, context).execute()
+            val updatedMetadata = step.getUpdatedManagedIndexMetadata(metadata)
+            assertEquals(Step.StepStatus.FAILED, updatedMetadata.stepMetaData?.stepStatus)
+            assertTrue(
+                (updatedMetadata.info!!["message"] as String).contains("rename_pattern must be non-empty and contain"),
+            )
+        }
+    }
+
+    fun `test rename_pattern validation fails when missing dollar one`() {
+        val action = ConvertIndexToRemoteAction(
+            repository = "repo",
+            snapshot = "sp",
+            renamePattern = "remote_index",
+            index = 0,
+        )
+        val client = getClient(getAdminClient(getClusterAdminClient(GetSnapshotsResponse(emptyList()), null, null)))
+
+        runBlocking {
+            val step = AttemptRestoreStep(action)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
+            step.preExecute(logger, context).execute()
+            val updatedMetadata = step.getUpdatedManagedIndexMetadata(metadata)
+            assertEquals(Step.StepStatus.FAILED, updatedMetadata.stepMetaData?.stepStatus)
+            assertTrue(
+                (updatedMetadata.info!!["message"] as String).contains("rename_pattern must be non-empty and contain"),
+            )
+        }
+    }
+
+    fun `test valid rename_pattern passes validation`() {
+        val action = ConvertIndexToRemoteAction(
+            repository = "repo",
+            snapshot = "sp",
+            renamePattern = "remote_\$1",
+            index = 0,
+        )
+        val client = getClient(getAdminClient(getClusterAdminClient(GetSnapshotsResponse(emptyList()), null, null)))
+
+        runBlocking {
+            val step = AttemptRestoreStep(action)
+            val context = StepContext(metadata, clusterService, client, null, null, scriptService, settings, lockService)
+            step.preExecute(logger, context).execute()
+            val updatedMetadata = step.getUpdatedManagedIndexMetadata(metadata)
+            // Should pass validation and fail on "no snapshots" instead
+            assertEquals(Step.StepStatus.FAILED, updatedMetadata.stepMetaData?.stepStatus)
+            assertTrue(
+                (updatedMetadata.info!!["message"] as String).contains("No snapshots found"),
             )
         }
     }

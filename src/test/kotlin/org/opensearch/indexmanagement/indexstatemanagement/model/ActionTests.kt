@@ -278,16 +278,16 @@ class ActionTests : OpenSearchTestCase() {
             index = 0,
         )
 
-        // Write with newer version (should write all fields) - V_3_6_0 is when new fields were added
+        // Write with newer version (should write all fields) - V_3_7_0 is when new fields were added
         val baos = ByteArrayOutputStream()
         val osso = OutputStreamStreamOutput(baos).also {
-            it.version = org.opensearch.Version.V_3_6_0
+            it.version = org.opensearch.Version.V_3_7_0
         }
         convertAction.writeTo(osso)
 
         // Read with newer version (should read all fields)
         val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray())).also {
-            it.version = org.opensearch.Version.V_3_6_0
+            it.version = org.opensearch.Version.V_3_7_0
         }
         val parsedAction = ISMActionsParser.instance.fromStreamInput(input) as ConvertIndexToRemoteAction
 

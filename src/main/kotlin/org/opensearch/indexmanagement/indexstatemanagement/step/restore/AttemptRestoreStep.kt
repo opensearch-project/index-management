@@ -39,7 +39,7 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
     private var info: Map<String, Any>? = null
     private var snapshotName: String? = null
 
-    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "ReturnCount", "LongMethod", "NestedBlockDepth")
+    @Suppress("TooGenericExceptionCaught", "ComplexMethod", "CyclomaticComplexMethod", "ReturnCount", "LongMethod", "NestedBlockDepth")
     override suspend fun execute(): Step {
         val context = this.context ?: return this
         val managedIndexMetadata = context.metadata
@@ -139,6 +139,7 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
         return this
     }
 
+    @Suppress("ReturnCount")
     private fun checkRemoteIndexExists(context: StepContext, remoteIndexName: String): Boolean {
         val metadata = context.clusterService.state().metadata()
         if (!metadata.hasIndex(remoteIndexName)) return false
@@ -196,28 +197,30 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
         }
     }
 
+    @Suppress("ReturnCount")
     private suspend fun deleteOriginalIndex(
         context: StepContext,
         indexName: String,
         mutableInfo: MutableMap<String, Any>,
     ): Boolean {
+        if (!context.clusterService.state().metadata().hasIndex(indexName)) {
+            logger.info("Original index [$indexName] already deleted, nothing to do")
+            return true
+        }
         try {
             val deleteResponse: AcknowledgedResponse = context.client.admin().indices().suspendUntil {
                 delete(DeleteIndexRequest(indexName), it)
             }
             if (deleteResponse.isAcknowledged) {
                 logger.info("Successfully deleted original index [$indexName] after remote index was confirmed")
-                mutableInfo["deleted_original_index"] = true
                 return true
             } else {
                 logger.warn("Delete request for original index [$indexName] was not acknowledged")
-                mutableInfo["deleted_original_index"] = false
                 mutableInfo["delete_error"] = "Delete request was not acknowledged"
                 return false
             }
         } catch (e: Exception) {
             logger.warn("Failed to delete original index [$indexName]: ${e.message}", e)
-            mutableInfo["deleted_original_index"] = false
             mutableInfo["delete_error"] = e.message ?: "Unknown error"
             return false
         }

@@ -176,11 +176,13 @@ class XContentTests : OpenSearchTestCase() {
         val convertAction = randomRestoreActionConfig("repository", "snapshot")
 
         val convertActionString = convertAction.toJsonString()
-        val parsedConvertAction = ISMActionsParser.instance.parse(parser(convertActionString), 0)
+        val parsedConvertAction = ISMActionsParser.instance.parse(parser(convertActionString), 0) as ConvertIndexToRemoteAction
         assertEquals(
             "Round tripping ConvertIndexToRemoteAction doesn't work with defaults",
             convertAction.convertToMap(), parsedConvertAction.convertToMap(),
         )
+        assertNull("numberOfReplicas should be null when not specified", parsedConvertAction.numberOfReplicas)
+        assertFalse("number_of_replicas should not appear in JSON when null", convertActionString.contains("number_of_replicas"))
     }
 
     fun `test convert index to remote action config parsing with include_aliases and ignore_index_settings`() {

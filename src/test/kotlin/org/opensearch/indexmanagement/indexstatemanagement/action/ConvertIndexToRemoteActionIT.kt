@@ -5,6 +5,8 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
 import org.opensearch.client.ResponseException
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
@@ -15,6 +17,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotificati
 import org.opensearch.indexmanagement.indexstatemanagement.step.restore.AttemptRestoreStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.AttemptSnapshotStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.snapshot.WaitForSnapshotStep
+import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -159,13 +162,24 @@ class ConvertIndexToRemoteActionIT : IndexStateManagementRestTestCase() {
         assertTrue("Index $remoteIndexName is not a remote index", isRemote)
     }
 
-    fun `test snapshot then convert to remote index with delete original index enabled`() {
-        val indexName = "${testIndexName}_index_snapshot_and_convert_delete"
-        val policyID = "${testIndexName}_policy_snapshot_and_convert_delete"
-        val repository = "repository_delete"
+    fun `test convert to remote with all options`() {
+        val indexName = "${testIndexName}_index_all_options"
+        val policyID = "${testIndexName}_policy_all_options"
+        val repository = "repository_all_options"
+        val aliasName = "${indexName}_alias"
 
         createIndex(indexName, null)
         indexDoc(indexName, "1", """{"field": "value1"}""")
+
+        // Add an alias to the source index
+        client().makeRequest(
+            "POST",
+            "/_aliases",
+            entity = StringEntity(
+                """{"actions":[{"add":{"index":"$indexName","alias":"$aliasName"}}]}""",
+                ContentType.APPLICATION_JSON,
+            ),
+        )
 
         createRepository(repository)
 
@@ -178,8 +192,9 @@ class ConvertIndexToRemoteActionIT : IndexStateManagementRestTestCase() {
         val convertAction = ConvertIndexToRemoteAction(
             repository = repository,
             snapshot = indexName,
-            numberOfReplicas = 0,
-            deleteOriginalIndex = true, // Enable deletion of original index
+            includeAliases = true,
+            numberOfReplicas = 1,
+            deleteOriginalIndex = true,
             index = 0,
         )
 
@@ -214,11 +229,10 @@ class ConvertIndexToRemoteActionIT : IndexStateManagementRestTestCase() {
         waitFor {
             val explainMetaData = getExplainManagedIndexMetaData(indexName)
             assertEquals(
-                "Successfully initialized policy: convertindextoremoteactionit_policy_snapshot_and_convert_delete",
+                "Successfully initialized policy: $policyID",
                 explainMetaData.info?.get("message"),
             )
         }
-        // Change the start time so attempt snapshot step will execute
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             val explainMetaData = getExplainManagedIndexMetaData(indexName)
@@ -227,8 +241,6 @@ class ConvertIndexToRemoteActionIT : IndexStateManagementRestTestCase() {
                 explainMetaData.info?.get("message"),
             )
         }
-
-        // Change the start time so wait for snapshot step will execute
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             val explainMetaData = getExplainManagedIndexMetaData(indexName)
@@ -238,14 +250,14 @@ class ConvertIndexToRemoteActionIT : IndexStateManagementRestTestCase() {
             )
         }
 
-        // Change the start time so transition will execute
+        // Transition to convert state
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             val explainMetaData = getExplainManagedIndexMetaData(indexName)
             val message = explainMetaData.info?.get("message") as? String
             val stateName = explainMetaData.stateMetaData?.name
             assertTrue(
-                "Expected transition to convertToRemoteState or restore step, but got message: $message, state: $stateName",
+                "Expected transition or restore step, but got: $message, state: $stateName",
                 message == AttemptRestoreStep.getSuccessMessage(indexName) ||
                     stateName == "convertToRemoteState" ||
                     message == "Transitioning to convertToRemoteState [index=$indexName]",
@@ -253,55 +265,62 @@ class ConvertIndexToRemoteActionIT : IndexStateManagementRestTestCase() {
         }
 
         val remoteIndexName = "${indexName}_remote"
-        // Trigger restore execution
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             try {
                 val explainMetaData = getExplainManagedIndexMetaData(indexName)
                 val currentMessage = explainMetaData.info?.get("message") as? String
-                // Accept either the success message or the waiting message
                 assertTrue(
                     "Expected success or waiting message, but got: $currentMessage",
                     currentMessage == AttemptRestoreStep.getSuccessMessage(indexName) ||
                         currentMessage == "Waiting for remote index [$remoteIndexName] to be created",
                 )
             } catch (e: ResponseException) {
-                // Index may have been deleted, which is expected when deleteOriginalIndex is true
+                // Index may have been deleted (expected when deleteOriginalIndex is true)
                 handleIndexDeletedException(e)
                 return@waitFor
             }
         }
 
-        // Wait for remote index to be created
         waitFor { assertIndexExists(remoteIndexName) }
 
         val isRemote = isIndexRemote(remoteIndexName)
         assertTrue("Index $remoteIndexName is not a remote index", isRemote)
 
-        // Verify that the original index was deleted when deleteOriginalIndex is true
-        waitFor {
-            try {
-                assertIndexDoesNotExist(indexName)
-                true
-            } catch (e: AssertionError) {
-                // If index still exists, that's okay - deletion happens asynchronously
-                // The important thing is that the remote index exists and is functional
-                false
-            }
+        // Verify alias was restored (include_aliases = true)
+        val aliasResponse = client().makeRequest("GET", "/$remoteIndexName/_alias/$aliasName")
+        assertEquals("Alias should exist on remote index", RestStatus.OK, aliasResponse.restStatus())
+
+        // Verify number_of_replicas was applied
+        val settingsResponse = client().makeRequest("GET", "/$remoteIndexName/_settings")
+        val settingsBody = settingsResponse.asMap()
+
+        @Suppress("UNCHECKED_CAST")
+        val indexSettings = (settingsBody[remoteIndexName] as Map<String, Any>)["settings"] as Map<String, Any>
+
+        @Suppress("UNCHECKED_CAST")
+        val indexBlock = indexSettings["index"] as Map<String, Any>
+        assertEquals("number_of_replicas should be 1", "1", indexBlock["number_of_replicas"])
+
+        // Trigger another ISM cycle for deletion of original index
+        try {
+            updateManagedIndexConfigStartTime(managedIndexConfig)
+        } catch (_: Exception) {
+            // managedIndexConfig may already be gone if index was deleted
         }
+        waitFor { assertIndexDoesNotExist(indexName) }
     }
 
     private fun handleIndexDeletedException(e: ResponseException) {
-        // If we get a 400 "no documents to get", the index was deleted (expected after restore)
         if (e.response.restStatus() == RestStatus.BAD_REQUEST) {
             val errorBody = e.response.asMap()
             val error = errorBody["error"] as? Map<*, *>
             val reason = error?.get("reason") as? String
             if (reason?.contains("no documents to get") != true) {
-                throw e // Re-throw if it's a different error
+                throw e
             }
         } else {
-            throw e // Re-throw if it's not a 400
+            throw e
         }
     }
 
