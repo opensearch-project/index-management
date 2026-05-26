@@ -20,8 +20,6 @@ import org.opensearch.action.admin.indices.rollover.RolloverInfo
 import org.opensearch.action.admin.indices.stats.CommonStats
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.action.get.GetResponse
-import org.opensearch.action.get.MultiGetItemResponse
-import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.action.support.ActionFilters
 import org.opensearch.cluster.ClusterName
 import org.opensearch.cluster.ClusterState
@@ -33,6 +31,7 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
+import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.core.action.ActionListener
 import org.opensearch.core.common.bytes.BytesArray
@@ -54,6 +53,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetry
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.TransportService
 import org.opensearch.transport.client.AdminClient
 import org.opensearch.transport.client.Client
@@ -212,16 +212,25 @@ class TransportSimulatePolicyActionTests : OpenSearchTestCase() {
     // Client factory helpers
     // -------------------------------------------------------------------------
 
-    /** Client where multiGet returns an empty response → unmanaged index. */
+    /** Stubs client.threadPool().threadContext so stashContext() doesn't NPE. */
+    private fun stubThreadPool(client: Client) {
+        val ctx = ThreadContext(Settings.EMPTY)
+        val threadPool = Mockito.mock(ThreadPool::class.java)
+        Mockito.`when`(threadPool.threadContext).thenReturn(ctx)
+        Mockito.`when`(client.threadPool()).thenReturn(threadPool)
+    }
+
+    /** Client where get() returns isExists=false → unmanaged index (no metadata doc). */
     private fun unmanagedClient(): Client {
-        val emptyMget: MultiGetResponse = mock { on { responses } doReturn emptyArray() }
+        val notFoundGet: GetResponse = mock { on { isExists } doReturn false }
         val client = mock<Client>()
-        doAnswer { it.getArgument<ActionListener<MultiGetResponse>>(1).onResponse(emptyMget) }
-            .whenever(client).multiGet(any(), any())
+        doAnswer { it.getArgument<ActionListener<GetResponse>>(1).onResponse(notFoundGet) }
+            .whenever(client).get(any(), any())
+        stubThreadPool(client)
         return client
     }
 
-    /** Client where multiGet returns serialised [managedMeta] → managed index. */
+    /** Client where get() returns serialised [managedMeta] → managed index. */
     private fun managedClient(managedMeta: ManagedIndexMetaData): Client {
         val bytes = serialisedMeta(managedMeta)
         val innerGet: GetResponse =
@@ -232,15 +241,14 @@ class TransportSimulatePolicyActionTests : OpenSearchTestCase() {
                 on { seqNo } doReturn 0L
                 on { primaryTerm } doReturn 1L
             }
-        val item: MultiGetItemResponse = mock { on { response } doReturn innerGet }
-        val mgetResp: MultiGetResponse = mock { on { responses } doReturn arrayOf(item) }
         val client = mock<Client>()
-        doAnswer { it.getArgument<ActionListener<MultiGetResponse>>(1).onResponse(mgetResp) }
-            .whenever(client).multiGet(any(), any())
+        doAnswer { it.getArgument<ActionListener<GetResponse>>(1).onResponse(innerGet) }
+            .whenever(client).get(any(), any())
+        stubThreadPool(client)
         return client
     }
 
-    /** Client that handles multiGet (unmanaged) AND index-level doc/size stats. */
+    /** Client that handles get() (unmanaged) AND index-level doc/size stats. */
     private fun unmanagedClientWithStats(numDocs: Long, sizeBytes: Long): Client {
         // Use real DocsStats and CommonStats objects to avoid Mockito stubbing issues with
         // DocsStats.count / totalSizeInBytes inside mock { } blocks (those getters are final).
@@ -254,11 +262,12 @@ class TransportSimulatePolicyActionTests : OpenSearchTestCase() {
             .whenever(indicesAdmin).stats(any(), any())
         val adminMock: AdminClient = mock { on { indices() } doReturn indicesAdmin }
 
-        val emptyMget: MultiGetResponse = mock { on { responses } doReturn emptyArray() }
+        val notFoundGet: GetResponse = mock { on { isExists } doReturn false }
         val client = mock<Client>()
-        doAnswer { it.getArgument<ActionListener<MultiGetResponse>>(1).onResponse(emptyMget) }
-            .whenever(client).multiGet(any(), any())
+        doAnswer { it.getArgument<ActionListener<GetResponse>>(1).onResponse(notFoundGet) }
+            .whenever(client).get(any(), any())
         doReturn(adminMock).whenever(client).admin()
+        stubThreadPool(client)
         return client
     }
 
@@ -323,6 +332,7 @@ class TransportSimulatePolicyActionTests : OpenSearchTestCase() {
 
     fun `test index not found returns error result`() {
         val client: Client = mock()
+        stubThreadPool(client)
         val policy = policyWithTransitions(Transition("warm", null))
         val request = SimulatePolicyRequest(listOf(INDEX_NAME), null, policy)
 
@@ -666,6 +676,7 @@ class TransportSimulatePolicyActionTests : OpenSearchTestCase() {
         val client = mock<Client>()
         doAnswer { it.getArgument<ActionListener<GetResponse>>(1).onResponse(notFoundGet) }
             .whenever(client).get(any(), any())
+        stubThreadPool(client)
 
         val request = SimulatePolicyRequest(listOf(INDEX_NAME), POLICY_ID, null)
 
