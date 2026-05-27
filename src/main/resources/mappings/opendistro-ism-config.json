@@ -1,6 +1,6 @@
 {
   "_meta" : {
-    "schema_version": 27
+    "schema_version": 28
   },
   "dynamic": "strict",
   "properties": {
@@ -226,6 +226,18 @@
                     },
                     "snapshot": {
                       "type": "keyword"
+                    },
+                    "include_aliases": {
+                      "type": "boolean"
+                    },
+                    "ignore_index_settings": {
+                      "type": "keyword"
+                    },
+                    "number_of_replicas": {
+                      "type": "integer"
+                    },
+                    "delete_original_index": {
+                      "type": "boolean"
                     },
                     "rename_pattern": {
                       "type": "keyword"
