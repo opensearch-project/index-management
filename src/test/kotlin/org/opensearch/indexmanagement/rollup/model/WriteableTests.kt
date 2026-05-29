@@ -5,6 +5,7 @@
 
 package org.opensearch.indexmanagement.rollup.model
 
+import org.opensearch.Version
 import org.opensearch.common.io.stream.BytesStreamOutput
 import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
@@ -175,6 +176,50 @@ class WriteableTests : OpenSearchTestCase() {
         val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
         val streamedRollupMetadata = RollupMetadata(sin)
         assertEquals("Round tripping RollupMetadata stream doesn't work", rollupMetadata, streamedRollupMetadata)
+    }
+
+    fun `test rollup as stream with routing field`() {
+        val terms = randomTerms()
+        val dimensions = listOf(randomDateHistogram(), terms)
+        val rollup = randomRollup().copy(
+            delay = randomLongBetween(0, 60000000),
+            dimensions = dimensions,
+            routingField = terms.sourceField,
+        )
+        val out = BytesStreamOutput().also { rollup.writeTo(it) }
+        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
+        val streamedRollup = Rollup(sin)
+        assertEquals("Round tripping Rollup with routing field doesn't work", rollup, streamedRollup)
+    }
+
+    fun `test rollup as stream without routing field`() {
+        val rollup = randomRollup().copy(delay = randomLongBetween(0, 60000000), routingField = null)
+        val out = BytesStreamOutput().also { rollup.writeTo(it) }
+        val sin = StreamInput.wrap(out.bytes().toBytesRef().bytes)
+        val streamedRollup = Rollup(sin)
+        assertEquals("Round tripping Rollup without routing field doesn't work", rollup, streamedRollup)
+        assertNull(streamedRollup.routingField)
+    }
+
+    fun `test rollup stream serialization backward compatibility routing field with V3_6_0`() {
+        val terms = randomTerms()
+        val dimensions = listOf(randomDateHistogram(), terms)
+        val rollup = randomRollup().copy(
+            delay = randomLongBetween(0, 60000000),
+            dimensions = dimensions,
+            routingField = terms.sourceField,
+        )
+
+        val output = BytesStreamOutput()
+        output.version = Version.V_3_6_0
+        rollup.writeTo(output)
+
+        val input = StreamInput.wrap(output.bytes().toBytesRef().bytes)
+        input.version = Version.V_3_6_0
+        val parsed = Rollup(input)
+
+        // routingField should be null when reading from older version
+        assertNull("Routing field should be null on older version", parsed.routingField)
     }
 
     fun `test ism rollup as stream`() {
