@@ -24,6 +24,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionPrope
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
+import org.opensearch.indexmanagement.util.PluggableDataFormatUtils
 import org.opensearch.transport.RemoteTransportException
 import org.opensearch.transport.client.Client
 
@@ -68,7 +69,7 @@ class AttemptCreateRollupJobStep(private val action: RollupAction) : Step(name) 
 
             // Validate resolved indices to ensure they are valid and different.
             // This catches configuration errors early before attempting to create the rollup job.
-            validateResolvedIndices(resolvedSourceIndex, resolvedTargetIndex)
+            validateResolvedIndices(resolvedSourceIndex, resolvedTargetIndex, context)
 
             logger.info(
                 "Executing rollup from source [$resolvedSourceIndex] to target [$resolvedTargetIndex] " +
@@ -122,7 +123,7 @@ class AttemptCreateRollupJobStep(private val action: RollupAction) : Step(name) 
      * @param targetIndex The resolved target index name (after template resolution)
      * @throws IllegalArgumentException if any validation rule fails, with a descriptive error message
      */
-    private fun validateResolvedIndices(sourceIndex: String, targetIndex: String) {
+    private fun validateResolvedIndices(sourceIndex: String, targetIndex: String, context: StepContext) {
         require(sourceIndex.isNotBlank()) {
             "Resolved source_index cannot be empty"
         }
@@ -131,6 +132,14 @@ class AttemptCreateRollupJobStep(private val action: RollupAction) : Step(name) 
         }
         require(sourceIndex != targetIndex) {
             "Source and target indices must be different: $sourceIndex"
+        }
+        require(
+            !PluggableDataFormatUtils.hasPluggableDataFormatEnabled(
+                context.clusterService.state().metadata(),
+                arrayOf(sourceIndex),
+            ),
+        ) {
+            "Rollup is not supported with Optimized Engine currently"
         }
     }
 

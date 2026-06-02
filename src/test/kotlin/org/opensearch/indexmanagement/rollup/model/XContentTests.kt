@@ -137,6 +137,28 @@ class XContentTests : OpenSearchTestCase() {
         assertEquals("Round tripping Rollup with target index settings doesn't work", rollup.copy(roles = listOf()), parsedRollup)
     }
 
+    fun `test rollup parsing with routing field`() {
+        val terms = randomTerms()
+        val dimensions = listOf(randomDateHistogram(), terms)
+        val rollup = randomRollup().copy(
+            delay = randomLongBetween(0, 60000000),
+            dimensions = dimensions,
+            routingField = terms.sourceField,
+        )
+        val rollupString = rollup.toJsonString(XCONTENT_WITHOUT_TYPE)
+        val parsedRollup = Rollup.parse(parser(rollupString), rollup.id, rollup.seqNo, rollup.primaryTerm)
+        assertEquals("Round tripping Rollup with routing field doesn't work", rollup.copy(roles = listOf()), parsedRollup)
+        assertEquals(terms.sourceField, parsedRollup.routingField)
+    }
+
+    fun `test rollup parsing without routing field`() {
+        val rollup = randomRollup().copy(delay = randomLongBetween(0, 60000000), routingField = null)
+        val rollupString = rollup.toJsonString(XCONTENT_WITHOUT_TYPE)
+        val parsedRollup = Rollup.parse(parser(rollupString), rollup.id, rollup.seqNo, rollup.primaryTerm)
+        assertEquals("Round tripping Rollup without routing field doesn't work", rollup.copy(roles = listOf()), parsedRollup)
+        assertNull(parsedRollup.routingField)
+    }
+
     fun `test ism rollup parsing`() {
         val ismRollup = randomISMRollup()
         val ismRollupString = ismRollup.toJsonString()

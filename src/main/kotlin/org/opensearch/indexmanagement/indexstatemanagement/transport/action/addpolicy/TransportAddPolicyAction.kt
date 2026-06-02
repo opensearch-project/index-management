@@ -40,6 +40,8 @@ import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANA
 import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider.Companion.EVALUATION_FAILURE_MESSAGE
+import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.TransformAction
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getUuidsForClosedIndices
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
@@ -57,6 +59,7 @@ import org.opensearch.indexmanagement.opensearchapi.withClosableContext
 import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ISMIndexMetadata
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.util.PluggableDataFormatUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
@@ -273,6 +276,24 @@ constructor(
                 }
                 shouldRemove
             }
+
+            // Reject indices with pluggable dataformat if policy has rollup or transform actions
+            val hasRollupOrTransform = policy.states.any { state ->
+                state.actions.any { it.type == RollupAction.name || it.type == TransformAction.name }
+            }
+            if (hasRollupOrTransform) {
+                val metadata = clusterService.state().metadata()
+                indicesToAdd.entries.removeIf { (uuid, indexName) ->
+                    val blocked = PluggableDataFormatUtils.hasPluggableDataFormatEnabled(metadata, arrayOf(indexName))
+                    if (blocked) {
+                        failedIndices.add(
+                            FailedIndex(indexName, uuid, "Rollup/Transform is not supported with Optimized Engine currently"),
+                        )
+                    }
+                    blocked
+                }
+            }
+
             if (indicesToAdd.isEmpty()) {
                 actionListener.onResponse(ISMStatusResponse(0, failedIndices))
                 return
