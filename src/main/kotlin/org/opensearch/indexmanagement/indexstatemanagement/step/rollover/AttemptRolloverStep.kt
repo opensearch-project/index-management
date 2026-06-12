@@ -108,39 +108,11 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         val largestPrimaryShard = statsResponse.shards.maxByOrNull { it.stats.docs?.totalSizeInBytes ?: 0 }
         val largestPrimaryShardSize = ByteSizeValue(largestPrimaryShard?.stats?.docs?.totalSizeInBytes ?: 0)
 
-        val conditions =
-            listOfNotNull(
-                action.minAge?.let {
-                    RolloverAction.MIN_INDEX_AGE_FIELD to
-                        mapOf(
-                            "condition" to it.toString(),
-                            "current" to indexAgeTimeValue.toString(),
-                            "creationDate" to indexCreationDate,
-                        )
-                },
-                action.minDocs?.let {
-                    RolloverAction.MIN_DOC_COUNT_FIELD to
-                        mapOf(
-                            "condition" to it,
-                            "current" to numDocs,
-                        )
-                },
-                action.minSize?.let {
-                    RolloverAction.MIN_SIZE_FIELD to
-                        mapOf(
-                            "condition" to it.toString(),
-                            "current" to indexSize.toString(),
-                        )
-                },
-                action.minPrimaryShardSize?.let {
-                    RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD to
-                        mapOf(
-                            "condition" to it.toString(),
-                            "current" to largestPrimaryShardSize.toString(),
-                            "shard" to largestPrimaryShard?.shardRouting?.id(),
-                        )
-                },
-            ).toMap()
+        val indexStats =
+            RolloverIndexStats(
+                indexAgeTimeValue, indexCreationDate, numDocs, indexSize, largestPrimaryShardSize, largestPrimaryShard?.shardRouting?.id(),
+            )
+        val conditions = buildConditionsReport(action, indexStats)
 
         if (action.evaluateConditions(indexAgeTimeValue, numDocs, indexSize, largestPrimaryShardSize)) {
             logger.info(
@@ -156,6 +128,67 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
 
         return this
     }
+
+    private data class RolloverIndexStats(
+        val indexAgeTimeValue: TimeValue,
+        val indexCreationDate: Long,
+        val numDocs: Long,
+        val indexSize: ByteSizeValue,
+        val largestPrimaryShardSize: ByteSizeValue,
+        val largestPrimaryShardId: Int?,
+    )
+
+    private fun buildConditionsReport(action: RolloverAction, stats: RolloverIndexStats): Map<String, Any?> {
+        val groups = action.conditionGroups
+        if (!groups.isNullOrEmpty()) {
+            return mapOf(
+                RolloverAction.ANY_OF_FIELD to
+                    groups.map { group ->
+                        conditionEntries(group.minAge, group.minDocs, group.minSize, group.minPrimaryShardSize, stats)
+                    },
+            )
+        }
+        return conditionEntries(action.minAge, action.minDocs, action.minSize, action.minPrimaryShardSize, stats)
+    }
+
+    private fun conditionEntries(
+        minAge: TimeValue?,
+        minDocs: Long?,
+        minSize: ByteSizeValue?,
+        minPrimaryShardSize: ByteSizeValue?,
+        stats: RolloverIndexStats,
+    ): Map<String, Any?> = listOfNotNull(
+        minAge?.let {
+            RolloverAction.MIN_INDEX_AGE_FIELD to
+                mapOf(
+                    "condition" to it.toString(),
+                    "current" to stats.indexAgeTimeValue.toString(),
+                    "creationDate" to stats.indexCreationDate,
+                )
+        },
+        minDocs?.let {
+            RolloverAction.MIN_DOC_COUNT_FIELD to
+                mapOf(
+                    "condition" to it,
+                    "current" to stats.numDocs,
+                )
+        },
+        minSize?.let {
+            RolloverAction.MIN_SIZE_FIELD to
+                mapOf(
+                    "condition" to it.toString(),
+                    "current" to stats.indexSize.toString(),
+                )
+        },
+        minPrimaryShardSize?.let {
+            RolloverAction.MIN_PRIMARY_SHARD_SIZE_FIELD to
+                mapOf(
+                    "condition" to it.toString(),
+                    "current" to stats.largestPrimaryShardSize.toString(),
+                    "shard" to stats.largestPrimaryShardId,
+                )
+        },
+    ).toMap()
 
     private fun getRolloverTargetOrUpdateInfo(context: StepContext): Pair<String?, Boolean> {
         val indexName = context.metadata.index
@@ -244,7 +277,7 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
         context: StepContext,
         rolloverTarget: String,
         isDataStream: Boolean,
-        conditions: Map<String, Map<String, Any?>>,
+        conditions: Map<String, Any?>,
     ) {
         val indexName = context.metadata.index
         try {
