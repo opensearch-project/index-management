@@ -62,6 +62,7 @@ class RollupSecurityBehaviorIT : SecurityRestTestCase() {
                 EXPLAIN_ROLLUP,
                 UPDATE_ROLLUP,
                 DELETE_ROLLUP,
+                BULK_WRITE_INDEX,
             )
 
         val indexPermissions =
