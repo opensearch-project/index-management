@@ -64,6 +64,7 @@ class TransformSecurityBehaviorIT : SecurityRestTestCase() {
                 DELETE_TRANSFORM,
                 HEALTH,
                 GET_TRANSFORMS,
+                BULK_WRITE_INDEX,
             )
 
         val indexPermissions =

@@ -41,7 +41,7 @@ import javax.management.remote.JMXConnectorFactory
 import javax.management.remote.JMXServiceURL
 
 abstract class IndexManagementRestTestCase : ODFERestTestCase() {
-    val configSchemaVersion = 27
+    val configSchemaVersion = 29
     val historySchemaVersion = 7
 
     // Having issues with tests leaking into other tests and mappings being incorrect and they are not caught by any pending task wait check as
@@ -374,8 +374,10 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
         // Ignore the task list API and segment replication background tasks (always running on Remote Store clusters)
         private fun isIgnorableTask(action: String): Boolean =
-            action == ListTasksAction.NAME || action == ListTasksAction.NAME + "[n]" ||
-                action.startsWith("segrep_") || action == "indices:admin/publishCheckpoint[p]"
+            action == ListTasksAction.NAME ||
+                action == ListTasksAction.NAME + "[n]" ||
+                action.startsWith("segrep_") ||
+                action == "indices:admin/publishCheckpoint[p]"
 
         @JvmStatic
         protected fun waitForThreadPools(client: RestClient) {

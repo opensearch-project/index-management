@@ -9,7 +9,7 @@ on:
 
 jobs:
   Get-CI-Image-Tag:
-    uses: opensearch-project/opensearch-build/.github/workflows/get-ci-image-tag.yml@main
+    uses: opensearch-project/opensearch-build/.github/workflows/get-ci-image-tag.yml@2834790da070c2804c7234979c6e88feb9328355 # main
     with:
       product: opensearch
 
@@ -42,13 +42,13 @@ jobs:
         run: ${{ needs.Get-CI-Image-Tag.outputs.ci-image-start-command }}
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
       - name: Set Up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
           distribution: temurin # Temurin is a distribution of adoptium
           java-version: ${{ matrix.java }}
       # build index management
       - name: Checkout Branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       # This is a hack, but this step creates a link to the X: mounted drive, which makes the path
       # short enough to work on Windows
       - name: Build with Gradle
@@ -61,7 +61,7 @@ jobs:
         run: |
           su `id -un 1000` -c "./gradlew jacocoTestReport"
       - name: Upload coverage XML
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always() && matrix.java == 21
         with:
           name: coverage-xml-${{ matrix.java }}-${{ matrix.feature }}
@@ -69,14 +69,14 @@ jobs:
           if-no-files-found: warn
           overwrite: 'true'
       - name: Upload failed logs
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ failure() }}
         with:
           name: logs-${{ matrix.java }}-${{ matrix.feature }}
           path: build/testclusters/integTest-*/logs/*
           overwrite: 'true'
       - name: Upload test reports
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ failure() }}
         with:
           name: test-reports-linux-${{ matrix.java }}-${{ matrix.feature }}
@@ -89,7 +89,7 @@ jobs:
       # This step uses the upload-artifact Github action: https://github.com/actions/upload-artifact
       - name: Upload Artifacts
         # v4 requires node.js 20 which is not supported
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: index-management-plugin-ubuntu-latest-${{ matrix.java }}-${{ matrix.feature }}
           path: index-management-artifacts
@@ -123,13 +123,13 @@ jobs:
     steps:
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
       - name: Set Up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
           distribution: temurin # Temurin is a distribution of adoptium
           java-version: ${{ matrix.java }}
       # build index management
       - name: Checkout Branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       # This is a hack, but this step creates a link to the X: mounted drive, which makes the path
       # short enough to work on Windows
       - name: Shorten Path
@@ -146,7 +146,7 @@ jobs:
           cp ./build/distributions/*.zip index-management-artifacts
       # This step uses the upload-artifact Github action: https://github.com/actions/upload-artifact
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: index-management-plugin-${{ matrix.os }}-${{ matrix.java }}-${{ matrix.feature }}
           path: index-management-artifacts
@@ -157,8 +157,8 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v7
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           path: downloaded-artifacts
           pattern: coverage-xml-*
@@ -180,11 +180,11 @@ jobs:
 
       - name: Upload Coverage with retry
         if: steps.check_coverage.outputs.has_coverage == 'true'
-        uses: Wandalen/wretry.action@v3.8.0
+        uses: Wandalen/wretry.action@e68c23e6309f2871ca8ae4763e7629b9c258e1ea # v3.8.0
         with:
           attempt_limit: 5
           attempt_delay: 2000
-          action: codecov/codecov-action@v4
+          action: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
           with: |
             token: ${{ secrets.CODECOV_TOKEN }}
             fail_ci_if_error: true

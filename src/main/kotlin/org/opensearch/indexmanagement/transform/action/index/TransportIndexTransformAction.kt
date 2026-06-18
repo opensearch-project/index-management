@@ -37,6 +37,7 @@ import org.opensearch.indexmanagement.settings.IndexManagementSettings
 import org.opensearch.indexmanagement.transform.TransformValidator
 import org.opensearch.indexmanagement.transform.model.Transform
 import org.opensearch.indexmanagement.util.IndexUtils
+import org.opensearch.indexmanagement.util.PluggableDataFormatUtils
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.buildUser
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.userHasPermissionForResource
 import org.opensearch.indexmanagement.util.SecurityUtils.Companion.validateUserConfiguration
@@ -190,6 +191,16 @@ constructor(
                 )
             if (concreteIndices.isEmpty()) {
                 actionListener.onFailure(OpenSearchStatusException("No specified source index exist in the cluster", RestStatus.NOT_FOUND))
+                return
+            }
+
+            if (PluggableDataFormatUtils.hasPluggableDataFormatEnabled(clusterService.state().metadata(), concreteIndices)) {
+                actionListener.onFailure(
+                    OpenSearchStatusException(
+                        "Transform is not supported with Optimized Engine currently",
+                        RestStatus.BAD_REQUEST,
+                    ),
+                )
                 return
             }
 

@@ -12,8 +12,13 @@ import org.opensearch.cluster.metadata.IndexNameExpressionResolver
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.common.model.dimension.DateHistogram
+import org.opensearch.indexmanagement.common.model.dimension.Dimension
+import org.opensearch.indexmanagement.common.model.dimension.Terms
 import org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor.Companion.BYPASS_ROLLUP_SEARCH
 import org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor.Companion.BYPASS_SIZE_CHECK
+import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
+import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.subphase.FetchSourceContext
@@ -121,6 +126,71 @@ class RollupInterceptorTests : OpenSearchTestCase() {
         val bypassLevel = interceptor.getBypassFromFetchSource(request)
 
         assertNull(bypassLevel)
+    }
+
+    fun `test findMatchingRollupJobs returns match when rollup job covers all queried fields`() {
+        val rollup = randomRollup().copy(
+            dimensions = listOf(
+                DateHistogram(sourceField = "timestamp", fixedInterval = "1h"),
+                Terms("field1", "field1"),
+                Terms("field2", "field2"),
+            ),
+        )
+        val fieldMappings = setOf(
+            RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, "field1", Dimension.Type.TERMS.type),
+        )
+
+        val (matchingJobs, issues) = interceptor.findMatchingRollupJobs(fieldMappings, listOf(rollup))
+
+        assertTrue("Expected matching jobs but got none", matchingJobs.isNotEmpty())
+        assertTrue("Expected no issues but got $issues", issues.isEmpty())
+    }
+
+    fun `test findMatchingRollupJobs returns no match when rollup job missing queried field`() {
+        val rollup = randomRollup().copy(
+            dimensions = listOf(
+                DateHistogram(sourceField = "timestamp", fixedInterval = "1h"),
+                Terms("field1", "field1"),
+            ),
+        )
+        val fieldMappings = setOf(
+            RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, "field2", Dimension.Type.TERMS.type),
+        )
+
+        val (matchingJobs, issues) = interceptor.findMatchingRollupJobs(fieldMappings, listOf(rollup))
+
+        assertTrue("Expected no matching jobs", matchingJobs.isEmpty())
+        assertTrue("Expected issues to be reported", issues.isNotEmpty())
+    }
+
+    fun `test findMatchingRollupJobs with multiple jobs only matches superset job`() {
+        val rollupWithField1Only = randomRollup().copy(
+            id = "rollup_1",
+            dimensions = listOf(
+                DateHistogram(sourceField = "timestamp", fixedInterval = "1h"),
+                Terms("field1", "field1"),
+            ),
+        )
+        val rollupWithBothFields = randomRollup().copy(
+            id = "rollup_2",
+            dimensions = listOf(
+                DateHistogram(sourceField = "timestamp", fixedInterval = "1h"),
+                Terms("field1", "field1"),
+                Terms("field2", "field2"),
+            ),
+        )
+        val fieldMappings = setOf(
+            RollupFieldMapping(RollupFieldMapping.Companion.FieldType.DIMENSION, "field2", Dimension.Type.TERMS.type),
+        )
+
+        val (matchingJobs, issues) = interceptor.findMatchingRollupJobs(
+            fieldMappings,
+            listOf(rollupWithField1Only, rollupWithBothFields),
+        )
+
+        assertEquals("Only the job with field2 should match", 1, matchingJobs.size)
+        assertTrue("rollup_2 should be in matching jobs", matchingJobs.keys.any { it.id == "rollup_2" })
+        assertTrue("Expected no issues", issues.isEmpty())
     }
 
     // Helper method to create interceptor instance
