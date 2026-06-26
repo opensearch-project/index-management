@@ -813,7 +813,7 @@ object ManagedIndexRunner :
             } else {
                 return metadata
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.error("Failed to publish error notification", e)
             val errorMessage = e.message ?: "Failed to publish error notification"
             val mutableInfo = metadata.info?.toMutableMap() ?: mutableMapOf()
