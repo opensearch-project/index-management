@@ -82,7 +82,7 @@ class RolloverConditionsSerializationPropertyTests : OpenSearchTestCase() {
 
     private val belowTargetVersionArb: Arb<Version> =
         Arb.element(Version.V_3_3_0, Version.V_3_4_0, Version.V_3_5_0, Version.V_3_6_0)
-            .filter { it.before(RolloverAction.TARGET_VERSION) }
+            .filter { it.before(Version.V_3_7_0) }
 
     private fun groupsEqual(a: List<RolloverConditionGroup>?, b: List<RolloverConditionGroup>?): Boolean = a == b
 

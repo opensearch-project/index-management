@@ -79,7 +79,7 @@ class RolloverAction(
         if (out.version.onOrAfter(Version.V_3_4_0)) {
             out.writeBoolean(preventEmptyRollover)
         }
-        if (out.version.onOrAfter(TARGET_VERSION)) {
+        if (out.version.onOrAfter(Version.V_3_7_0)) {
             out.writeBoolean(conditionGroups != null)
             if (conditionGroups != null) out.writeList(conditionGroups)
         }
@@ -95,7 +95,5 @@ class RolloverAction(
         const val COPY_ALIAS_FIELD = "copy_alias"
         const val PREVENT_EMPTY_ROLLOVER_FIELD = "prevent_empty_rollover"
         const val ANY_OF_FIELD = "any_of"
-
-        val TARGET_VERSION: Version = Version.V_3_7_0
     }
 }

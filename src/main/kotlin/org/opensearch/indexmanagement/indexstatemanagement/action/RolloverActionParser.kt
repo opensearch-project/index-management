@@ -26,7 +26,7 @@ class RolloverActionParser : ActionParser() {
         } else {
             false
         }
-        val conditionGroups = if (sin.version.onOrAfter(RolloverAction.TARGET_VERSION)) {
+        val conditionGroups = if (sin.version.onOrAfter(Version.V_3_7_0)) {
             if (sin.readBoolean()) sin.readList(::RolloverConditionGroup) else null
         } else {
             null

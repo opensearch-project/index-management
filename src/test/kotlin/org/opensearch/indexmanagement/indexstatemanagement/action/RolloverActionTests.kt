@@ -471,11 +471,11 @@ class RolloverActionTests : OpenSearchTestCase() {
 
         val baos = ByteArrayOutputStream()
         val osso = OutputStreamStreamOutput(baos)
-        osso.version = RolloverAction.TARGET_VERSION
+        osso.version = Version.V_3_7_0
         originalAction.writeTo(osso)
 
         val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray()))
-        input.version = RolloverAction.TARGET_VERSION
+        input.version = Version.V_3_7_0
         val deserialized = ISMActionsParser.instance.fromStreamInput(input) as RolloverAction
 
         assertEquals("Groups should be preserved at target version", originalAction.conditionGroups, deserialized.conditionGroups)
