@@ -395,4 +395,117 @@ class RolloverActionTests : OpenSearchTestCase() {
         assertEquals("actionIndex should match", action.actionIndex, actionIndex)
         assertEquals("Stream should be fully consumed", 0, input.available())
     }
+
+    fun `test parser flat default produces no condition groups`() {
+        val jsonString = """
+            {
+                "rollover": {
+                    "min_size": "50gb",
+                    "min_doc_count": 1000
+                }
+            }
+        """.trimIndent()
+
+        val parser = XContentType.JSON.xContent().createParser(
+            xContentRegistry(), LoggingDeprecationHandler.INSTANCE, jsonString,
+        )
+        parser.nextToken()
+        val action = ISMActionsParser.instance.parse(parser, 0) as RolloverAction
+
+        assertNull("Flat policy should have no condition groups", action.conditionGroups)
+        assertEquals("minSize should be parsed", ByteSizeValue.parseBytesSizeValue("50gb", "test"), action.minSize)
+        assertEquals("minDocs should be parsed", 1000L, action.minDocs)
+    }
+
+    fun `test parser grouped any_of produces expected groups`() {
+        val jsonString = """
+            {
+                "rollover": {
+                    "any_of": [
+                        { "min_index_age": "7d", "min_size": "50gb" },
+                        { "min_doc_count": 100000000 }
+                    ]
+                }
+            }
+        """.trimIndent()
+
+        val parser = XContentType.JSON.xContent().createParser(
+            xContentRegistry(), LoggingDeprecationHandler.INSTANCE, jsonString,
+        )
+        parser.nextToken()
+        val action = ISMActionsParser.instance.parse(parser, 0) as RolloverAction
+
+        val groups = action.conditionGroups
+        assertNotNull("Grouped policy should have condition groups", groups)
+        assertEquals("Should have two groups", 2, groups!!.size)
+
+        val first = groups[0]
+        assertEquals("First group minAge", TimeValue.parseTimeValue("7d", "test"), first.minAge)
+        assertEquals("First group minSize", ByteSizeValue.parseBytesSizeValue("50gb", "test"), first.minSize)
+        assertNull("First group minDocs should be null", first.minDocs)
+
+        val second = groups[1]
+        assertEquals("Second group minDocs", 100000000L, second.minDocs)
+        assertNull("Second group minAge should be null", second.minAge)
+
+        assertNull("Flat minSize should be null", action.minSize)
+        assertNull("Flat minDocs should be null", action.minDocs)
+    }
+
+    fun `test mixed-version serialization at target version preserves groups`() {
+        val originalAction = RolloverAction(
+            minSize = null, minDocs = null, minAge = null, minPrimaryShardSize = null,
+            copyAlias = true,
+            preventEmptyRollover = true,
+            conditionGroups = listOf(
+                RolloverConditionGroup(
+                    minSize = ByteSizeValue.parseBytesSizeValue("50gb", "test"),
+                    minDocs = null,
+                    minAge = TimeValue.parseTimeValue("7d", "test"),
+                    minPrimaryShardSize = null,
+                ),
+                RolloverConditionGroup(minSize = null, minDocs = 100L, minAge = null, minPrimaryShardSize = null),
+            ),
+            index = 0,
+        )
+
+        val baos = ByteArrayOutputStream()
+        val osso = OutputStreamStreamOutput(baos)
+        osso.version = RolloverAction.TARGET_VERSION
+        originalAction.writeTo(osso)
+
+        val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray()))
+        input.version = RolloverAction.TARGET_VERSION
+        val deserialized = ISMActionsParser.instance.fromStreamInput(input) as RolloverAction
+
+        assertEquals("Groups should be preserved at target version", originalAction.conditionGroups, deserialized.conditionGroups)
+        assertEquals("copyAlias should be preserved", originalAction.copyAlias, deserialized.copyAlias)
+        assertEquals("preventEmptyRollover should be preserved", originalAction.preventEmptyRollover, deserialized.preventEmptyRollover)
+    }
+
+    fun `test mixed-version serialization below target version preserves flat and drops groups`() {
+        val flatAction = RolloverAction(
+            minSize = ByteSizeValue.parseBytesSizeValue("10gb", "test"),
+            minDocs = null,
+            minAge = TimeValue.parseTimeValue("3d", "test"),
+            minPrimaryShardSize = null,
+            copyAlias = false,
+            preventEmptyRollover = false,
+            index = 0,
+        )
+
+        val baos = ByteArrayOutputStream()
+        val osso = OutputStreamStreamOutput(baos)
+        osso.version = Version.V_3_3_0
+        flatAction.writeTo(osso)
+
+        val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray()))
+        input.version = Version.V_3_3_0
+        val deserialized = ISMActionsParser.instance.fromStreamInput(input) as RolloverAction
+
+        assertEquals("minSize should be preserved below target", flatAction.minSize, deserialized.minSize)
+        assertEquals("minAge should be preserved below target", flatAction.minAge, deserialized.minAge)
+        assertNull("Groups must be absent below target version", deserialized.conditionGroups)
+        assertEquals("Stream should be fully consumed", 0, input.available())
+    }
 }

@@ -26,9 +26,14 @@ class RolloverActionParser : ActionParser() {
         } else {
             false
         }
+        val conditionGroups = if (sin.version.onOrAfter(RolloverAction.TARGET_VERSION)) {
+            if (sin.readBoolean()) sin.readList(::RolloverConditionGroup) else null
+        } else {
+            null
+        }
         val index = sin.readInt()
 
-        return RolloverAction(minSize, minDocs, minAge, minPrimaryShardSize, copyAlias, preventEmptyRollover, index)
+        return RolloverAction(minSize, minDocs, minAge, minPrimaryShardSize, copyAlias, preventEmptyRollover, conditionGroups, index)
     }
 
     override fun fromXContent(xcp: XContentParser, index: Int): Action {
@@ -38,6 +43,7 @@ class RolloverActionParser : ActionParser() {
         var minPrimaryShardSize: ByteSizeValue? = null
         var copyAlias = false
         var preventEmptyRollover = false
+        var conditionGroups: MutableList<RolloverConditionGroup>? = null
 
         ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
         while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
@@ -63,11 +69,20 @@ class RolloverActionParser : ActionParser() {
 
                 RolloverAction.PREVENT_EMPTY_ROLLOVER_FIELD -> preventEmptyRollover = xcp.booleanValue()
 
+                RolloverAction.ANY_OF_FIELD -> {
+                    ensureExpectedToken(XContentParser.Token.START_ARRAY, xcp.currentToken(), xcp)
+                    val groups = mutableListOf<RolloverConditionGroup>()
+                    while (xcp.nextToken() != XContentParser.Token.END_ARRAY) {
+                        groups.add(RolloverConditionGroup.parse(xcp))
+                    }
+                    conditionGroups = groups
+                }
+
                 else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in RolloverAction.")
             }
         }
 
-        return RolloverAction(minSize, minDocs, minAge, minPrimaryShardSize, copyAlias, preventEmptyRollover, index)
+        return RolloverAction(minSize, minDocs, minAge, minPrimaryShardSize, copyAlias, preventEmptyRollover, conditionGroups, index)
     }
 
     override fun getActionType(): String = RolloverAction.name

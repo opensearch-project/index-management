@@ -239,6 +239,9 @@ dependencies {
     testImplementation "org.jetbrains.kotlin:kotlin-test:${kotlin_version}"
     testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0"
     testImplementation "org.mockito:mockito-core:${versions.mockito}"
+    testImplementation "io.kotest:kotest-property:5.9.1"
+    testImplementation "io.kotest:kotest-common:5.9.1"
+    testImplementation "io.kotest:kotest-assertions-shared:5.9.1"
 
     add("ktlint", "com.pinterest.ktlint:ktlint-cli:1.8.0") {
         attributes {
