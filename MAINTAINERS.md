@@ -12,6 +12,7 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 | Kshitij Tandon | [tandonks](https://github.com/tandonks) | Amazon |
 | Shivansh Arora | [shiv0408](https://github.com/shiv0408) | Apple |
 | Sooraj Sinha | [soosinha](https://github.com/soosinha) | Amazon |
+| Tarun Kishore | [Tarun-kishore](https://github.com/Tarun-kishore) | Uber |
 
 ## Emeritus
 
