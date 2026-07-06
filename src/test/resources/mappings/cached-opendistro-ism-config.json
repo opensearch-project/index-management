@@ -239,6 +239,9 @@
                     "delete_original_index": {
                       "type": "boolean"
                     },
+                    "add_original_name_as_alias": {
+                      "type": "boolean"
+                    },
                     "rename_pattern": {
                       "type": "keyword"
                     }

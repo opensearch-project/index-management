@@ -11,6 +11,8 @@ import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest
 import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
 import org.opensearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest
 import org.opensearch.action.admin.cluster.snapshots.restore.RestoreSnapshotResponse
+import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest
+import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest.AliasActions
 import org.opensearch.action.admin.indices.delete.DeleteIndexRequest
 import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPLICAS
@@ -115,6 +117,15 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
                         mutableInfo["message"] = getFailedMessage(indexName, "Failed to delete original index")
                         info = mutableInfo.toMap()
                         return this
+                    }
+                    if (action.addOriginalNameAsAlias) {
+                        val aliasAdded = addOriginalNameAsAlias(context, remoteIndexName, indexName, mutableInfo)
+                        if (!aliasAdded) {
+                            stepStatus = StepStatus.FAILED
+                            mutableInfo["message"] = getFailedMessage(indexName, "Failed to add original index name as alias")
+                            info = mutableInfo.toMap()
+                            return this
+                        }
                     }
                 }
                 stepStatus = StepStatus.COMPLETED
@@ -222,6 +233,45 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
         } catch (e: Exception) {
             logger.warn("Failed to delete original index [$indexName]: ${e.message}", e)
             mutableInfo["delete_error"] = e.message ?: "Unknown error"
+            return false
+        }
+    }
+
+    @Suppress("ReturnCount")
+    private suspend fun addOriginalNameAsAlias(
+        context: StepContext,
+        remoteIndexName: String,
+        originalIndexName: String,
+        mutableInfo: MutableMap<String, Any>,
+    ): Boolean {
+        // Check if the alias already exists (idempotency)
+        val metadata = context.clusterService.state().metadata()
+        val indexMetadata = metadata.index(remoteIndexName)
+        if (indexMetadata != null && indexMetadata.aliases.containsKey(originalIndexName)) {
+            logger.info("Alias [$originalIndexName] already exists on remote index [$remoteIndexName], nothing to do")
+            return true
+        }
+        try {
+            val aliasRequest = IndicesAliasesRequest()
+            aliasRequest.addAliasAction(
+                AliasActions(AliasActions.Type.ADD)
+                    .index(remoteIndexName)
+                    .alias(originalIndexName),
+            )
+            val response: AcknowledgedResponse = context.client.admin().indices().suspendUntil {
+                aliases(aliasRequest, it)
+            }
+            if (response.isAcknowledged) {
+                logger.info("Successfully added alias [$originalIndexName] to remote index [$remoteIndexName]")
+                return true
+            } else {
+                logger.warn("Adding alias [$originalIndexName] to [$remoteIndexName] was not acknowledged")
+                mutableInfo["alias_error"] = "Alias request was not acknowledged"
+                return false
+            }
+        } catch (e: Exception) {
+            logger.warn("Failed to add alias [$originalIndexName] to [$remoteIndexName]: ${e.message}", e)
+            mutableInfo["alias_error"] = e.message ?: "Unknown error"
             return false
         }
     }

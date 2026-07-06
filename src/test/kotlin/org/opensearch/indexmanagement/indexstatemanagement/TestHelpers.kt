@@ -255,7 +255,8 @@ fun randomRestoreActionConfig(
     ignoreIndexSettings = "",
     numberOfReplicas = null,
     deleteOriginalIndex = false,
-    renamePattern,
+    addOriginalNameAsAlias = false,
+    renamePattern = renamePattern,
     index = 0,
 )
 

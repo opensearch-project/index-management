@@ -21,9 +21,16 @@ class ConvertIndexToRemoteAction(
     val ignoreIndexSettings: String = "",
     val numberOfReplicas: Int? = null,
     val deleteOriginalIndex: Boolean = false,
+    val addOriginalNameAsAlias: Boolean = false,
     val renamePattern: String = DEFAULT_RENAME_PATTERN,
     index: Int,
 ) : Action(name, index) {
+
+    init {
+        require(!addOriginalNameAsAlias || deleteOriginalIndex) {
+            "add_original_name_as_alias can only be used when delete_original_index is true"
+        }
+    }
 
     companion object {
         const val name = "convert_index_to_remote"
@@ -33,6 +40,7 @@ class ConvertIndexToRemoteAction(
         const val IGNORE_INDEX_SETTINGS_FIELD = "ignore_index_settings"
         const val NUMBER_OF_REPLICAS_FIELD = "number_of_replicas"
         const val DELETE_ORIGINAL_INDEX_FIELD = "delete_original_index"
+        const val ADD_ORIGINAL_NAME_AS_ALIAS_FIELD = "add_original_name_as_alias"
         const val RENAME_PATTERN_FIELD = "rename_pattern"
         const val DEFAULT_RENAME_PATTERN = "\$1_remote"
 
@@ -58,6 +66,7 @@ class ConvertIndexToRemoteAction(
             builder.field(NUMBER_OF_REPLICAS_FIELD, numberOfReplicas)
         }
         builder.field(DELETE_ORIGINAL_INDEX_FIELD, deleteOriginalIndex)
+        builder.field(ADD_ORIGINAL_NAME_AS_ALIAS_FIELD, addOriginalNameAsAlias)
         if (renamePattern != DEFAULT_RENAME_PATTERN) {
             builder.field(RENAME_PATTERN_FIELD, renamePattern)
         }
@@ -72,6 +81,7 @@ class ConvertIndexToRemoteAction(
             out.writeString(ignoreIndexSettings)
             out.writeInt(numberOfReplicas ?: -1)
             out.writeBoolean(deleteOriginalIndex)
+            out.writeBoolean(addOriginalNameAsAlias)
         }
         if (out.version.onOrAfter(VERSION_WITH_RENAME_PATTERN)) {
             out.writeString(renamePattern)
