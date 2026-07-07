@@ -21,6 +21,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.step.readonly.SetReadOnlyStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.readwrite.SetReadWriteStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.transition.AttemptTransitionStep
+import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.waitFor
@@ -223,5 +224,23 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
             val currJitter = getManagedIndexConfigByDocId(newManagedIndexConfig.id)?.jitter
             assertEquals("Failed to update ManagedIndexConfig jitter", newJitter, currJitter)
         }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test allow running on red cluster setting can be toggled dynamically`() {
+        // A successful update also verifies the setting is registered by the plugin, otherwise the
+        // persistent cluster settings update would be rejected as an unknown setting.
+        updateClusterSetting(ManagedIndexSettings.ALLOW_RUNNING_ON_RED_CLUSTER.key, "true", escapeValue = false)
+
+        val response = client().makeRequest("GET", "_cluster/settings", mapOf("flat_settings" to "true"))
+        val persistentSettings = response.asMap()["persistent"] as Map<String, Any?>
+        assertEquals(
+            "Cluster setting was not applied",
+            "true",
+            persistentSettings[ManagedIndexSettings.ALLOW_RUNNING_ON_RED_CLUSTER.key],
+        )
+
+        // reset to default so it doesn't leak into other tests
+        updateClusterSetting(ManagedIndexSettings.ALLOW_RUNNING_ON_RED_CLUSTER.key, "false", escapeValue = false)
     }
 }

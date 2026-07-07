@@ -51,11 +51,14 @@ import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getMana
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ACTION_VALIDATION_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST_NONE
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_RUNNING_ON_RED_CLUSTER
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ACTION_VALIDATION_ENABLED
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ALLOW_RUNNING_ON_RED_CLUSTER
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ISM_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_JOB_INTERVAL
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.isActionAllowedOnRedCluster
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexRequest
@@ -138,6 +141,7 @@ object ManagedIndexRunner :
     private val errorNotificationRetryPolicy = BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(250), 3)
     private var jobInterval: Int = DEFAULT_JOB_INTERVAL
     private var allowList: List<String> = ALLOW_LIST_NONE
+    private var allowRunningOnRedCluster: Boolean = DEFAULT_ALLOW_RUNNING_ON_RED_CLUSTER
 
     fun registerClusterService(clusterService: ClusterService): ManagedIndexRunner {
         this.clusterService = clusterService
@@ -184,6 +188,11 @@ object ManagedIndexRunner :
         allowList = ALLOW_LIST.get(settings)
         clusterService.clusterSettings.addSettingsUpdateConsumer(ALLOW_LIST) {
             allowList = it
+        }
+
+        allowRunningOnRedCluster = ALLOW_RUNNING_ON_RED_CLUSTER.get(settings)
+        clusterService.clusterSettings.addSettingsUpdateConsumer(ALLOW_RUNNING_ON_RED_CLUSTER) {
+            allowRunningOnRedCluster = it
         }
 
         return this
@@ -260,7 +269,8 @@ object ManagedIndexRunner :
     private suspend fun runManagedIndexConfig(managedIndexConfig: ManagedIndexConfig, jobContext: JobExecutionContext) {
         logger.debug("Run job for index ${managedIndexConfig.index}")
         // doing a check of local cluster health as we do not want to overload cluster manager node with potentially a lot of calls
-        if (clusterIsRed()) {
+        val isClusterRed = clusterIsRed()
+        if (isClusterRed && !allowRunningOnRedCluster) {
             logger.debug("Skipping current execution of ${managedIndexConfig.index} because of red cluster health")
             return
         }
@@ -329,6 +339,16 @@ object ManagedIndexRunner :
             )
         val step: Step? = action?.getStepToExecute(stepContext)
         val currentActionMetaData = action?.getUpdatedActionMetadata(managedIndexMetaData, state.name)
+
+        // When running on a red cluster (only possible when allowRunningOnRedCluster is enabled), some actions
+        // are still blocked because executing them could further degrade an already red cluster. Recovery-oriented
+        // actions such as delete are still allowed so policies can help the cluster recover on its own.
+        if (isClusterRed && !isActionAllowedOnRedCluster(action?.type)) {
+            logger.debug(
+                "Skipping action=${action?.type} for ${managedIndexConfig.index} because it is not allowed to run on a red cluster",
+            )
+            return
+        }
 
         // If Index State Management is disabled and the current step is not null and safe to disable on
         // then disable the job and return early
