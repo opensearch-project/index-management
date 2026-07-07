@@ -83,6 +83,7 @@ class IndexManagementSettingsTests : OpenSearchTestCase() {
                     ManagedIndexSettings.ALLOW_LIST,
                     ManagedIndexSettings.SNAPSHOT_DENY_LIST,
                     ManagedIndexSettings.JITTER,
+                    ManagedIndexSettings.ALLOW_RUNNING_ON_RED_CLUSTER,
                     RollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
                     RollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
                     RollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
