@@ -5,15 +5,6 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
-import io.kotest.property.Arb
-import io.kotest.property.arbitrary.arbitrary
-import io.kotest.property.arbitrary.boolean
-import io.kotest.property.arbitrary.element
-import io.kotest.property.arbitrary.filter
-import io.kotest.property.arbitrary.list
-import io.kotest.property.arbitrary.long
-import io.kotest.property.checkAll
-import kotlinx.coroutines.runBlocking
 import org.opensearch.Version
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
@@ -31,58 +22,51 @@ import java.io.ByteArrayOutputStream
 
 class RolloverConditionsSerializationPropertyTests : OpenSearchTestCase() {
 
-    private val groupArb: Arb<RolloverConditionGroup> = arbitrary {
+    private val iterations = 100
+
+    private fun randomGroup(): RolloverConditionGroup {
         while (true) {
-            val minSize = if (Arb.boolean().bind()) ByteSizeValue(Arb.long(1L..1_000_000L).bind()) else null
-            val minDocs = if (Arb.boolean().bind()) Arb.long(1L..1_000_000L).bind() else null
-            val minAge = if (Arb.boolean().bind()) TimeValue.timeValueMillis(Arb.long(1L..1_000_000L).bind()) else null
-            val minPrimaryShardSize = if (Arb.boolean().bind()) ByteSizeValue(Arb.long(1L..1_000_000L).bind()) else null
+            val minSize = if (randomBoolean()) ByteSizeValue(randomLongBetween(1L, 1_000_000L)) else null
+            val minDocs = if (randomBoolean()) randomLongBetween(1L, 1_000_000L) else null
+            val minAge = if (randomBoolean()) TimeValue.timeValueMillis(randomLongBetween(1L, 1_000_000L)) else null
+            val minPrimaryShardSize = if (randomBoolean()) ByteSizeValue(randomLongBetween(1L, 1_000_000L)) else null
             if (listOfNotNull(minSize, minDocs, minAge, minPrimaryShardSize).isNotEmpty()) {
-                return@arbitrary RolloverConditionGroup(minSize, minDocs, minAge, minPrimaryShardSize)
+                return RolloverConditionGroup(minSize, minDocs, minAge, minPrimaryShardSize)
             }
         }
-        @Suppress("UNREACHABLE_CODE")
-        error("unreachable")
     }
 
-    private val groupedActionArb: Arb<RolloverAction> = arbitrary {
-        RolloverAction(
-            minSize = null, minDocs = null, minAge = null, minPrimaryShardSize = null,
-            copyAlias = Arb.boolean().bind(),
-            preventEmptyRollover = Arb.boolean().bind(),
-            conditionGroups = Arb.list(groupArb, 1..4).bind(),
-            index = 0,
-        )
-    }
+    private fun randomGroupedAction(): RolloverAction = RolloverAction(
+        minSize = null, minDocs = null, minAge = null, minPrimaryShardSize = null,
+        copyAlias = randomBoolean(),
+        preventEmptyRollover = randomBoolean(),
+        conditionGroups = (1..randomIntBetween(1, 4)).map { randomGroup() },
+        index = 0,
+    )
 
-    private val flatActionArb: Arb<RolloverAction> = arbitrary {
+    private fun randomFlatAction(): RolloverAction {
         while (true) {
-            val minSize = if (Arb.boolean().bind()) ByteSizeValue(Arb.long(1L..1_000_000L).bind()) else null
-            val minDocs = if (Arb.boolean().bind()) Arb.long(1L..1_000_000L).bind() else null
-            val minAge = if (Arb.boolean().bind()) TimeValue.timeValueMillis(Arb.long(1L..1_000_000L).bind()) else null
-            val minPrimaryShardSize = if (Arb.boolean().bind()) ByteSizeValue(Arb.long(1L..1_000_000L).bind()) else null
+            val minSize = if (randomBoolean()) ByteSizeValue(randomLongBetween(1L, 1_000_000L)) else null
+            val minDocs = if (randomBoolean()) randomLongBetween(1L, 1_000_000L) else null
+            val minAge = if (randomBoolean()) TimeValue.timeValueMillis(randomLongBetween(1L, 1_000_000L)) else null
+            val minPrimaryShardSize = if (randomBoolean()) ByteSizeValue(randomLongBetween(1L, 1_000_000L)) else null
             if (listOfNotNull(minSize, minDocs, minAge, minPrimaryShardSize).isNotEmpty()) {
-                return@arbitrary RolloverAction(
+                return RolloverAction(
                     minSize = minSize, minDocs = minDocs, minAge = minAge, minPrimaryShardSize = minPrimaryShardSize,
-                    copyAlias = Arb.boolean().bind(),
-                    preventEmptyRollover = Arb.boolean().bind(),
+                    copyAlias = randomBoolean(),
+                    preventEmptyRollover = randomBoolean(),
                     index = 0,
                 )
             }
         }
-        @Suppress("UNREACHABLE_CODE")
-        error("unreachable")
     }
 
-    private val anyActionArb: Arb<RolloverAction> = arbitrary {
-        if (Arb.boolean().bind()) groupedActionArb.bind() else flatActionArb.bind()
-    }
+    private fun randomAnyAction(): RolloverAction = if (randomBoolean()) randomGroupedAction() else randomFlatAction()
 
-    private val atOrAboveTargetVersionArb: Arb<Version> = Arb.element(Version.V_3_7_0, Version.CURRENT)
+    private fun randomAtOrAboveTargetVersion(): Version = randomFrom(Version.V_3_7_0, Version.CURRENT)
 
-    private val belowTargetVersionArb: Arb<Version> =
-        Arb.element(Version.V_3_3_0, Version.V_3_4_0, Version.V_3_5_0, Version.V_3_6_0)
-            .filter { it.before(Version.V_3_7_0) }
+    private fun randomBelowTargetVersion(): Version =
+        randomFrom(Version.V_3_3_0, Version.V_3_4_0, Version.V_3_5_0, Version.V_3_6_0)
 
     private fun groupsEqual(a: List<RolloverConditionGroup>?, b: List<RolloverConditionGroup>?): Boolean = a == b
 
@@ -109,8 +93,9 @@ class RolloverConditionsSerializationPropertyTests : OpenSearchTestCase() {
         return ISMActionsParser.instance.fromStreamInput(input) as RolloverAction
     }
 
-    fun `test XContent round-trip preserves form and conditions`() = runBlocking {
-        checkAll(100, anyActionArb) { action ->
+    fun `test XContent round-trip preserves form and conditions`() {
+        repeat(iterations) {
+            val action = randomAnyAction()
             val builder = XContentFactory.jsonBuilder()
             builder.startObject()
             action.populateAction(builder, ToXContent.EMPTY_PARAMS)
@@ -130,8 +115,10 @@ class RolloverConditionsSerializationPropertyTests : OpenSearchTestCase() {
         }
     }
 
-    fun `test stream round-trip at or above target version preserves groups`() = runBlocking {
-        checkAll(100, groupedActionArb, atOrAboveTargetVersionArb) { action, version ->
+    fun `test stream round-trip at or above target version preserves groups`() {
+        repeat(iterations) {
+            val action = randomGroupedAction()
+            val version = randomAtOrAboveTargetVersion()
             val parsed = roundTripStream(action, version)
             assertTrue("Groups must round-trip at/above target version", groupsEqual(action.conditionGroups, parsed.conditionGroups))
             assertEquals("copyAlias must round-trip", action.copyAlias, parsed.copyAlias)
@@ -139,8 +126,10 @@ class RolloverConditionsSerializationPropertyTests : OpenSearchTestCase() {
         }
     }
 
-    fun `test stream round-trip below target version preserves flat and drops groups`() = runBlocking {
-        checkAll(100, flatActionArb, belowTargetVersionArb) { action, version ->
+    fun `test stream round-trip below target version preserves flat and drops groups`() {
+        repeat(iterations) {
+            val action = randomFlatAction()
+            val version = randomBelowTargetVersion()
             val parsed = roundTripStream(action, version)
             assertEquals("minSize must round-trip below target", action.minSize, parsed.minSize)
             assertEquals("minDocs must round-trip below target", action.minDocs, parsed.minDocs)
@@ -150,8 +139,9 @@ class RolloverConditionsSerializationPropertyTests : OpenSearchTestCase() {
         }
     }
 
-    fun `test pre-existing flat policy loads with no groups`() = runBlocking {
-        checkAll(100, flatActionArb) { action ->
+    fun `test pre-existing flat policy loads with no groups`() {
+        repeat(iterations) {
+            val action = randomFlatAction()
             val parsedXContent = parseFromXContent(action)
             assertTrue("Flat XContent must produce no groups", parsedXContent.conditionGroups.isNullOrEmpty())
 

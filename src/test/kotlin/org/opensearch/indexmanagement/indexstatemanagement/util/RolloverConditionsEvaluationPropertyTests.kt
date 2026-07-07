@@ -5,28 +5,15 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.util
 
-import io.kotest.property.Arb
-import io.kotest.property.arbitrary.arbitrary
-import io.kotest.property.arbitrary.boolean
-import io.kotest.property.arbitrary.filter
-import io.kotest.property.arbitrary.int
-import io.kotest.property.arbitrary.list
-import io.kotest.property.arbitrary.long
-import io.kotest.property.checkAll
-import kotlinx.coroutines.runBlocking
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverConditionGroup
 import org.opensearch.test.OpenSearchTestCase
 
-/**
- * Property-based tests for [RolloverAction.evaluateConditions] covering the OR-of-ANDs grouped semantics
- * and the preserved flat (implicit OR) semantics.
- *
- * Each test runs at least 100 generated iterations via kotest-property's checkAll.
- */
 class RolloverConditionsEvaluationPropertyTests : OpenSearchTestCase() {
+
+    private val iterations = 100
 
     private data class IndexState(
         val indexAge: TimeValue,
@@ -44,33 +31,34 @@ class RolloverConditionsEvaluationPropertyTests : OpenSearchTestCase() {
         fun isEmpty(): Boolean = minSize == null && minDocs == null && minAge == null && minPrimaryShardSize == null
     }
 
-    private val indexStateArb: Arb<IndexState> = arbitrary {
-        IndexState(
-            indexAge = TimeValue.timeValueMillis(Arb.long(0L..100L).bind()),
-            numDocs = Arb.long(0L..100L).bind(),
-            indexSize = ByteSizeValue(Arb.long(0L..100L).bind()),
-            primaryShardSize = ByteSizeValue(Arb.long(0L..100L).bind()),
-        )
-    }
+    private fun randomIndexState(): IndexState = IndexState(
+        indexAge = TimeValue.timeValueMillis(randomLongBetween(0L, 100L)),
+        numDocs = randomLongBetween(0L, 100L),
+        indexSize = ByteSizeValue(randomLongBetween(0L, 100L)),
+        primaryShardSize = ByteSizeValue(randomLongBetween(0L, 100L)),
+    )
 
-    private val flatSpecArb: Arb<ConditionSpec> = arbitrary {
-        ConditionSpec(
-            minSize = if (Arb.boolean().bind()) ByteSizeValue(Arb.long(1L..100L).bind()) else null,
-            minDocs = if (Arb.boolean().bind()) Arb.long(1L..100L).bind() else null,
-            minAge = if (Arb.boolean().bind()) TimeValue.timeValueMillis(Arb.long(1L..100L).bind()) else null,
-            minPrimaryShardSize = if (Arb.boolean().bind()) ByteSizeValue(Arb.long(1L..100L).bind()) else null,
-        )
-    }
+    private fun randomFlatSpec(): ConditionSpec = ConditionSpec(
+        minSize = if (randomBoolean()) ByteSizeValue(randomLongBetween(1L, 100L)) else null,
+        minDocs = if (randomBoolean()) randomLongBetween(1L, 100L) else null,
+        minAge = if (randomBoolean()) TimeValue.timeValueMillis(randomLongBetween(1L, 100L)) else null,
+        minPrimaryShardSize = if (randomBoolean()) ByteSizeValue(randomLongBetween(1L, 100L)) else null,
+    )
 
-    private val groupSpecArb: Arb<ConditionSpec> = flatSpecArb.filter { !it.isEmpty() }
-
-    private val singleConditionSpecArb: Arb<ConditionSpec> = arbitrary {
-        when (Arb.int(0..3).bind()) {
-            0 -> ConditionSpec(ByteSizeValue(Arb.long(1L..100L).bind()), null, null, null)
-            1 -> ConditionSpec(null, Arb.long(1L..100L).bind(), null, null)
-            2 -> ConditionSpec(null, null, TimeValue.timeValueMillis(Arb.long(1L..100L).bind()), null)
-            else -> ConditionSpec(null, null, null, ByteSizeValue(Arb.long(1L..100L).bind()))
+    private fun randomGroupSpec(): ConditionSpec {
+        while (true) {
+            val spec = randomFlatSpec()
+            if (!spec.isEmpty()) return spec
         }
+    }
+
+    private fun randomGroupSpecList(): List<ConditionSpec> = (1..randomIntBetween(1, 4)).map { randomGroupSpec() }
+
+    private fun randomSingleConditionSpec(): ConditionSpec = when (randomIntBetween(0, 3)) {
+        0 -> ConditionSpec(ByteSizeValue(randomLongBetween(1L, 100L)), null, null, null)
+        1 -> ConditionSpec(null, randomLongBetween(1L, 100L), null, null)
+        2 -> ConditionSpec(null, null, TimeValue.timeValueMillis(randomLongBetween(1L, 100L)), null)
+        else -> ConditionSpec(null, null, null, ByteSizeValue(randomLongBetween(1L, 100L)))
     }
 
     private fun results(spec: ConditionSpec, state: IndexState): List<Boolean> = buildList {
@@ -102,8 +90,10 @@ class RolloverConditionsEvaluationPropertyTests : OpenSearchTestCase() {
     private fun RolloverAction.evaluate(state: IndexState): Boolean =
         evaluateConditions(state.indexAge, state.numDocs, state.indexSize, state.primaryShardSize)
 
-    fun `test grouped evaluation matches OR-of-ANDs reference`() = runBlocking {
-        checkAll(100, Arb.list(groupSpecArb, 1..4), indexStateArb) { specs, state ->
+    fun `test grouped evaluation matches OR-of-ANDs reference`() {
+        repeat(iterations) {
+            val specs = randomGroupSpecList()
+            val state = randomIndexState()
             val expected = specs.any { spec -> results(spec, state).all { it } }
             assertEquals(
                 "Grouped evaluation must equal OR-of-ANDs reference",
@@ -113,8 +103,10 @@ class RolloverConditionsEvaluationPropertyTests : OpenSearchTestCase() {
         }
     }
 
-    fun `test flat evaluation matches any-condition-satisfied reference`() = runBlocking {
-        checkAll(100, flatSpecArb, indexStateArb) { spec, state ->
+    fun `test flat evaluation matches any-condition-satisfied reference`() {
+        repeat(iterations) {
+            val spec = randomFlatSpec()
+            val state = randomIndexState()
             val r = results(spec, state)
             val expected = if (r.isEmpty()) true else r.any { it }
             assertEquals(
@@ -125,8 +117,10 @@ class RolloverConditionsEvaluationPropertyTests : OpenSearchTestCase() {
         }
     }
 
-    fun `test single-condition group equals single flat condition`() = runBlocking {
-        checkAll(100, singleConditionSpecArb, indexStateArb) { spec, state ->
+    fun `test single-condition group equals single flat condition`() {
+        repeat(iterations) {
+            val spec = randomSingleConditionSpec()
+            val state = randomIndexState()
             assertEquals(
                 "A one-condition group must match the equivalent flat condition",
                 flatAction(spec).evaluate(state),
@@ -135,8 +129,10 @@ class RolloverConditionsEvaluationPropertyTests : OpenSearchTestCase() {
         }
     }
 
-    fun `test single group equals AND of its conditions`() = runBlocking {
-        checkAll(100, groupSpecArb, indexStateArb) { spec, state ->
+    fun `test single group equals AND of its conditions`() {
+        repeat(iterations) {
+            val spec = randomGroupSpec()
+            val state = randomIndexState()
             val expected = results(spec, state).all { it }
             assertEquals(
                 "A single group must be satisfied only when all its conditions hold",
@@ -146,8 +142,9 @@ class RolloverConditionsEvaluationPropertyTests : OpenSearchTestCase() {
         }
     }
 
-    fun `test no conditions at all evaluates true`() = runBlocking {
-        checkAll(100, indexStateArb) { state ->
+    fun `test no conditions at all evaluates true`() {
+        repeat(iterations) {
+            val state = randomIndexState()
             val action = RolloverAction(
                 minSize = null, minDocs = null, minAge = null, minPrimaryShardSize = null,
                 preventEmptyRollover = false, index = 0,
@@ -156,8 +153,11 @@ class RolloverConditionsEvaluationPropertyTests : OpenSearchTestCase() {
         }
     }
 
-    fun `test adding a group preserves a true evaluation`() = runBlocking {
-        checkAll(100, Arb.list(groupSpecArb, 1..4), groupSpecArb, indexStateArb) { specs, extra, state ->
+    fun `test adding a group preserves a true evaluation`() {
+        repeat(iterations) {
+            val specs = randomGroupSpecList()
+            val extra = randomGroupSpec()
+            val state = randomIndexState()
             val base = groupedAction(specs)
             if (base.evaluate(state)) {
                 assertTrue(
