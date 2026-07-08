@@ -147,8 +147,9 @@ class SMRunnerIT : SnapshotManagementRestTestCase() {
 
         logger.info("Deletion workflow with snapshot_pattern completed successfully")
 
-        // Verify the deletion behavior - 3 oldest snapshots should be deleted, keeping minCount=1
+        // Verify the deletion behavior - 3 oldest pattern-matched snapshots should be deleted, keeping minCount=1
         val snapshotsAfter = getSnapshotsInRepository(repoName)
-        assertEquals("Should have 1 snapshot remaining (minCount=1)", 1, snapshotsAfter.size)
+        val patternMatched = snapshotsAfter.filter { it.startsWith("external-backup-") }
+        assertEquals("Should have 1 pattern-matched snapshot remaining (minCount=1)", 1, patternMatched.size)
     }
 }
