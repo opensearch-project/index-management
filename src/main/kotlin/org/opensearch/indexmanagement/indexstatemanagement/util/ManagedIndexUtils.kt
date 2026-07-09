@@ -262,6 +262,28 @@ private fun checkMinStateAge(conditions: Conditions, context: TransitionConditio
 
 fun Transition.hasStatsConditions(): Boolean = this.conditions?.docCount != null || this.conditions?.size != null
 
+/**
+ * Computes the satisfaction result for each *specified* (non-null) rollover condition.
+ *
+ * The four comparison expressions are kept byte-identical to the historical flat evaluation so that
+ * flat OR behavior is provably unchanged. Only specified conditions contribute to the returned list.
+ */
+private fun rolloverConditionResults(
+    minSize: ByteSizeValue?,
+    minDocs: Long?,
+    minAge: TimeValue?,
+    minPrimaryShardSize: ByteSizeValue?,
+    indexAgeTimeValue: TimeValue,
+    numDocs: Long,
+    indexSize: ByteSizeValue,
+    primaryShardSize: ByteSizeValue,
+): List<Boolean> = buildList {
+    if (minDocs != null) add(minDocs <= numDocs)
+    if (minAge != null) add(minAge.millis <= indexAgeTimeValue.millis)
+    if (minSize != null) add(minSize <= indexSize)
+    if (minPrimaryShardSize != null) add(minPrimaryShardSize <= primaryShardSize)
+}
+
 @Suppress("ReturnCount", "ComplexCondition")
 fun RolloverAction.evaluateConditions(
     indexAgeTimeValue: TimeValue,
@@ -269,33 +291,25 @@ fun RolloverAction.evaluateConditions(
     indexSize: ByteSizeValue,
     primaryShardSize: ByteSizeValue,
 ): Boolean {
-    if (this.minDocs == null &&
-        this.minAge == null &&
-        this.minSize == null &&
-        this.minPrimaryShardSize == null
-    ) {
-        // If no conditions specified we default to true
-        return true
+    val groups = this.conditionGroups
+    if (!groups.isNullOrEmpty()) {
+        return groups.any { group ->
+            val results =
+                rolloverConditionResults(
+                    group.minSize, group.minDocs, group.minAge, group.minPrimaryShardSize,
+                    indexAgeTimeValue, numDocs, indexSize, primaryShardSize,
+                )
+            results.all { it }
+        }
     }
 
-    if (this.minDocs != null) {
-        if (this.minDocs <= numDocs) return true
-    }
-
-    if (this.minAge != null) {
-        if (this.minAge.millis <= indexAgeTimeValue.millis) return true
-    }
-
-    if (this.minSize != null) {
-        if (this.minSize <= indexSize) return true
-    }
-
-    if (this.minPrimaryShardSize != null) {
-        if (this.minPrimaryShardSize <= primaryShardSize) return true
-    }
-
-    // return false if none of the conditions were true.
-    return false
+    val results =
+        rolloverConditionResults(
+            this.minSize, this.minDocs, this.minAge, this.minPrimaryShardSize,
+            indexAgeTimeValue, numDocs, indexSize, primaryShardSize,
+        )
+    if (results.isEmpty()) return true
+    return results.any { it }
 }
 
 fun State.getUpdatedStateMetaData(managedIndexMetaData: ManagedIndexMetaData): StateMetaData {

@@ -27,6 +27,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadWriteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverConditionGroup
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.SnapshotAction
@@ -140,6 +141,32 @@ fun randomRolloverActionConfig(
     preventEmptyRollover = false,
     index = 0,
 )
+
+fun randomRolloverConditionGroup(): RolloverConditionGroup {
+    while (true) {
+        val minSize = if (randomBoolean()) randomByteSizeValue() else null
+        val minDocs = if (randomBoolean()) OpenSearchRestTestCase.randomLongBetween(1, 1000) else null
+        val minAge = if (randomBoolean()) randomTimeValueObject() else null
+        val minPrimaryShardSize = if (randomBoolean()) randomByteSizeValue() else null
+        if (listOfNotNull(minSize, minDocs, minAge, minPrimaryShardSize).isNotEmpty()) {
+            return RolloverConditionGroup(minSize, minDocs, minAge, minPrimaryShardSize)
+        }
+    }
+}
+
+fun randomGroupedRolloverActionConfig(maxGroups: Int = 4): RolloverAction {
+    val groupCount = OpenSearchRestTestCase.randomIntBetween(1, maxGroups)
+    val groups = (1..groupCount).map { randomRolloverConditionGroup() }
+    return RolloverAction(
+        minSize = null,
+        minDocs = null,
+        minAge = null,
+        minPrimaryShardSize = null,
+        preventEmptyRollover = false,
+        conditionGroups = groups,
+        index = 0,
+    )
+}
 
 @Suppress("ReturnCount")
 fun randomShrinkAction(

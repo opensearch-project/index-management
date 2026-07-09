@@ -266,6 +266,22 @@
                     },
                     "prevent_empty_rollover": {
                       "type": "boolean"
+                    },
+                    "any_of": {
+                      "properties": {
+                        "min_size": {
+                          "type": "keyword"
+                        },
+                        "min_index_age": {
+                          "type": "keyword"
+                        },
+                        "min_doc_count": {
+                          "type": "keyword"
+                        },
+                        "min_primary_shard_size": {
+                          "type": "keyword"
+                        }
+                      }
                     }
                   }
                 },

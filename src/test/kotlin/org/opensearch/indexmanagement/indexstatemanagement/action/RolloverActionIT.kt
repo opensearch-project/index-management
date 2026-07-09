@@ -41,7 +41,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_index"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = RolloverAction(null, null, null, null, false, false, 0)
+        val actionConfig = RolloverAction(null, null, null, null, false, false, index = 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy =
             Policy(
@@ -96,7 +96,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         )
 
         val policyID = "${testIndexName}_bwc"
-        val actionConfig = RolloverAction(null, null, null, null, false, false, 0)
+        val actionConfig = RolloverAction(null, null, null, null, false, false, index = 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy =
             Policy(
@@ -134,7 +134,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_index_byte"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_testPolicyName_byte_1"
-        val actionConfig = RolloverAction(ByteSizeValue(10, ByteSizeUnit.BYTES), 1000000, null, null, false, false, 0)
+        val actionConfig = RolloverAction(ByteSizeValue(10, ByteSizeUnit.BYTES), 1000000, null, null, false, false, index = 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy =
             Policy(
@@ -207,7 +207,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_index_primary_shard"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_primary_shard_1"
-        val actionConfig = RolloverAction(null, null, null, ByteSizeValue(100, ByteSizeUnit.KB), false, false, 0)
+        val actionConfig = RolloverAction(null, null, null, ByteSizeValue(100, ByteSizeUnit.KB), false, false, index = 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy =
             Policy(
@@ -319,7 +319,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_index_doc"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_testPolicyName_doc_1"
-        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, false, false, 0)
+        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, false, false, index = 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy =
             Policy(
@@ -393,7 +393,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val index2 = "index-2"
         val alias1 = "x"
         val policyID = "${testIndexName}_precheck"
-        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, false, false, 0)
+        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, false, false, index = 0)
         actionConfig.configRetry = ActionRetry(0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy =
@@ -454,7 +454,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_rollover_policy"
 
         // Create the rollover policy
-        val rolloverAction = RolloverAction(null, null, null, null, false, false, 0)
+        val rolloverAction = RolloverAction(null, null, null, null, false, false, index = 0)
         val states = listOf(State(name = "default", actions = listOf(rolloverAction), transitions = listOf()))
         val policy =
             Policy(
@@ -514,7 +514,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val policyID = "${testIndexName}_rollover_policy_multi"
 
         // Create the rollover policy
-        val rolloverAction = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, false, false, 0)
+        val rolloverAction = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, false, false, index = 0)
         val states = listOf(State(name = "default", actions = listOf(rolloverAction), transitions = listOf()))
         val policy =
             Policy(
@@ -610,7 +610,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_index"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = RolloverAction(null, null, null, null, false, false, 0)
+        val actionConfig = RolloverAction(null, null, null, null, false, false, index = 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy =
             Policy(
@@ -653,7 +653,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_index_doc"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_testPolicyName_doc_1"
-        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, true, false, 0)
+        val actionConfig = RolloverAction(null, 3, TimeValue.timeValueDays(2), null, true, false, index = 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy =
             Policy(
@@ -752,7 +752,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_index"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_testPolicyName_1"
-        val actionConfig = RolloverAction(null, 1, null, null, false, false, 0)
+        val actionConfig = RolloverAction(null, 1, null, null, false, false, index = 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy =
             Policy(
@@ -816,7 +816,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_prevent_empty_index"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_prevent_empty_policy"
-        val actionConfig = RolloverAction(null, null, TimeValue.timeValueSeconds(1), null, false, true, 0)
+        val actionConfig = RolloverAction(null, null, TimeValue.timeValueSeconds(1), null, false, true, index = 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy =
             Policy(
@@ -875,7 +875,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val indexNameBase = "${testIndexName}_prevent_then_rollover_index"
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_prevent_then_rollover_policy"
-        val actionConfig = RolloverAction(null, null, TimeValue.timeValueSeconds(1), null, false, true, 0)
+        val actionConfig = RolloverAction(null, null, TimeValue.timeValueSeconds(1), null, false, true, index = 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy =
             Policy(
@@ -940,7 +940,7 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         val firstIndex = "$indexNameBase-1"
         val policyID = "${testIndexName}_default_behavior_policy"
         // preventEmptyRollover defaults to false
-        val actionConfig = RolloverAction(null, null, TimeValue.timeValueSeconds(1), null, false, false, 0)
+        val actionConfig = RolloverAction(null, null, TimeValue.timeValueSeconds(1), null, false, false, index = 0)
         val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
         val policy =
             Policy(
@@ -976,5 +976,71 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
         }
 
         assertTrue("New rollover index should exist", indexExists("$indexNameBase-000002"))
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun `test rollover grouped any_of conditions`() {
+        val aliasName = "${testIndexName}_grouped_alias"
+        val indexNameBase = "${testIndexName}_index_grouped"
+        val firstIndex = "$indexNameBase-1"
+        val policyID = "${testIndexName}_grouped_policy_1"
+
+        val groupNeverMet = RolloverConditionGroup(
+            minSize = null, minDocs = 1_000_000L, minAge = TimeValue.timeValueDays(2), minPrimaryShardSize = null,
+        )
+        val groupDocsOnly = RolloverConditionGroup(
+            minSize = null, minDocs = 3L, minAge = null, minPrimaryShardSize = null,
+        )
+        val actionConfig = RolloverAction(
+            null, null, null, null, false, false,
+            conditionGroups = listOf(groupNeverMet, groupDocsOnly),
+            index = 0,
+        )
+        val states = listOf(State(name = "RolloverAction", actions = listOf(actionConfig), transitions = listOf()))
+        val policy =
+            Policy(
+                id = policyID,
+                description = "$testIndexName description",
+                schemaVersion = 1L,
+                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+                errorNotification = randomErrorNotification(),
+                defaultState = states[0].name,
+                states = states,
+            )
+
+        // Persisting the grouped policy exercises the strict config-index mapping for any_of.
+        createPolicy(policy, policyID)
+        createIndex(firstIndex, policyID, aliasName)
+
+        val managedIndexConfig = getExistingManagedIndexConfig(firstIndex)
+
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(firstIndex).policyID) }
+
+        // With 0 docs no group is satisfied: rollover stays pending and the explain output reports an any_of array of two groups.
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            assertEquals(
+                "Index rolled over before any group was satisfied.",
+                AttemptRolloverStep.getPendingMessage(firstIndex), info["message"],
+            )
+            val conditions = info["conditions"] as Map<String, Any?>
+            assertTrue("Grouped explain output should contain any_of", conditions.containsKey(RolloverAction.ANY_OF_FIELD))
+            val groups = conditions[RolloverAction.ANY_OF_FIELD] as List<Map<String, Any?>>
+            assertEquals("Explain output should report two groups", 2, groups.size)
+        }
+
+        insertSampleData(index = firstIndex, docCount = 5, delay = 0)
+
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val info = getExplainManagedIndexMetaData(firstIndex).info as Map<String, Any?>
+            assertEquals(
+                "Index did not rollover when a single group's conditions were all satisfied.",
+                AttemptRolloverStep.getSuccessMessage(firstIndex), info["message"],
+            )
+        }
+        Assert.assertTrue("New rollover index does not exist.", indexExists("$indexNameBase-000002"))
     }
 }
