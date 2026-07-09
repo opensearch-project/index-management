@@ -45,6 +45,10 @@ class ConvertIndexToRemoteAction(
         const val DEFAULT_RENAME_PATTERN = "\$1_remote"
 
         val VERSION_WITH_RESTORE_OPTIONS = Version.V_3_7_0
+
+        // TODO: Replace Version.CURRENT with the actual version constant (e.g., Version.V_3_8_0) once it is defined in OpenSearch core
+        val VERSION_WITH_ADD_ORIGINAL_ALIAS = Version.CURRENT
+
         val VERSION_WITH_RENAME_PATTERN = Version.V_3_5_0
     }
 
@@ -81,6 +85,8 @@ class ConvertIndexToRemoteAction(
             out.writeString(ignoreIndexSettings)
             out.writeInt(numberOfReplicas ?: -1)
             out.writeBoolean(deleteOriginalIndex)
+        }
+        if (out.version.onOrAfter(VERSION_WITH_ADD_ORIGINAL_ALIAS)) {
             out.writeBoolean(addOriginalNameAsAlias)
         }
         if (out.version.onOrAfter(VERSION_WITH_RENAME_PATTERN)) {

@@ -18,6 +18,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexTo
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.RENAME_PATTERN_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.REPOSITORY_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.SNAPSHOT_FIELD
+import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.VERSION_WITH_ADD_ORIGINAL_ALIAS
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.VERSION_WITH_RENAME_PATTERN
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.VERSION_WITH_RESTORE_OPTIONS
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
@@ -48,7 +49,7 @@ class ConvertIndexToRemoteActionParser : ActionParser() {
         } else {
             false
         }
-        val addOriginalNameAsAlias = if (sin.version.onOrAfter(VERSION_WITH_RESTORE_OPTIONS)) {
+        val addOriginalNameAsAlias = if (sin.version.onOrAfter(VERSION_WITH_ADD_ORIGINAL_ALIAS)) {
             sin.readBoolean()
         } else {
             false
