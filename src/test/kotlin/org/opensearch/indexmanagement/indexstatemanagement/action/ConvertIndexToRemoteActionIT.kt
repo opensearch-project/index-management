@@ -451,21 +451,32 @@ class ConvertIndexToRemoteActionIT : IndexStateManagementRestTestCase() {
         val isRemote = isIndexRemote(remoteIndexName)
         assertTrue("Index $remoteIndexName is not a remote index", isRemote)
 
-        // Verify original alias was restored (include_aliases = true)
-        val aliasResponse = client().makeRequest("GET", "/$remoteIndexName/_alias/$aliasName")
-        assertEquals("Original alias should exist on remote index", RestStatus.OK, aliasResponse.restStatus())
-
-        // Verify original index name was added as alias (add_original_name_as_alias = true)
-        val originalNameAliasResponse = client().makeRequest("GET", "/$remoteIndexName/_alias/$indexName")
-        assertEquals("Original index name should exist as alias on remote index", RestStatus.OK, originalNameAliasResponse.restStatus())
-
-        // Trigger another ISM cycle for deletion of original index + alias addition
+        // May need multiple ISM cycles for the full flow to complete:
+        // cycle 1: detect remote index exists, delete original, add alias
+        // cycle 2: in case the first cycle only advanced the step state
         try {
             updateManagedIndexConfigStartTime(managedIndexConfig)
         } catch (_: Exception) {
             // managedIndexConfig may already be gone if index was deleted
         }
-        waitFor { assertIndexDoesNotExist(indexName) }
+        try {
+            updateManagedIndexConfigStartTime(managedIndexConfig)
+        } catch (_: Exception) {
+            // managedIndexConfig may already be gone if index was deleted
+        }
+
+        // Wait for the original index name to become an alias on the remote index
+        // (confirms delete + alias addition completed successfully)
+        // Note: we cannot use assertIndexDoesNotExist(indexName) here because the alias
+        // with the original index name will resolve as if the index exists
+        waitFor {
+            val originalNameAliasResponse = client().makeRequest("GET", "/$remoteIndexName/_alias/$indexName")
+            assertEquals("Original index name should exist as alias on remote index", RestStatus.OK, originalNameAliasResponse.restStatus())
+        }
+
+        // Verify original alias was also restored (include_aliases = true)
+        val aliasResponse = client().makeRequest("GET", "/$remoteIndexName/_alias/$aliasName")
+        assertEquals("Original alias should exist on remote index", RestStatus.OK, aliasResponse.restStatus())
     }
 
     fun `test convert to remote with custom rename_pattern`() {
