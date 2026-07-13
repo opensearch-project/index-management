@@ -23,6 +23,7 @@ class RolloverAction(
     val minPrimaryShardSize: ByteSizeValue?,
     val copyAlias: Boolean = false,
     val preventEmptyRollover: Boolean = false,
+    val conditionGroups: List<RolloverConditionGroup>? = null,
     index: Int,
 ) : Action(name, index) {
     init {
@@ -34,6 +35,15 @@ class RolloverAction(
             }
         }
         if (minDocs != null) require(minDocs > 0) { "RolloverAction minDocs value must be greater than 0" }
+
+        val hasFlatConditions = minSize != null || minDocs != null || minAge != null || minPrimaryShardSize != null
+        val hasGroups = !conditionGroups.isNullOrEmpty()
+        require(!(hasFlatConditions && hasGroups)) {
+            "RolloverAction cannot specify both flat conditions and [$ANY_OF_FIELD] groups"
+        }
+        require(conditionGroups == null || conditionGroups.isNotEmpty()) {
+            "RolloverAction [$ANY_OF_FIELD] must contain at least one condition group"
+        }
     }
 
     private val attemptRolloverStep = AttemptRolloverStep(this)
@@ -45,10 +55,16 @@ class RolloverAction(
 
     override fun populateAction(builder: XContentBuilder, params: ToXContent.Params) {
         builder.startObject(type)
-        if (minSize != null) builder.field(MIN_SIZE_FIELD, minSize.stringRep)
-        if (minDocs != null) builder.field(MIN_DOC_COUNT_FIELD, minDocs)
-        if (minAge != null) builder.field(MIN_INDEX_AGE_FIELD, minAge.stringRep)
-        if (minPrimaryShardSize != null) builder.field(MIN_PRIMARY_SHARD_SIZE_FIELD, minPrimaryShardSize.stringRep)
+        if (!conditionGroups.isNullOrEmpty()) {
+            builder.startArray(ANY_OF_FIELD)
+            conditionGroups.forEach { it.toXContent(builder, params) }
+            builder.endArray()
+        } else {
+            if (minSize != null) builder.field(MIN_SIZE_FIELD, minSize.stringRep)
+            if (minDocs != null) builder.field(MIN_DOC_COUNT_FIELD, minDocs)
+            if (minAge != null) builder.field(MIN_INDEX_AGE_FIELD, minAge.stringRep)
+            if (minPrimaryShardSize != null) builder.field(MIN_PRIMARY_SHARD_SIZE_FIELD, minPrimaryShardSize.stringRep)
+        }
         builder.field(COPY_ALIAS_FIELD, copyAlias)
         if (preventEmptyRollover) builder.field(PREVENT_EMPTY_ROLLOVER_FIELD, preventEmptyRollover)
         builder.endObject()
@@ -63,6 +79,10 @@ class RolloverAction(
         if (out.version.onOrAfter(Version.V_3_4_0)) {
             out.writeBoolean(preventEmptyRollover)
         }
+        if (out.version.onOrAfter(Version.V_3_7_0)) {
+            out.writeBoolean(conditionGroups != null)
+            if (conditionGroups != null) out.writeList(conditionGroups)
+        }
         out.writeInt(actionIndex)
     }
 
@@ -74,5 +94,6 @@ class RolloverAction(
         const val MIN_PRIMARY_SHARD_SIZE_FIELD = "min_primary_shard_size"
         const val COPY_ALIAS_FIELD = "copy_alias"
         const val PREVENT_EMPTY_ROLLOVER_FIELD = "prevent_empty_rollover"
+        const val ANY_OF_FIELD = "any_of"
     }
 }
