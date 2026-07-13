@@ -23,6 +23,11 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.opensearch.action.admin.cluster.snapshots.get.GetSnapshotsResponse
 import org.opensearch.action.admin.cluster.snapshots.restore.RestoreSnapshotResponse
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse
+import org.opensearch.cluster.ClusterState
+import org.opensearch.cluster.metadata.AliasMetadata
+import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
@@ -31,6 +36,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexTo
 import org.opensearch.indexmanagement.indexstatemanagement.randomRestoreActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.SNAPSHOT_DENY_LIST
 import org.opensearch.indexmanagement.indexstatemanagement.step.restore.AttemptRestoreStep
+import org.opensearch.indexmanagement.snapshotmanagement.mockSnapshotInfo
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionProperties
@@ -40,10 +46,13 @@ import org.opensearch.ingest.TestTemplateService.MockTemplateScript
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
+import org.opensearch.snapshots.SnapshotInfo
+import org.opensearch.snapshots.SnapshotState
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.client.AdminClient
 import org.opensearch.transport.client.Client
 import org.opensearch.transport.client.ClusterAdminClient
+import org.opensearch.transport.client.IndicesAdminClient
 
 class AttemptRestoreStepTests : OpenSearchTestCase() {
 
@@ -85,7 +94,7 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
 
     fun `test restore failure with no matching snapshots`() {
         val getSnapshotsResponse = GetSnapshotsResponse(emptyList())
-        val client = getClient(getAdminClient(getClusterAdminClient(getSnapshotsResponse, null, null)))
+        val client = getClient(getAdminClient(getClusterAdminClient(getSnapshotsResponse, null, null), null))
 
         runBlocking {
             val step = AttemptRestoreStep(restoreAction)
@@ -108,7 +117,7 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
     fun `test restore exception`() {
         val exception = IllegalArgumentException("example")
         val getSnapshotsResponse = GetSnapshotsResponse(emptyList())
-        val client = getClient(getAdminClient(getClusterAdminClient(getSnapshotsResponse, null, exception)))
+        val client = getClient(getAdminClient(getClusterAdminClient(getSnapshotsResponse, null, exception), null))
 
         runBlocking {
             val step = AttemptRestoreStep(restoreAction)
@@ -135,7 +144,7 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
             renamePattern = "",
             index = 0,
         )
-        val client = getClient(getAdminClient(getClusterAdminClient(GetSnapshotsResponse(emptyList()), null, null)))
+        val client = getClient(getAdminClient(getClusterAdminClient(GetSnapshotsResponse(emptyList()), null, null), null))
 
         runBlocking {
             val step = AttemptRestoreStep(action)
@@ -156,7 +165,7 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
             renamePattern = "remote_index",
             index = 0,
         )
-        val client = getClient(getAdminClient(getClusterAdminClient(GetSnapshotsResponse(emptyList()), null, null)))
+        val client = getClient(getAdminClient(getClusterAdminClient(GetSnapshotsResponse(emptyList()), null, null), null))
 
         runBlocking {
             val step = AttemptRestoreStep(action)
@@ -177,7 +186,7 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
             renamePattern = "remote_\$1",
             index = 0,
         )
-        val client = getClient(getAdminClient(getClusterAdminClient(GetSnapshotsResponse(emptyList()), null, null)))
+        val client = getClient(getAdminClient(getClusterAdminClient(GetSnapshotsResponse(emptyList()), null, null), null))
 
         runBlocking {
             val step = AttemptRestoreStep(action)
@@ -192,9 +201,212 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
         }
     }
 
+    fun `test add_original_name_as_alias success`() {
+        val indexName = "test"
+        val remoteIndexName = "remote_test"
+        val action = ConvertIndexToRemoteAction(
+            repository = "repo",
+            snapshot = "sp",
+            deleteOriginalIndex = true,
+            addOriginalNameAsAlias = true,
+            renamePattern = "remote_\$1",
+            index = 0,
+        )
+
+        val clusterServiceWithRemote = getClusterServiceWithRemoteIndex(indexName, remoteIndexName, aliasAlreadyExists = false)
+        val indicesAdminClient = getIndicesAdminClient(
+            deleteResponse = AcknowledgedResponse(true),
+            aliasResponse = AcknowledgedResponse(true),
+            exception = null,
+        )
+        val snapshotInfo = createSuccessfulSnapshotInfo("snapshot-pattern-2024.01.01")
+        val getSnapshotsResponse = GetSnapshotsResponse(listOf(snapshotInfo))
+        val clusterAdminClient = getClusterAdminClient(getSnapshotsResponse, null, null)
+        val client = getClient(getAdminClient(clusterAdminClient, indicesAdminClient))
+
+        runBlocking {
+            val step = AttemptRestoreStep(action)
+            val context = StepContext(metadata, clusterServiceWithRemote, client, null, null, scriptService, settings, lockService)
+            step.preExecute(logger, context).execute()
+            val updatedMetadata = step.getUpdatedManagedIndexMetadata(metadata)
+            assertEquals(
+                "Step status should be COMPLETED",
+                Step.StepStatus.COMPLETED,
+                updatedMetadata.stepMetaData?.stepStatus,
+            )
+            assertEquals(
+                "Should get success message",
+                AttemptRestoreStep.getSuccessMessage(indexName),
+                updatedMetadata.info!!["message"],
+            )
+        }
+    }
+
+    fun `test add_original_name_as_alias already exists (idempotency)`() {
+        val indexName = "test"
+        val remoteIndexName = "remote_test"
+        val action = ConvertIndexToRemoteAction(
+            repository = "repo",
+            snapshot = "sp",
+            deleteOriginalIndex = true,
+            addOriginalNameAsAlias = true,
+            renamePattern = "remote_\$1",
+            index = 0,
+        )
+
+        // Alias already exists on remote index - delete still needed for original
+        val clusterServiceWithRemote = getClusterServiceWithRemoteIndex(indexName, remoteIndexName, aliasAlreadyExists = true)
+        val indicesAdminClient = getIndicesAdminClient(
+            deleteResponse = AcknowledgedResponse(true),
+            aliasResponse = null,
+            exception = null,
+        )
+        val snapshotInfo = createSuccessfulSnapshotInfo("snapshot-pattern-2024.01.01")
+        val getSnapshotsResponse = GetSnapshotsResponse(listOf(snapshotInfo))
+        val clusterAdminClient = getClusterAdminClient(getSnapshotsResponse, null, null)
+        val client = getClient(getAdminClient(clusterAdminClient, indicesAdminClient))
+
+        runBlocking {
+            val step = AttemptRestoreStep(action)
+            val context = StepContext(metadata, clusterServiceWithRemote, client, null, null, scriptService, settings, lockService)
+            step.preExecute(logger, context).execute()
+            val updatedMetadata = step.getUpdatedManagedIndexMetadata(metadata)
+            assertEquals(
+                "Step status should be COMPLETED",
+                Step.StepStatus.COMPLETED,
+                updatedMetadata.stepMetaData?.stepStatus,
+            )
+            assertEquals(
+                "Should get success message",
+                AttemptRestoreStep.getSuccessMessage(indexName),
+                updatedMetadata.info!!["message"],
+            )
+        }
+    }
+
+    fun `test add_original_name_as_alias not acknowledged`() {
+        val indexName = "test"
+        val remoteIndexName = "remote_test"
+        val action = ConvertIndexToRemoteAction(
+            repository = "repo",
+            snapshot = "sp",
+            deleteOriginalIndex = true,
+            addOriginalNameAsAlias = true,
+            renamePattern = "remote_\$1",
+            index = 0,
+        )
+
+        val clusterServiceWithRemote = getClusterServiceWithRemoteIndex(indexName, remoteIndexName, aliasAlreadyExists = false)
+        val indicesAdminClient = getIndicesAdminClient(
+            deleteResponse = AcknowledgedResponse(true),
+            aliasResponse = AcknowledgedResponse(false),
+            exception = null,
+        )
+        val snapshotInfo = createSuccessfulSnapshotInfo("snapshot-pattern-2024.01.01")
+        val getSnapshotsResponse = GetSnapshotsResponse(listOf(snapshotInfo))
+        val clusterAdminClient = getClusterAdminClient(getSnapshotsResponse, null, null)
+        val client = getClient(getAdminClient(clusterAdminClient, indicesAdminClient))
+
+        runBlocking {
+            val step = AttemptRestoreStep(action)
+            val context = StepContext(metadata, clusterServiceWithRemote, client, null, null, scriptService, settings, lockService)
+            step.preExecute(logger, context).execute()
+            val updatedMetadata = step.getUpdatedManagedIndexMetadata(metadata)
+            assertEquals(
+                "Step status should be FAILED",
+                Step.StepStatus.FAILED,
+                updatedMetadata.stepMetaData?.stepStatus,
+            )
+            assertTrue(
+                "Should contain alias failure message",
+                (updatedMetadata.info!!["message"] as String).contains("Failed to add original index name as alias"),
+            )
+        }
+    }
+
+    fun `test add_original_name_as_alias throws exception`() {
+        val indexName = "test"
+        val remoteIndexName = "remote_test"
+        val action = ConvertIndexToRemoteAction(
+            repository = "repo",
+            snapshot = "sp",
+            deleteOriginalIndex = true,
+            addOriginalNameAsAlias = true,
+            renamePattern = "remote_\$1",
+            index = 0,
+        )
+
+        val clusterServiceWithRemote = getClusterServiceWithRemoteIndex(indexName, remoteIndexName, aliasAlreadyExists = false)
+        val indicesAdminClient = getIndicesAdminClient(
+            deleteResponse = AcknowledgedResponse(true),
+            aliasResponse = null,
+            exception = RuntimeException("alias operation failed"),
+        )
+        val snapshotInfo = createSuccessfulSnapshotInfo("snapshot-pattern-2024.01.01")
+        val getSnapshotsResponse = GetSnapshotsResponse(listOf(snapshotInfo))
+        val clusterAdminClient = getClusterAdminClient(getSnapshotsResponse, null, null)
+        val client = getClient(getAdminClient(clusterAdminClient, indicesAdminClient))
+
+        runBlocking {
+            val step = AttemptRestoreStep(action)
+            val context = StepContext(metadata, clusterServiceWithRemote, client, null, null, scriptService, settings, lockService)
+            step.preExecute(logger, context).execute()
+            val updatedMetadata = step.getUpdatedManagedIndexMetadata(metadata)
+            assertEquals(
+                "Step status should be FAILED",
+                Step.StepStatus.FAILED,
+                updatedMetadata.stepMetaData?.stepStatus,
+            )
+            assertTrue(
+                "Should contain alias failure message",
+                (updatedMetadata.info!!["message"] as String).contains("Failed to add original index name as alias"),
+            )
+        }
+    }
+
+    private fun createSuccessfulSnapshotInfo(snapshotName: String): SnapshotInfo =
+        mockSnapshotInfo(name = snapshotName, snapshotState = SnapshotState.SUCCESS)
+
+    private fun getClusterServiceWithRemoteIndex(
+        originalIndexName: String,
+        remoteIndexName: String,
+        aliasAlreadyExists: Boolean,
+    ): ClusterService {
+        val remoteIndexSettings = Settings.builder()
+            .put("index.store.type", "remote_snapshot")
+            .build()
+        val aliases: Map<String, AliasMetadata> = if (aliasAlreadyExists) {
+            mapOf(originalIndexName to AliasMetadata.builder(originalIndexName).build())
+        } else {
+            emptyMap()
+        }
+        val remoteIndexMetadata: IndexMetadata = mock {
+            on { settings } doReturn remoteIndexSettings
+            on { this.aliases } doReturn aliases
+        }
+        val clusterMetadata: Metadata = mock {
+            on { hasIndex(remoteIndexName) } doReturn true
+            on { hasIndex(originalIndexName) } doReturn true
+            on { index(remoteIndexName) } doReturn remoteIndexMetadata
+        }
+        val clusterState: ClusterState = mock {
+            on { metadata() } doReturn clusterMetadata
+        }
+        val clusterSvc: ClusterService = mock {
+            on { state() } doReturn clusterState
+            on { clusterSettings } doReturn ClusterSettings(Settings.EMPTY, setOf(SNAPSHOT_DENY_LIST))
+        }
+        return clusterSvc
+    }
+
     private fun getClient(adminClient: AdminClient): Client = mock { on { admin() } doReturn adminClient }
 
-    private fun getAdminClient(clusterAdminClient: ClusterAdminClient): AdminClient = mock { on { cluster() } doReturn clusterAdminClient }
+    private fun getAdminClient(clusterAdminClient: ClusterAdminClient, indicesAdminClient: IndicesAdminClient?): AdminClient = mock {
+        on { cluster() } doReturn clusterAdminClient
+        if (indicesAdminClient != null) {
+            on { indices() } doReturn indicesAdminClient
+        }
+    }
 
     private fun getClusterAdminClient(
         getSnapshotsResponse: GetSnapshotsResponse?,
@@ -220,5 +432,31 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
                 else -> listener.onResponse(mock())
             }
         }.whenever(this.mock).restoreSnapshot(any(), any())
+    }
+
+    private fun getIndicesAdminClient(
+        deleteResponse: AcknowledgedResponse?,
+        aliasResponse: AcknowledgedResponse?,
+        exception: Exception?,
+    ): IndicesAdminClient = mock {
+        // Mock delete call
+        doAnswer { invocationOnMock ->
+            val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
+            if (deleteResponse != null) {
+                listener.onResponse(deleteResponse)
+            } else if (exception != null) {
+                listener.onFailure(exception)
+            }
+        }.whenever(this.mock).delete(any(), any())
+
+        // Mock aliases call
+        doAnswer { invocationOnMock ->
+            val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
+            if (exception != null) {
+                listener.onFailure(exception)
+            } else if (aliasResponse != null) {
+                listener.onResponse(aliasResponse)
+            }
+        }.whenever(this.mock).aliases(any(), any())
     }
 }
