@@ -32,6 +32,11 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
     private val notificationConfId = "test-notification-id"
     private val notificationIndex = "test-notification-index"
 
+    companion object {
+        // NotificationActionListener.DELAY is 5s; wait longer to confirm nothing arrives
+        const val NOTIFICATION_DELAY_MS = 7000L
+    }
+
     private lateinit var server: HttpServer
     private lateinit var client: RestClient
 
@@ -351,76 +356,43 @@ class NotificationActionListenerIT : IndexManagementRestTestCase() {
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun `test no notification for close`() {
-        createIndex("test-index-create", Settings.EMPTY)
-        closeIndex("test-index-create")
+    fun `test no notification when action is unsupported or policy is absent`() {
+        // Close is not a supported action — no notification expected
+        createIndex("test-index-close", Settings.EMPTY)
+        closeIndex("test-index-close")
 
-        waitFor {
-            assertEquals(
-                "Notification index have a doc for close",
-                0,
-                (
-                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:Close")
-                        .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"],
-            )
-        }
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    fun `test no notification policy is configured`() {
+        // Open with policy deleted — listener fires but finds no config
         insertSampleData("source-index", 10)
         closeIndex("source-index")
-
-        // remove notification policy
         client.makeRequest("DELETE", "_plugins/_im/lron/LRON:${OpenIndexAction.NAME.replace("/", "%2F")}")
+        val resp1 = client.makeRequest("POST", "source-index/_open")
+        Assert.assertTrue(resp1.restStatus() == RestStatus.OK)
 
-        val response =
-            client.makeRequest(
-                "POST", "source-index/_open",
-            )
-
-        Assert.assertTrue(response.restStatus() == RestStatus.OK)
-
-        // should not have notification send out
-        waitFor {
-            assertEquals(
-                "Notification index does not have a doc",
-                0,
-                (
-                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:Open")
-                        .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"],
-            )
-        }
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    fun `test notification policy system index is not exists`() {
-        insertSampleData("source-index", 10)
-        closeIndex("source-index")
-
-        // delete system index
+        // Open with system index deleted — listener gets IndexNotFoundException
+        insertSampleData("source-index-2", 10)
+        closeIndex("source-index-2")
         adminClient().makeRequest("DELETE", IndexManagementPlugin.CONTROL_CENTER_INDEX)
+        val resp2 = client.makeRequest("POST", "source-index-2/_open")
+        Assert.assertTrue(resp2.restStatus() == RestStatus.OK)
 
-        val response =
-            client.makeRequest(
-                "POST", "source-index/_open",
-            )
-
-        Assert.assertTrue(response.restStatus() == RestStatus.OK)
-
-        // should not have notification send out
-        waitFor {
-            assertEquals(
-                "Notification index does not have a doc",
-                0,
-                (
-                    client.makeRequest("GET", "$notificationIndex/_search?q=msg:Open")
-                        .asMap() as Map<String, Map<String, Map<String, Any>>>
-                    )["hits"]!!["total"]!!["value"],
-            )
-        }
+        // Wait past the notification delay (5s) then verify nothing was sent for any case
+        Thread.sleep(NOTIFICATION_DELAY_MS)
+        assertEquals(
+            "Unexpected Close notification",
+            0,
+            (
+                client.makeRequest("GET", "$notificationIndex/_search?q=msg:Close")
+                    .asMap() as Map<String, Map<String, Map<String, Any>>>
+                )["hits"]!!["total"]!!["value"],
+        )
+        assertEquals(
+            "Unexpected Open notification",
+            0,
+            (
+                client.makeRequest("GET", "$notificationIndex/_search?q=msg:Open")
+                    .asMap() as Map<String, Map<String, Map<String, Any>>>
+                )["hits"]!!["total"]!!["value"],
+        )
     }
 
     @Suppress("UNCHECKED_CAST")
