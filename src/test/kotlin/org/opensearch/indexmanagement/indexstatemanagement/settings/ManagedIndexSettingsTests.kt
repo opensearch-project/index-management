@@ -7,19 +7,24 @@ package org.opensearch.indexmanagement.indexstatemanagement.settings
 
 import org.opensearch.common.settings.Setting
 import org.opensearch.common.settings.Settings
+import org.opensearch.indexmanagement.indexstatemanagement.action.AliasAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.CloseAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.OpenAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReadWriteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.SearchOnlyAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.SnapshotAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.StopReplicationAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransformAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.test.OpenSearchTestCase
@@ -53,12 +58,23 @@ class ManagedIndexSettingsTests : OpenSearchTestCase() {
     fun `test recovery oriented actions are allowed on red cluster`() {
         // A null action (nothing to execute) should be treated as allowed.
         assertTrue(ManagedIndexSettings.isActionAllowedOnRedCluster(null))
-        // Actions that help reclaim resources or are lightweight should be allowed.
-        assertTrue(ManagedIndexSettings.isActionAllowedOnRedCluster(DeleteAction.name))
-        assertTrue(ManagedIndexSettings.isActionAllowedOnRedCluster(ReadOnlyAction.name))
-        assertTrue(ManagedIndexSettings.isActionAllowedOnRedCluster(CloseAction.name))
-        assertTrue(ManagedIndexSettings.isActionAllowedOnRedCluster(NotificationAction.name))
-        assertTrue(ManagedIndexSettings.isActionAllowedOnRedCluster(TransitionsAction.name))
+        val allowed =
+            listOf(
+                DeleteAction.name,
+                CloseAction.name,
+                ReadOnlyAction.name,
+                ReadWriteAction.name,
+                NotificationAction.name,
+                IndexPriorityAction.name,
+                AliasAction.name,
+                StopReplicationAction.name,
+                SearchOnlyAction.name,
+                TransitionsAction.name,
+            )
+        allowed.forEach { action ->
+            assertTrue("$action should be allowed on a red cluster", ManagedIndexSettings.isActionAllowedOnRedCluster(action))
+            assertTrue("$action should be in the allowed set", ManagedIndexSettings.RED_CLUSTER_ALLOWED_ACTIONS.contains(action))
+        }
     }
 
     fun `test resource intensive actions are restricted on red cluster`() {
@@ -77,9 +93,14 @@ class ManagedIndexSettingsTests : OpenSearchTestCase() {
             )
         restricted.forEach { action ->
             assertFalse("$action should be restricted on a red cluster", ManagedIndexSettings.isActionAllowedOnRedCluster(action))
-            assertTrue("$action should be in the restricted set", ManagedIndexSettings.RED_CLUSTER_RESTRICTED_ACTIONS.contains(action))
+            assertFalse("$action should not be in the allowed set", ManagedIndexSettings.RED_CLUSTER_ALLOWED_ACTIONS.contains(action))
         }
-        // The delete action must never be part of the restricted set so recovery can proceed.
-        assertFalse(ManagedIndexSettings.RED_CLUSTER_RESTRICTED_ACTIONS.contains(DeleteAction.name))
+    }
+
+    fun `test unknown or new actions are restricted on red cluster by default`() {
+        // Anything not explicitly allow-listed must default to restricted so that a newly added
+        // action is never accidentally permitted on a red cluster before it has been reviewed.
+        assertFalse(ManagedIndexSettings.isActionAllowedOnRedCluster("some_new_unreviewed_action"))
+        assertTrue(ManagedIndexSettings.RED_CLUSTER_ALLOWED_ACTIONS.contains(DeleteAction.name))
     }
 }

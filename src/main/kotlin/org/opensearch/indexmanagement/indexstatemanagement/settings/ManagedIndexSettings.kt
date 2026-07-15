@@ -9,16 +9,16 @@ import org.opensearch.common.settings.Setting
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
-import org.opensearch.indexmanagement.indexstatemanagement.action.AllocationAction
-import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction
-import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeAction
-import org.opensearch.indexmanagement.indexstatemanagement.action.OpenAction
-import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountAction
-import org.opensearch.indexmanagement.indexstatemanagement.action.RolloverAction
-import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
-import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
-import org.opensearch.indexmanagement.indexstatemanagement.action.SnapshotAction
-import org.opensearch.indexmanagement.indexstatemanagement.action.TransformAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.AliasAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.CloseAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReadWriteAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.SearchOnlyAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.StopReplicationAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import java.util.function.Function
 
 @Suppress("UtilityClassWithPublicConstructor")
@@ -34,29 +34,29 @@ class ManagedIndexSettings {
         val ALLOW_LIST_ALL = ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
         val SNAPSHOT_DENY_LIST_NONE = emptyList<String>()
 
-        // Actions that must never be executed while the cluster health is red, even when
-        // ALLOW_RUNNING_ON_RED_CLUSTER is enabled. These either create new indices, require
-        // shard allocation, or add significant I/O load, all of which can further degrade an
-        // already red cluster instead of helping it recover.
-        val RED_CLUSTER_RESTRICTED_ACTIONS: Set<String> =
+        // List of actions that are allowed to run on a red cluster. Stored lowercased so that
+        // action name lookups can be done case-insensitively.
+        val RED_CLUSTER_ALLOWED_ACTIONS: Set<String> =
             setOf(
-                ForceMergeAction.name,
-                ReplicaCountAction.name,
-                ShrinkAction.name,
-                SnapshotAction.name,
-                RolloverAction.name,
-                OpenAction.name,
-                AllocationAction.name,
-                ConvertIndexToRemoteAction.name,
-                TransformAction.name,
-                RollupAction.name,
-            )
+                DeleteAction.name,
+                CloseAction.name,
+                ReadOnlyAction.name,
+                ReadWriteAction.name,
+                NotificationAction.name,
+                IndexPriorityAction.name,
+                AliasAction.name,
+                StopReplicationAction.name,
+                SearchOnlyAction.name,
+                TransitionsAction.name,
+            ).map { it.lowercase() }.toSet()
 
         /**
          * Whether the given action type is safe to run while the cluster health is red.
-         * A null action (nothing to execute) is treated as allowed.
+         * A null action (nothing to execute) is treated as allowed. Any action that is not present
+         * in [RED_CLUSTER_ALLOWED_ACTIONS] is treated as restricted.
          */
-        fun isActionAllowedOnRedCluster(actionType: String?): Boolean = actionType == null || actionType !in RED_CLUSTER_RESTRICTED_ACTIONS
+        fun isActionAllowedOnRedCluster(actionType: String?): Boolean =
+            actionType == null || actionType.lowercase() in RED_CLUSTER_ALLOWED_ACTIONS
 
         val INDEX_STATE_MANAGEMENT_ENABLED: Setting<Boolean> =
             Setting.boolSetting(
