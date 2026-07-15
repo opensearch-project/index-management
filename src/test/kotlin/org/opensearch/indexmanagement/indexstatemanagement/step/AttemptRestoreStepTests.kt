@@ -213,9 +213,8 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
             index = 0,
         )
 
-        val clusterServiceWithRemote = getClusterServiceWithRemoteIndex(indexName, remoteIndexName, aliasAlreadyExists = false)
+        val clusterServiceWithRemote = getClusterServiceWithRemoteIndex(indexName, remoteIndexName, aliasAlreadyExists = false, originalExists = true)
         val indicesAdminClient = getIndicesAdminClient(
-            deleteResponse = AcknowledgedResponse(true),
             aliasResponse = AcknowledgedResponse(true),
             exception = null,
         )
@@ -254,10 +253,9 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
             index = 0,
         )
 
-        // Alias already exists on remote index - delete still needed for original
-        val clusterServiceWithRemote = getClusterServiceWithRemoteIndex(indexName, remoteIndexName, aliasAlreadyExists = true)
+        // Original already deleted, alias already exists on remote index
+        val clusterServiceWithRemote = getClusterServiceWithRemoteIndex(indexName, remoteIndexName, aliasAlreadyExists = true, originalExists = false)
         val indicesAdminClient = getIndicesAdminClient(
-            deleteResponse = AcknowledgedResponse(true),
             aliasResponse = null,
             exception = null,
         )
@@ -296,9 +294,8 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
             index = 0,
         )
 
-        val clusterServiceWithRemote = getClusterServiceWithRemoteIndex(indexName, remoteIndexName, aliasAlreadyExists = false)
+        val clusterServiceWithRemote = getClusterServiceWithRemoteIndex(indexName, remoteIndexName, aliasAlreadyExists = false, originalExists = true)
         val indicesAdminClient = getIndicesAdminClient(
-            deleteResponse = AcknowledgedResponse(true),
             aliasResponse = AcknowledgedResponse(false),
             exception = null,
         )
@@ -318,8 +315,8 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
                 updatedMetadata.stepMetaData?.stepStatus,
             )
             assertTrue(
-                "Should contain alias failure message",
-                (updatedMetadata.info!!["message"] as String).contains("Failed to add original index name as alias"),
+                "Should contain failure message",
+                (updatedMetadata.info!!["message"] as String).contains("Failed to delete original index and add alias"),
             )
         }
     }
@@ -336,9 +333,8 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
             index = 0,
         )
 
-        val clusterServiceWithRemote = getClusterServiceWithRemoteIndex(indexName, remoteIndexName, aliasAlreadyExists = false)
+        val clusterServiceWithRemote = getClusterServiceWithRemoteIndex(indexName, remoteIndexName, aliasAlreadyExists = false, originalExists = true)
         val indicesAdminClient = getIndicesAdminClient(
-            deleteResponse = AcknowledgedResponse(true),
             aliasResponse = null,
             exception = RuntimeException("alias operation failed"),
         )
@@ -358,8 +354,8 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
                 updatedMetadata.stepMetaData?.stepStatus,
             )
             assertTrue(
-                "Should contain alias failure message",
-                (updatedMetadata.info!!["message"] as String).contains("Failed to add original index name as alias"),
+                "Should contain failure message",
+                (updatedMetadata.info!!["message"] as String).contains("Failed to delete original index and add alias"),
             )
         }
     }
@@ -371,6 +367,7 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
         originalIndexName: String,
         remoteIndexName: String,
         aliasAlreadyExists: Boolean,
+        originalExists: Boolean = true,
     ): ClusterService {
         val remoteIndexSettings = Settings.builder()
             .put("index.store.type", "remote_snapshot")
@@ -386,7 +383,7 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
         }
         val clusterMetadata: Metadata = mock {
             on { hasIndex(remoteIndexName) } doReturn true
-            on { hasIndex(originalIndexName) } doReturn true
+            on { hasIndex(originalIndexName) } doReturn originalExists
             on { index(remoteIndexName) } doReturn remoteIndexMetadata
         }
         val clusterState: ClusterState = mock {
@@ -435,21 +432,10 @@ class AttemptRestoreStepTests : OpenSearchTestCase() {
     }
 
     private fun getIndicesAdminClient(
-        deleteResponse: AcknowledgedResponse?,
         aliasResponse: AcknowledgedResponse?,
         exception: Exception?,
     ): IndicesAdminClient = mock {
-        // Mock delete call
-        doAnswer { invocationOnMock ->
-            val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
-            if (deleteResponse != null) {
-                listener.onResponse(deleteResponse)
-            } else if (exception != null) {
-                listener.onFailure(exception)
-            }
-        }.whenever(this.mock).delete(any(), any())
-
-        // Mock aliases call
+        // Mock aliases call (handles both atomic REMOVE_INDEX+ADD and standalone ADD)
         doAnswer { invocationOnMock ->
             val listener = invocationOnMock.getArgument<ActionListener<AcknowledgedResponse>>(1)
             if (exception != null) {

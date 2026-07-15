@@ -111,18 +111,20 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
 
             if (remoteIndexExists) {
                 if (action.deleteOriginalIndex) {
-                    val deleted = deleteOriginalIndex(context, indexName, mutableInfo)
-                    if (!deleted) {
-                        stepStatus = StepStatus.FAILED
-                        mutableInfo["message"] = getFailedMessage(indexName, "Failed to delete original index")
-                        info = mutableInfo.toMap()
-                        return this
-                    }
                     if (action.addOriginalNameAsAlias) {
-                        val aliasAdded = addOriginalNameAsAlias(context, remoteIndexName, indexName, mutableInfo)
-                        if (!aliasAdded) {
+                        // Atomic: delete original index + add alias in one request
+                        val success = deleteOriginalAndAddAlias(context, indexName, remoteIndexName, mutableInfo)
+                        if (!success) {
                             stepStatus = StepStatus.FAILED
-                            mutableInfo["message"] = getFailedMessage(indexName, "Failed to add original index name as alias")
+                            mutableInfo["message"] = getFailedMessage(indexName, "Failed to delete original index and add alias")
+                            info = mutableInfo.toMap()
+                            return this
+                        }
+                    } else {
+                        val deleted = deleteOriginalIndex(context, indexName, mutableInfo)
+                        if (!deleted) {
+                            stepStatus = StepStatus.FAILED
+                            mutableInfo["message"] = getFailedMessage(indexName, "Failed to delete original index")
                             info = mutableInfo.toMap()
                             return this
                         }
@@ -238,19 +240,59 @@ class AttemptRestoreStep(private val action: ConvertIndexToRemoteAction) : Step(
     }
 
     @Suppress("ReturnCount")
-    private suspend fun addOriginalNameAsAlias(
+    private suspend fun deleteOriginalAndAddAlias(
+        context: StepContext,
+        originalIndexName: String,
+        remoteIndexName: String,
+        mutableInfo: MutableMap<String, Any>,
+    ): Boolean {
+        // Idempotency: if original is already gone, check if alias exists
+        if (!context.clusterService.state().metadata().hasIndex(originalIndexName)) {
+            logger.info("Original index [$originalIndexName] already deleted")
+            val metadata = context.clusterService.state().metadata()
+            val indexMetadata = metadata.index(remoteIndexName)
+            if (indexMetadata != null && indexMetadata.aliases.containsKey(originalIndexName)) {
+                logger.info("Alias [$originalIndexName] already exists on remote index [$remoteIndexName], nothing to do")
+                return true
+            }
+            // Original gone but alias missing - just add alias
+            return addAliasOnly(context, remoteIndexName, originalIndexName, mutableInfo)
+        }
+        try {
+            val aliasRequest = IndicesAliasesRequest()
+            aliasRequest.addAliasAction(
+                AliasActions(AliasActions.Type.REMOVE_INDEX).index(originalIndexName),
+            )
+            aliasRequest.addAliasAction(
+                AliasActions(AliasActions.Type.ADD)
+                    .index(remoteIndexName)
+                    .alias(originalIndexName),
+            )
+            val response: AcknowledgedResponse = context.client.admin().indices().suspendUntil {
+                aliases(aliasRequest, it)
+            }
+            if (response.isAcknowledged) {
+                logger.info("Successfully deleted [$originalIndexName] and added it as alias to [$remoteIndexName]")
+                return true
+            } else {
+                logger.warn("Atomic delete+alias request for [$originalIndexName] was not acknowledged")
+                mutableInfo["alias_error"] = "Atomic delete+alias request was not acknowledged"
+                return false
+            }
+        } catch (e: Exception) {
+            logger.warn("Failed atomic delete+alias for [$originalIndexName] to [$remoteIndexName]: ${e.message}", e)
+            mutableInfo["alias_error"] = e.message ?: "Unknown error"
+            return false
+        }
+    }
+
+    @Suppress("ReturnCount")
+    private suspend fun addAliasOnly(
         context: StepContext,
         remoteIndexName: String,
         originalIndexName: String,
         mutableInfo: MutableMap<String, Any>,
     ): Boolean {
-        // Check if the alias already exists (idempotency)
-        val metadata = context.clusterService.state().metadata()
-        val indexMetadata = metadata.index(remoteIndexName)
-        if (indexMetadata != null && indexMetadata.aliases.containsKey(originalIndexName)) {
-            logger.info("Alias [$originalIndexName] already exists on remote index [$remoteIndexName], nothing to do")
-            return true
-        }
         try {
             val aliasRequest = IndicesAliasesRequest()
             aliasRequest.addAliasAction(
