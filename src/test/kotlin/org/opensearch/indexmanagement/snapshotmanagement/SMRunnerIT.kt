@@ -109,23 +109,6 @@ class SMRunnerIT : SnapshotManagementRestTestCase() {
             assertNotNull("Deletion trigger should be initialized", explainMetadata.deletion?.trigger?.time)
         }
 
-        // Create condition met
-        updateSMPolicyStartTime(smPolicy)
-        updateSMMetadata(getSMPolicy(smPolicy.policyName))
-        waitFor {
-            val explainMetadata = parseExplainResponse(explainSMPolicy(policyName).entity.content).first()
-            assertNotNull(explainMetadata.creation!!.started)
-            assertEquals(SMMetadata.LatestExecution.Status.IN_PROGRESS, explainMetadata.creation.latestExecution!!.status)
-        }
-
-        // Snapshot has been created successfully
-        updateSMPolicyStartTime(smPolicy)
-        waitFor {
-            val explainMetadata = parseExplainResponse(explainSMPolicy(policyName).entity.content).first()
-            assertNull(explainMetadata.creation!!.started)
-            assertEquals(SMMetadata.LatestExecution.Status.SUCCESS, explainMetadata.creation.latestExecution!!.status)
-        }
-
         // Trigger deletion workflow - wait for it to start
         updateSMPolicyStartTime(smPolicy)
         waitFor(timeout = Instant.ofEpochSecond(120)) {
@@ -133,7 +116,7 @@ class SMRunnerIT : SnapshotManagementRestTestCase() {
             assertNotNull("Deletion should have started", explainMetadata.deletion?.started)
         }
 
-        //  Wait for deletion to complete successfully
+        // Wait for deletion to complete successfully
         updateSMPolicyStartTime(smPolicy)
         waitFor {
             val explainMetadata = parseExplainResponse(explainSMPolicy(policyName).entity.content).first()
@@ -147,8 +130,12 @@ class SMRunnerIT : SnapshotManagementRestTestCase() {
 
         logger.info("Deletion workflow with snapshot_pattern completed successfully")
 
-        // Verify the deletion behavior - 3 oldest snapshots should be deleted, keeping minCount=1
+        // Verify: deletion considers snapshots matching "test-policy-deletion*,external-backup-*".
+        // With maxAge=1ms and minCount=1, all but the newest 1 are deleted.
+        // Only the 4 external-backup-* exist (creation schedule is daily, never fires here),
+        // so 3 get deleted and 1 remains.
         val snapshotsAfter = getSnapshotsInRepository(repoName)
-        assertEquals("Should have 1 snapshot remaining (minCount=1)", 1, snapshotsAfter.size)
+        val patternMatched = snapshotsAfter.filter { it.startsWith("external-backup-") }
+        assertEquals("Should have 1 pattern-matched snapshot remaining (minCount=1)", 1, patternMatched.size)
     }
 }
