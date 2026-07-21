@@ -63,7 +63,6 @@ class ManagedIndexSettingsTests : OpenSearchTestCase() {
                 DeleteAction.name,
                 CloseAction.name,
                 ReadOnlyAction.name,
-                ReadWriteAction.name,
                 NotificationAction.name,
                 IndexPriorityAction.name,
                 AliasAction.name,
@@ -77,9 +76,10 @@ class ManagedIndexSettingsTests : OpenSearchTestCase() {
         }
     }
 
-    fun `test resource intensive actions are restricted on red cluster`() {
+    fun `test unsafe actions are restricted on red cluster`() {
         val restricted =
             listOf(
+                ReadWriteAction.name,
                 ForceMergeAction.name,
                 ReplicaCountAction.name,
                 ShrinkAction.name,

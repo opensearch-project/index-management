@@ -15,7 +15,6 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
-import org.opensearch.indexmanagement.indexstatemanagement.action.ReadWriteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.SearchOnlyAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.StopReplicationAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
@@ -41,7 +40,6 @@ class ManagedIndexSettings {
                 DeleteAction.name,
                 CloseAction.name,
                 ReadOnlyAction.name,
-                ReadWriteAction.name,
                 NotificationAction.name,
                 IndexPriorityAction.name,
                 AliasAction.name,
