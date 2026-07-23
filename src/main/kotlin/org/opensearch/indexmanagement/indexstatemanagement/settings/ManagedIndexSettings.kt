@@ -9,6 +9,15 @@ import org.opensearch.common.settings.Setting
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.AliasAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.CloseAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.DeleteAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.SearchOnlyAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.StopReplicationAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import java.util.function.Function
 
 @Suppress("UtilityClassWithPublicConstructor")
@@ -18,10 +27,34 @@ class ManagedIndexSettings {
         const val DEFAULT_ACTION_VALIDATION_ENABLED = false
         const val DEFAULT_JOB_INTERVAL = 5
         const val DEFAULT_JITTER = 0.6
+        const val DEFAULT_ALLOW_RUNNING_ON_RED_CLUSTER = false
         const val DEFAULT_RESTRICTED_PATTERN = "\\.opendistro_security|\\.kibana.*|\\$INDEX_MANAGEMENT_INDEX"
         val ALLOW_LIST_NONE = emptyList<String>()
         val ALLOW_LIST_ALL = ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
         val SNAPSHOT_DENY_LIST_NONE = emptyList<String>()
+
+        // List of actions that are allowed to run on a red cluster. Stored lowercased so that
+        // action name lookups can be done case-insensitively.
+        val RED_CLUSTER_ALLOWED_ACTIONS: Set<String> =
+            setOf(
+                DeleteAction.name,
+                CloseAction.name,
+                ReadOnlyAction.name,
+                NotificationAction.name,
+                IndexPriorityAction.name,
+                AliasAction.name,
+                StopReplicationAction.name,
+                SearchOnlyAction.name,
+                TransitionsAction.name,
+            ).map { it.lowercase() }.toSet()
+
+        /**
+         * Whether the given action type is safe to run while the cluster health is red.
+         * A null action (nothing to execute) is treated as allowed. Any action that is not present
+         * in [RED_CLUSTER_ALLOWED_ACTIONS] is treated as restricted.
+         */
+        fun isActionAllowedOnRedCluster(actionType: String?): Boolean =
+            actionType == null || actionType.lowercase() in RED_CLUSTER_ALLOWED_ACTIONS
 
         val INDEX_STATE_MANAGEMENT_ENABLED: Setting<Boolean> =
             Setting.boolSetting(
@@ -203,6 +236,14 @@ class ManagedIndexSettings {
             Setting.simpleString(
                 "plugins.index_state_management.restricted_index_pattern",
                 LegacyOpenDistroManagedIndexSettings.RESTRICTED_INDEX_PATTERN,
+                Setting.Property.NodeScope,
+                Setting.Property.Dynamic,
+            )
+
+        val ALLOW_RUNNING_ON_RED_CLUSTER: Setting<Boolean> =
+            Setting.boolSetting(
+                "plugins.index_state_management.allow_running_on_red_cluster",
+                DEFAULT_ALLOW_RUNNING_ON_RED_CLUSTER,
                 Setting.Property.NodeScope,
                 Setting.Property.Dynamic,
             )
