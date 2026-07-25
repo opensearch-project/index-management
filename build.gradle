@@ -927,6 +927,10 @@ compileKotlin {
 }
 
 compileTestKotlin {
+    // OpenSearchRestTestCase's client()/adminClient() still return the deprecated
+    // low-level RestClient, so disable deprecation warnings here specifically
+    // instead of turning off allWarningsAsErrors for all test compilation.
+    kotlinOptions.freeCompilerArgs = ['-Xwarning-level=DEPRECATION:disabled']
     kotlinOptions.allWarningsAsErrors = true
 }
 
