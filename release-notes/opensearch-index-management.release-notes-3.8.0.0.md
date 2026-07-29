@@ -28,6 +28,3 @@ Compatible with OpenSearch and OpenSearch Dashboards version 3.8.0
 * Onboard code diff analyzer/reviewer and issue dedupe workflows ([#1685](https://github.com/opensearch-project/index-management/pull/1685))
 * Onboard new backport-pr reusable GitHub workflow ([#1678](https://github.com/opensearch-project/index-management/pull/1678))
 
-### Maintenance
-
-* Add @Tarun-kishore as a maintainer ([#1689](https://github.com/opensearch-project/index-management/pull/1689))
