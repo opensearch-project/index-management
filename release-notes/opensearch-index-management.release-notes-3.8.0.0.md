@@ -6,11 +6,6 @@ Compatible with OpenSearch and OpenSearch Dashboards version 3.8.0
 
 * Support mixed AND/OR rollover conditions via `any_of` grouped syntax ([#1667](https://github.com/opensearch-project/index-management/pull/1667))
 
-### Enhancements
-
-* Onboard code diff analyzer/reviewer and issue dedupe workflows ([#1685](https://github.com/opensearch-project/index-management/pull/1685))
-* Onboard new backport-pr reusable GitHub workflow ([#1678](https://github.com/opensearch-project/index-management/pull/1678))
-
 ### Bug Fixes
 
 * Fix NoClassDefFoundError in ISM custom webhook error notifications by adding HttpClient 5 dependencies ([#1643](https://github.com/opensearch-project/index-management/pull/1643))
@@ -30,6 +25,8 @@ Compatible with OpenSearch and OpenSearch Dashboards version 3.8.0
 * Bump aws-actions/configure-aws-credentials from 6.1.1 to 6.2.1 ([#1683](https://github.com/opensearch-project/index-management/pull/1683))
 * Bump codecov/codecov-action from 4.6.0 to 7.0.0 ([#1682](https://github.com/opensearch-project/index-management/pull/1682))
 * Bump release-drafter/release-drafter from 6.4.0 to 7.3.1 ([#1658](https://github.com/opensearch-project/index-management/pull/1658))
+* Onboard code diff analyzer/reviewer and issue dedupe workflows ([#1685](https://github.com/opensearch-project/index-management/pull/1685))
+* Onboard new backport-pr reusable GitHub workflow ([#1678](https://github.com/opensearch-project/index-management/pull/1678))
 
 ### Maintenance
 
