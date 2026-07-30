@@ -34,6 +34,7 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.ScriptService
 import org.opensearch.test.OpenSearchTestCase
+import org.opensearch.transport.RemoteTransportException
 import org.opensearch.transport.client.AdminClient
 import org.opensearch.transport.client.Client
 import org.opensearch.transport.client.IndicesAdminClient
@@ -143,6 +144,27 @@ class AttemptPublishFieldDomainsStepTests : OpenSearchTestCase() {
             updatedManagedIndexMetaData.info?.get("message"),
         )
         assertEquals("publish failed", updatedManagedIndexMetaData.info?.get("cause"))
+    }
+
+    fun `test step handles remote transport exception with non-exception cause`() {
+        val step = AttemptPublishFieldDomainsStep(
+            action(),
+            FieldDomainCalculatorRegistry(listOf(TestCalculator(domain = domain()))),
+        )
+        val client = client(
+            refreshResponse = refreshResponse(),
+            publishResponse = null,
+            publishException = RemoteTransportException("remote failure", AssertionError("remote fatal")),
+        )
+
+        val updatedManagedIndexMetaData = executeStep(step, indexMetadata(writeBlocked = true), client)
+
+        assertEquals(Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
+        assertEquals(
+            AttemptPublishFieldDomainsStep.getFailedPublishMessage(INDEX_NAME),
+            updatedManagedIndexMetaData.info?.get("message"),
+        )
+        assertEquals("remote fatal", updatedManagedIndexMetaData.info?.get("cause"))
     }
 
     private fun executeStep(

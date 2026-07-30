@@ -76,7 +76,7 @@ class AttemptPublishFieldDomainsStep(
                 info = mapOf("message" to message)
             }
         } catch (e: RemoteTransportException) {
-            handleException(indexName, ExceptionsHelper.unwrapCause(e) as Exception)
+            handleException(indexName, ExceptionsHelper.unwrapCause(e))
         } catch (e: Exception) {
             handleException(indexName, e)
         }
@@ -134,7 +134,7 @@ class AttemptPublishFieldDomainsStep(
         }
     }
 
-    private fun handleException(indexName: String, e: Exception) {
+    private fun handleException(indexName: String, e: Throwable) {
         val message = getFailedPublishMessage(indexName)
         logger.error(message, e)
         stepStatus = StepStatus.FAILED
