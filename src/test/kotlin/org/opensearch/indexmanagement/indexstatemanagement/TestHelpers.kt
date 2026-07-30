@@ -12,6 +12,7 @@ import org.opensearch.common.xcontent.XContentFactory
 import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.index.RandomCreateIndexGenerator.randomAlias
+import org.opensearch.index.fielddomain.DateRangeFieldDomain
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.common.model.notification.Channel
 import org.opensearch.indexmanagement.indexstatemanagement.action.AliasAction
@@ -23,6 +24,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeActi
 import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.OpenAction
+import org.opensearch.indexmanagement.indexstatemanagement.action.PublishFieldDomainsAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadWriteAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountAction
@@ -32,6 +34,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.RollupAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ShrinkAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.SnapshotAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransformAction
+import org.opensearch.indexmanagement.indexstatemanagement.fielddomain.FieldDomainConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
 import org.opensearch.indexmanagement.indexstatemanagement.model.ErrorNotification
@@ -189,6 +192,13 @@ fun randomShrinkAction(
 }
 
 fun randomReadOnlyActionConfig(): ReadOnlyAction = ReadOnlyAction(index = 0)
+
+fun randomPublishFieldDomainsActionConfig(
+    fields: List<FieldDomainConfig> = listOf(FieldDomainConfig("@timestamp", DateRangeFieldDomain.TYPE)),
+): PublishFieldDomainsAction = PublishFieldDomainsAction(
+    fields = fields,
+    index = 0,
+)
 
 fun randomReadWriteActionConfig(): ReadWriteAction = ReadWriteAction(index = 0)
 
@@ -432,6 +442,11 @@ fun RolloverAction.toJsonString(): String {
 }
 
 fun ReadOnlyAction.toJsonString(): String {
+    val builder = XContentFactory.jsonBuilder()
+    return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
+}
+
+fun PublishFieldDomainsAction.toJsonString(): String {
     val builder = XContentFactory.jsonBuilder()
     return this.toXContent(builder, ToXContent.EMPTY_PARAMS).string()
 }

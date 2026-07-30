@@ -28,6 +28,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomManagedIndexCon
 import org.opensearch.indexmanagement.indexstatemanagement.randomNotificationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomOpenActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomPolicy
+import org.opensearch.indexmanagement.indexstatemanagement.randomPublishFieldDomainsActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadWriteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountActionConfig
@@ -100,6 +101,59 @@ class XContentTests : OpenSearchTestCase() {
         val readOnlyActionString = readOnlyAction.toJsonString()
         val parsedReadOnlyAction = ISMActionsParser.instance.parse(parser(readOnlyActionString), 0)
         assertEquals("Round tripping ReadOnlyAction doesn't work", readOnlyAction.convertToMap(), parsedReadOnlyAction.convertToMap())
+    }
+
+    fun `test publish_field_domains action parsing`() {
+        val publishFieldDomainsAction = randomPublishFieldDomainsActionConfig()
+
+        val publishFieldDomainsActionString = publishFieldDomainsAction.toJsonString()
+        val parsedPublishFieldDomainsAction = ISMActionsParser.instance.parse(parser(publishFieldDomainsActionString), 0)
+        assertEquals(
+            "Round tripping PublishFieldDomainsAction doesn't work",
+            publishFieldDomainsAction.convertToMap(),
+            parsedPublishFieldDomainsAction.convertToMap(),
+        )
+    }
+
+    fun `test publish_field_domains rejects unsupported field domain type`() {
+        val actionString = """
+            {
+              "publish_field_domains": {
+                "fields": [
+                  {
+                    "field": "@timestamp",
+                    "type": "unsupported_type"
+                  }
+                ]
+              }
+            }
+        """.trimIndent()
+
+        val exception = assertFailsWith<IllegalArgumentException> {
+            ISMActionsParser.instance.parse(parser(actionString), 0)
+        }
+        assertTrue(exception.message!!.contains("No field-domain calculator registered for type [unsupported_type]"))
+    }
+
+    fun `test publish_field_domains rejects unsafe policy knobs`() {
+        val actionString = """
+            {
+              "publish_field_domains": {
+                "refresh": false,
+                "fields": [
+                  {
+                    "field": "@timestamp",
+                    "type": "date_range"
+                  }
+                ]
+              }
+            }
+        """.trimIndent()
+
+        val exception = assertFailsWith<IllegalArgumentException> {
+            ISMActionsParser.instance.parse(parser(actionString), 0)
+        }
+        assertTrue(exception.message!!.contains("Invalid field: [refresh] found in PublishFieldDomainsAction."))
     }
 
     fun `test read_write action parsing`() {
