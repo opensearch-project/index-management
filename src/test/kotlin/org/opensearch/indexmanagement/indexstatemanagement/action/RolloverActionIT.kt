@@ -439,6 +439,13 @@ class RolloverActionIT : IndexStateManagementRestTestCase() {
             )
         assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
 
+        // Wait for the retry write to land before triggering the job, otherwise the job may
+        // fire before the metadata reflects the retried state and re-evaluate the old FAILED step.
+        waitFor {
+            val info = getExplainManagedIndexMetaData(index1).info as Map<String, Any?>
+            assertEquals("Pending retry of failed managed index", info["message"])
+        }
+
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
             val info = getExplainManagedIndexMetaData(index1).info as Map<String, Any?>
