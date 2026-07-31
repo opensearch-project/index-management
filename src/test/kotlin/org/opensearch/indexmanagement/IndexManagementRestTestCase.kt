@@ -364,22 +364,20 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
                 for ((_, value1) in nodeTasks!!) {
                     val task = value1 as Map<String, Any>
                     val action = task["action"] as String
-                    val description = task["description"] as? String ?: ""
-                    if (isIgnorableTask(action, description)) continue
+                    if (isIgnorableTask(action)) continue
+                    // runningTasks.add(task["action"].toString() + " | " + task["description"].toString())
                     runningTasks.add(task.toString())
                 }
             }
             return runningTasks
         }
 
-        // Ignore the task list API, segment replication background tasks, and security audit log writes
-        // (audit log writes are asynchronous and can outlive the test that triggered them)
-        private fun isIgnorableTask(action: String, description: String = ""): Boolean =
+        // Ignore the task list API and segment replication background tasks (always running on Remote Store clusters)
+        private fun isIgnorableTask(action: String): Boolean =
             action == ListTasksAction.NAME ||
                 action == ListTasksAction.NAME + "[n]" ||
                 action.startsWith("segrep_") ||
-                action == "indices:admin/publishCheckpoint[p]" ||
-                description.contains("security-auditlog")
+                action == "indices:admin/publishCheckpoint[p]"
 
         @JvmStatic
         protected fun waitForThreadPools(client: RestClient) {
