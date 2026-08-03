@@ -20,10 +20,22 @@ import org.opensearch.indexmanagement.rollup.interceptor.RollupInterceptor.Compa
 import org.opensearch.indexmanagement.rollup.model.RollupFieldMapping
 import org.opensearch.indexmanagement.rollup.randomRollup
 import org.opensearch.indexmanagement.rollup.settings.RollupSettings
+import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder
+import org.opensearch.search.aggregations.bucket.histogram.HistogramAggregationBuilder
+import org.opensearch.search.aggregations.bucket.range.RangeAggregationBuilder
+import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder
+import org.opensearch.search.aggregations.metrics.AvgAggregationBuilder
+import org.opensearch.search.aggregations.metrics.CardinalityAggregationBuilder
+import org.opensearch.search.aggregations.metrics.MaxAggregationBuilder
+import org.opensearch.search.aggregations.metrics.MinAggregationBuilder
+import org.opensearch.search.aggregations.metrics.SumAggregationBuilder
+import org.opensearch.search.aggregations.metrics.ValueCountAggregationBuilder
+import org.opensearch.search.aggregations.support.ValuesSourceAggregationBuilder
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.search.internal.ShardSearchRequest
 import org.opensearch.test.OpenSearchTestCase
+import kotlin.test.assertFailsWith
 
 class RollupInterceptorTests : OpenSearchTestCase() {
 
@@ -191,6 +203,64 @@ class RollupInterceptorTests : OpenSearchTestCase() {
         assertEquals("Only the job with field2 should match", 1, matchingJobs.size)
         assertTrue("rollup_2 should be in matching jobs", matchingJobs.keys.any { it.id == "rollup_2" })
         assertTrue("Expected no issues", issues.isEmpty())
+    }
+
+    fun `test neutralizeAggregation rewrites supported aggregations to a nonexistent field`() {
+        val interceptor = createInterceptor()
+        val builders =
+            listOf(
+                TermsAggregationBuilder("agg_terms").field("category"),
+                DateHistogramAggregationBuilder("agg_date_histogram").field("timestamp"),
+                HistogramAggregationBuilder("agg_histogram").field("value"),
+                SumAggregationBuilder("agg_sum").field("value"),
+                AvgAggregationBuilder("agg_avg").field("value"),
+                MaxAggregationBuilder("agg_max").field("value"),
+                MinAggregationBuilder("agg_min").field("value"),
+                ValueCountAggregationBuilder("agg_value_count").field("value"),
+                CardinalityAggregationBuilder("agg_cardinality").field("value"),
+            )
+
+        for (builder in builders) {
+            val result = interceptor.neutralizeAggregation(builder)
+            assertEquals("Aggregation name should be preserved", builder.name, result.name)
+            assertEquals("Aggregation type should be preserved", builder.type, result.type)
+            assertEquals(
+                "Aggregation should be rewritten to the nonexistent field",
+                RollupInterceptor.NONEXISTENT_ROLLUP_FIELD,
+                (result as ValuesSourceAggregationBuilder<*>).field(),
+            )
+        }
+    }
+
+    fun `test neutralizeAggregation preserves nested sub-aggregations`() {
+        val interceptor = createInterceptor()
+        val builder =
+            DateHistogramAggregationBuilder("by_time").field("timestamp")
+                .subAggregation(
+                    TermsAggregationBuilder("by_vendor").field("vendor")
+                        .subAggregation(SumAggregationBuilder("total").field("amount")),
+                )
+
+        val result = interceptor.neutralizeAggregation(builder)
+
+        assertEquals("by_time", result.name)
+        assertEquals(RollupInterceptor.NONEXISTENT_ROLLUP_FIELD, (result as ValuesSourceAggregationBuilder<*>).field())
+
+        val vendorAgg = result.subAggregations.single()
+        assertEquals("by_vendor", vendorAgg.name)
+        assertEquals(RollupInterceptor.NONEXISTENT_ROLLUP_FIELD, (vendorAgg as ValuesSourceAggregationBuilder<*>).field())
+
+        val totalAgg = vendorAgg.subAggregations.single()
+        assertEquals("total", totalAgg.name)
+        assertEquals("sum", totalAgg.type)
+        assertEquals(RollupInterceptor.NONEXISTENT_ROLLUP_FIELD, (totalAgg as ValuesSourceAggregationBuilder<*>).field())
+    }
+
+    fun `test neutralizeAggregation throws on an unsupported aggregation type`() {
+        val interceptor = createInterceptor()
+        assertFailsWith(IllegalArgumentException::class) {
+            interceptor.neutralizeAggregation(RangeAggregationBuilder("agg_range").field("value"))
+        }
     }
 
     // Helper method to create interceptor instance
