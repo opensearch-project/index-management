@@ -239,6 +239,171 @@ class ConvertIndexToRemoteActionTests : OpenSearchTestCase() {
         }
     }
 
+    fun `test add_original_name_as_alias defaults to false`() {
+        val action = ConvertIndexToRemoteAction(
+            repository = "my-repo",
+            snapshot = "{{ctx.index}}",
+            index = 0,
+        )
+
+        assertEquals("addOriginalNameAsAlias should default to false", false, action.addOriginalNameAsAlias)
+    }
+
+    fun `test add_original_name_as_alias with delete_original_index true`() {
+        val action = ConvertIndexToRemoteAction(
+            repository = "my-repo",
+            snapshot = "{{ctx.index}}",
+            deleteOriginalIndex = true,
+            addOriginalNameAsAlias = true,
+            index = 0,
+        )
+
+        assertEquals("addOriginalNameAsAlias should be true", true, action.addOriginalNameAsAlias)
+        assertEquals("deleteOriginalIndex should be true", true, action.deleteOriginalIndex)
+    }
+
+    fun `test add_original_name_as_alias without delete_original_index throws exception`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            ConvertIndexToRemoteAction(
+                repository = "my-repo",
+                snapshot = "{{ctx.index}}",
+                deleteOriginalIndex = false,
+                addOriginalNameAsAlias = true,
+                index = 0,
+            )
+        }
+    }
+
+    fun `test XContent serialization with add_original_name_as_alias`() {
+        val action = ConvertIndexToRemoteAction(
+            repository = "my-repo",
+            snapshot = "{{ctx.index}}",
+            deleteOriginalIndex = true,
+            addOriginalNameAsAlias = true,
+            index = 0,
+        )
+
+        val builder = XContentFactory.jsonBuilder()
+        builder.startObject()
+        action.populateAction(builder, org.opensearch.core.xcontent.ToXContent.EMPTY_PARAMS)
+        builder.endObject()
+
+        val jsonString = builder.string()
+        assertTrue("XContent should contain add_original_name_as_alias", jsonString.contains("\"add_original_name_as_alias\":true"))
+        assertTrue("XContent should contain delete_original_index", jsonString.contains("\"delete_original_index\":true"))
+    }
+
+    fun `test XContent round trip with add_original_name_as_alias`() {
+        val originalAction = ConvertIndexToRemoteAction(
+            repository = "my-repo",
+            snapshot = "{{ctx.index}}",
+            includeAliases = true,
+            deleteOriginalIndex = true,
+            addOriginalNameAsAlias = true,
+            renamePattern = "remote_\$1",
+            index = 0,
+        )
+
+        val builder = XContentFactory.jsonBuilder()
+        builder.startObject()
+        originalAction.populateAction(builder, org.opensearch.core.xcontent.ToXContent.EMPTY_PARAMS)
+        builder.endObject()
+
+        val parser = XContentType.JSON.xContent().createParser(
+            xContentRegistry(),
+            LoggingDeprecationHandler.INSTANCE,
+            builder.string(),
+        )
+        parser.nextToken()
+
+        val parsedAction = ISMActionsParser.instance.parse(parser, 0) as ConvertIndexToRemoteAction
+
+        assertEquals("repository should match", originalAction.repository, parsedAction.repository)
+        assertEquals("snapshot should match", originalAction.snapshot, parsedAction.snapshot)
+        assertEquals("includeAliases should match", originalAction.includeAliases, parsedAction.includeAliases)
+        assertEquals("deleteOriginalIndex should match", originalAction.deleteOriginalIndex, parsedAction.deleteOriginalIndex)
+        assertEquals("addOriginalNameAsAlias should match", originalAction.addOriginalNameAsAlias, parsedAction.addOriginalNameAsAlias)
+        assertEquals("renamePattern should match", originalAction.renamePattern, parsedAction.renamePattern)
+    }
+
+    fun `test parsing with add_original_name_as_alias field`() {
+        val jsonString = """
+            {
+                "convert_index_to_remote": {
+                    "repository": "my-repo",
+                    "snapshot": "{{ctx.index}}",
+                    "delete_original_index": true,
+                    "add_original_name_as_alias": true,
+                    "rename_pattern": "remote_$1"
+                }
+            }
+        """.trimIndent()
+
+        val parser = XContentType.JSON.xContent().createParser(
+            xContentRegistry(),
+            LoggingDeprecationHandler.INSTANCE,
+            jsonString,
+        )
+        parser.nextToken()
+
+        val action = ISMActionsParser.instance.parse(parser, 0) as ConvertIndexToRemoteAction
+
+        assertEquals("repository should be parsed", "my-repo", action.repository)
+        assertEquals("snapshot should be parsed", "{{ctx.index}}", action.snapshot)
+        assertEquals("deleteOriginalIndex should be true", true, action.deleteOriginalIndex)
+        assertEquals("addOriginalNameAsAlias should be true", true, action.addOriginalNameAsAlias)
+        assertEquals("renamePattern should be parsed", "remote_\$1", action.renamePattern)
+    }
+
+    fun `test parsing add_original_name_as_alias without delete_original_index throws`() {
+        val jsonString = """
+            {
+                "convert_index_to_remote": {
+                    "repository": "my-repo",
+                    "snapshot": "{{ctx.index}}",
+                    "add_original_name_as_alias": true
+                }
+            }
+        """.trimIndent()
+
+        val parser = XContentType.JSON.xContent().createParser(
+            xContentRegistry(),
+            LoggingDeprecationHandler.INSTANCE,
+            jsonString,
+        )
+        parser.nextToken()
+
+        assertThrows(IllegalArgumentException::class.java) {
+            ISMActionsParser.instance.parse(parser, 0)
+        }
+    }
+
+    fun `test StreamOutput round trip with add_original_name_as_alias`() {
+        val originalAction = ConvertIndexToRemoteAction(
+            repository = "my-repo",
+            snapshot = "{{ctx.index}}",
+            includeAliases = true,
+            deleteOriginalIndex = true,
+            addOriginalNameAsAlias = true,
+            renamePattern = "remote_\$1",
+            index = 0,
+        )
+
+        val baos = ByteArrayOutputStream()
+        val osso = OutputStreamStreamOutput(baos)
+        originalAction.writeTo(osso)
+
+        val input = InputStreamStreamInput(ByteArrayInputStream(baos.toByteArray()))
+        val deserializedAction = ISMActionsParser.instance.fromStreamInput(input) as ConvertIndexToRemoteAction
+
+        assertEquals("repository should be preserved", originalAction.repository, deserializedAction.repository)
+        assertEquals("snapshot should be preserved", originalAction.snapshot, deserializedAction.snapshot)
+        assertEquals("includeAliases should be preserved", originalAction.includeAliases, deserializedAction.includeAliases)
+        assertEquals("deleteOriginalIndex should be preserved", originalAction.deleteOriginalIndex, deserializedAction.deleteOriginalIndex)
+        assertEquals("addOriginalNameAsAlias should be preserved", originalAction.addOriginalNameAsAlias, deserializedAction.addOriginalNameAsAlias)
+        assertEquals("renamePattern should be preserved", originalAction.renamePattern, deserializedAction.renamePattern)
+    }
+
     fun `test backward compatibility - old version without new fields`() {
         // Stream written by pre-3.6.0 node: only repository, snapshot, index (no new fields, no renamePattern)
         val baos = ByteArrayOutputStream()
@@ -264,6 +429,7 @@ class ConvertIndexToRemoteActionTests : OpenSearchTestCase() {
         assertEquals("ignoreIndexSettings should default", "", deserializedAction.ignoreIndexSettings)
         assertNull("numberOfReplicas should default to null", deserializedAction.numberOfReplicas)
         assertEquals("deleteOriginalIndex should default", false, deserializedAction.deleteOriginalIndex)
+        assertEquals("addOriginalNameAsAlias should default", false, deserializedAction.addOriginalNameAsAlias)
     }
 
     fun `test forward compatibility - new version with renamePattern`() {
