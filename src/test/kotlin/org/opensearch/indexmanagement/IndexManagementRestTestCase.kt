@@ -327,10 +327,12 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
             waitFor {
                 if (!isMultiNode) {
+                    // waitForRunningTasks uses /_tasks?detailed (JSON) and has access to the full
+                    // task description, so isIgnorableTask can filter security-auditlog writes.
+                    // waitForPendingTasks uses /_cat/tasks (same data, columnar text) but the
+                    // framework strips everything after the first whitespace token, making the
+                    // description invisible to the predicate — it is redundant and removed.
                     waitForRunningTasks(client)
-                    waitForPendingTasks(client) { taskName ->
-                        taskName.startsWith("segrep_") || taskName.startsWith("indices:admin/publishCheckpoint")
-                    }
                     waitForThreadPools(client)
                 } else {
                     // Multi node test is not suitable to waitFor
