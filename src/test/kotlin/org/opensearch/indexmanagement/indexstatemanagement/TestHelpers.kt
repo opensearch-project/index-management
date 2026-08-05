@@ -126,7 +126,8 @@ fun randomConditions(
 fun nonNullRandomConditions(): Conditions =
     randomConditions(OpenSearchRestTestCase.randomFrom(listOf(randomIndexAge(), randomDocCount(), randomSize())))!!
 
-fun randomDeleteActionConfig(): DeleteAction = DeleteAction(index = 0)
+fun randomDeleteActionConfig(deleteSnapshot: Boolean = false): DeleteAction =
+    DeleteAction(index = 0, deleteSnapshot = deleteSnapshot)
 
 fun randomRolloverActionConfig(
     minSize: ByteSizeValue = randomByteSizeValue(),
