@@ -15,6 +15,7 @@ import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.metadata.IndexMetadata.SETTING_BLOCKS_WRITE
 import org.opensearch.indexmanagement.indexstatemanagement.action.PublishFieldDomainsAction
 import org.opensearch.indexmanagement.indexstatemanagement.fielddomain.FieldDomainCalculatorRegistry
+import org.opensearch.indexmanagement.indexstatemanagement.util.isIndexWriteBlocked
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
@@ -111,7 +112,7 @@ class AttemptPublishFieldDomainsStep(
 
     private fun validateWriteBlock(indexMetadata: IndexMetadata): Boolean {
         val indexName = indexMetadata.index.name
-        if (indexMetadata.settings.getAsBoolean(SETTING_BLOCKS_WRITE, false)) {
+        if (isIndexWriteBlocked(indexMetadata)) {
             return true
         }
 
