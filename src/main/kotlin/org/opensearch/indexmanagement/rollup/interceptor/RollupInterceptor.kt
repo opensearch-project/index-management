@@ -16,6 +16,7 @@ import org.opensearch.index.query.BoostingQueryBuilder
 import org.opensearch.index.query.ConstantScoreQueryBuilder
 import org.opensearch.index.query.DisMaxQueryBuilder
 import org.opensearch.index.query.MatchAllQueryBuilder
+import org.opensearch.index.query.MatchNoneQueryBuilder
 import org.opensearch.index.query.MatchPhraseQueryBuilder
 import org.opensearch.index.query.QueryBuilder
 import org.opensearch.index.query.QueryStringQueryBuilder
@@ -46,6 +47,7 @@ import org.opensearch.search.aggregations.metrics.MaxAggregationBuilder
 import org.opensearch.search.aggregations.metrics.MinAggregationBuilder
 import org.opensearch.search.aggregations.metrics.SumAggregationBuilder
 import org.opensearch.search.aggregations.metrics.ValueCountAggregationBuilder
+import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.internal.ShardSearchRequest
 import org.opensearch.tasks.Task
 import org.opensearch.transport.TransportChannel
@@ -53,6 +55,7 @@ import org.opensearch.transport.TransportInterceptor
 import org.opensearch.transport.TransportRequest
 import org.opensearch.transport.TransportRequestHandler
 
+@Suppress("TooManyFunctions")
 class RollupInterceptor(
     val clusterService: ClusterService,
     val settings: Settings,
@@ -86,6 +89,14 @@ class RollupInterceptor(
          * "${BYPASS_MARKER_PREFIX}<level>" where <level> is an integer (BYPASS_ROLLUP_SEARCH or BYPASS_SIZE_CHECK).
          */
         const val BYPASS_MARKER_PREFIX = "_rollup_internal_bypass_"
+
+        /**
+         * Sentinel field name used to neutralize a rollup shard in a mixed raw + rollup search. It is
+         * intentionally chosen to never exist on any index so that aggregations referencing it resolve
+         * to empty (unmapped) results.
+         */
+        @Suppress("MemberVisibilityCanBePrivate") // internal for unit testing
+        const val NONEXISTENT_ROLLUP_FIELD = "__opensearch_rollup_nonexistent_field__"
     }
 
     /**
@@ -180,8 +191,14 @@ class RollupInterceptor(
 
                     val allMatchingRollupJobs = validateIndicies(concreteIndices, fieldMappings)
 
-                    // only rebuild if there is necessity to rebuild
-                    if (fieldMappings.isNotEmpty()) {
+                    if (fieldMappings.isNotEmpty() && allMatchingRollupJobs.isEmpty()) {
+                        // Mixed raw + rollup search where no rollup index can answer the queried fields
+                        // (e.g. the field exists only on the raw index). Neutralize this rollup shard so it
+                        // matches no documents and returns empty aggregations of the same shape as the request,
+                        // letting the raw indices serve the query instead of failing the entire search.
+                        neutralizeRollupShard(request)
+                    } else if (fieldMappings.isNotEmpty()) {
+                        // only rebuild if there is necessity to rebuild
                         rewriteShardSearchForRollupJobs(request, allMatchingRollupJobs)
                     }
                 }
@@ -213,10 +230,17 @@ class RollupInterceptor(
      * Validate that at least one index has a rollup job which matches field mappings from request.
      * Indices whose rollup jobs don't cover the queried fields are skipped, allowing queries across
      * multiple rollup indices with different dimension schemas.
+     *
+     * Returns the matching rollup jobs. The result may be empty when the search also spans raw
+     * (non-rollup) indices and no rollup index can answer the queried fields (for example, the field
+     * exists only on the raw index). In that case the rollup shard should contribute nothing and let
+     * the raw indices serve the query, instead of failing the entire search. The caller is responsible
+     * for neutralizing the rollup shard when this returns an empty map.
      * */
     internal fun validateIndicies(concreteIndices: Array<String>, fieldMappings: Set<RollupFieldMapping>): Map<Rollup, Set<RollupFieldMapping>> {
         var allMatchingRollupJobs: Map<Rollup, Set<RollupFieldMapping>> = mapOf()
         var lastIssues: Set<String> = emptySet()
+        var hasRawIndex = false
         for (concreteIndex in concreteIndices) {
             val rollupJobs = clusterService.state().metadata.index(concreteIndex).getRollupJobs()
             if (rollupJobs != null) {
@@ -229,10 +253,16 @@ class RollupInterceptor(
                 }
             } else if (!searchRawRollupIndices) {
                 throw IllegalArgumentException("Not all indices have rollup job")
+            } else {
+                // A raw (non-rollup) index is part of a mixed raw + rollup search.
+                hasRawIndex = true
             }
         }
 
-        if (allMatchingRollupJobs.isEmpty()) {
+        // Only fail the query when there is no raw index that could answer it. When raw indices are
+        // present, an empty result signals the caller to neutralize this rollup shard so the raw
+        // indices can serve the query (treating fields missing from the rollup as no contribution).
+        if (allMatchingRollupJobs.isEmpty() && !hasRawIndex) {
             throw IllegalArgumentException("Could not find a rollup job that can answer this query because $lastIssues")
         }
 
@@ -441,6 +471,57 @@ class RollupInterceptor(
         DateHistogramInterval(rollup.getDateHistogram().calendarInterval).estimateMillis()
     } else {
         DateHistogramInterval(rollup.getDateHistogram().fixedInterval).estimateMillis()
+    }
+
+    /**
+     * Builds a copy of [aggregationBuilder] that references a field which does not exist on the rollup
+     * index, preserving the aggregation name, type, and sub-aggregations. Running the copy against the
+     * rollup index yields an empty (unmapped) result of the same aggregation type that the raw indices
+     * produce, so the coordinator can reduce this rollup shard's empty contribution together with the
+     * raw shards' results. Type-specific settings such as intervals are irrelevant because the result is
+     * always empty on an unmapped field, so only a valid placeholder is set where one is required.
+     */
+    internal fun neutralizeAggregation(aggregationBuilder: AggregationBuilder): AggregationBuilder {
+        val neutralized: AggregationBuilder =
+            when (aggregationBuilder) {
+                is TermsAggregationBuilder -> TermsAggregationBuilder(aggregationBuilder.name).field(NONEXISTENT_ROLLUP_FIELD)
+
+                is DateHistogramAggregationBuilder ->
+                    DateHistogramAggregationBuilder(aggregationBuilder.name).field(NONEXISTENT_ROLLUP_FIELD)
+                        .fixedInterval(DateHistogramInterval("1h"))
+
+                is HistogramAggregationBuilder -> HistogramAggregationBuilder(aggregationBuilder.name).field(NONEXISTENT_ROLLUP_FIELD).interval(1.0)
+
+                is SumAggregationBuilder -> SumAggregationBuilder(aggregationBuilder.name).field(NONEXISTENT_ROLLUP_FIELD)
+
+                is AvgAggregationBuilder -> AvgAggregationBuilder(aggregationBuilder.name).field(NONEXISTENT_ROLLUP_FIELD)
+
+                is MaxAggregationBuilder -> MaxAggregationBuilder(aggregationBuilder.name).field(NONEXISTENT_ROLLUP_FIELD)
+
+                is MinAggregationBuilder -> MinAggregationBuilder(aggregationBuilder.name).field(NONEXISTENT_ROLLUP_FIELD)
+
+                is ValueCountAggregationBuilder -> ValueCountAggregationBuilder(aggregationBuilder.name).field(NONEXISTENT_ROLLUP_FIELD)
+
+                is CardinalityAggregationBuilder -> CardinalityAggregationBuilder(aggregationBuilder.name).field(NONEXISTENT_ROLLUP_FIELD)
+
+                else -> throw IllegalArgumentException("The ${aggregationBuilder.type} aggregation is not currently supported in rollups")
+            }
+        aggregationBuilder.subAggregations.forEach { neutralized.subAggregation(neutralizeAggregation(it)) }
+        return neutralized
+    }
+
+    /**
+     * Neutralizes a rollup shard for a mixed raw + rollup search whose queried fields are not covered by
+     * any rollup job on this index. The shard is rewritten to match no documents and to return empty
+     * aggregations of the same shape as the request, so that the raw indices in the search can serve the
+     * query instead of the whole search failing.
+     */
+    private fun neutralizeRollupShard(request: ShardSearchRequest) {
+        val neutralized = SearchSourceBuilder().size(0).query(MatchNoneQueryBuilder())
+        request.source().aggregations()?.aggregatorFactories?.forEach {
+            neutralized.aggregation(neutralizeAggregation(it))
+        }
+        request.source(neutralized)
     }
 
     private fun rewriteShardSearchForRollupJobs(request: ShardSearchRequest, matchingRollupJobs: Map<Rollup, Set<RollupFieldMapping>>) {
