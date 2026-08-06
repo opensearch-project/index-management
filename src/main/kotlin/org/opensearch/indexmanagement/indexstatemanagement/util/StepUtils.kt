@@ -123,6 +123,9 @@ fun getActionStartTime(managedIndexMetaData: ManagedIndexMetaData): Instant {
     return Instant.now()
 }
 
+fun isIndexWriteBlocked(indexMetadata: IndexMetadata): Boolean =
+    indexMetadata.settings.getAsBoolean(IndexMetadata.SETTING_BLOCKS_WRITE, false)
+
 /*
  * For disk threshold, if the values are set as a percentage, the percent parameter will return a value and the bytes
  * parameter will return 0, and vice versa for when the values are set as bytes. This method provides a single place to

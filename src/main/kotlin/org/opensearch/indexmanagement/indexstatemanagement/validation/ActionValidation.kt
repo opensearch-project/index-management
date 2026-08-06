@@ -54,6 +54,8 @@ class ActionValidation(
                 // Reason: https://github.com/opensearch-project/index-management/issues/587
                 "notification" -> ValidateNothing(settings, clusterService, jvmService).execute(indexName)
 
+                "publish_field_domains" -> ValidateNothing(settings, clusterService, jvmService).execute(indexName)
+
                 "shrink" -> ValidateNothing(settings, clusterService, jvmService).execute(indexName)
 
                 "allocation" -> ValidateNothing(settings, clusterService, jvmService).execute(indexName)
