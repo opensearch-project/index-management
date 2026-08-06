@@ -327,10 +327,12 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
 
             waitFor {
                 if (!isMultiNode) {
+                    // waitForRunningTasks uses /_tasks?detailed (JSON) and has access to the full
+                    // task description, so isIgnorableTask can filter security-auditlog writes.
+                    // waitForPendingTasks uses /_cat/tasks (same data, columnar text) but the
+                    // framework strips everything after the first whitespace token, making the
+                    // description invisible to the predicate — it is redundant and removed.
                     waitForRunningTasks(client)
-                    waitForPendingTasks(client) { taskName ->
-                        taskName.startsWith("segrep_") || taskName.startsWith("indices:admin/publishCheckpoint")
-                    }
                     waitForThreadPools(client)
                 } else {
                     // Multi node test is not suitable to waitFor
@@ -364,7 +366,8 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
                 for ((_, value1) in nodeTasks!!) {
                     val task = value1 as Map<String, Any>
                     val action = task["action"] as String
-                    if (isIgnorableTask(action)) continue
+                    val description = task["description"] as? String ?: ""
+                    if (isIgnorableTask(action, description)) continue
                     // runningTasks.add(task["action"].toString() + " | " + task["description"].toString())
                     runningTasks.add(task.toString())
                 }
@@ -372,12 +375,15 @@ abstract class IndexManagementRestTestCase : ODFERestTestCase() {
             return runningTasks
         }
 
-        // Ignore the task list API and segment replication background tasks (always running on Remote Store clusters)
-        private fun isIgnorableTask(action: String): Boolean =
+        // Ignore the task list API, segment replication background tasks, and Security plugin audit log
+        // writes. The Security plugin is installed even in without-security runs; its audit logger fires
+        // asynchronously on REST calls and can outlive the test that triggered them.
+        private fun isIgnorableTask(action: String, description: String = ""): Boolean =
             action == ListTasksAction.NAME ||
                 action == ListTasksAction.NAME + "[n]" ||
                 action.startsWith("segrep_") ||
-                action == "indices:admin/publishCheckpoint[p]"
+                action == "indices:admin/publishCheckpoint[p]" ||
+                description.contains("security-auditlog")
 
         @JvmStatic
         protected fun waitForThreadPools(client: RestClient) {
