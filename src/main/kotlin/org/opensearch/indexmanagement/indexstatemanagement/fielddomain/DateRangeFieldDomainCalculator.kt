@@ -41,6 +41,7 @@ class DateRangeFieldDomainCalculator : FieldDomainCalculator {
             ?: throw IllegalArgumentException("Field [${config.field}] does not declare a mapping type")
         val dateMetadata = resolveDateMetadata(config.field, mappedType)
 
+        // Write block and refresh make min and max boundaries stable across both searches.
         val min = findBoundary(
             context = context,
             indexName = indexMetadata.index.name,
