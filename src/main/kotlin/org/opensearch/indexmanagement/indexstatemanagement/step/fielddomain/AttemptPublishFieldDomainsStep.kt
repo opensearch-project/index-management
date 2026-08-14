@@ -13,6 +13,7 @@ import org.opensearch.action.admin.indices.refresh.RefreshRequest
 import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.metadata.IndexMetadata.SETTING_BLOCKS_WRITE
+import org.opensearch.index.fielddomain.FieldDomain
 import org.opensearch.indexmanagement.indexstatemanagement.action.PublishFieldDomainsAction
 import org.opensearch.indexmanagement.indexstatemanagement.fielddomain.FieldDomainCalculatorRegistry
 import org.opensearch.indexmanagement.indexstatemanagement.util.isIndexWriteBlocked
@@ -38,77 +39,67 @@ class AttemptPublishFieldDomainsStep(
     private var info: Map<String, Any>? = null
 
     override suspend fun execute(): Step {
-        val context = this.context ?: return this
-        val indexName = context.metadata.index
-
-        try {
-            val indexMetadata = currentIndexMetadata(context, indexName) ?: return this
-            if (validateWriteBlock(indexMetadata) == false) return this
-
-            refreshIndex(context, indexName)
-
-            val domains = action.fields.mapNotNull { fieldConfig ->
-                val calculator = calculatorRegistry.get(fieldConfig.type)
-                    ?: throw IllegalArgumentException("No field-domain calculator registered for type [${fieldConfig.type}]")
-                calculator.calculate(context, indexMetadata, fieldConfig, FINALIZED)
+        val context = this.context
+        if (context != null) {
+            val indexName = context.metadata.index
+            try {
+                attemptPublish(context, indexName)
+            } catch (e: RemoteTransportException) {
+                handleException(indexName, ExceptionsHelper.unwrapCause(e))
+            } catch (e: Exception) {
+                handleException(indexName, e)
             }
-
-            if (domains.isEmpty()) {
-                stepStatus = StepStatus.COMPLETED
-                info = mapOf("message" to getNoDomainMessage(indexName))
-                return this
-            }
-
-            val request = PutIndexFieldDomainsRequest(indexMetadata.index).fieldDomains(domains)
-            val response: AcknowledgedResponse = context.client.suspendUntil {
-                execute(PutIndexFieldDomainsAction.INSTANCE, request, it)
-            }
-
-            if (response.isAcknowledged) {
-                stepStatus = StepStatus.COMPLETED
-                info = mapOf(
-                    "message" to getSuccessMessage(indexName, domains.size),
-                    "fields" to domains.map { it.field() },
-                )
-            } else {
-                val message = getFailedPublishMessage(indexName)
-                logger.warn(message)
-                stepStatus = StepStatus.FAILED
-                info = mapOf("message" to message)
-            }
-        } catch (e: RemoteTransportException) {
-            handleException(indexName, ExceptionsHelper.unwrapCause(e))
-        } catch (e: Exception) {
-            handleException(indexName, e)
         }
 
         return this
     }
 
+    private suspend fun attemptPublish(context: StepContext, indexName: String) {
+        val indexMetadata = currentIndexMetadata(context, indexName)
+        if (indexMetadata != null && validateWriteBlock(indexMetadata)) {
+            refreshIndex(context, indexName)
+            val domains = calculateDomains(context, indexMetadata)
+            if (domains.isEmpty()) {
+                markNoDomains(indexName)
+            } else {
+                publishDomains(context, indexMetadata, domains)
+            }
+        }
+    }
+
     private fun currentIndexMetadata(context: StepContext, indexName: String): IndexMetadata? {
         val indexMetadata = context.clusterService.state().metadata.index(indexName)
-        if (indexMetadata == null) {
-            val message = getIndexMissingMessage(indexName)
-            logger.warn(message)
-            stepStatus = StepStatus.FAILED
-            info = mapOf("message" to message)
-            return null
-        }
+        return when {
+            indexMetadata == null -> {
+                val message = getIndexMissingMessage(indexName)
+                logger.warn(message)
+                stepStatus = StepStatus.FAILED
+                info = mapOf("message" to message)
+                null
+            }
 
-        if (indexMetadata.indexUUID != context.metadata.indexUuid) {
-            val message = getIndexUuidMismatchMessage(indexName)
-            logger.warn(message)
-            stepStatus = StepStatus.FAILED
-            info = mapOf(
-                "message" to message,
-                "expected_uuid" to context.metadata.indexUuid,
-                "actual_uuid" to indexMetadata.indexUUID,
-            )
-            return null
-        }
+            indexMetadata.indexUUID != context.metadata.indexUuid -> {
+                val message = getIndexUuidMismatchMessage(indexName)
+                logger.warn(message)
+                stepStatus = StepStatus.FAILED
+                info = mapOf(
+                    "message" to message,
+                    "expected_uuid" to context.metadata.indexUuid,
+                    "actual_uuid" to indexMetadata.indexUUID,
+                )
+                null
+            }
 
-        return indexMetadata
+            else -> indexMetadata
+        }
     }
+
+    private suspend fun calculateDomains(context: StepContext, indexMetadata: IndexMetadata): List<FieldDomain> =
+        action.fields.mapNotNull { fieldConfig ->
+            val calculator = calculatorRegistry.get(fieldConfig.type)
+                ?: throw IllegalArgumentException("No field-domain calculator registered for type [${fieldConfig.type}]")
+            calculator.calculate(context, indexMetadata, fieldConfig, FINALIZED)
+        }
 
     private fun validateWriteBlock(indexMetadata: IndexMetadata): Boolean {
         val indexName = indexMetadata.index.name
@@ -133,6 +124,31 @@ class AttemptPublishFieldDomainsStep(
                     "shard failures [${response.shardFailures.joinToString { it.toString() }}]",
             )
         }
+    }
+
+    private suspend fun publishDomains(context: StepContext, indexMetadata: IndexMetadata, domains: List<FieldDomain>) {
+        val request = PutIndexFieldDomainsRequest(indexMetadata.index).fieldDomains(domains)
+        val response: AcknowledgedResponse = context.client.suspendUntil {
+            execute(PutIndexFieldDomainsAction.INSTANCE, request, it)
+        }
+
+        if (response.isAcknowledged) {
+            stepStatus = StepStatus.COMPLETED
+            info = mapOf(
+                "message" to getSuccessMessage(indexMetadata.index.name, domains.size),
+                "fields" to domains.map { it.field() },
+            )
+        } else {
+            val message = getFailedPublishMessage(indexMetadata.index.name)
+            logger.warn(message)
+            stepStatus = StepStatus.FAILED
+            info = mapOf("message" to message)
+        }
+    }
+
+    private fun markNoDomains(indexName: String) {
+        stepStatus = StepStatus.COMPLETED
+        info = mapOf("message" to getNoDomainMessage(indexName))
     }
 
     private fun handleException(indexName: String, e: Throwable) {

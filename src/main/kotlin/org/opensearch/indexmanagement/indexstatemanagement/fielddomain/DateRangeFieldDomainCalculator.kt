@@ -40,36 +40,22 @@ class DateRangeFieldDomainCalculator : FieldDomainCalculator {
         val mappedType = fieldMapping[TYPE_FIELD] as? String
             ?: throw IllegalArgumentException("Field [${config.field}] does not declare a mapping type")
         val dateMetadata = resolveDateMetadata(config.field, mappedType)
+        val boundaries = findBoundaries(context, indexMetadata, config, dateMetadata)
 
-        // Write block and refresh make min and max boundaries stable across both searches.
-        val min = findBoundary(
-            context = context,
-            indexName = indexMetadata.index.name,
-            field = config.field,
-            numericType = dateMetadata.numericType,
-            order = SortOrder.ASC,
-            sortMode = SortMode.MIN,
-        ) ?: return null
-
-        val max = findBoundary(
-            context = context,
-            indexName = indexMetadata.index.name,
-            field = config.field,
-            numericType = dateMetadata.numericType,
-            order = SortOrder.DESC,
-            sortMode = SortMode.MAX,
-        ) ?: return null
-
-        val format = fieldMapping[FORMAT_FIELD] as? String
-        return DateRangeFieldDomain(
-            config.field,
-            min.toString(),
-            max.toString(),
-            finalized,
-            SOURCE,
-            format,
-            dateMetadata.resolution,
-        )
+        return if (boundaries == null) {
+            null
+        } else {
+            val format = fieldMapping[FORMAT_FIELD] as? String
+            DateRangeFieldDomain(
+                config.field,
+                boundaries.min.toString(),
+                boundaries.max.toString(),
+                finalized,
+                SOURCE,
+                format,
+                dateMetadata.resolution,
+            )
+        }
     }
 
     private fun getFieldMapping(indexMetadata: IndexMetadata, field: String): Map<*, *> {
@@ -94,6 +80,36 @@ class DateRangeFieldDomainCalculator : FieldDomainCalculator {
             "Field [$field] must be mapped as [${DateFieldMapper.CONTENT_TYPE}] or " +
                 "[${DateFieldMapper.DATE_NANOS_CONTENT_TYPE}], found [$mappedType]",
         )
+    }
+
+    private suspend fun findBoundaries(
+        context: StepContext,
+        indexMetadata: IndexMetadata,
+        config: FieldDomainConfig,
+        dateMetadata: DateMetadata,
+    ): Boundaries? {
+        // Write block and refresh make min and max boundaries stable across both searches.
+        val min = findBoundary(
+            context = context,
+            indexName = indexMetadata.index.name,
+            field = config.field,
+            numericType = dateMetadata.numericType,
+            order = SortOrder.ASC,
+            sortMode = SortMode.MIN,
+        )
+
+        val max = min?.let {
+            findBoundary(
+                context = context,
+                indexName = indexMetadata.index.name,
+                field = config.field,
+                numericType = dateMetadata.numericType,
+                order = SortOrder.DESC,
+                sortMode = SortMode.MAX,
+            )
+        }
+
+        return if (min == null || max == null) null else Boundaries(min, max)
     }
 
     private suspend fun findBoundary(
@@ -123,19 +139,22 @@ class DateRangeFieldDomainCalculator : FieldDomainCalculator {
                 .allowPartialSearchResults(false)
 
         val searchResponse = context.client.suspendUntil { search(searchRequest, it) }
-        if (searchResponse.shardFailures.isNotEmpty()) {
-            throw IllegalStateException(
-                "Failed to compute field domain for [$field] in index [$indexName], " +
-                    "shard failures [${searchResponse.shardFailures.joinToString { it.reason() }}]",
-            )
-        }
+        ensureNoShardFailures(indexName, field, searchResponse.shardFailures.map { it.reason() })
 
         val hits = searchResponse.hits.hits
-        if (hits.isEmpty()) {
-            return null
-        }
+        return if (hits.isEmpty()) null else rawSortValueAsLong(field, hits[0].rawSortValues)
+    }
 
-        val rawSortValues = hits[0].rawSortValues
+    private fun ensureNoShardFailures(indexName: String, field: String, shardFailures: List<String>) {
+        if (shardFailures.isNotEmpty()) {
+            throw IllegalStateException(
+                "Failed to compute field domain for [$field] in index [$indexName], " +
+                    "shard failures [${shardFailures.joinToString()}]",
+            )
+        }
+    }
+
+    private fun rawSortValueAsLong(field: String, rawSortValues: Array<Any>): Long {
         if (rawSortValues.size != 1) {
             throw IllegalStateException("Expected one raw sort value for field [$field], found [${rawSortValues.size}]")
         }
@@ -150,6 +169,11 @@ class DateRangeFieldDomainCalculator : FieldDomainCalculator {
             )
         }
     }
+
+    private data class Boundaries(
+        val min: Long,
+        val max: Long,
+    )
 
     private data class DateMetadata(
         val numericType: String,
