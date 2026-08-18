@@ -1179,6 +1179,100 @@ class RollupInterceptorIT : RollupRestTestCase() {
         }
     }
 
+    fun `test mixed raw and rollup search when field missing in rollup index`() {
+        val sourceIndex = "source_rollup_search_missing_field"
+        val targetIndex = "target_rollup_search_missing_field"
+        generateNYCTaxiData(sourceIndex)
+        val rollupJob =
+            Rollup(
+                id = "missing_field_rollup_search",
+                enabled = true,
+                schemaVersion = 1L,
+                jobSchedule = IntervalSchedule(Instant.now(), 1, ChronoUnit.MINUTES),
+                jobLastUpdatedTime = Instant.now(),
+                jobEnabledTime = Instant.now(),
+                description = "missing field mixed search test",
+                sourceIndex = sourceIndex,
+                targetIndex = targetIndex,
+                targetIndexSettings = null,
+                metadataID = null,
+                roles = emptyList(),
+                pageSize = 10,
+                delay = 0,
+                continuous = false,
+                dimensions =
+                listOf(
+                    DateHistogram(sourceField = "tpep_pickup_datetime", fixedInterval = "1h"),
+                    Terms("RatecodeID", "RatecodeID"),
+                ),
+                metrics =
+                listOf(
+                    RollupMetrics(
+                        sourceField = "passenger_count", targetField = "passenger_count",
+                        metrics = listOf(Sum(), Min(), Max(), ValueCount(), Average()),
+                    ),
+                ),
+            ).let { createRollup(it, it.id) }
+
+        updateRollupStartTime(rollupJob)
+
+        waitFor {
+            val job = getRollup(rollupId = rollupJob.id)
+            assertNotNull("Rollup job doesn't have metadata set", job.metadataID)
+            val rollupMetadata = getRollupMetadata(job.metadataID!!)
+            assertEquals("Rollup is not finished", RollupMetadata.Status.FINISHED, rollupMetadata.status)
+        }
+
+        refreshAllIndices()
+
+        // The aggregation mixes an object-typed dimension field on the rollup index (tpep_pickup_datetime,
+        // stored nested as a date_histogram) with store_and_fwd_flag, which exists only on the raw source
+        // index and is not part of the rollup. This mirrors the reported "missing field" scenario.
+        val req =
+            """
+            {
+                "size": 0,
+                "aggs": {
+                    "by_time": {
+                        "date_histogram": { "field": "tpep_pickup_datetime", "fixed_interval": "1h" },
+                        "aggs": {
+                            "flag_terms": {
+                                "terms": { "field": "store_and_fwd_flag" }
+                            }
+                        }
+                    }
+                }
+            }
+            """.trimIndent()
+
+        // Enable mixed raw + rollup search
+        updateSearchRawRollupClusterSetting(true)
+        updateSearchAllJobsClusterSetting(true)
+
+        // Ground truth: query only the raw source index
+        val rawRes = client().makeRequest("POST", "/$sourceIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue("Raw search failed", rawRes.restStatus() == RestStatus.OK)
+        val rawAggs = rawRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        val rawBuckets = rawAggs.getValue("by_time")["buckets"] as List<Map<String, Any>>
+
+        // Mixed search across raw source + rollup target on a field that only the raw index has.
+        // Previously this failed with "Could not find a rollup job that can answer this query because
+        // [missing field store_and_fwd_flag]". It should now succeed with the rollup shard contributing nothing.
+        val mixedRes = client().makeRequest("POST", "/$sourceIndex,$targetIndex/_search", emptyMap(), StringEntity(req, ContentType.APPLICATION_JSON))
+        assertTrue("Mixed raw + rollup search on a raw-only field should succeed", mixedRes.restStatus() == RestStatus.OK)
+
+        val shards = mixedRes.asMap()["_shards"] as Map<String, Any>
+        assertEquals("Mixed raw + rollup search should have no failed shards", 0, shards["failed"])
+
+        val mixedAggs = mixedRes.asMap()["aggregations"] as Map<String, Map<String, Any>>
+        val mixedBuckets = mixedAggs.getValue("by_time")["buckets"] as List<Map<String, Any>>
+
+        // The rollup index contributes nothing, so the mixed result must match the raw-only ground truth.
+        assertTrue("Expected at least one time bucket in the raw-only search", rawBuckets.isNotEmpty())
+        assertEquals("Mixed search returned a different number of time buckets than the raw-only search", rawBuckets.size, mixedBuckets.size)
+        assertEquals("Mixed search aggregation did not match the raw-only search", rawAggs, mixedAggs)
+    }
+
     fun `test roll up search query_string query`() {
         val sourceIndex = "source_rollup_search_qsq_1"
         val targetIndex = "target_rollup_qsq_search_1"
