@@ -29,6 +29,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomForceMergeActio
 import org.opensearch.indexmanagement.indexstatemanagement.randomIndexPriorityActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomNotificationActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomOpenActionConfig
+import org.opensearch.indexmanagement.indexstatemanagement.randomPublishFieldDomainsActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadOnlyActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadWriteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomReplicaCountActionConfig
@@ -100,6 +101,10 @@ class ActionTests : OpenSearchTestCase() {
 
     fun `test set read only action round trip`() {
         roundTripAction(randomReadOnlyActionConfig())
+    }
+
+    fun `test publish field domains action round trip`() {
+        roundTripAction(randomPublishFieldDomainsActionConfig())
     }
 
     fun `test notification having both channel and destination fails`() {

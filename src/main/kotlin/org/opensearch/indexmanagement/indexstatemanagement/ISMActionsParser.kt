@@ -17,6 +17,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ForceMergeActi
 import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.NotificationActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.OpenActionParser
+import org.opensearch.indexmanagement.indexstatemanagement.action.PublishFieldDomainsActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadWriteActionParser
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReplicaCountActionParser
@@ -47,6 +48,7 @@ class ISMActionsParser private constructor() {
             IndexPriorityActionParser(),
             NotificationActionParser(),
             OpenActionParser(),
+            PublishFieldDomainsActionParser(),
             ReadOnlyActionParser(),
             ReadWriteActionParser(),
             ReplicaCountActionParser(),
