@@ -168,7 +168,11 @@
                   }
                 },
                 "delete": {
-                  "type": "object"
+                  "properties": {
+                    "delete_snapshot": {
+                      "type": "boolean"
+                    }
+                  }
                 },
                 "stop_replication": {
                   "type": "object"
