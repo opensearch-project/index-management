@@ -622,6 +622,9 @@ integTest {
     // SearchOnlyActionIT requires Remote Store cluster, run via remoteStoreIntegTest
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/SearchOnlyActionIT.class'
 
+    // OrphanedManagedIndexJobIT requires a two data node Remote Store cluster, run via remoteStoreDataNodesIntegTest
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/runner/OrphanedManagedIndexJobIT.class'
+
     if (project.hasProperty('includeTests')) {
         String includeTests = project.property('includeTests')
         println("Include tests ${includeTests}")
@@ -697,6 +700,69 @@ task remoteStoreIntegTest(type: StandaloneRestIntegTestTask) {
 
     doFirst {
         systemProperty 'cluster.number_of_nodes', '1'
+        getClusters().forEach { cluster ->
+            waitForClusterSetup(cluster, false)
+        }
+    }
+}
+
+// === Remote Store integration test with two data nodes ===
+// Both nodes hold a copy of the config index (primary on one, replica on the other). Replica copies of a remote-store
+// backed index do not execute write operations, so the node that owns a job through the replica copy never observes the
+// delete issued by the remove policy API and keeps the removed job in memory. Used by OrphanedManagedIndexJobIT.
+File remoteStoreDataNodesRepo = layout.buildDirectory.dir("testclusters/remote-store-data-nodes-repo").get().asFile
+
+testClusters.register('remoteStoreDataNodesIntegTest') {
+    testDistribution = "ARCHIVE"
+    numberOfNodes = 2
+
+    // Remote Store with fs type repository (node attributes)
+    setting 'node.attr.remote_store.segment.repository', 'my-segment-repo'
+    setting 'node.attr.remote_store.translog.repository', 'my-translog-repo'
+    setting 'node.attr.remote_store.state.repository', 'my-state-repo'
+    setting 'node.attr.remote_store.repository.my-segment-repo.type', 'fs'
+    setting 'node.attr.remote_store.repository.my-segment-repo.settings.location', remoteStoreDataNodesRepo.absolutePath + '/segment'
+    setting 'node.attr.remote_store.repository.my-translog-repo.type', 'fs'
+    setting 'node.attr.remote_store.repository.my-translog-repo.settings.location', remoteStoreDataNodesRepo.absolutePath + '/translog'
+    setting 'node.attr.remote_store.repository.my-state-repo.type', 'fs'
+    setting 'node.attr.remote_store.repository.my-state-repo.settings.location', remoteStoreDataNodesRepo.absolutePath + '/state'
+
+    // Segment Replication
+    setting 'cluster.indices.replication.strategy', 'SEGMENT'
+
+    // The replica copy does not observe the indexing of a new job document either; only the periodic job scheduler sweep
+    // schedules the jobs owned through it. Keep that sweep short so the tests do not wait minutes for the first run.
+    setting 'plugins.jobscheduler.sweeper.period', '10s'
+
+    setting 'path.repo', remoteStoreDataNodesRepo.absolutePath
+
+    // Install dependency plugins before index-management
+    plugin(provider(jobSchedulerFile))
+    plugin(provider(notificationsCoreFile))
+    plugin(provider(notificationsFile))
+    plugin(provider(ccrFile))
+    plugin(project.tasks.bundlePlugin.archiveFile)
+}
+
+task remoteStoreDataNodesIntegTest(type: StandaloneRestIntegTestTask) {
+    description = 'Runs the orphaned managed index job tests against a two data node remote-store cluster.'
+    useCluster testClusters.remoteStoreDataNodesIntegTest
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    systemProperty 'tests.security.manager', 'false'
+    systemProperty 'java.io.tmpdir', opensearch_tmp_dir.absolutePath
+    systemProperty 'buildDir', layout.buildDirectory.get().asFile.path
+    systemProperty 'tests.clustername', 'remoteStoreDataNodesIntegTest'
+
+    nonInputProperties.systemProperty('tests.rest.cluster', "${-> testClusters.remoteStoreDataNodesIntegTest.getFirstNode().getAllHttpSocketURI().join(",")}")
+    nonInputProperties.systemProperty('tests.cluster', "${-> testClusters.remoteStoreDataNodesIntegTest.getFirstNode().getAllHttpSocketURI().join(",")}")
+
+    filter {
+        includeTestsMatching "org.opensearch.indexmanagement.indexstatemanagement.runner.OrphanedManagedIndexJobIT"
+    }
+
+    doFirst {
+        systemProperty 'cluster.number_of_nodes', '2'
         getClusters().forEach { cluster ->
             waitForClusterSetup(cluster, false)
         }

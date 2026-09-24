@@ -18,6 +18,7 @@ import org.opensearch.action.get.MultiGetRequest
 import org.opensearch.action.get.MultiGetResponse
 import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.metadata.IndexMetadata
+import org.opensearch.cluster.routing.Preference
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
 import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
@@ -34,6 +35,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMeta
 import org.opensearch.indexmanagement.opensearchapi.contentParser
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
+import org.opensearch.search.fetch.subphase.FetchSourceContext
 import org.opensearch.transport.client.Client
 import java.time.Instant
 
@@ -114,6 +116,38 @@ suspend fun Client.getManagedIndexMetadata(indexUUID: String): Pair<ManagedIndex
         }
 
         return Pair(null, false)
+    }
+}
+
+/**
+ * Checks whether the job document of a managed index still exists in the config index.
+ *
+ * The lookup is a realtime GET against the primary shard copy: realtime so that a document indexed after the last
+ * refresh is seen, and against the primary because it is the only copy guaranteed to have executed a recent delete
+ * (replica copies of a remote-store backed index do not execute write operations). No source is fetched.
+ *
+ * @return pair of (document exists, get call successful). When the call failed the first value is meaningless.
+ */
+suspend fun Client.managedIndexJobDocumentExists(indexUuid: String): Pair<Boolean, Boolean> {
+    try {
+        val getRequest =
+            GetRequest(INDEX_MANAGEMENT_INDEX, indexUuid)
+                .routing(indexUuid)
+                .realtime(true)
+                .preference(Preference.PRIMARY.type())
+                .fetchSourceContext(FetchSourceContext.DO_NOT_FETCH_SOURCE)
+        val getResponse: GetResponse = this.suspendUntil { get(getRequest, it) }
+        return Pair(getResponse.isExists, true)
+    } catch (e: Exception) {
+        when (e) {
+            is IndexNotFoundException, is NoShardAvailableActionException -> {
+                log.error("Failed to get managed index job document because no index or shard not available")
+            }
+
+            else -> log.error("Failed to get managed index job document", e)
+        }
+
+        return Pair(false, false)
     }
 }
 
