@@ -43,6 +43,32 @@ class ManagedIndexSettingsTests : OpenSearchTestCase() {
         assertEquals(true, ManagedIndexSettings.ALLOW_RUNNING_ON_RED_CLUSTER.get(settings))
     }
 
+    fun `test job document check defaults to enabled`() {
+        assertEquals(true, ManagedIndexSettings.JOB_DOCUMENT_CHECK_ENABLED.get(Settings.EMPTY))
+        assertEquals(true, ManagedIndexSettings.DEFAULT_JOB_DOCUMENT_CHECK_ENABLED)
+    }
+
+    fun `test job document check can be disabled`() {
+        val settings =
+            Settings
+                .builder()
+                .put("plugins.index_state_management.job_document_check.enabled", false)
+                .build()
+        assertEquals(false, ManagedIndexSettings.JOB_DOCUMENT_CHECK_ENABLED.get(settings))
+    }
+
+    fun `test job document check is a dynamic node scope setting`() {
+        val properties = ManagedIndexSettings.JOB_DOCUMENT_CHECK_ENABLED.properties
+        assertTrue(
+            "job_document_check.enabled should have node scope",
+            properties.contains(Setting.Property.NodeScope),
+        )
+        assertTrue(
+            "job_document_check.enabled should be dynamic",
+            properties.contains(Setting.Property.Dynamic),
+        )
+    }
+
     fun `test allow running on red cluster is a dynamic node scope setting`() {
         val properties = ManagedIndexSettings.ALLOW_RUNNING_ON_RED_CLUSTER.properties
         assertTrue(

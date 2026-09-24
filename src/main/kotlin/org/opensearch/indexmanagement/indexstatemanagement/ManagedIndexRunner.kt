@@ -48,6 +48,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.ErrorNotificati
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.managedIndexJobDocumentExists
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ACTION_VALIDATION_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ALLOW_LIST_NONE
@@ -55,8 +56,10 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ACTION_VALIDATION_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ALLOW_RUNNING_ON_RED_CLUSTER
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ISM_ENABLED
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_JOB_DOCUMENT_CHECK_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_JOB_INTERVAL
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_DOCUMENT_CHECK_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.isActionAllowedOnRedCluster
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
@@ -142,6 +145,7 @@ object ManagedIndexRunner :
     private var jobInterval: Int = DEFAULT_JOB_INTERVAL
     private var allowList: List<String> = ALLOW_LIST_NONE
     private var allowRunningOnRedCluster: Boolean = DEFAULT_ALLOW_RUNNING_ON_RED_CLUSTER
+    private var jobDocumentCheckEnabled: Boolean = DEFAULT_JOB_DOCUMENT_CHECK_ENABLED
 
     fun registerClusterService(clusterService: ClusterService): ManagedIndexRunner {
         this.clusterService = clusterService
@@ -193,6 +197,11 @@ object ManagedIndexRunner :
         allowRunningOnRedCluster = ALLOW_RUNNING_ON_RED_CLUSTER.get(settings)
         clusterService.clusterSettings.addSettingsUpdateConsumer(ALLOW_RUNNING_ON_RED_CLUSTER) {
             allowRunningOnRedCluster = it
+        }
+
+        jobDocumentCheckEnabled = JOB_DOCUMENT_CHECK_ENABLED.get(settings)
+        clusterService.clusterSettings.addSettingsUpdateConsumer(JOB_DOCUMENT_CHECK_ENABLED) {
+            jobDocumentCheckEnabled = it
         }
 
         return this
@@ -304,6 +313,7 @@ object ManagedIndexRunner :
         }
 
         if (managedIndexMetaData == null) {
+            if (!jobDocumentExists(managedIndexConfig)) return
             initManagedIndex(managedIndexConfig)
             return
         }
@@ -509,6 +519,37 @@ object ManagedIndexRunner :
                 updateJobInterval(managedIndexConfig, jobInterval)
             }
         }
+    }
+
+    /**
+     * Confirms that the job document behind an in-memory job still exists before the managed index is initialized.
+     *
+     * The runner is handed the [ManagedIndexConfig] the job scheduler holds in memory. On a remote-store backed config
+     * index the node holding the replica copy never observes the delete issued by the remove policy API (write
+     * operations are not executed on replicas), so the scheduler keeps running the removed job. Such an orphaned job
+     * finds no metadata and, without this check, would re-initialize the policy from its first state on every run
+     * and re-execute its actions on an index that no longer has a policy attached.
+     *
+     * @return true when the job document exists and initialization may proceed; false when it is gone (the run is
+     * skipped and logged) or when its existence could not be verified (the run is aborted and retried next time).
+     */
+    @Suppress("ReturnCount")
+    internal suspend fun jobDocumentExists(managedIndexConfig: ManagedIndexConfig): Boolean {
+        if (!jobDocumentCheckEnabled) return true
+
+        val (exists, getSuccessful) = client.managedIndexJobDocumentExists(managedIndexConfig.indexUuid)
+        if (!getSuccessful) {
+            logger.info("Failed to verify the job document of index [${managedIndexConfig.index}] in config index, abort this run.")
+            return false
+        }
+        if (!exists) {
+            logger.warn(
+                "Job document of index [${managedIndexConfig.index}] (${managedIndexConfig.indexUuid}) no longer exists in config " +
+                    "index, skipping initialization of this orphaned in-memory job. It will be removed by the job scheduler sweep.",
+            )
+            return false
+        }
+        return true
     }
 
     private suspend fun initManagedIndex(managedIndexConfig: ManagedIndexConfig) {
