@@ -541,6 +541,7 @@ class IndexManagementPlugin :
         ManagedIndexSettings.SNAPSHOT_DENY_LIST,
         ManagedIndexSettings.RESTRICTED_INDEX_PATTERN,
         ManagedIndexSettings.ALLOW_RUNNING_ON_RED_CLUSTER,
+        ManagedIndexSettings.JOB_DOCUMENT_CHECK_ENABLED,
         RollupSettings.ROLLUP_INGEST_BACKOFF_COUNT,
         RollupSettings.ROLLUP_INGEST_BACKOFF_MILLIS,
         RollupSettings.ROLLUP_SEARCH_BACKOFF_COUNT,
