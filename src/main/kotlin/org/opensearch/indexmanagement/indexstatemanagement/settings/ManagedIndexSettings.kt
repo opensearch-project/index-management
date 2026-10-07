@@ -28,6 +28,7 @@ class ManagedIndexSettings {
         const val DEFAULT_JOB_INTERVAL = 5
         const val DEFAULT_JITTER = 0.6
         const val DEFAULT_ALLOW_RUNNING_ON_RED_CLUSTER = false
+        const val DEFAULT_JOB_DOCUMENT_CHECK_ENABLED = true
         const val DEFAULT_RESTRICTED_PATTERN = "\\.opendistro_security|\\.kibana.*|\\$INDEX_MANAGEMENT_INDEX"
         val ALLOW_LIST_NONE = emptyList<String>()
         val ALLOW_LIST_ALL = ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
@@ -244,6 +245,21 @@ class ManagedIndexSettings {
             Setting.boolSetting(
                 "plugins.index_state_management.allow_running_on_red_cluster",
                 DEFAULT_ALLOW_RUNNING_ON_RED_CLUSTER,
+                Setting.Property.NodeScope,
+                Setting.Property.Dynamic,
+            )
+
+        /**
+         * When enabled, a managed index whose metadata is missing is only initialized after a realtime GET confirmed
+         * that its job document still exists in the config index. This protects against orphaned in-memory jobs: on a
+         * remote-store backed config index the node holding the replica copy never observes the delete issued by the
+         * remove policy API, so the job scheduler keeps running the removed job, which would otherwise re-initialize
+         * the policy from its first state on every run.
+         */
+        val JOB_DOCUMENT_CHECK_ENABLED: Setting<Boolean> =
+            Setting.boolSetting(
+                "plugins.index_state_management.job_document_check.enabled",
+                DEFAULT_JOB_DOCUMENT_CHECK_ENABLED,
                 Setting.Property.NodeScope,
                 Setting.Property.Dynamic,
             )

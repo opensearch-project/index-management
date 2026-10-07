@@ -248,6 +248,24 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
         updateClusterSetting(ManagedIndexSettings.ALLOW_RUNNING_ON_RED_CLUSTER.key, "false", escapeValue = false)
     }
 
+    @Suppress("UNCHECKED_CAST")
+    fun `test job document check setting can be toggled dynamically`() {
+        // A successful update also verifies the setting is registered by the plugin, otherwise the
+        // persistent cluster settings update would be rejected as an unknown setting.
+        updateClusterSetting(ManagedIndexSettings.JOB_DOCUMENT_CHECK_ENABLED.key, "false", escapeValue = false)
+
+        val response = client().makeRequest("GET", "_cluster/settings", mapOf("flat_settings" to "true"))
+        val persistentSettings = response.asMap()["persistent"] as Map<String, Any?>
+        assertEquals(
+            "Cluster setting was not applied",
+            "false",
+            persistentSettings[ManagedIndexSettings.JOB_DOCUMENT_CHECK_ENABLED.key],
+        )
+
+        // reset to default so it doesn't leak into other tests
+        updateClusterSetting(ManagedIndexSettings.JOB_DOCUMENT_CHECK_ENABLED.key, "true", escapeValue = false)
+    }
+
     fun `test delete action runs on red cluster only after setting is enabled`() {
         val indexName = "red_cluster_delete_index"
         val policyID = "red_cluster_delete_policy"
