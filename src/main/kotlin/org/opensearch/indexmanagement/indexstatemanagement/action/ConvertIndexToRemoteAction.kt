@@ -46,7 +46,7 @@ class ConvertIndexToRemoteAction(
 
         val VERSION_WITH_RESTORE_OPTIONS = Version.V_3_7_0
 
-        val VERSION_WITH_ADD_ORIGINAL_ALIAS = Version.V_3_8_0
+        val VERSION_WITH_ADD_ORIGINAL_ALIAS = Version.V_3_10_0
 
         val VERSION_WITH_RENAME_PATTERN = Version.V_3_5_0
     }
