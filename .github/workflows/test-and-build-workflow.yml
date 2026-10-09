@@ -41,13 +41,13 @@ jobs:
         run: ${{ needs.Get-CI-Image-Tag.outputs.ci-image-start-command }}
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
       - name: Set Up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin # Temurin is a distribution of adoptium
           java-version: ${{ matrix.java }}
       # build index management
       - name: Checkout Branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       # This is a hack, but this step creates a link to the X: mounted drive, which makes the path
       # short enough to work on Windows
       - name: Build with Gradle
@@ -55,7 +55,7 @@ jobs:
           chown -R 1000:1000 `pwd`
           su `id -un 1000` -c "./gradlew build ${{ env.TEST_FILTER }}"
       - name: Upload failed logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: ${{ failure() }}
         with:
           name: logs-${{ matrix.java }}-${{ matrix.feature }}
@@ -65,13 +65,13 @@ jobs:
           mkdir -p index-management-artifacts
           cp ./build/distributions/*.zip index-management-artifacts
       - name: Uploads coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
       # This step uses the upload-artifact Github action: https://github.com/actions/upload-artifact
       - name: Upload Artifacts
         # v4 requires node.js 20 which is not supported
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: index-management-plugin-ubuntu-latest-${{ matrix.java }}
           path: index-management-artifacts
@@ -105,12 +105,12 @@ jobs:
     steps:
       # This step uses the setup-java Github action: https://github.com/actions/setup-java
       - name: Set Up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@0f62d2ad8407a414cddd4790bed06fd9ebda0f56 # v1
         with:
           java-version: ${{ matrix.java }}
       # build index management
       - name: Checkout Branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       # This is a hack, but this step creates a link to the X: mounted drive, which makes the path
       # short enough to work on Windows
       - name: Shorten Path
@@ -127,7 +127,7 @@ jobs:
           cp ./build/distributions/*.zip index-management-artifacts
       # This step uses the upload-artifact Github action: https://github.com/actions/upload-artifact
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: index-management-plugin-${{ matrix.os }}-${{ matrix.java }}-${{ matrix.feature }}
           path: index-management-artifacts
