@@ -42,6 +42,7 @@ jobs:
       - name: Set Up JDK
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
+          distribution: temurin # Temurin is a distribution of adoptium
           java-version: 17
       # index-management
       - name: Checkout Branch
