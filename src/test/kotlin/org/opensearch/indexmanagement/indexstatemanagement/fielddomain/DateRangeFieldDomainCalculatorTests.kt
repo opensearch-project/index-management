@@ -9,15 +9,22 @@ import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.times
+import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import kotlinx.coroutines.runBlocking
 import org.opensearch.Version
+import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.search.ShardSearchFailure
+import org.opensearch.action.support.IndicesOptions
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.metadata.MappingMetadata
+import org.opensearch.common.CheckedRunnable
 import org.opensearch.common.settings.Settings
+import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.core.action.ActionListener
+import org.opensearch.identity.PluginSubject
 import org.opensearch.index.fielddomain.DateRangeFieldDomain
 import org.opensearch.index.mapper.DateFieldMapper
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
@@ -30,12 +37,36 @@ import org.opensearch.search.SearchHit
 import org.opensearch.search.SearchHits
 import org.opensearch.test.OpenSearchTestCase
 import org.opensearch.transport.client.Client
+import java.security.Principal
 import java.time.Instant
 import java.util.ArrayDeque
 import kotlin.test.assertFailsWith
 
 class DateRangeFieldDomainCalculatorTests : OpenSearchTestCase() {
+    private val threadContext = ThreadContext(Settings.EMPTY)
+    private val pluginSubject = object : PluginSubject {
+        override fun getPrincipal(): Principal = Principal { PLUGIN }
+
+        override fun <E : Exception> runAs(runnable: CheckedRunnable<E>) {
+            threadContext.stashContext().use {
+                threadContext.putTransient(IDENTITY, PLUGIN)
+                runnable.run()
+            }
+        }
+    }
     private val calculator = DateRangeFieldDomainCalculator()
+
+    override fun setUp() {
+        super.setUp()
+        threadContext.putTransient(IDENTITY, POLICY)
+    }
+
+    fun `test boundary searches use plugin identity and restore policy identity`() {
+        val searchClient = client(searchResponse(1_000L), searchResponse(2_000L))
+        calculate(DateFieldMapper.CONTENT_TYPE, searchClient)
+        assertEquals(POLICY, threadContext.getTransient<String>(IDENTITY))
+        verify(searchClient, times(2)).search(any(), any())
+    }
 
     fun `test calculator preserves date raw sort values as milliseconds`() {
         val domain = calculate(
@@ -106,7 +137,10 @@ class DateRangeFieldDomainCalculatorTests : OpenSearchTestCase() {
         assertEquals("Field [@timestamp] is not present in index [$INDEX_NAME] mappings", exception.message)
     }
 
-    private fun calculate(fieldType: String, client: Client): DateRangeFieldDomain {
+    private fun calculate(
+        fieldType: String,
+        client: Client,
+    ): DateRangeFieldDomain {
         val domain = runBlocking {
             calculator.calculate(
                 context(client),
@@ -119,16 +153,18 @@ class DateRangeFieldDomainCalculatorTests : OpenSearchTestCase() {
         return domain as DateRangeFieldDomain
     }
 
-    private fun context(client: Client): StepContext = StepContext(
-        managedIndexMetaData(),
-        mock(),
-        client,
-        null,
-        null,
-        mock<ScriptService>(),
-        Settings.EMPTY,
-        mock<LockService>(),
-    )
+    private fun context(client: Client): FieldDomainSearchContext = FieldDomainSearchContext(
+        StepContext(
+            managedIndexMetaData(),
+            mock(),
+            client,
+            threadContext,
+            null,
+            mock<ScriptService>(),
+            Settings.EMPTY,
+            mock<LockService>(),
+        ),
+    ) { pluginSubject }
 
     private fun indexMetadata(
         field: String = "@timestamp",
@@ -173,6 +209,13 @@ class DateRangeFieldDomainCalculatorTests : OpenSearchTestCase() {
         val responses = ArrayDeque(searchResponses.toList())
         return mock {
             doAnswer { invocation ->
+                assertEquals("Boundary searches must use the plugin identity", PLUGIN, threadContext.getTransient<String>(IDENTITY))
+                val request = invocation.getArgument<SearchRequest>(0)
+                assertArrayEquals(arrayOf(INDEX_NAME), request.indices())
+                assertEquals(IndicesOptions.strictSingleIndexNoExpandForbidClosed(), request.indicesOptions())
+                assertEquals(false, request.allowPartialSearchResults())
+                assertEquals(1, request.source().size())
+                assertFalse(request.source().fetchSource().fetchSource())
                 val listener = invocation.getArgument<ActionListener<SearchResponse>>(1)
                 listener.onResponse(responses.removeFirst())
             }.whenever(this.mock).search(any(), any())
@@ -197,5 +240,8 @@ class DateRangeFieldDomainCalculatorTests : OpenSearchTestCase() {
     companion object {
         private const val INDEX_NAME = "test-index"
         private const val INDEX_UUID = "test-index-uuid"
+        private const val IDENTITY = "test_identity"
+        private const val POLICY = "policy-user"
+        private const val PLUGIN = "plugin:test"
     }
 }

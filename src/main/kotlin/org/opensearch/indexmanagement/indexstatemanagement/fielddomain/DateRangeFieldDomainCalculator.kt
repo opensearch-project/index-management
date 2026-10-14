@@ -5,15 +5,11 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.fielddomain
 
-import org.opensearch.action.search.SearchRequest
-import org.opensearch.action.support.IndicesOptions
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.index.fielddomain.DateRangeFieldDomain
 import org.opensearch.index.fielddomain.FieldDomain
 import org.opensearch.index.mapper.DateFieldMapper
 import org.opensearch.index.query.QueryBuilders
-import org.opensearch.indexmanagement.opensearchapi.suspendUntil
-import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.util.IndexUtils
 import org.opensearch.search.builder.SearchSourceBuilder
 import org.opensearch.search.sort.SortBuilders
@@ -31,7 +27,7 @@ class DateRangeFieldDomainCalculator : FieldDomainCalculator {
     override val type: String = DateRangeFieldDomain.TYPE
 
     override suspend fun calculate(
-        context: StepContext,
+        context: FieldDomainSearchContext,
         indexMetadata: IndexMetadata,
         config: FieldDomainConfig,
         finalized: Boolean,
@@ -40,7 +36,7 @@ class DateRangeFieldDomainCalculator : FieldDomainCalculator {
         val mappedType = fieldMapping[TYPE_FIELD] as? String
             ?: throw IllegalArgumentException("Field [${config.field}] does not declare a mapping type")
         val dateMetadata = resolveDateMetadata(config.field, mappedType)
-        val boundaries = findBoundaries(context, indexMetadata, config, dateMetadata)
+        val boundaries = findBoundaries(context, config, dateMetadata)
 
         return if (boundaries == null) {
             null
@@ -83,15 +79,13 @@ class DateRangeFieldDomainCalculator : FieldDomainCalculator {
     }
 
     private suspend fun findBoundaries(
-        context: StepContext,
-        indexMetadata: IndexMetadata,
+        context: FieldDomainSearchContext,
         config: FieldDomainConfig,
         dateMetadata: DateMetadata,
     ): Boundaries? {
         // Write block and refresh make min and max boundaries stable across both searches.
         val min = findBoundary(
             context = context,
-            indexName = indexMetadata.index.name,
             field = config.field,
             numericType = dateMetadata.numericType,
             order = SortOrder.ASC,
@@ -101,7 +95,6 @@ class DateRangeFieldDomainCalculator : FieldDomainCalculator {
         val max = min?.let {
             findBoundary(
                 context = context,
-                indexName = indexMetadata.index.name,
                 field = config.field,
                 numericType = dateMetadata.numericType,
                 order = SortOrder.DESC,
@@ -113,8 +106,7 @@ class DateRangeFieldDomainCalculator : FieldDomainCalculator {
     }
 
     private suspend fun findBoundary(
-        context: StepContext,
-        indexName: String,
+        context: FieldDomainSearchContext,
         field: String,
         numericType: String,
         order: SortOrder,
@@ -132,26 +124,9 @@ class DateRangeFieldDomainCalculator : FieldDomainCalculator {
                         .setNumericType(numericType),
                 )
 
-        val searchRequest =
-            SearchRequest(indexName)
-                .source(searchSource)
-                .indicesOptions(IndicesOptions.strictSingleIndexNoExpandForbidClosed())
-                .allowPartialSearchResults(false)
-
-        val searchResponse = context.client.suspendUntil { search(searchRequest, it) }
-        ensureNoShardFailures(indexName, field, searchResponse.shardFailures.map { it.reason() })
-
+        val searchResponse = context.search(searchSource)
         val hits = searchResponse.hits.hits
         return if (hits.isEmpty()) null else rawSortValueAsLong(field, hits[0].rawSortValues)
-    }
-
-    private fun ensureNoShardFailures(indexName: String, field: String, shardFailures: List<String>) {
-        if (shardFailures.isNotEmpty()) {
-            throw IllegalStateException(
-                "Failed to compute field domain for [$field] in index [$indexName], " +
-                    "shard failures [${shardFailures.joinToString()}]",
-            )
-        }
     }
 
     private fun rawSortValueAsLong(field: String, rawSortValues: Array<Any>): Long {

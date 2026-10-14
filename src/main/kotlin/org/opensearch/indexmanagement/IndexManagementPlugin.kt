@@ -29,6 +29,7 @@ import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
 import org.opensearch.env.Environment
 import org.opensearch.env.NodeEnvironment
+import org.opensearch.identity.PluginSubject
 import org.opensearch.indexmanagement.IndexManagementIndices.Companion.HISTORY_ALL
 import org.opensearch.indexmanagement.controlcenter.notification.ControlCenterIndices
 import org.opensearch.indexmanagement.controlcenter.notification.action.delete.DeleteLRONConfigAction
@@ -50,6 +51,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinat
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.PluginVersionSweepCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
+import org.opensearch.indexmanagement.indexstatemanagement.fielddomain.FieldDomainSearchContext
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestAddPolicyAction
@@ -185,6 +187,7 @@ import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.monitor.jvm.JvmService
 import org.opensearch.plugins.ActionPlugin
 import org.opensearch.plugins.ExtensiblePlugin
+import org.opensearch.plugins.IdentityAwarePlugin
 import org.opensearch.plugins.NetworkPlugin
 import org.opensearch.plugins.Plugin
 import org.opensearch.plugins.SystemIndexPlugin
@@ -211,7 +214,8 @@ class IndexManagementPlugin :
     ActionPlugin,
     ExtensiblePlugin,
     SystemIndexPlugin,
-    TelemetryAwarePlugin {
+    TelemetryAwarePlugin,
+    IdentityAwarePlugin {
     private val logger = LogManager.getLogger(javaClass)
     lateinit var indexManagementIndices: IndexManagementIndices
     lateinit var actionValidation: ActionValidation
@@ -226,6 +230,10 @@ class IndexManagementPlugin :
     private val extensionCheckerMap = mutableMapOf<String, StatusChecker>()
     lateinit var indexOperationActionFilter: IndexOperationActionFilter
     private lateinit var metricsRegistry: MetricsRegistry
+
+    override fun assignSubject(pluginSubject: PluginSubject) {
+        FieldDomainSearchContext.assignSubject(pluginSubject)
+    }
 
     companion object {
         const val PLUGINS_BASE_URI = "/_plugins"

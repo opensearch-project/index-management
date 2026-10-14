@@ -16,6 +16,7 @@ import org.opensearch.cluster.metadata.IndexMetadata.SETTING_BLOCKS_WRITE
 import org.opensearch.index.fielddomain.FieldDomain
 import org.opensearch.indexmanagement.indexstatemanagement.action.PublishFieldDomainsAction
 import org.opensearch.indexmanagement.indexstatemanagement.fielddomain.FieldDomainCalculatorRegistry
+import org.opensearch.indexmanagement.indexstatemanagement.fielddomain.FieldDomainSearchContext
 import org.opensearch.indexmanagement.indexstatemanagement.util.isIndexWriteBlocked
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
@@ -29,10 +30,14 @@ import org.opensearch.transport.RemoteTransportException
  *
  * The step requires the managed index to be write-blocked, then refreshes it before computing domains. This makes
  * the published metadata safe for consumers that use finalized field domains for search-time pruning.
+ *
+ * Field-domain searches use the plugin identity; refresh and publication retain the policy user's permissions.
+ * Publication permission authorizes index-wide metadata, including bounds beyond that user's document visibility.
  */
 class AttemptPublishFieldDomainsStep(
     private val action: PublishFieldDomainsAction,
     private val calculatorRegistry: FieldDomainCalculatorRegistry = FieldDomainCalculatorRegistry.defaultRegistry(),
+    private val searchContextFactory: (StepContext) -> FieldDomainSearchContext = { FieldDomainSearchContext(it) },
 ) : Step(name) {
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
@@ -94,12 +99,14 @@ class AttemptPublishFieldDomainsStep(
         }
     }
 
-    private suspend fun calculateDomains(context: StepContext, indexMetadata: IndexMetadata): List<FieldDomain> =
-        action.fields.mapNotNull { fieldConfig ->
+    private suspend fun calculateDomains(context: StepContext, indexMetadata: IndexMetadata): List<FieldDomain> {
+        val searchContext = searchContextFactory(context)
+        return action.fields.mapNotNull { fieldConfig ->
             val calculator = calculatorRegistry.get(fieldConfig.type)
                 ?: throw IllegalArgumentException("No field-domain calculator registered for type [${fieldConfig.type}]")
-            calculator.calculate(context, indexMetadata, fieldConfig, FINALIZED)
+            calculator.calculate(searchContext, indexMetadata, fieldConfig, FINALIZED)
         }
+    }
 
     private fun validateWriteBlock(indexMetadata: IndexMetadata): Boolean {
         val indexName = indexMetadata.index.name
