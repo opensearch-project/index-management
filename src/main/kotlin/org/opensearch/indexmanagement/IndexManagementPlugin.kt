@@ -48,6 +48,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementHistory
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
+import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexUuidRemapper
 import org.opensearch.indexmanagement.indexstatemanagement.PluginVersionSweepCoordinator
 import org.opensearch.indexmanagement.indexstatemanagement.SkipExecution
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
@@ -187,12 +188,14 @@ import org.opensearch.plugins.ActionPlugin
 import org.opensearch.plugins.ExtensiblePlugin
 import org.opensearch.plugins.NetworkPlugin
 import org.opensearch.plugins.Plugin
+import org.opensearch.plugins.RestoreListenerPlugin
 import org.opensearch.plugins.SystemIndexPlugin
 import org.opensearch.plugins.TelemetryAwarePlugin
 import org.opensearch.repositories.RepositoriesService
 import org.opensearch.rest.RestController
 import org.opensearch.rest.RestHandler
 import org.opensearch.script.ScriptService
+import org.opensearch.snapshots.RestoreContext
 import org.opensearch.telemetry.metrics.MetricsRegistry
 import org.opensearch.telemetry.tracing.Tracer
 import org.opensearch.threadpool.ThreadPool
@@ -211,7 +214,8 @@ class IndexManagementPlugin :
     ActionPlugin,
     ExtensiblePlugin,
     SystemIndexPlugin,
-    TelemetryAwarePlugin {
+    TelemetryAwarePlugin,
+    RestoreListenerPlugin {
     private val logger = LogManager.getLogger(javaClass)
     lateinit var indexManagementIndices: IndexManagementIndices
     lateinit var actionValidation: ActionValidation
@@ -226,6 +230,7 @@ class IndexManagementPlugin :
     private val extensionCheckerMap = mutableMapOf<String, StatusChecker>()
     lateinit var indexOperationActionFilter: IndexOperationActionFilter
     private lateinit var metricsRegistry: MetricsRegistry
+    private lateinit var managedIndexUuidRemapper: ManagedIndexUuidRemapper
 
     companion object {
         const val PLUGINS_BASE_URI = "/_plugins"
@@ -488,6 +493,8 @@ class IndexManagementPlugin :
                 client, clusterService, threadPool, indexManagementIndices, indexMetadataProvider, xContentRegistry,
             )
 
+        managedIndexUuidRemapper = ManagedIndexUuidRemapper(client, clusterService, indexManagementIndices, indexMetadataProvider, xContentRegistry)
+
         val smRunner = SMRunner.init(client, threadPool, settings, indexManagementIndices, clusterService)
 
         val pluginVersionSweepCoordinator = PluginVersionSweepCoordinator(skipFlag, settings, threadPool, clusterService)
@@ -636,6 +643,8 @@ class IndexManagementPlugin :
     ): List<TransportInterceptor> = listOf(rollupInterceptor)
 
     override fun getActionFilters(): List<ActionFilter> = listOf(fieldCapsFilter, indexOperationActionFilter)
+
+    override fun onRestore(context: RestoreContext) = managedIndexUuidRemapper.moveRestoredJobs(context)
 
     override fun getSystemIndexDescriptors(settings: Settings): Collection<SystemIndexDescriptor> = listOf(
         SystemIndexDescriptor(
