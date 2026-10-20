@@ -268,9 +268,9 @@ class ManagedIndexSettings {
         /**
          * When enabled, a managed index whose metadata carries a different policy version than the job the scheduler
          * handed to the runner is reconciled against the job document instead of being failed and disabled: a job
-         * document that agrees with the metadata means only the scheduler's in-memory copy is stale, an interrupted
-         * policy change is completed, and metadata written under another job incarnation is re-initialized. Only a
-         * mismatch that does not converge after a bounded number of attempts fails the managed index as before.
+         * document that agrees with the metadata means only the scheduler's in-memory copy is stale, and a policy
+         * change interrupted after its metadata write is completed. Any other mismatch, or an interrupted change that
+         * does not converge after a bounded number of attempts, fails the managed index as before.
          */
         val POLICY_VERSION_RECONCILIATION_ENABLED: Setting<Boolean> =
             Setting.boolSetting(

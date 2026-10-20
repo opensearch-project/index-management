@@ -40,7 +40,7 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
-    fun `test job document policy version change is reconciled instead of failing the job`() {
+    fun `test job document policy version change that is not an interrupted policy change fails the job`() {
         val indexName = "version_conflict_index"
         val policyID = "version_conflict_policy"
         val policy = createPolicy(openStatePolicy(policyID, indexName), policyID)
@@ -51,28 +51,12 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor { assertEquals(policy.id, getExplainManagedIndexMetaData(indexName).policyID) }
 
-        // the job document now pins a policy version the metadata was not written under
+        // the job document now pins a policy version the metadata was not written under, and no policy change explains it
         updateManagedIndexConfigPolicySeqNo(managedIndexConfig.copy(policySeqNo = 17))
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
-        // the metadata is re-initialized under the job document's version instead of the job being failed and disabled
-        waitFor {
-            val metadata = getExplainManagedIndexMetaData(indexName)
-            assertEquals("metadata was not aligned to the job document's policy version", 17L, metadata.policySeqNo)
-            assertEquals("managed index must not be failed", false, metadata.policyRetryInfo?.failed)
-            assertNull("the policy restarts from its first action", metadata.actionMetaData)
-            val message = metadata.info?.get("message") as String?
-            assertTrue("unexpected info message: $message", message?.startsWith("Re-initialized policy: $policyID") == true)
-        }
-        assertTrue("job must stay enabled", getExistingManagedIndexConfig(indexName).enabled)
-
-        // and the next run executes the policy normally
-        updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor {
-            val metadata = getExplainManagedIndexMetaData(indexName)
-            assertEquals(OpenAction.name, metadata.actionMetaData?.name)
-            assertEquals(false, metadata.policyRetryInfo?.failed)
-        }
+        // reconciliation does not repair such metadata: the managed index is failed and the job disabled as before
+        waitForVersionConflictFailure(indexName)
     }
 
     fun `test job document policy version change fails the job when reconciliation is disabled`() {
@@ -94,26 +78,7 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
             // start execution to see if it moves to failed because of version conflict
             updateManagedIndexConfigStartTime(managedIndexConfig)
 
-            val expectedInfoString = mapOf("message" to "There is a version conflict between your previous execution and your managed index").toString()
-            waitFor {
-                assertPredicatesOnMetaData(
-                    listOf(
-                        indexName to
-                            listOf(
-                                PolicyRetryInfoMetaData.RETRY_INFO to
-
-                                    fun(retryInfoMetaDataMap: Any?): Boolean =
-                                        assertRetryInfoEquals(PolicyRetryInfoMetaData(true, 0), retryInfoMetaDataMap),
-                                ManagedIndexMetaData.INFO to
-
-                                    fun(info: Any?): Boolean = expectedInfoString == info.toString(),
-                            ),
-                    ),
-                    getExplainMap(indexName),
-                    strict = false,
-                )
-            }
-            waitFor { assertFalse("job must be disabled", getExistingManagedIndexConfig(indexName).enabled) }
+            waitForVersionConflictFailure(indexName)
         } finally {
             updateClusterSetting(ManagedIndexSettings.POLICY_VERSION_RECONCILIATION_ENABLED.key, "true", escapeValue = false)
         }
@@ -154,6 +119,30 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
             assertEquals(policyB.primaryTerm, metadata.policyPrimaryTerm)
             assertEquals("managed index must not be failed", false, metadata.policyRetryInfo?.failed)
         }
+    }
+
+    /** The pre-reconciliation outcome: the metadata is failed with the version conflict message and the job is disabled. */
+    private fun waitForVersionConflictFailure(indexName: String) {
+        val expectedInfoString = mapOf("message" to "There is a version conflict between your previous execution and your managed index").toString()
+        waitFor {
+            assertPredicatesOnMetaData(
+                listOf(
+                    indexName to
+                        listOf(
+                            PolicyRetryInfoMetaData.RETRY_INFO to
+
+                                fun(retryInfoMetaDataMap: Any?): Boolean =
+                                    assertRetryInfoEquals(PolicyRetryInfoMetaData(true, 0), retryInfoMetaDataMap),
+                            ManagedIndexMetaData.INFO to
+
+                                fun(info: Any?): Boolean = expectedInfoString == info.toString(),
+                        ),
+                ),
+                getExplainMap(indexName),
+                strict = false,
+            )
+        }
+        waitFor { assertFalse("job must be disabled", getExistingManagedIndexConfig(indexName).enabled) }
     }
 
     /** A policy with a single state whose only action opens the index. */

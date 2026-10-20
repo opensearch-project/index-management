@@ -44,6 +44,7 @@ import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
+import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
@@ -573,16 +574,17 @@ object ManagedIndexRunner :
      * 1. The document agrees with the metadata: only the scheduler's in-memory job is stale (it lags the document until
      *    the next scheduler sweep, e.g. on remote-store backed config indices where replica copies do not observe
      *    writes). The run continues with the document.
-     * 2. The document still differs and carries a change_policy for the policy the metadata already names: a policy
-     *    change was interrupted after its metadata write. Its second write, the job document, is replayed.
-     * 3. The document still differs otherwise: the metadata was produced under another job incarnation (for example by
-     *    an orphaned job before this job document was created) and the document is authoritative for the pinned
-     *    policy. The metadata is treated like missing metadata and re-initialized under the document's policy.
+     * 2. The document still differs, carries a change_policy to the policy the metadata names, and the metadata is the
+     *    first write of that change (see [isInterruptedChangeTo]): the change was interrupted after its metadata write.
+     *    Its second write, the job document, is replayed.
      *
-     * Every corrective write is guarded by the seqNo/primaryTerm of the document it replaces, so a concurrent writer is
-     * never clobbered; a lost race is retried on the next run. After [MAX_POLICY_VERSION_RECONCILE_ATTEMPTS] consecutive
-     * runs without convergence the previous behaviour applies: the managed index is failed, the job disabled and the
-     * error notification published.
+     * Any other mismatch (metadata written under another job incarnation, for example by an orphaned job before this
+     * job document was created) keeps the previous behaviour: the managed index is failed, the job disabled and the
+     * error notification published. Repairing such metadata is deliberately left out of this reconciliation.
+     *
+     * The replay is guarded by the seqNo/primaryTerm of the documents it replaces, so a concurrent writer is never
+     * clobbered; a lost race is retried on the next run. After [MAX_POLICY_VERSION_RECONCILE_ATTEMPTS] consecutive
+     * replays without convergence the previous behaviour applies as well.
      *
      * @return the job config to continue this run with, or null when the run ends here.
      */
@@ -636,32 +638,47 @@ object ManagedIndexRunner :
             return managedIndexConfig
         }
 
-        policyVersionReconcileAttempts[indexUuid] = attempts + 1
         val documentVersion = "${managedIndexConfig.policyID}@${managedIndexConfig.policySeqNo}/${managedIndexConfig.policyPrimaryTerm}"
         val changePolicy = managedIndexConfig.changePolicy
-        if (changePolicy != null && changePolicy.policyID == managedIndexMetaData.policyID) {
-            // 2. A policy change wrote the metadata but not the job document yet; complete it
+        val targetPolicy = if (changePolicy?.policyID == managedIndexMetaData.policyID) getPolicy(changePolicy.policyID) else null
+        if (changePolicy != null && targetPolicy != null && managedIndexMetaData.isInterruptedChangeTo(targetPolicy, changePolicy)) {
+            // 2. A policy change wrote the metadata but not the job document yet; complete it.
+            // The change passed shouldChangePolicy in the run that performed the first write: initChangePolicy is the
+            // only writer that stamps a policy other than the job document's onto the metadata, and it is only reached
+            // through that gate. The gate is therefore not re-evaluated here; the index cannot execute under either
+            // policy until the second write lands, and this replay performs exactly that write. No action is passed so
+            // the action metadata recorded by the first write is kept rather than recomputed from the old policy.
+            policyVersionReconcileAttempts[indexUuid] = attempts + 1
             logger.warn(
                 "Metadata of index [$index] already carries the policy ($metadataVersion) its job document ($documentVersion) is " +
                     "still changing to. Replaying the policy change (attempt ${attempts + 1} of $MAX_POLICY_VERSION_RECONCILE_ATTEMPTS).",
             )
-            val state = managedIndexConfig.policy.getStateToExecute(managedIndexMetaData)
-            val action = state?.getActionToExecute(managedIndexMetaData, indexMetadataProvider)
-            initChangePolicy(managedIndexConfig, managedIndexMetaData, action)
+            initChangePolicy(managedIndexConfig, managedIndexMetaData, null)
             return null
         }
 
-        // 3. The metadata was not written under this job document; re-initialize it under the document's policy
+        // The metadata was written under a version that is neither the job document's nor the first write of a change
+        // the document is making. No corrective write is attempted for it; the pre-reconciliation behaviour applies.
         logger.warn(
-            "Metadata of index [$index] was written under policy version $metadataVersion, which is not the version pinned on its " +
-                "job document ($documentVersion). Re-initializing the metadata under the job document's policy (attempt ${attempts + 1} " +
-                "of $MAX_POLICY_VERSION_RECONCILE_ATTEMPTS).",
+            "Metadata of index [$index] was written under policy version $metadataVersion, which is neither the version pinned on " +
+                "its job document ($documentVersion) nor an interrupted policy change of that document. Failing the managed index.",
         )
-        val result = initManagedIndex(managedIndexConfig, replacing = managedIndexMetaData)
-        if (result.metadataSaved) {
-            policyVersionReconcileAttempts.remove(indexUuid)
-        }
+        policyVersionReconcileAttempts.remove(indexUuid)
+        failOnPolicyVersionConflict(managedIndexConfig, managedIndexMetaData)
         return null
+    }
+
+    /**
+     * Whether this metadata is the first write of a policy change to [targetPolicy] that was interrupted before its second
+     * write, the job document. [initChangePolicy] stamps the metadata with the target policy's id and version, records the
+     * requested state in transitionTo and clears the step metadata; nothing else writes the metadata until the change
+     * completes. Metadata that merely names the same policy without this footprint was written by something else, and a
+     * target policy edited since the first write no longer matches it; both are left to the previous behaviour.
+     */
+    private fun ManagedIndexMetaData.isInterruptedChangeTo(targetPolicy: Policy, changePolicy: ChangePolicy): Boolean {
+        val stampedWithTarget =
+            policyID == targetPolicy.id && policySeqNo == targetPolicy.seqNo && policyPrimaryTerm == targetPolicy.primaryTerm
+        return stampedWithTarget && transitionTo == changePolicy.state && stepMetaData == null
     }
 
     /** The pre-reconciliation outcome of a policy version mismatch: fail the managed index, disable the job, notify. */
@@ -680,13 +697,7 @@ object ManagedIndexRunner :
         }
     }
 
-    /**
-     * Initializes the metadata of a managed index under the policy pinned on its job document.
-     *
-     * With [replacing] set, an existing metadata document written under a different policy version is overwritten instead
-     * of created; the write is guarded by that document's seqNo/primaryTerm (see [reconcilePolicyVersion]).
-     */
-    private suspend fun initManagedIndex(managedIndexConfig: ManagedIndexConfig, replacing: ManagedIndexMetaData? = null): UpdateMetadataResult {
+    private suspend fun initManagedIndex(managedIndexConfig: ManagedIndexConfig) {
         val policy: Policy = managedIndexConfig.policy
         var metadata = getInitializedManagedIndexMetaData(managedIndexConfig, policy, policy.id)
 
@@ -698,29 +709,13 @@ object ManagedIndexRunner :
                 val saved = savePolicyToManagedIndexConfig(managedIndexConfig, newPolicy)
                 if (!saved) {
                     logger.error("Failed to save policy to ManagedIndexConfig(${managedIndexConfig.index})")
-                    return UpdateMetadataResult()
+                    return
                 }
             }
             metadata = getInitializedManagedIndexMetaData(managedIndexConfig, newPolicy, policyID)
         }
 
-        if (replacing != null) {
-            metadata = metadata.copy(seqNo = replacing.seqNo, primaryTerm = replacing.primaryTerm)
-            if (!metadata.isFailed) {
-                metadata =
-                    metadata.copy(
-                        info =
-                        mapOf(
-                            "message" to
-                                "Re-initialized policy: ${metadata.policyID}. The previous metadata was written under policy " +
-                                "${replacing.policyID} version ${replacing.policySeqNo}/${replacing.policyPrimaryTerm}, which is not " +
-                                "the version pinned on the job.",
-                        ),
-                    )
-            }
-        }
-
-        return updateManagedIndexMetaData(metadata, create = replacing == null)
+        updateManagedIndexMetaData(metadata, create = true)
     }
 
     @Suppress("ReturnCount", "BlockingMethodInNonBlockingContext")

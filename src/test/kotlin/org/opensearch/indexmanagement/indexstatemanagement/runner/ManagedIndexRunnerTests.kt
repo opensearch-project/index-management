@@ -54,10 +54,12 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomState
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.toJsonString
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
+import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ActionMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
+import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
 import org.opensearch.script.ScriptService
 import org.opensearch.test.ClusterServiceUtils
 import org.opensearch.test.OpenSearchTestCase
@@ -285,7 +287,9 @@ class ManagedIndexRunnerTests : OpenSearchTestCase() {
         val changeToB = ChangePolicy(policyB.id, null, emptyList(), isSafe = true)
         // initChangePolicy already wrote the metadata for policy B, then failed to write the job document
         val scheduled = testConfig(indexUuid, policyA, changePolicy = changeToB)
-        val metadata = testMetadata(indexUuid, policyB)
+        // the first write kept the action metadata of the action that was executing when the change started
+        val actionAtChange = ActionMetaData("open", 1234L, 0, false, 0, null, null)
+        val metadata = testMetadata(indexUuid, policyB).copy(actionMetaData = actionAtChange)
         val configIndex =
             ConfigIndexMock(
                 indexUuid to Document(scheduled.toJsonString(), seqNo = 21, primaryTerm = 2),
@@ -300,6 +304,9 @@ class ManagedIndexRunnerTests : OpenSearchTestCase() {
         assertEquals(policyB.id, writtenMetadata[ManagedIndexMetaData.POLICY_ID])
         assertEquals(policyB.seqNo.toInt(), writtenMetadata[ManagedIndexMetaData.POLICY_SEQ_NO])
         assertEquals("Attempting to change policy to ${policyB.id}", (writtenMetadata[ManagedIndexMetaData.INFO] as Map<*, *>)["message"])
+        val writtenAction = writtenMetadata[ActionMetaData.ACTION] as Map<*, *>
+        assertEquals("the replay must keep the action metadata of the first write", actionAtChange.name, writtenAction[ManagedIndexMetaData.NAME])
+        assertEquals("the replay must not restart the action", actionAtChange.startTime?.toInt(), writtenAction[ManagedIndexMetaData.START_TIME])
         val writtenConfig = configIndex.configSource(1)
         assertEquals(policyB.id, writtenConfig[ManagedIndexConfig.POLICY_ID_FIELD])
         assertEquals(policyB.seqNo.toInt(), writtenConfig[ManagedIndexConfig.POLICY_SEQ_NO_FIELD])
@@ -308,7 +315,7 @@ class ManagedIndexRunnerTests : OpenSearchTestCase() {
         assertTrue("the job must not be disabled", configIndex.updateRequests.isEmpty())
     }
 
-    fun `test policy version reconciliation re-initializes metadata written under another policy version`() {
+    fun `test policy version reconciliation fails the managed index when the metadata was written under a foreign policy version`() {
         val indexUuid = randomAlphaOfLength(20)
         val policyA = testPolicy("policy-a", seqNo = 5, primaryTerm = 1)
         val foreignPolicy = testPolicy("policy-old", seqNo = 2, primaryTerm = 1, state = "warm")
@@ -318,44 +325,94 @@ class ManagedIndexRunnerTests : OpenSearchTestCase() {
 
         val continueWith = runBlocking { runner.reconcilePolicyVersion(scheduled, metadata) }
 
-        assertNull("the run ends after re-initializing the metadata", continueWith)
-        assertEquals("exactly the metadata must be written", listOf(managedIndexMetadataID(indexUuid)), configIndex.indexRequests.map { it.id() })
-        val request = configIndex.indexRequests.single()
-        assertEquals("the write must be guarded by the replaced metadata's seqNo", 7L, request.ifSeqNo())
-        assertEquals("the write must be guarded by the replaced metadata's primaryTerm", 1L, request.ifPrimaryTerm())
-        assertFalse("the existing metadata must be overwritten, not created", request.opType().name == "CREATE")
-        val written = configIndex.metadataSource(0)
-        assertEquals(policyA.id, written[ManagedIndexMetaData.POLICY_ID])
-        assertEquals(policyA.seqNo.toInt(), written[ManagedIndexMetaData.POLICY_SEQ_NO])
-        assertEquals(policyA.primaryTerm.toInt(), written[ManagedIndexMetaData.POLICY_PRIMARY_TERM])
-        assertEquals("the policy restarts from its default state", policyA.defaultState, (written[StateMetaData.STATE] as Map<*, *>)["name"])
-        assertNull("no action of the foreign policy may be carried over", written[ActionMetaData.ACTION])
-        assertEquals(false, (written[PolicyRetryInfoMetaData.RETRY_INFO] as Map<*, *>)["failed"])
-        val message = (written[ManagedIndexMetaData.INFO] as Map<*, *>)["message"] as String
-        assertTrue("info must explain the re-initialization: $message", message.startsWith("Re-initialized policy: ${policyA.id}"))
-        assertTrue("info must name the replaced version: $message", message.contains("${foreignPolicy.id} version 2/1"))
-        assertTrue("the job must not be disabled", configIndex.updateRequests.isEmpty())
+        assertNull("the run ends after failing the managed index", continueWith)
+        assertTrue("the job document must be consulted first", configIndex.getRequests.any { it.id() == indexUuid })
+        assertVersionConflictFailure(configIndex, indexUuid)
+    }
+
+    fun `test policy version reconciliation does not replay a change whose metadata carries another version of the target`() {
+        val indexUuid = randomAlphaOfLength(20)
+        val policyA = testPolicy("policy-a", seqNo = 5, primaryTerm = 1)
+        val policyB = testPolicy("policy-b", seqNo = 11, primaryTerm = 2)
+        val changeToB = ChangePolicy(policyB.id, null, emptyList(), isSafe = false)
+        val scheduled = testConfig(indexUuid, policyA, changePolicy = changeToB)
+        // the metadata names the change target, but was stamped with a version of it the first write cannot have written
+        val metadata = testMetadata(indexUuid, policyB.copy(seqNo = 9))
+        val configIndex =
+            ConfigIndexMock(
+                indexUuid to Document(scheduled.toJsonString(), seqNo = 21, primaryTerm = 2),
+                policyB.id to Document(policyB.toJsonString(), seqNo = policyB.seqNo, primaryTerm = policyB.primaryTerm),
+            )
+
+        assertNull(runBlocking { runner.reconcilePolicyVersion(scheduled, metadata) })
+
+        assertVersionConflictFailure(configIndex, indexUuid)
+    }
+
+    fun `test policy version reconciliation does not replay a change whose metadata is not its first write`() {
+        val indexUuid = randomAlphaOfLength(20)
+        val policyA = testPolicy("policy-a", seqNo = 5, primaryTerm = 1)
+        val policyB = testPolicy("policy-b", seqNo = 11, primaryTerm = 2)
+        val changeToB = ChangePolicy(policyB.id, null, emptyList(), isSafe = false)
+        val scheduled = testConfig(indexUuid, policyA, changePolicy = changeToB)
+        // correctly stamped, but a step is recorded: the first write of a policy change always clears the step metadata
+        val metadata = testMetadata(indexUuid, policyB).copy(stepMetaData = StepMetaData("attempt_open", 1234L, Step.StepStatus.COMPLETED))
+        val configIndex =
+            ConfigIndexMock(
+                indexUuid to Document(scheduled.toJsonString(), seqNo = 21, primaryTerm = 2),
+                policyB.id to Document(policyB.toJsonString(), seqNo = policyB.seqNo, primaryTerm = policyB.primaryTerm),
+            )
+
+        assertNull(runBlocking { runner.reconcilePolicyVersion(scheduled, metadata) })
+
+        assertVersionConflictFailure(configIndex, indexUuid)
+    }
+
+    fun `test policy version reconciliation fails the managed index when the change target policy no longer exists`() {
+        val indexUuid = randomAlphaOfLength(20)
+        val policyA = testPolicy("policy-a", seqNo = 5, primaryTerm = 1)
+        val policyB = testPolicy("policy-b", seqNo = 11, primaryTerm = 2)
+        val changeToB = ChangePolicy(policyB.id, null, emptyList(), isSafe = false)
+        val scheduled = testConfig(indexUuid, policyA, changePolicy = changeToB)
+        val metadata = testMetadata(indexUuid, policyB)
+        // policy B was deleted after the interrupted first write
+        val configIndex = ConfigIndexMock(indexUuid to Document(scheduled.toJsonString(), seqNo = 21, primaryTerm = 2))
+
+        assertNull(runBlocking { runner.reconcilePolicyVersion(scheduled, metadata) })
+
+        assertTrue("the target policy must be looked up", configIndex.getRequests.any { it.id() == policyB.id })
+        assertVersionConflictFailure(configIndex, indexUuid)
     }
 
     fun `test policy version reconciliation fails the managed index after the attempts are exhausted`() {
         val indexUuid = randomAlphaOfLength(20)
         val policyA = testPolicy("policy-a", seqNo = 5, primaryTerm = 1)
-        val scheduled = testConfig(indexUuid, policyA)
-        val metadata = testMetadata(indexUuid, testPolicy("policy-old", seqNo = 2, primaryTerm = 1))
-        val configIndex = ConfigIndexMock(indexUuid to Document(scheduled.toJsonString(), seqNo = 21, primaryTerm = 2))
-        configIndex.failIndexRequestWhen = { it.sourceContains("Re-initialized policy") }
+        val policyB = testPolicy("policy-b", seqNo = 11, primaryTerm = 2)
+        val scheduled = testConfig(indexUuid, policyA, changePolicy = ChangePolicy(policyB.id, null, emptyList(), isSafe = false))
+        val metadata = testMetadata(indexUuid, policyB)
+        val configIndex =
+            ConfigIndexMock(
+                indexUuid to Document(scheduled.toJsonString(), seqNo = 21, primaryTerm = 2),
+                policyB.id to Document(policyB.toJsonString(), seqNo = policyB.seqNo, primaryTerm = policyB.primaryTerm),
+            )
+        // the second write of the replayed change, the job document, keeps losing its version check
+        configIndex.failIndexRequestWhen = { it.id() == indexUuid }
 
         repeat(3) { attempt ->
             assertNull(runBlocking { runner.reconcilePolicyVersion(scheduled, metadata) })
-            assertEquals("attempt ${attempt + 1} must try to re-initialize", attempt + 1, configIndex.indexRequests.size)
-            assertTrue(configIndex.indexRequests.last().sourceContains("Re-initialized policy"))
+            assertEquals(
+                "attempt ${attempt + 1} must replay the change: metadata then job document",
+                (attempt + 1) * 2, configIndex.indexRequests.size,
+            )
+            assertEquals(indexUuid, configIndex.indexRequests.last().id())
             assertTrue("the job must not be disabled while attempts remain", configIndex.updateRequests.isEmpty())
         }
 
         assertNull(runBlocking { runner.reconcilePolicyVersion(scheduled, metadata) })
 
-        assertEquals("the fourth run falls back to failing the managed index", 4, configIndex.indexRequests.size)
-        val failure = configIndex.metadataSource(3)
+        assertEquals("the fourth run falls back to failing the managed index", 7, configIndex.indexRequests.size)
+        assertEquals(managedIndexMetadataID(indexUuid), configIndex.indexRequests.last().id())
+        val failure = configIndex.metadataSource(6)
         assertEquals(true, (failure[PolicyRetryInfoMetaData.RETRY_INFO] as Map<*, *>)["failed"])
         assertEquals(
             "There is a version conflict between your previous execution and your managed index",
@@ -367,19 +424,27 @@ class ManagedIndexRunnerTests : OpenSearchTestCase() {
     fun `test policy version reconciliation attempts reset once the documents agree`() {
         val indexUuid = randomAlphaOfLength(20)
         val policyA = testPolicy("policy-a", seqNo = 5, primaryTerm = 1)
-        val scheduled = testConfig(indexUuid, policyA)
-        val foreignMetadata = testMetadata(indexUuid, testPolicy("policy-old", seqNo = 2, primaryTerm = 1))
-        val configIndex = ConfigIndexMock(indexUuid to Document(scheduled.toJsonString(), seqNo = 21, primaryTerm = 2))
-        configIndex.failIndexRequestWhen = { it.sourceContains("Re-initialized policy") }
+        val policyB = testPolicy("policy-b", seqNo = 11, primaryTerm = 2)
+        val scheduled = testConfig(indexUuid, policyA, changePolicy = ChangePolicy(policyB.id, null, emptyList(), isSafe = false))
+        val interrupted = testMetadata(indexUuid, policyB)
+        val configIndex =
+            ConfigIndexMock(
+                indexUuid to Document(scheduled.toJsonString(), seqNo = 21, primaryTerm = 2),
+                policyB.id to Document(policyB.toJsonString(), seqNo = policyB.seqNo, primaryTerm = policyB.primaryTerm),
+            )
+        configIndex.failIndexRequestWhen = { it.id() == indexUuid }
 
-        repeat(2) { assertNull(runBlocking { runner.reconcilePolicyVersion(scheduled, foreignMetadata) }) }
+        repeat(2) { assertNull(runBlocking { runner.reconcilePolicyVersion(scheduled, interrupted) }) }
         // the documents agree on the next run (metadata now carries the job document's version): attempts are reset
         assertNotNull(runBlocking { runner.reconcilePolicyVersion(scheduled.copy(policySeqNo = 4), testMetadata(indexUuid, policyA)) })
-        // three more non-converging runs are needed before the managed index is failed
-        repeat(3) { assertNull(runBlocking { runner.reconcilePolicyVersion(scheduled, foreignMetadata) }) }
+        // three more non-converging replays are needed before the managed index is failed
+        repeat(3) { assertNull(runBlocking { runner.reconcilePolicyVersion(scheduled, interrupted) }) }
 
-        assertEquals(5, configIndex.indexRequests.size)
-        assertTrue("all writes so far are re-initialization attempts", configIndex.indexRequests.all { it.sourceContains("Re-initialized policy") })
+        assertEquals("five replays of two writes each", 10, configIndex.indexRequests.size)
+        assertTrue(
+            "all writes so far are replays of the change",
+            configIndex.indexRequests.all { it.id() == indexUuid || it.sourceContains("Attempting to change policy to ${policyB.id}") },
+        )
         assertTrue("the job must not be disabled", configIndex.updateRequests.isEmpty())
     }
 
@@ -405,6 +470,18 @@ class ManagedIndexRunnerTests : OpenSearchTestCase() {
         } finally {
             applyPolicyVersionReconciliationSetting(true)
         }
+    }
+
+    /** The pre-reconciliation outcome: the metadata is failed with the version conflict message and the job is disabled. */
+    private fun assertVersionConflictFailure(configIndex: ConfigIndexMock, indexUuid: String) {
+        assertEquals("exactly the failed metadata must be written", listOf(managedIndexMetadataID(indexUuid)), configIndex.indexRequests.map { it.id() })
+        val failure = configIndex.metadataSource(0)
+        assertEquals(true, (failure[PolicyRetryInfoMetaData.RETRY_INFO] as Map<*, *>)["failed"])
+        assertEquals(
+            "There is a version conflict between your previous execution and your managed index",
+            (failure[ManagedIndexMetaData.INFO] as Map<*, *>)["message"],
+        )
+        assertEquals("the job must be disabled", listOf(indexUuid), configIndex.updateRequests.map { it.id() })
     }
 
     private fun applyPolicyVersionReconciliationSetting(enabled: Boolean) {
