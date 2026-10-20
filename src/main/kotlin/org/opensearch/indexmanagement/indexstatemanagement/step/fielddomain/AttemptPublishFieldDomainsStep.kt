@@ -9,14 +9,14 @@ import org.apache.logging.log4j.LogManager
 import org.opensearch.ExceptionsHelper
 import org.opensearch.action.admin.indices.fielddomain.PutIndexFieldDomainsAction
 import org.opensearch.action.admin.indices.fielddomain.PutIndexFieldDomainsRequest
-import org.opensearch.action.admin.indices.refresh.RefreshRequest
 import org.opensearch.action.support.clustermanager.AcknowledgedResponse
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.metadata.IndexMetadata.SETTING_BLOCKS_WRITE
 import org.opensearch.index.fielddomain.FieldDomain
 import org.opensearch.indexmanagement.indexstatemanagement.action.PublishFieldDomainsAction
-import org.opensearch.indexmanagement.indexstatemanagement.fielddomain.FieldDomainCalculatorRegistry
-import org.opensearch.indexmanagement.indexstatemanagement.fielddomain.FieldDomainSearchContext
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.fielddomain.ComputeFieldDomainsAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.fielddomain.ComputeFieldDomainsRequest
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.fielddomain.ComputeFieldDomainsResponse
 import org.opensearch.indexmanagement.indexstatemanagement.util.isIndexWriteBlocked
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
@@ -31,13 +31,11 @@ import org.opensearch.transport.RemoteTransportException
  * The step requires the managed index to be write-blocked, then refreshes it before computing domains. This makes
  * the published metadata safe for consumers that use finalized field domains for search-time pruning.
  *
- * Field-domain searches use the plugin identity; refresh and publication retain the policy user's permissions.
- * Publication permission authorizes index-wide metadata, including bounds beyond that user's document visibility.
+ * Computation is independently authorized before any privileged search, including when a field turns out to be empty.
+ * Only calculator searches use the plugin identity; refresh and publication retain the policy user's permissions.
  */
 class AttemptPublishFieldDomainsStep(
     private val action: PublishFieldDomainsAction,
-    private val calculatorRegistry: FieldDomainCalculatorRegistry = FieldDomainCalculatorRegistry.defaultRegistry(),
-    private val searchContextFactory: (StepContext) -> FieldDomainSearchContext = { FieldDomainSearchContext(it) },
 ) : Step(name) {
     private val logger = LogManager.getLogger(javaClass)
     private var stepStatus = StepStatus.STARTING
@@ -62,7 +60,6 @@ class AttemptPublishFieldDomainsStep(
     private suspend fun attemptPublish(context: StepContext, indexName: String) {
         val indexMetadata = currentIndexMetadata(context, indexName)
         if (indexMetadata != null && validateWriteBlock(indexMetadata)) {
-            refreshIndex(context, indexName)
             val domains = calculateDomains(context, indexMetadata)
             if (domains.isEmpty()) {
                 markNoDomains(indexName)
@@ -100,12 +97,10 @@ class AttemptPublishFieldDomainsStep(
     }
 
     private suspend fun calculateDomains(context: StepContext, indexMetadata: IndexMetadata): List<FieldDomain> {
-        val searchContext = searchContextFactory(context)
-        return action.fields.mapNotNull { fieldConfig ->
-            val calculator = calculatorRegistry.get(fieldConfig.type)
-                ?: throw IllegalArgumentException("No field-domain calculator registered for type [${fieldConfig.type}]")
-            calculator.calculate(searchContext, indexMetadata, fieldConfig, FINALIZED)
+        val response: ComputeFieldDomainsResponse = context.client.suspendUntil {
+            execute(ComputeFieldDomainsAction.INSTANCE, ComputeFieldDomainsRequest(indexMetadata.index, action.fields), it)
         }
+        return response.fieldDomains()
     }
 
     private fun validateWriteBlock(indexMetadata: IndexMetadata): Boolean {
@@ -119,18 +114,6 @@ class AttemptPublishFieldDomainsStep(
         stepStatus = StepStatus.CONDITION_NOT_MET
         info = mapOf("message" to message)
         return false
-    }
-
-    private suspend fun refreshIndex(context: StepContext, indexName: String) {
-        val response = context.client.admin().indices().suspendUntil {
-            refresh(RefreshRequest(indexName), it)
-        }
-        if (response.failedShards > 0) {
-            throw IllegalStateException(
-                "Failed to refresh index [$indexName] before publishing field domains, " +
-                    "shard failures [${response.shardFailures.joinToString { it.toString() }}]",
-            )
-        }
     }
 
     private suspend fun publishDomains(context: StepContext, indexMetadata: IndexMetadata, domains: List<FieldDomain>) {
@@ -178,7 +161,6 @@ class AttemptPublishFieldDomainsStep(
 
     companion object {
         const val name = "attempt_publish_field_domains"
-        private const val FINALIZED = true
 
         fun getIndexMissingMessage(index: String) = "Cannot publish field domains because index is missing [index=$index]"
 

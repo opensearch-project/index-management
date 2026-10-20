@@ -73,6 +73,8 @@ import org.opensearch.indexmanagement.indexstatemanagement.transport.action.dele
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.deletepolicy.TransportDeletePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.ExplainAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.explain.TransportExplainAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.fielddomain.ComputeFieldDomainsAction
+import org.opensearch.indexmanagement.indexstatemanagement.transport.action.fielddomain.TransportComputeFieldDomainsAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy.GetPoliciesAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy.GetPolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.transport.action.getpolicy.TransportGetPoliciesAction
@@ -598,6 +600,7 @@ class IndexManagementPlugin :
     )
 
     override fun getActions(): List<ActionPlugin.ActionHandler<out ActionRequest, out ActionResponse>> = listOf(
+        ActionPlugin.ActionHandler(ComputeFieldDomainsAction.INSTANCE, TransportComputeFieldDomainsAction::class.java),
         ActionPlugin.ActionHandler(RemovePolicyAction.INSTANCE, TransportRemovePolicyAction::class.java),
         ActionPlugin.ActionHandler(RefreshSearchAnalyzerAction.INSTANCE, TransportRefreshSearchAnalyzerAction::class.java),
         ActionPlugin.ActionHandler(AddPolicyAction.INSTANCE, TransportAddPolicyAction::class.java),

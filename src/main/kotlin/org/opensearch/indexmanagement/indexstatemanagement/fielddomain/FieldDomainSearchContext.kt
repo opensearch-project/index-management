@@ -8,10 +8,12 @@ package org.opensearch.indexmanagement.indexstatemanagement.fielddomain
 import org.opensearch.action.search.SearchRequest
 import org.opensearch.action.search.SearchResponse
 import org.opensearch.action.support.IndicesOptions
+import org.opensearch.common.util.concurrent.ThreadContext
 import org.opensearch.identity.PluginSubject
 import org.opensearch.indexmanagement.opensearchapi.suspendUntilAsPlugin
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.search.builder.SearchSourceBuilder
+import org.opensearch.transport.client.Client
 
 /**
  * Search access for field-domain calculators, bound to the managed concrete index.
@@ -20,21 +22,25 @@ import org.opensearch.search.builder.SearchSourceBuilder
  * The caller's identity is restored before returning. Failed, timed-out, and early-terminated searches are rejected.
  */
 class FieldDomainSearchContext internal constructor(
-    private val context: StepContext,
+    private val indexName: String,
+    private val client: Client,
+    private val threadContext: ThreadContext?,
     private val subjectSupplier: () -> PluginSubject = {
         checkNotNull(pluginSubject) { "Field-domain calculation requires a plugin identity" }
     },
 ) {
+    internal constructor(context: StepContext, subjectSupplier: () -> PluginSubject) :
+        this(context.metadata.index, context.client, context.threadContext, subjectSupplier)
+
     suspend fun search(source: SearchSourceBuilder): SearchResponse {
-        val indexName = context.metadata.index
         val request = SearchRequest(indexName)
             .source(source)
             .indicesOptions(IndicesOptions.strictSingleIndexNoExpandForbidClosed())
             .allowPartialSearchResults(false)
         val subject = subjectSupplier()
-        val threadContext = checkNotNull(context.threadContext) { "Field-domain calculation requires a thread context" }
+        val threadContext = checkNotNull(threadContext) { "Field-domain calculation requires a thread context" }
         val response = subject.suspendUntilAsPlugin<SearchResponse>(threadContext) {
-            context.client.search(request, it)
+            client.search(request, it)
         }
         check(!response.isTimedOut) { "Field-domain search timed out for index [$indexName]" }
         check(response.isTerminatedEarly != true) { "Field-domain search terminated early for index [$indexName]" }

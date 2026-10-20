@@ -5,17 +5,22 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.action
 
+import org.opensearch.client.Request
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.core.common.bytes.BytesReference
 import org.opensearch.index.fielddomain.DateRangeFieldDomain
 import org.opensearch.index.fielddomain.IndexFieldDomainMetadata
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.fielddomain.FieldDomainConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.randomErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.step.fielddomain.AttemptPublishFieldDomainsStep
+import org.opensearch.indexmanagement.indexstatemanagement.step.readonly.SetReadOnlyStep
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.waitFor
-import org.opensearch.rest.RestRequest
+import org.opensearch.jobscheduler.spi.LockModel
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -23,8 +28,9 @@ import java.util.Locale
 class PublishFieldDomainsActionIT : IndexStateManagementRestTestCase() {
     private val testIndexName = javaClass.simpleName.lowercase(Locale.ROOT)
 
-    fun `test publish field domains action writes date and date nanos metadata`() {
+    fun `test published date and date nanos domains prune without exposing metadata`() {
         val indexName = "${testIndexName}_index"
+        val controlIndex = "${testIndexName}_control"
         val policyID = "${testIndexName}_policy"
         val millisField = "event.millis"
         val nanosField = "event.nanos"
@@ -59,6 +65,8 @@ class PublishFieldDomainsActionIT : IndexStateManagementRestTestCase() {
 
         createPolicy(policy, policyID)
         createIndex(indexName, policyID, replicas = "0", mapping = mapping(millisField, nanosField))
+        // An index without domains prevents the all-pruned fallback from hiding missing publication.
+        createIndex(controlIndex, policyID = null, replicas = "0", mapping = mapping(millisField, nanosField))
         indexDoc(indexName, source = source(millisMin, nanosMax))
         indexDoc(indexName, source = source(millisMax, nanosMin))
         indexDoc(indexName, source = source("2024-05-02T00:00:00.000Z", "2024-05-01T00:00:00.000000005Z"))
@@ -66,10 +74,17 @@ class PublishFieldDomainsActionIT : IndexStateManagementRestTestCase() {
 
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID) }
+        waitFor {
+            assertEquals(policyID, getExplainManagedIndexMetaData(indexName).policyID)
+            assertJobLockReleased(managedIndexConfig.id)
+        }
 
         updateManagedIndexConfigStartTime(managedIndexConfig)
-        waitFor { assertEquals("true", getIndexBlocksWriteSetting(indexName)) }
+        waitFor {
+            assertEquals("true", getIndexBlocksWriteSetting(indexName))
+            assertEquals(SetReadOnlyStep.getSuccessMessage(indexName), getExplainManagedIndexMetaData(indexName).info?.get("message"))
+            assertJobLockReleased(managedIndexConfig.id)
+        }
 
         updateManagedIndexConfigStartTime(managedIndexConfig)
         waitFor {
@@ -77,21 +92,33 @@ class PublishFieldDomainsActionIT : IndexStateManagementRestTestCase() {
             assertEquals(AttemptPublishFieldDomainsStep.getSuccessMessage(indexName, 2), metadata.info?.get("message"))
         }
 
-        val customData = waitFor { getIndexFieldDomains(indexName) }
-        assertDateRangeDomain(
-            customData = customData,
-            field = millisField,
-            min = Instant.parse(millisMin).toEpochMilli().toString(),
-            max = Instant.parse(millisMax).toEpochMilli().toString(),
-            resolution = "milliseconds",
-        )
-        assertDateRangeDomain(
-            customData = customData,
-            field = nanosField,
-            min = epochNanos(nanosMin),
-            max = epochNanos(nanosMax),
-            resolution = "nanoseconds",
-        )
+        val metadata = client().makeRequest("GET", "/_cluster/state/metadata/$indexName").asMap()
+            .stringMap("metadata")?.stringMap("indices")?.stringMap(indexName)
+        assertNotNull("Ordinary index metadata remains visible", metadata)
+        assertFalse("Field domains must not be exposed through the API", metadata!!.containsKey(IndexFieldDomainMetadata.CUSTOM_KEY))
+        val originalSettings = client().makeRequest("GET", "/_cluster/settings?flat_settings=true").asMap()
+            .stringMap("persistent").orEmpty()
+        try {
+            updateClusterSetting(PRUNING_MIN_SHARDS, "1", false)
+            updateClusterSetting(PRUNING_FIELDS, "[\"$millisField\",\"$nanosField\"]", false)
+            for (enabled in listOf(false, true)) {
+                updateClusterSetting(PRUNING_ENABLED, enabled.toString(), false)
+                waitFor {
+                    assertBoundarySearches("$indexName,$controlIndex", millisField, millisMin, millisMax, enabled)
+                    assertBoundarySearches("$indexName,$controlIndex", nanosField, nanosMin, nanosMax, enabled)
+                }
+            }
+        } finally {
+            val restored = listOf(PRUNING_ENABLED, PRUNING_MIN_SHARDS, PRUNING_FIELDS).associateWith { originalSettings[it] }
+            val request = Request("PUT", "/_cluster/settings")
+            request.setJsonEntity(
+                XContentFactory.jsonBuilder().use { builder ->
+                    builder.startObject().field("persistent", restored).endObject()
+                    BytesReference.bytes(builder).utf8ToString()
+                },
+            )
+            client().performRequest(request)
+        }
     }
 
     private fun mapping(millisField: String, nanosField: String): String =
@@ -116,37 +143,45 @@ class PublishFieldDomainsActionIT : IndexStateManagementRestTestCase() {
         }
         """.trimIndent()
 
-    @Suppress("UNCHECKED_CAST")
-    private fun getIndexFieldDomains(indexName: String): Map<String, String> {
-        val response = client().makeRequest(RestRequest.Method.GET.toString(), "/_cluster/state/metadata/$indexName")
-        val metadata = response.asMap()["metadata"] as Map<String, Any>
-        val indices = metadata["indices"] as Map<String, Any>
-        val indexMetadata = indices[indexName] as Map<String, Any>
-        return indexMetadata[IndexFieldDomainMetadata.CUSTOM_KEY] as Map<String, String>
-    }
-
-    private fun assertDateRangeDomain(
-        customData: Map<String, String>,
+    private fun assertBoundarySearches(
+        indices: String,
         field: String,
         min: String,
         max: String,
-        resolution: String,
+        pruning: Boolean,
     ) {
-        val prefix = "fields.$field."
-        assertEquals(DateRangeFieldDomain.TYPE, customData[prefix + "type"])
-        assertEquals(min, customData[prefix + "min"])
-        assertEquals(max, customData[prefix + "max"])
-        assertEquals("true", customData[prefix + "finalized"])
-        assertEquals("ism", customData[prefix + "source"])
-        assertEquals(resolution, customData[prefix + "resolution"])
+        val ranges = listOf(
+            Triple("""{"gte":"$min","lte":"$min"}""", 1L, 0),
+            Triple("""{"gte":"$max","lte":"$max"}""", 1L, 0),
+            Triple("""{"gt":"$min","lt":"$max"}""", 1L, 0),
+            Triple("""{"lt":"$min"}""", 0L, 1),
+            Triple("""{"gt":"$max"}""", 0L, 1),
+        )
+        for ((range, hits, prunableShards) in ranges) {
+            val request = Request("POST", "/$indices/_search")
+            request.addParameter("request_cache", "false")
+            request.addParameter("allow_partial_search_results", "false")
+            // Disable shard prefiltering so skipped shards prove that field domains are used.
+            request.addParameter("pre_filter_shard_size", Int.MAX_VALUE.toString())
+            request.setJsonEntity("""{"size":0,"track_total_hits":true,"query":{"range":{"$field":$range}}}""")
+            val response = client().performRequest(request).asMap()
+            assertEquals(false, response["timed_out"])
+            assertEquals(2, response.stringMap("_shards")?.get("total"))
+            assertEquals(0, response.stringMap("_shards")?.get("failed"))
+            assertEquals("Unexpected hits for $field: $range", hits, (response.stringMap("hits")!!.stringMap("total")!!["value"] as Number).toLong())
+            assertEquals(if (pruning) prunableShards else 0, response.stringMap("_shards")?.get("skipped"))
+        }
     }
 
-    private fun epochNanos(value: String): String {
-        val instant = Instant.parse(value)
-        return (instant.epochSecond * NANOS_PER_SECOND + instant.nano).toString()
+    private fun assertJobLockReleased(jobId: String) {
+        val lockId = LockModel.generateLockId(INDEX_MANAGEMENT_INDEX, jobId)
+        val lock = adminClient().makeRequest("GET", "/.opendistro-job-scheduler-lock/_doc/$lockId").asMap()
+        assertEquals(true, lock.stringMap("_source")?.get(LockModel.RELEASED))
     }
 
     companion object {
-        private const val NANOS_PER_SECOND = 1_000_000_000L
+        private const val PRUNING_ENABLED = "search.index_pruning.enabled"
+        private const val PRUNING_MIN_SHARDS = "search.index_pruning.min_shards"
+        private const val PRUNING_FIELDS = "search.index_pruning.fields"
     }
 }

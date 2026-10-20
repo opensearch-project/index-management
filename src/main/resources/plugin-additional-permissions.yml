@@ -1,7 +1,8 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-# Only field-domain searches use this identity. Publication remains policy-user authorized.
+# Field-domain searches use this identity only after policy-user computation authorization.
+# Publication itself remains policy-user authorized.
 # The grant covers all indices; FieldDomainSearchContext targets the exact managed index.
 cluster_permissions: []
 index_permissions:
