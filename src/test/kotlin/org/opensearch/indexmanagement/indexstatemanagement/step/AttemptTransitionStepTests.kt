@@ -24,9 +24,11 @@ import org.opensearch.cluster.metadata.Metadata
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.ClusterSettings
 import org.opensearch.common.settings.Settings
+import org.opensearch.common.unit.TimeValue
 import org.opensearch.core.action.ActionListener
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.index.shard.DocsStats
+import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
@@ -34,6 +36,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.model.Conditions
 import org.opensearch.indexmanagement.indexstatemanagement.model.Transition
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.transition.AttemptTransitionStep
+import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.IndexManagementActionsMetrics
 import org.opensearch.indexmanagement.spi.indexstatemanagement.metrics.actionmetrics.TransitionActionMetrics
@@ -99,7 +102,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
         whenever(docsStats.count).doReturn(6L)
         whenever(docsStats.totalSizeInBytes).doReturn(2)
         val client = getClient(getAdminClient(getIndicesAdminClient(statsResponse, null)))
-        val indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
+        val indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf(DEFAULT_INDEX_TYPE to DefaultIndexMetadataService()))
 
         runBlocking {
             val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, ActionMetaData("transition", Instant.now().toEpochMilli(), 0, false, 1, null, null), null, null, null)
@@ -118,7 +121,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
         whenever(indexMetadata.creationDate).doReturn(5L)
         val exception = IllegalArgumentException("example")
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
-        val indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
+        val indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf(DEFAULT_INDEX_TYPE to DefaultIndexMetadataService()))
 
         runBlocking {
             val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, ActionMetaData("transition", Instant.now().toEpochMilli(), 0, false, 1, null, null), null, null, null)
@@ -137,7 +140,7 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
         whenever(indexMetadata.creationDate).doReturn(5L)
         val exception = RemoteTransportException("rte", IllegalArgumentException("nested"))
         val client = getClient(getAdminClient(getIndicesAdminClient(null, exception)))
-        val indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf())
+        val indexMetadataProvider = IndexMetadataProvider(settings, client, clusterService, mutableMapOf(DEFAULT_INDEX_TYPE to DefaultIndexMetadataService()))
 
         runBlocking {
             val managedIndexMetadata = ManagedIndexMetaData(indexName, indexUUID, "policy_id", null, null, null, null, null, null, null, ActionMetaData("transition", Instant.now().toEpochMilli(), 0, false, 1, null, null), null, null, null)
@@ -162,6 +165,54 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
             Thread.sleep(50) // Make sure we give enough time for the instants to be different
             val startTime = attemptTransitionStep.getStepStartTime(managedIndexMetadata)
             assertNotEquals("Two separate transitions should not have same start time", completedStartTime.toEpochMilli(), startTime.toEpochMilli())
+        }
+    }
+
+    fun `test min_rollover_age transition evaluates for reattached index tracked by plugin-injected uuid`() {
+        // An extension can register a custom index UUID setting. For such an index getIndexUUID()
+        // returns the stable plugin-injected UUID, which is what ISM keys the managed-index job on.
+        // When the index leaves the cluster and re-attaches, cluster metadata assigns it a fresh raw
+        // indexUUID while the plugin-injected UUID stays the same. The index HAS rolled over, so
+        // rolloverInfos is present in cluster state. Before the fix, inCluster compared the raw live
+        // UUID against the job UUID, treated the index as out-of-cluster, skipped getOldestRolloverTime(),
+        // and failed the min_rollover_age transition with "...the index has never been rolled over".
+        // With the fix, inCluster resolves identity via DefaultIndexMetadataService.getIndexUUID()
+        // (as the coordinator and runner already do), so the rollover date is read and the transition
+        // evaluates normally.
+        val pluginUuidSetting = "index.plugin_injected_uuid"
+        val liveClusterUuid = "liveClusterUuid"
+        val pluginInjectedUuid = "pluginInjectedUuid"
+        whenever(indexMetadata.indexUUID).doReturn(liveClusterUuid)
+        whenever(indexMetadata.creationDate).doReturn(5L)
+        whenever(indexMetadata.rolloverInfos).doReturn(mapOf("alias" to RolloverInfo("alias", emptyList(), 1L)))
+        whenever(indexMetadata.settings).doReturn(Settings.builder().put(pluginUuidSetting, pluginInjectedUuid).build())
+        val client = getClient(getAdminClient(getIndicesAdminClient(statsResponse, null)))
+        val indexMetadataProvider =
+            IndexMetadataProvider(
+                settings, client, clusterService,
+                mutableMapOf(DEFAULT_INDEX_TYPE to DefaultIndexMetadataService(pluginUuidSetting)),
+            )
+
+        runBlocking {
+            // ISM keyed the job on the plugin-injected UUID, not the live cluster UUID.
+            val managedIndexMetadata =
+                ManagedIndexMetaData(
+                    indexName, pluginInjectedUuid, "policy_id", null, null, null, null, null, null, null,
+                    ActionMetaData("transition", Instant.now().toEpochMilli(), 0, false, 1, null, null), null, null, null,
+                )
+            val transitionsAction =
+                TransitionsAction(listOf(Transition("some_state", Conditions(rolloverAge = TimeValue.timeValueDays(15)))), indexMetadataProvider)
+            val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
+            val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings, lockService)
+            attemptTransitionStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptTransitionStep, managedIndexMetadata)
+            val updatedManagedIndexMetaData = attemptTransitionStep.getUpdatedManagedIndexMetadata(managedIndexMetadata)
+            assertEquals(
+                "min_rollover_age transition should evaluate for a rolled-over index tracked by a plugin-injected UUID," +
+                    " not fail with 'never been rolled over'",
+                Step.StepStatus.COMPLETED,
+                updatedManagedIndexMetaData.stepMetaData?.stepStatus,
+            )
+            assertEquals("Should transition to the target state", "some_state", updatedManagedIndexMetaData.transitionTo)
         }
     }
 

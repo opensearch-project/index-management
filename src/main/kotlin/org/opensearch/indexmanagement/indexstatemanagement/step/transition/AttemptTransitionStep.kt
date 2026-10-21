@@ -12,6 +12,7 @@ import org.opensearch.action.admin.indices.stats.IndicesStatsResponse
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.core.common.unit.ByteSizeValue
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getOldestRolloverTime
@@ -50,7 +51,15 @@ class AttemptTransitionStep(private val action: TransitionsAction) : Step(name) 
             }
 
             val indexMetadata = clusterService.state().metadata().index(indexName)
-            val inCluster = clusterService.state().metadata().hasIndex(indexName) && indexMetadata?.indexUUID == context.metadata.indexUuid
+            // Resolve the cluster-state UUID the same way ManagedIndexCoordinator and ManagedIndexRunner do,
+            // via DefaultIndexMetadataService.getIndexUUID(). An extension can register a custom index UUID
+            // setting; for such an index getIndexUUID() returns that stable plugin-injected UUID, which is what
+            // ISM keys the managed-index job on. When the index leaves the cluster and re-attaches it is assigned
+            // a fresh raw indexUUID, so comparing the raw indexUUID here wrongly treats the index as out-of-cluster
+            // and skips the rollover-info lookup below, failing otherwise-valid min_rollover_age transitions.
+            val defaultIndexMetadataService = indexMetadataProvider.services[DEFAULT_INDEX_TYPE] as DefaultIndexMetadataService
+            val clusterStateUuid = indexMetadata?.let { defaultIndexMetadataService.getIndexUUID(it) }
+            val inCluster = clusterService.state().metadata().hasIndex(indexName) && clusterStateUuid == context.metadata.indexUuid
 
             val indexCreationDate = getIndexCreationDate(context.metadata, indexMetadataProvider, clusterService, indexName, inCluster)
             val indexCreationDateInstant = Instant.ofEpochMilli(indexCreationDate)
