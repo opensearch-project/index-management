@@ -216,6 +216,78 @@ class AttemptTransitionStepTests : OpenSearchTestCase() {
         }
     }
 
+    fun `test min_rollover_age transition fails when index is not present in cluster state`() {
+        // Covers the out-of-cluster branch of the identity resolution: the index is absent from
+        // cluster state, so metadata.index() returns null and hasIndex is false. This exercises the
+        // null branch of indexMetadata?.let { getIndexUUID(it) } and the short-circuit branch of
+        // hasIndex(indexName) && clusterStateUuid == ..., complementing the in-cluster test above.
+        // inCluster is false, the rollover date cannot be read, and the min_rollover_age transition
+        // fails.
+        whenever(metadata.index(any<String>())).thenReturn(null)
+        whenever(metadata.hasIndex(indexName)).thenReturn(false)
+        val client = getClient(getAdminClient(getIndicesAdminClient(statsResponse, null)))
+        val indexMetadataProvider =
+            IndexMetadataProvider(
+                settings, client, clusterService,
+                mutableMapOf(DEFAULT_INDEX_TYPE to DefaultIndexMetadataService()),
+            )
+
+        runBlocking {
+            val managedIndexMetadata =
+                ManagedIndexMetaData(
+                    indexName, indexUUID, "policy_id", null, null, null, null, null, null, null,
+                    ActionMetaData("transition", Instant.now().toEpochMilli(), 0, false, 1, null, null), null, null, null,
+                )
+            val transitionsAction =
+                TransitionsAction(listOf(Transition("some_state", Conditions(rolloverAge = TimeValue.timeValueDays(15)))), indexMetadataProvider)
+            val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
+            val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings, lockService)
+            attemptTransitionStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptTransitionStep, managedIndexMetadata)
+            val updatedManagedIndexMetaData = attemptTransitionStep.getUpdatedManagedIndexMetadata(managedIndexMetadata)
+            assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
+            assertEquals(
+                "Did not get rollover date failure message",
+                AttemptTransitionStep.getFailedRolloverDateMessage(indexName),
+                updatedManagedIndexMetaData.info!!["message"],
+            )
+        }
+    }
+
+    fun `test min_rollover_age transition fails when resolved uuid does not match the managed job uuid`() {
+        // Covers the branch where the index IS in cluster state (hasIndex true) but its resolved
+        // UUID differs from the UUID the managed-index job is keyed on, so inCluster is false. This
+        // exercises the false outcome of the clusterStateUuid == context.metadata.indexUuid comparison.
+        whenever(indexMetadata.indexUUID).doReturn("liveClusterUuid")
+        whenever(indexMetadata.creationDate).doReturn(5L)
+        val client = getClient(getAdminClient(getIndicesAdminClient(statsResponse, null)))
+        val indexMetadataProvider =
+            IndexMetadataProvider(
+                settings, client, clusterService,
+                mutableMapOf(DEFAULT_INDEX_TYPE to DefaultIndexMetadataService()),
+            )
+
+        runBlocking {
+            // Job keyed on a different UUID than the live cluster UUID (no custom setting registered).
+            val managedIndexMetadata =
+                ManagedIndexMetaData(
+                    indexName, "differentJobUuid", "policy_id", null, null, null, null, null, null, null,
+                    ActionMetaData("transition", Instant.now().toEpochMilli(), 0, false, 1, null, null), null, null, null,
+                )
+            val transitionsAction =
+                TransitionsAction(listOf(Transition("some_state", Conditions(rolloverAge = TimeValue.timeValueDays(15)))), indexMetadataProvider)
+            val attemptTransitionStep = AttemptTransitionStep(transitionsAction)
+            val context = StepContext(managedIndexMetadata, clusterService, client, null, null, scriptService, settings, lockService)
+            attemptTransitionStep.preExecute(logger, context).execute().postExecute(logger, IndexManagementActionsMetrics.instance, attemptTransitionStep, managedIndexMetadata)
+            val updatedManagedIndexMetaData = attemptTransitionStep.getUpdatedManagedIndexMetadata(managedIndexMetadata)
+            assertEquals("Step status is not FAILED", Step.StepStatus.FAILED, updatedManagedIndexMetaData.stepMetaData?.stepStatus)
+            assertEquals(
+                "Did not get rollover date failure message",
+                AttemptTransitionStep.getFailedRolloverDateMessage(indexName),
+                updatedManagedIndexMetaData.info!!["message"],
+            )
+        }
+    }
+
     private fun getClient(adminClient: AdminClient): Client = mock { on { admin() } doReturn adminClient }
 
     private fun getAdminClient(indicesAdminClient: IndicesAdminClient): AdminClient = mock { on { indices() } doReturn indicesAdminClient }
