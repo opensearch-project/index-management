@@ -230,7 +230,7 @@ class IndexManagementPlugin :
     private val extensionCheckerMap = mutableMapOf<String, StatusChecker>()
     lateinit var indexOperationActionFilter: IndexOperationActionFilter
     private lateinit var metricsRegistry: MetricsRegistry
-    private lateinit var managedIndexUuidRemapper: ManagedIndexUuidRemapper
+    internal lateinit var managedIndexUuidRemapper: ManagedIndexUuidRemapper
 
     companion object {
         const val PLUGINS_BASE_URI = "/_plugins"

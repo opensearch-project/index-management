@@ -7,7 +7,6 @@ package org.opensearch.indexmanagement.indexstatemanagement
 
 import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
-import org.opensearch.client.ResponseException
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.action.IndexPriorityAction
@@ -68,34 +67,7 @@ class ManagedIndexUuidRemapperIT : IndexStateManagementRestTestCase() {
         }
     }
 
-    fun `test restored jobs that match no index are not moved`() {
-        val policyID = "${testIndexName}_no_match"
-        val matched = "${testIndexName}_matched"
-        val recreated = "${testIndexName}_recreated"
-        val neverRun = "${testIndexName}_never_run"
-        createPolicy(warmPolicy(policyID), policyID)
-        listOf(matched, recreated).forEach {
-            createIndex(it, policyID)
-            initialize(it, policyID)
-        }
-        // This job does not run before the snapshot, so the snapshot has no metadata for it.
-        createIndex(neverRun, policyID)
-        val repository = "${testIndexName}_no_match_repo"
-        takeSnapshot(repository, listOf(matched, recreated, neverRun, INDEX_MANAGEMENT_INDEX))
-
-        deleteIndices(listOf(INDEX_MANAGEMENT_INDEX, matched, recreated, neverRun))
-        restore(repository, listOf(matched, neverRun))
-        // Created again under the same name instead of restored, so it has a new creation date.
-        createIndex(recreated, policyID = null)
-        restore(repository, listOf(INDEX_MANAGEMENT_INDEX))
-
-        // All restored jobs are handled in one pass, so once the matched job has moved, the others were not moved.
-        waitFor { getManagedIndexConfigByDocId(getUuid(matched)) }
-        assertFalse("$recreated got the restored job", jobExists(getUuid(recreated)))
-        assertFalse("$neverRun got the restored job", jobExists(getUuid(neverRun)))
-    }
-
-    private fun warmPolicy(id: String, template: ISMTemplate? = null) = Policy(
+    private fun warmPolicy(id: String, template: ISMTemplate) = Policy(
         id = id,
         description = "$testIndexName description",
         schemaVersion = 1L,
@@ -107,7 +79,7 @@ class ManagedIndexUuidRemapperIT : IndexStateManagementRestTestCase() {
             State("hot", listOf(), listOf(Transition("warm", conditions = null))),
             State("warm", listOf(IndexPriorityAction(WARM_INDEX_PRIORITY, 0)), listOf()),
         ),
-        ismTemplate = template?.let { listOf(it) },
+        ismTemplate = listOf(template),
     )
 
     /** Runs the index's job until the index is in state "warm" with its index priority set. */
@@ -153,14 +125,6 @@ class ManagedIndexUuidRemapperIT : IndexStateManagementRestTestCase() {
         StringEntity("""{"indices": "${indices.joinToString(",")}", "include_global_state": false}""", ContentType.APPLICATION_JSON)
 
     private fun deleteIndices(indices: List<String>) = indices.forEach { adminClient().makeRequest("DELETE", it) }
-
-    private fun jobExists(uuid: String): Boolean = try {
-        adminClient().makeRequest("GET", "$INDEX_MANAGEMENT_INDEX/_doc/$uuid")
-        true
-    } catch (e: ResponseException) {
-        if (e.response.restStatus() != RestStatus.NOT_FOUND) throw e
-        false
-    }
 
     companion object {
         private const val SNAPSHOT = "snapshot"

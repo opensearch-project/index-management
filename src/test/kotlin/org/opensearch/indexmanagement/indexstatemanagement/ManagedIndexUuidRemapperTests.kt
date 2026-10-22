@@ -45,6 +45,7 @@ import org.opensearch.index.get.GetResult
 import org.opensearch.index.query.BoolQueryBuilder
 import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
+import org.opensearch.indexmanagement.IndexManagementPlugin
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
@@ -103,6 +104,15 @@ class ManagedIndexUuidRemapperTests : OpenSearchTestCase() {
         remapper(index("abc", "456")).moveRestoredJobs(restoreOf("abc"))
 
         verifyNoInteractions(client, ismIndices)
+    }
+
+    fun `test the plugin hands a restore to the remapper`() {
+        jobPages = listOf(listOf(job("abc", "123")))
+        val plugin = IndexManagementPlugin().apply { managedIndexUuidRemapper = remapper(index("abc", "456")) }
+
+        plugin.onRestore(restoreOf(INDEX_MANAGEMENT_INDEX))
+
+        assertEquals(1, jobSearches.size)
     }
 
     fun `test a restored job and its metadata move to the new uuid of their index`() {
