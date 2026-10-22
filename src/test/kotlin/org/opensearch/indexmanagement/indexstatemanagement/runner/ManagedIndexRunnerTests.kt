@@ -448,6 +448,48 @@ class ManagedIndexRunnerTests : OpenSearchTestCase() {
         assertTrue("the job must not be disabled", configIndex.updateRequests.isEmpty())
     }
 
+    fun `test policy version reconciliation forgets the attempts of a job whose document is gone`() {
+        val indexUuid = randomAlphaOfLength(20)
+        val policyA = testPolicy("policy-a", seqNo = 5, primaryTerm = 1)
+        val policyB = testPolicy("policy-b", seqNo = 11, primaryTerm = 2)
+        val scheduled = testConfig(indexUuid, policyA, changePolicy = ChangePolicy(policyB.id, null, emptyList(), isSafe = false))
+        val interrupted = testMetadata(indexUuid, policyB)
+        val jobDocument = Document(scheduled.toJsonString(), seqNo = 21, primaryTerm = 2)
+        val configIndex =
+            ConfigIndexMock(
+                indexUuid to jobDocument,
+                policyB.id to Document(policyB.toJsonString(), seqNo = policyB.seqNo, primaryTerm = policyB.primaryTerm),
+            )
+        configIndex.failIndexRequestWhen = { it.id() == indexUuid }
+
+        repeat(2) { assertNull(runBlocking { runner.reconcilePolicyVersion(scheduled, interrupted) }) }
+        assertEquals(2, runner.policyVersionReconcileAttempts.get(indexUuid))
+
+        // the job document is deleted while the reconciliation is in progress: its attempts must not be kept
+        configIndex.documents.remove(indexUuid)
+        assertNull(runBlocking { runner.reconcilePolicyVersion(scheduled, interrupted) })
+        assertNull("the attempts of a job without a job document must be cleared", runner.policyVersionReconcileAttempts.get(indexUuid))
+
+        // a later job document for the same index starts from zero: three more replays before the managed index is failed
+        configIndex.documents[indexUuid] = jobDocument
+        repeat(3) { assertNull(runBlocking { runner.reconcilePolicyVersion(scheduled, interrupted) }) }
+        assertTrue("the job must not be disabled", configIndex.updateRequests.isEmpty())
+    }
+
+    fun `test policy version reconciliation attempts are tracked in a bounded cache`() {
+        val attempts = runner.policyVersionReconcileAttempts
+        val capacity = ManagedIndexRunner.MAX_TRACKED_POLICY_VERSION_RECONCILIATIONS.toInt()
+        try {
+            repeat(capacity + 1) { attempts.put("tracked-$it", 1) }
+
+            assertEquals("the cache must not grow beyond its capacity", capacity, attempts.count())
+            assertNull("the least recently used entry must be evicted", attempts.get("tracked-0"))
+            assertEquals(1, attempts.get("tracked-$capacity"))
+        } finally {
+            attempts.invalidateAll()
+        }
+    }
+
     fun `test policy version reconciliation fails the managed index immediately when disabled`() {
         val indexUuid = randomAlphaOfLength(20)
         val policyA = testPolicy("policy-a", seqNo = 5, primaryTerm = 1)

@@ -28,6 +28,8 @@ import org.opensearch.cluster.health.ClusterHealthStatus
 import org.opensearch.cluster.health.ClusterStateHealth
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.cache.Cache
+import org.opensearch.common.cache.CacheBuilder
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
@@ -115,7 +117,6 @@ import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.client.Client
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import java.util.concurrent.ConcurrentHashMap
 
 @Suppress("TooManyFunctions", "LargeClass")
 object ManagedIndexRunner :
@@ -156,11 +157,18 @@ object ManagedIndexRunner :
     /**
      * Consecutive runs per managed index (keyed by index uuid) in which the policy version on the metadata differed from the
      * job document and a corrective write was attempted without the two converging. Cleared as soon as a run finds them in
-     * agreement; bounds the self-healing in [reconcilePolicyVersion] so a mismatch that never converges still fails the
-     * managed index.
+     * agreement or finds the job document gone; bounds the self-healing in [reconcilePolicyVersion] so a mismatch that
+     * never converges still fails the managed index. An entry is left behind when a job stops running on this node while a
+     * reconciliation is in progress (index deleted, job moved to another node), so the cache is bounded: when it is full
+     * the least recently used entry is dropped, which at most grants that managed index a few more attempts.
      */
-    private val policyVersionReconcileAttempts = ConcurrentHashMap<String, Int>()
+    internal val policyVersionReconcileAttempts: Cache<String, Int> =
+        CacheBuilder.builder<String, Int>()
+            .setMaximumWeight(MAX_TRACKED_POLICY_VERSION_RECONCILIATIONS)
+            .weigher { _, _ -> 1L }
+            .build()
     private const val MAX_POLICY_VERSION_RECONCILE_ATTEMPTS = 3
+    internal const val MAX_TRACKED_POLICY_VERSION_RECONCILIATIONS = 10_000L
 
     fun registerClusterService(clusterService: ClusterService): ManagedIndexRunner {
         this.clusterService = clusterService
@@ -349,8 +357,8 @@ object ManagedIndexRunner :
 
         if (managedIndexMetaData.hasDifferentPolicyVersion(managedIndexConfig)) {
             managedIndexConfig = reconcilePolicyVersion(managedIndexConfig, managedIndexMetaData) ?: return
-        } else if (policyVersionReconcileAttempts.isNotEmpty()) {
-            policyVersionReconcileAttempts.remove(managedIndexConfig.indexUuid)
+        } else {
+            policyVersionReconcileAttempts.invalidate(managedIndexConfig.indexUuid)
         }
 
         val policy = managedIndexConfig.policy
@@ -604,13 +612,13 @@ object ManagedIndexRunner :
             return null
         }
 
-        val attempts = policyVersionReconcileAttempts[indexUuid] ?: 0
+        val attempts = policyVersionReconcileAttempts.get(indexUuid) ?: 0
         if (attempts >= MAX_POLICY_VERSION_RECONCILE_ATTEMPTS) {
             logger.warn(
                 "Policy version of the metadata of index [$index] ($metadataVersion) still differs from its job ($scheduledVersion) " +
                     "after $attempts reconciliation attempts, failing the managed index.",
             )
-            policyVersionReconcileAttempts.remove(indexUuid)
+            policyVersionReconcileAttempts.invalidate(indexUuid)
             failOnPolicyVersionConflict(scheduledManagedIndexConfig, managedIndexMetaData)
             return null
         }
@@ -625,6 +633,7 @@ object ManagedIndexRunner :
                 "Job document of index [$index] ($indexUuid) no longer exists in config index, skipping this run of the " +
                     "orphaned in-memory job. It will be removed by the job scheduler sweep.",
             )
+            policyVersionReconcileAttempts.invalidate(indexUuid)
             return null
         }
 
@@ -634,7 +643,7 @@ object ManagedIndexRunner :
                 "Scheduled job of index [$index] is stale ($scheduledVersion), its job document agrees with the metadata " +
                     "($metadataVersion). Continuing this run with the job document.",
             )
-            policyVersionReconcileAttempts.remove(indexUuid)
+            policyVersionReconcileAttempts.invalidate(indexUuid)
             return managedIndexConfig
         }
 
@@ -648,7 +657,7 @@ object ManagedIndexRunner :
             // through that gate. The gate is therefore not re-evaluated here; the index cannot execute under either
             // policy until the second write lands, and this replay performs exactly that write. No action is passed so
             // the action metadata recorded by the first write is kept rather than recomputed from the old policy.
-            policyVersionReconcileAttempts[indexUuid] = attempts + 1
+            policyVersionReconcileAttempts.put(indexUuid, attempts + 1)
             logger.warn(
                 "Metadata of index [$index] already carries the policy ($metadataVersion) its job document ($documentVersion) is " +
                     "still changing to. Replaying the policy change (attempt ${attempts + 1} of $MAX_POLICY_VERSION_RECONCILE_ATTEMPTS).",
@@ -663,7 +672,7 @@ object ManagedIndexRunner :
             "Metadata of index [$index] was written under policy version $metadataVersion, which is neither the version pinned on " +
                 "its job document ($documentVersion) nor an interrupted policy change of that document. Failing the managed index.",
         )
-        policyVersionReconcileAttempts.remove(indexUuid)
+        policyVersionReconcileAttempts.invalidate(indexUuid)
         failOnPolicyVersionConflict(managedIndexConfig, managedIndexMetaData)
         return null
     }
