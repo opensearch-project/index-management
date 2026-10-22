@@ -21,6 +21,8 @@
     ".ini",
     ".bat",
     ".git",
+    ".idea",
+    ".github",
     ".gitignore",
     ".whitesource",
     ".editorconfig",
