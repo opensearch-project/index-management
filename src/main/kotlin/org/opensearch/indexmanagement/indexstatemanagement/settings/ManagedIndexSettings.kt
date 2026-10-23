@@ -29,6 +29,7 @@ class ManagedIndexSettings {
         const val DEFAULT_JITTER = 0.6
         const val DEFAULT_ALLOW_RUNNING_ON_RED_CLUSTER = false
         const val DEFAULT_JOB_DOCUMENT_CHECK_ENABLED = true
+        const val DEFAULT_POLICY_VERSION_RECONCILIATION_ENABLED = true
         const val DEFAULT_RESTRICTED_PATTERN = "\\.opendistro_security|\\.kibana.*|\\$INDEX_MANAGEMENT_INDEX"
         val ALLOW_LIST_NONE = emptyList<String>()
         val ALLOW_LIST_ALL = ISMActionsParser.instance.parsers.map { it.getActionType() }.toList()
@@ -260,6 +261,21 @@ class ManagedIndexSettings {
             Setting.boolSetting(
                 "plugins.index_state_management.job_document_check.enabled",
                 DEFAULT_JOB_DOCUMENT_CHECK_ENABLED,
+                Setting.Property.NodeScope,
+                Setting.Property.Dynamic,
+            )
+
+        /**
+         * When enabled, a managed index whose metadata carries a different policy version than the job the scheduler
+         * handed to the runner is reconciled against the job document instead of being failed and disabled: a job
+         * document that agrees with the metadata means only the scheduler's in-memory copy is stale, and a policy
+         * change interrupted after its metadata write is completed. Any other mismatch, or an interrupted change that
+         * does not converge after a bounded number of attempts, fails the managed index as before.
+         */
+        val POLICY_VERSION_RECONCILIATION_ENABLED: Setting<Boolean> =
+            Setting.boolSetting(
+                "plugins.index_state_management.policy_version_reconciliation.enabled",
+                DEFAULT_POLICY_VERSION_RECONCILIATION_ENABLED,
                 Setting.Property.NodeScope,
                 Setting.Property.Dynamic,
             )

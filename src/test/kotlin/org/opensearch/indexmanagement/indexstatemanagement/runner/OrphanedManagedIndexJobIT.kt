@@ -33,12 +33,16 @@ import java.time.Instant
  * operations, so the node that owns a job through the replica copy never observes the delete issued by the remove policy
  * API: the job scheduler keeps running the removed job from memory ("orphaned" job). These tests verify that the runner
  * refuses to re-initialize a managed index whose job document is gone, and that the check can be switched off.
+ *
+ * The job scheduler can also deschedule such jobs itself: its sweep removes in-memory jobs whose document no longer exists
+ * (orphan reconciliation, enabled by default on remote-store nodes), usually before they run again. Both tests switch it
+ * off, so that the orphans keep running and the runner's check is what keeps them harmless.
  */
 class OrphanedManagedIndexJobIT : IndexStateManagementRestTestCase() {
     // The remote store repositories are system repositories and cannot be deleted by the test framework's cleanup.
     override fun preserveReposUponCompletion(): Boolean = true
 
-    fun `test orphaned jobs do not re-initialize a removed policy`() {
+    fun `test orphaned jobs do not re-initialize a removed policy`() = withoutJobSchedulerOrphanReconciliation {
         val indices = createInitializedManagedIndices("orphan_guard_on")
         val removedAt = removePolicies("orphan_guard_on", indices)
         val orphans = scheduledJobIds()?.intersect(indices.values.toSet())
@@ -57,7 +61,7 @@ class OrphanedManagedIndexJobIT : IndexStateManagementRestTestCase() {
         }
     }
 
-    fun `test orphaned jobs re-initialize a removed policy when the job document check is disabled`() {
+    fun `test orphaned jobs re-initialize a removed policy when the job document check is disabled`() = withoutJobSchedulerOrphanReconciliation {
         updateClusterSetting(ManagedIndexSettings.JOB_DOCUMENT_CHECK_ENABLED.key, "false", escapeValue = false)
         try {
             val indices = createInitializedManagedIndices("orphan_guard_off")
@@ -80,6 +84,20 @@ class OrphanedManagedIndexJobIT : IndexStateManagementRestTestCase() {
             }
         } finally {
             updateClusterSetting(ManagedIndexSettings.JOB_DOCUMENT_CHECK_ENABLED.key, "true", escapeValue = false)
+        }
+    }
+
+    /**
+     * Runs [block] with the job scheduler's orphan reconciliation switched off, so that orphaned jobs keep running as they
+     * do on a job scheduler without it. Removing the setting afterwards restores the default the job scheduler derives
+     * from the node's remote store configuration.
+     */
+    private fun withoutJobSchedulerOrphanReconciliation(block: () -> Unit) {
+        updateClusterSetting(JOB_SCHEDULER_ORPHAN_RECONCILIATION, "false", escapeValue = false)
+        try {
+            block()
+        } finally {
+            updateClusterSetting(JOB_SCHEDULER_ORPHAN_RECONCILIATION, "null", escapeValue = false)
         }
     }
 
@@ -218,5 +236,6 @@ class OrphanedManagedIndexJobIT : IndexStateManagementRestTestCase() {
         private const val INITIALIZATION_TIMEOUT_SECONDS = 180L
         private const val OBSERVATION_WINDOW_SECONDS = 150L
         private const val POLL_INTERVAL_MILLIS = 10_000L
+        private const val JOB_SCHEDULER_ORPHAN_RECONCILIATION = "plugins.jobscheduler.sweeper.orphan_reconciliation.enabled"
     }
 }
