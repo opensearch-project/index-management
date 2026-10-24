@@ -622,8 +622,10 @@ integTest {
     // SearchOnlyActionIT requires Remote Store cluster, run via remoteStoreIntegTest
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/action/SearchOnlyActionIT.class'
 
-    // OrphanedManagedIndexJobIT requires a two data node Remote Store cluster, run via remoteStoreDataNodesIntegTest
+    // OrphanedManagedIndexJobIT and StaleScheduledJobPolicyVersionIT require a two data node Remote Store cluster,
+    // run via remoteStoreDataNodesIntegTest
     exclude 'org/opensearch/indexmanagement/indexstatemanagement/runner/OrphanedManagedIndexJobIT.class'
+    exclude 'org/opensearch/indexmanagement/indexstatemanagement/runner/StaleScheduledJobPolicyVersionIT.class'
 
     if (project.hasProperty('includeTests')) {
         String includeTests = project.property('includeTests')
@@ -708,8 +710,10 @@ task remoteStoreIntegTest(type: StandaloneRestIntegTestTask) {
 
 // === Remote Store integration test with two data nodes ===
 // Both nodes hold a copy of the config index (primary on one, replica on the other). Replica copies of a remote-store
-// backed index do not execute write operations, so the node that owns a job through the replica copy never observes the
-// delete issued by the remove policy API and keeps the removed job in memory. Used by OrphanedManagedIndexJobIT.
+// backed index do not execute write operations, so the node that owns a job through the replica copy only observes job
+// document writes at the next scheduler sweep: it never sees the delete issued by the remove policy API and keeps the
+// removed job in memory (OrphanedManagedIndexJobIT), and after applying a policy change it keeps running the stale job
+// until the sweep (StaleScheduledJobPolicyVersionIT).
 File remoteStoreDataNodesRepo = layout.buildDirectory.dir("testclusters/remote-store-data-nodes-repo").get().asFile
 
 testClusters.register('remoteStoreDataNodesIntegTest') {
@@ -759,6 +763,7 @@ task remoteStoreDataNodesIntegTest(type: StandaloneRestIntegTestTask) {
 
     filter {
         includeTestsMatching "org.opensearch.indexmanagement.indexstatemanagement.runner.OrphanedManagedIndexJobIT"
+        includeTestsMatching "org.opensearch.indexmanagement.indexstatemanagement.runner.StaleScheduledJobPolicyVersionIT"
     }
 
     doFirst {
