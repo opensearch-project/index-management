@@ -53,13 +53,19 @@ object CreationFinishedState : State {
             val getSnapshots = getSnapshotsResult.snapshots
 
             if (getSnapshots.isEmpty()) {
-                // probably user manually deletes the creating snapshot
+                // The snapshot we started can no longer be found in the repository. This can happen if it was
+                // deleted manually, if the repository storage rejected writes (e.g. an S3 bucket over quota), or if
+                // repository data was removed outside OpenSearch (e.g. an object-store lifecycle/retention rule).
+                // We cannot confirm the snapshot exists, so report a failure rather than a success; otherwise users
+                // are misled and no failure notification is sent.
+                val missingMessage = getSnapshotMissingMessageInCreationWorkflow(snapshotName)
                 metadataBuilder.setLatestExecution(
-                    status = SMMetadata.LatestExecution.Status.SUCCESS,
-                    message = getSnapshotMissingMessageInCreationWorkflow(snapshotName),
+                    status = SMMetadata.LatestExecution.Status.FAILED,
+                    message = missingMessage,
+                    cause = SnapshotManagementException(message = missingMessage),
                     endTime = now(),
-                ).resetWorkflow()
-                return@let
+                ).setCreationStarted(null)
+                return SMResult.Fail(metadataBuilder, WorkflowType.CREATION, true)
             }
 
             val snapshot = getSnapshots.first()
