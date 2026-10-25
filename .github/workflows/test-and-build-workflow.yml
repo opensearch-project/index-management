@@ -24,10 +24,14 @@ jobs:
       # This starts three jobs, setting these environment variables uniquely for the different jobs
       matrix:
         java: [21, 25]
-        feature: [ism, non-ism]
+        feature: [ism-action, ism-other, non-ism]
         include:
-          - feature: ism
-            test_filter: -PincludeTests="org.opensearch.indexmanagement.indexstatemanagement*"
+          # ism-action runs the action tests except Rollover and Rollup, ism-other runs the rest of ISM.
+          # ism-other excludes action tests by first letter, so an action test with a new letter runs in both.
+          - feature: ism-action
+            test_filter: -PincludeTests="org.opensearch.indexmanagement.indexstatemanagement.action.*" -PexcludeTests="org.opensearch.indexmanagement.indexstatemanagement.action.Roll*"
+          - feature: ism-other
+            test_filter: -PincludeTests="org.opensearch.indexmanagement.indexstatemanagement*" -PexcludeTests="org.opensearch.indexmanagement.indexstatemanagement.action.A*,org.opensearch.indexmanagement.indexstatemanagement.action.C*,org.opensearch.indexmanagement.indexstatemanagement.action.D*,org.opensearch.indexmanagement.indexstatemanagement.action.F*,org.opensearch.indexmanagement.indexstatemanagement.action.I*,org.opensearch.indexmanagement.indexstatemanagement.action.N*,org.opensearch.indexmanagement.indexstatemanagement.action.O*,org.opensearch.indexmanagement.indexstatemanagement.action.P*,org.opensearch.indexmanagement.indexstatemanagement.action.Re*,org.opensearch.indexmanagement.indexstatemanagement.action.S*,org.opensearch.indexmanagement.indexstatemanagement.action.T*"
           - feature: non-ism
             test_filter: -PexcludeTests="org.opensearch.indexmanagement.indexstatemanagement*"
     runs-on: ubuntu-latest
