@@ -65,7 +65,7 @@ jobs:
         run: |
           su `id -un 1000` -c "./gradlew jacocoTestReport"
       - name: Upload coverage XML
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && matrix.java == 21
         with:
           name: coverage-xml-${{ matrix.java }}-${{ matrix.feature }}
@@ -73,14 +73,14 @@ jobs:
           if-no-files-found: warn
           overwrite: 'true'
       - name: Upload failed logs
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ failure() }}
         with:
           name: logs-${{ matrix.java }}-${{ matrix.feature }}
           path: build/testclusters/integTest-*/logs/*
           overwrite: 'true'
       - name: Upload test reports
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ failure() }}
         with:
           name: test-reports-linux-${{ matrix.java }}-${{ matrix.feature }}
@@ -93,7 +93,7 @@ jobs:
       # This step uses the upload-artifact Github action: https://github.com/actions/upload-artifact
       - name: Upload Artifacts
         # v4 requires node.js 20 which is not supported
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: index-management-plugin-ubuntu-latest-${{ matrix.java }}-${{ matrix.feature }}
           path: index-management-artifacts
@@ -150,7 +150,7 @@ jobs:
           cp ./build/distributions/*.zip index-management-artifacts
       # This step uses the upload-artifact Github action: https://github.com/actions/upload-artifact
       - name: Upload Artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: index-management-plugin-${{ matrix.os }}-${{ matrix.java }}-${{ matrix.feature }}
           path: index-management-artifacts
