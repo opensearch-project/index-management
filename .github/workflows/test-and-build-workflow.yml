@@ -18,16 +18,20 @@ jobs:
     timeout-minutes: 25
     env:
       TEST_FILTER: ${{ matrix.test_filter }}
+      ISM_OTHER_TESTS: org.opensearch.indexmanagement.indexstatemanagement.resthandler*,org.opensearch.indexmanagement.indexstatemanagement.runner*,org.opensearch.indexmanagement.indexstatemanagement.coordinator*,org.opensearch.indexmanagement.indexstatemanagement.action.Roll*
     strategy:
       # This setting says that all jobs should finish, even if one fails
       fail-fast: false
       # This starts three jobs, setting these environment variables uniquely for the different jobs
       matrix:
         java: [21, 25]
-        feature: [ism, non-ism]
+        feature: [ism-action, ism-other, non-ism]
         include:
-          - feature: ism
-            test_filter: -PincludeTests="org.opensearch.indexmanagement.indexstatemanagement*"
+          # ism-other runs the tests that match ISM_OTHER_TESTS, and ism-action runs every other ISM test.
+          - feature: ism-action
+            test_filter: -PincludeTests="org.opensearch.indexmanagement.indexstatemanagement*" -PexcludeTests="$ISM_OTHER_TESTS"
+          - feature: ism-other
+            test_filter: -PincludeTests="$ISM_OTHER_TESTS"
           - feature: non-ism
             test_filter: -PexcludeTests="org.opensearch.indexmanagement.indexstatemanagement*"
     runs-on: ubuntu-latest

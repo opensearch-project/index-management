@@ -631,14 +631,14 @@ integTest {
         String includeTests = project.property('includeTests')
         println("Include tests ${includeTests}")
         filter {
-            includeTestsMatching includeTests
+            includeTests.split(',').each { includeTestsMatching it.trim() }
         }
     }
     if (project.hasProperty('excludeTests')) {
         String excludeTests = project.property('excludeTests')
         println("Exclude tests ${excludeTests}")
         filter {
-            excludeTestsMatching excludeTests
+            excludeTests.split(',').each { excludeTestsMatching it.trim() }
         }
     }
 }
