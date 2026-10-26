@@ -18,6 +18,7 @@ jobs:
     timeout-minutes: 25
     env:
       TEST_FILTER: ${{ matrix.test_filter }}
+      ISM_OTHER_TESTS: org.opensearch.indexmanagement.indexstatemanagement.resthandler*,org.opensearch.indexmanagement.indexstatemanagement.runner*,org.opensearch.indexmanagement.indexstatemanagement.coordinator*,org.opensearch.indexmanagement.indexstatemanagement.action.Roll*
     strategy:
       # This setting says that all jobs should finish, even if one fails
       fail-fast: false
@@ -26,12 +27,11 @@ jobs:
         java: [21, 25]
         feature: [ism-action, ism-other, non-ism]
         include:
-          # ism-action runs the action tests except Rollover and Rollup, ism-other runs the rest of ISM.
-          # ism-other excludes action tests by first letter, so an action test with a new letter runs in both.
+          # ism-other runs the tests that match ISM_OTHER_TESTS, and ism-action runs every other ISM test.
           - feature: ism-action
-            test_filter: -PincludeTests="org.opensearch.indexmanagement.indexstatemanagement.action.*" -PexcludeTests="org.opensearch.indexmanagement.indexstatemanagement.action.Roll*"
+            test_filter: -PincludeTests="org.opensearch.indexmanagement.indexstatemanagement*" -PexcludeTests="$ISM_OTHER_TESTS"
           - feature: ism-other
-            test_filter: -PincludeTests="org.opensearch.indexmanagement.indexstatemanagement*" -PexcludeTests="org.opensearch.indexmanagement.indexstatemanagement.action.A*,org.opensearch.indexmanagement.indexstatemanagement.action.C*,org.opensearch.indexmanagement.indexstatemanagement.action.D*,org.opensearch.indexmanagement.indexstatemanagement.action.F*,org.opensearch.indexmanagement.indexstatemanagement.action.I*,org.opensearch.indexmanagement.indexstatemanagement.action.N*,org.opensearch.indexmanagement.indexstatemanagement.action.O*,org.opensearch.indexmanagement.indexstatemanagement.action.P*,org.opensearch.indexmanagement.indexstatemanagement.action.Re*,org.opensearch.indexmanagement.indexstatemanagement.action.S*,org.opensearch.indexmanagement.indexstatemanagement.action.T*"
+            test_filter: -PincludeTests="$ISM_OTHER_TESTS"
           - feature: non-ism
             test_filter: -PexcludeTests="org.opensearch.indexmanagement.indexstatemanagement*"
     runs-on: ubuntu-latest
