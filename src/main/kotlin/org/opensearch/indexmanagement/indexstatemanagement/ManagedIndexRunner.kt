@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -105,11 +106,14 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetry
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepContext
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
+import org.opensearch.indexmanagement.util.releaseLockForScheduledJob
+import org.opensearch.jobscheduler.spi.JobDocVersion
 import org.opensearch.jobscheduler.spi.JobExecutionContext
 import org.opensearch.jobscheduler.spi.LockModel
 import org.opensearch.jobscheduler.spi.ScheduledJobParameter
 import org.opensearch.jobscheduler.spi.ScheduledJobRunner
 import org.opensearch.jobscheduler.spi.schedule.IntervalSchedule
+import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.Script
 import org.opensearch.script.ScriptService
 import org.opensearch.script.TemplateScript
@@ -117,6 +121,20 @@ import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.client.Client
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+
+enum class ExecuteNowResult {
+    /** The job ran. The run may still have been a no-op, for example when the cluster is red or the step is backing off. */
+    EXECUTED,
+
+    /** A scheduled or another on demand run holds the job lock. */
+    ALREADY_RUNNING,
+
+    /** Execution is paused while nodes with an older ISM version are still in the cluster. */
+    UPGRADE_IN_PROGRESS,
+
+    /** The job is disabled, which is what ISM does once the policy of a managed index has completed or failed. Nothing was run. */
+    JOB_DISABLED,
+}
 
 @Suppress("TooManyFunctions", "LargeClass")
 object ManagedIndexRunner :
@@ -286,19 +304,47 @@ object ManagedIndexRunner :
                 return@launch
             }
 
-            // Attempt to acquire lock
-            val lock: LockModel? = context.lockService.suspendUntil { acquireLock(job, context, it) }
-            if (lock == null) {
-                logger.debug("Could not acquire lock [${lock?.lockId}] for ${job.index}")
-            } else {
-                runManagedIndexConfig(job, context)
-                // Release lock
-                val released: Boolean = context.lockService.suspendUntil { release(lock, it) }
-                if (!released) {
-                    logger.debug("Could not release lock [${lock.lockId}] for ${job.index}")
-                }
-            }
+            runWithLock(job, context)
         }
+    }
+
+    /** True while the cluster has nodes with different ISM versions: runs are paused until the upgrade is done. */
+    fun isExecutionPaused(): Boolean = skipExecFlag.flag
+
+    /**
+     * Runs the managed index job right away instead of waiting for the job scheduler, taking the same job lock a scheduled run takes.
+     * [lockService] is the one the job scheduler plugin takes its locks with. Must be called on the node that owns the job, see
+     * [ExecuteNowResult] for the possible outcomes.
+     */
+    suspend fun executeNow(job: ManagedIndexConfig, lockService: LockService): ExecuteNowResult = when {
+        isExecutionPaused() -> ExecuteNowResult.UPGRADE_IN_PROGRESS
+
+        // the scheduler does not run a disabled job either
+        !job.enabled -> ExecuteNowResult.JOB_DISABLED
+
+        else -> {
+            val context = JobExecutionContext(Instant.now(), JobDocVersion(job.primaryTerm, job.seqNo, 0L), lockService, INDEX_MANAGEMENT_INDEX, job.id)
+            if (runWithLock(job, context)) ExecuteNowResult.EXECUTED else ExecuteNowResult.ALREADY_RUNNING
+        }
+    }
+
+    /** @return false when another run holds the job lock and nothing was executed */
+    private suspend fun runWithLock(job: ManagedIndexConfig, context: JobExecutionContext): Boolean {
+        // Attempt to acquire lock
+        val lock: LockModel? = context.lockService.suspendUntil { acquireLock(job, context, it) }
+        if (lock == null) {
+            logger.debug("Could not acquire lock for ${job.index}, job ${job.id}")
+            return false
+        }
+
+        try {
+            runManagedIndexConfig(job, context)
+        } finally {
+            // Release lock, also when the run threw or was cancelled: the lock lasts an hour, so keeping it would block every run of the job.
+            // The helper logs a failure to release instead of throwing, which would hide why the run failed.
+            withContext(NonCancellable) { releaseLockForScheduledJob(context, lock) }
+        }
+        return true
     }
 
     @OptIn(DelicateCoroutinesApi::class)
