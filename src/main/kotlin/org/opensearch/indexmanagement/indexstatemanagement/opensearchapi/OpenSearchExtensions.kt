@@ -29,10 +29,12 @@ import org.opensearch.core.xcontent.XContentBuilder
 import org.opensearch.index.IndexNotFoundException
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.DefaultIndexMetadataService
+import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.settings.LegacyOpenDistroManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
 import org.opensearch.indexmanagement.opensearchapi.contentParser
+import org.opensearch.indexmanagement.opensearchapi.parseWithType
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.search.fetch.subphase.FetchSourceContext
@@ -148,6 +150,50 @@ suspend fun Client.managedIndexJobDocumentExists(indexUuid: String): Pair<Boolea
         }
 
         return Pair(false, false)
+    }
+}
+
+/**
+ * Reads the job document of a managed index from the config index.
+ *
+ * The runner is handed the [ManagedIndexConfig] the job scheduler holds in memory, which can lag behind the document
+ * until the scheduler's next sweep (for example on a remote-store backed config index, where replica copies do not
+ * observe writes). This returns the document itself: a realtime GET against the primary copy, parsed the same way the
+ * coordinator parses job documents.
+ *
+ * @return pair of (config, or null when the document does not exist; get call successful). When the call failed the
+ * first value is meaningless.
+ */
+@Suppress("ReturnCount")
+suspend fun Client.getManagedIndexConfig(indexUuid: String, xContentRegistry: NamedXContentRegistry): Pair<ManagedIndexConfig?, Boolean> {
+    try {
+        val getRequest =
+            GetRequest(INDEX_MANAGEMENT_INDEX, indexUuid)
+                .routing(indexUuid)
+                .realtime(true)
+                .preference(Preference.PRIMARY.type())
+        val getResponse: GetResponse = this.suspendUntil { get(getRequest, it) }
+        if (!getResponse.isExists || getResponse.isSourceEmpty) {
+            return Pair(null, true)
+        }
+
+        val managedIndexConfig =
+            withContext(Dispatchers.IO) {
+                contentParser(getResponse.sourceAsBytesRef, xContentRegistry).parseWithType(
+                    getResponse.id, getResponse.seqNo, getResponse.primaryTerm, ManagedIndexConfig.Companion::parse,
+                )
+            }
+        return Pair(managedIndexConfig, true)
+    } catch (e: Exception) {
+        when (e) {
+            is IndexNotFoundException, is NoShardAvailableActionException -> {
+                log.error("Failed to get managed index job document because no index or shard not available")
+            }
+
+            else -> log.error("Failed to get managed index job document", e)
+        }
+
+        return Pair(null, false)
     }
 }
 

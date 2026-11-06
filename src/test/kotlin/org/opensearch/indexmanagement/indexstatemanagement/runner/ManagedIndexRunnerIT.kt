@@ -5,13 +5,17 @@
 
 package org.opensearch.indexmanagement.indexstatemanagement.runner
 
+import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.io.entity.StringEntity
 import org.opensearch.client.Request
 import org.opensearch.common.settings.Settings
 import org.opensearch.core.rest.RestStatus
+import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.ISMActionsParser
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementRestTestCase
 import org.opensearch.indexmanagement.indexstatemanagement.action.OpenAction
 import org.opensearch.indexmanagement.indexstatemanagement.action.ReadOnlyAction
+import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
 import org.opensearch.indexmanagement.indexstatemanagement.model.State
 import org.opensearch.indexmanagement.indexstatemanagement.randomDeleteActionConfig
@@ -21,10 +25,12 @@ import org.opensearch.indexmanagement.indexstatemanagement.randomReadOnlyActionC
 import org.opensearch.indexmanagement.indexstatemanagement.randomReadWriteActionConfig
 import org.opensearch.indexmanagement.indexstatemanagement.randomState
 import org.opensearch.indexmanagement.indexstatemanagement.randomTransition
+import org.opensearch.indexmanagement.indexstatemanagement.resthandler.RestChangePolicyAction
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings
 import org.opensearch.indexmanagement.indexstatemanagement.step.readonly.SetReadOnlyStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.readwrite.SetReadWriteStep
 import org.opensearch.indexmanagement.indexstatemanagement.step.transition.AttemptTransitionStep
+import org.opensearch.indexmanagement.indexstatemanagement.util.managedIndexMetadataID
 import org.opensearch.indexmanagement.makeRequest
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedIndexMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
@@ -34,39 +40,89 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
-    fun `test version conflict fails job`() {
+    fun `test job document policy version change that is not an interrupted policy change fails the job`() {
         val indexName = "version_conflict_index"
         val policyID = "version_conflict_policy"
-        val actionConfig = OpenAction(0)
-        val states = listOf(State("OpenState", listOf(actionConfig), listOf()))
-
-        val policy =
-            Policy(
-                id = policyID,
-                description = "$indexName description",
-                schemaVersion = 1L,
-                lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
-                errorNotification = randomErrorNotification(),
-                defaultState = states[0].name,
-                states = states,
-            )
-
-        createPolicy(policy, policyID)
+        val policy = createPolicy(openStatePolicy(policyID, indexName), policyID)
         createIndex(indexName, policyID)
-
         val managedIndexConfig = getExistingManagedIndexConfig(indexName)
 
         // init policy on managed index
         updateManagedIndexConfigStartTime(managedIndexConfig)
-
         waitFor { assertEquals(policy.id, getExplainManagedIndexMetaData(indexName).policyID) }
 
-        // change policy seqNo on managed index
+        // the job document now pins a policy version the metadata was not written under, and no policy change explains it
         updateManagedIndexConfigPolicySeqNo(managedIndexConfig.copy(policySeqNo = 17))
-
-        // start execution to see if it moves to failed because of version conflict
         updateManagedIndexConfigStartTime(managedIndexConfig)
 
+        // reconciliation does not repair such metadata: the managed index is failed and the job disabled as before
+        waitForVersionConflictFailure(indexName)
+    }
+
+    fun `test job document policy version change fails the job when reconciliation is disabled`() {
+        updateClusterSetting(ManagedIndexSettings.POLICY_VERSION_RECONCILIATION_ENABLED.key, "false", escapeValue = false)
+        try {
+            val indexName = "version_conflict_disabled_index"
+            val policyID = "version_conflict_disabled_policy"
+            val policy = createPolicy(openStatePolicy(policyID, indexName), policyID)
+            createIndex(indexName, policyID)
+            val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+
+            // init policy on managed index
+            updateManagedIndexConfigStartTime(managedIndexConfig)
+            waitFor { assertEquals(policy.id, getExplainManagedIndexMetaData(indexName).policyID) }
+
+            // change policy seqNo on managed index
+            updateManagedIndexConfigPolicySeqNo(managedIndexConfig.copy(policySeqNo = 17))
+
+            // start execution to see if it moves to failed because of version conflict
+            updateManagedIndexConfigStartTime(managedIndexConfig)
+
+            waitForVersionConflictFailure(indexName)
+        } finally {
+            updateClusterSetting(ManagedIndexSettings.POLICY_VERSION_RECONCILIATION_ENABLED.key, "true", escapeValue = false)
+        }
+    }
+
+    fun `test interrupted policy change is completed instead of failing the job`() {
+        val indexName = "interrupted_change_index"
+        val policyA = createPolicy(openStatePolicy("interrupted_change_a", indexName), "interrupted_change_a")
+        val policyB = createPolicy(openStatePolicy("interrupted_change_b", indexName), "interrupted_change_b")
+        createIndex(indexName, policyA.id)
+        val managedIndexConfig = getExistingManagedIndexConfig(indexName)
+
+        // init policy on managed index
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor { assertEquals(policyA.id, getExplainManagedIndexMetaData(indexName).policyID) }
+
+        // Stage a policy change that was interrupted after its first write: the change is pending on the job document
+        // while the metadata already carries the new policy's version
+        val changePolicy = ChangePolicy(policyB.id, null, emptyList(), false)
+        val response =
+            client().makeRequest(
+                "POST", "${RestChangePolicyAction.CHANGE_POLICY_BASE_URI}/$indexName", emptyMap(), changePolicy.toHttpEntity(),
+            )
+        assertEquals("Unexpected RestStatus", RestStatus.OK, response.restStatus())
+        waitFor { assertEquals(policyB.id, getExistingManagedIndexConfig(indexName).changePolicy?.policyID) }
+        updateManagedIndexMetaDataPolicyVersion(managedIndexConfig.indexUuid, policyB)
+
+        // the next run completes the change instead of failing the job
+        updateManagedIndexConfigStartTime(managedIndexConfig)
+        waitFor {
+            val config = getExistingManagedIndexConfig(indexName)
+            assertEquals("job document was not moved to the new policy", policyB.id, config.policyID)
+            assertNull("pending change was not cleared", config.changePolicy)
+            assertTrue("job must stay enabled", config.enabled)
+            val metadata = getExplainManagedIndexMetaData(indexName)
+            assertEquals(policyB.id, metadata.policyID)
+            assertEquals(policyB.seqNo, metadata.policySeqNo)
+            assertEquals(policyB.primaryTerm, metadata.policyPrimaryTerm)
+            assertEquals("managed index must not be failed", false, metadata.policyRetryInfo?.failed)
+        }
+    }
+
+    /** The pre-reconciliation outcome: the metadata is failed with the version conflict message and the job is disabled. */
+    private fun waitForVersionConflictFailure(indexName: String) {
         val expectedInfoString = mapOf("message" to "There is a version conflict between your previous execution and your managed index").toString()
         waitFor {
             assertPredicatesOnMetaData(
@@ -86,6 +142,38 @@ class ManagedIndexRunnerIT : IndexStateManagementRestTestCase() {
                 strict = false,
             )
         }
+        waitFor { assertFalse("job must be disabled", getExistingManagedIndexConfig(indexName).enabled) }
+    }
+
+    /** A policy with a single state whose only action opens the index. */
+    private fun openStatePolicy(policyID: String, indexName: String): Policy {
+        val states = listOf(State("OpenState", listOf(OpenAction(0)), listOf()))
+        return Policy(
+            id = policyID,
+            description = "$indexName description",
+            schemaVersion = 1L,
+            lastUpdatedTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            errorNotification = randomErrorNotification(),
+            defaultState = states[0].name,
+            states = states,
+        )
+    }
+
+    /** Stamps the metadata document with the given policy's id and version, as the first write of a policy change does. */
+    private fun updateManagedIndexMetaDataPolicyVersion(indexUuid: String, policy: Policy) {
+        val body =
+            """
+            {"doc":{"${ManagedIndexMetaData.MANAGED_INDEX_METADATA_TYPE}":{
+                "${ManagedIndexMetaData.POLICY_ID}":"${policy.id}",
+                "${ManagedIndexMetaData.POLICY_SEQ_NO}":${policy.seqNo},
+                "${ManagedIndexMetaData.POLICY_PRIMARY_TERM}":${policy.primaryTerm}}}}
+            """.trimIndent()
+        val response =
+            adminClient().makeRequest(
+                "POST", "$INDEX_MANAGEMENT_INDEX/_update/${managedIndexMetadataID(indexUuid)}?routing=$indexUuid&refresh=true",
+                StringEntity(body, ContentType.APPLICATION_JSON),
+            )
+        assertEquals("Request failed", RestStatus.OK, response.restStatus())
     }
 
     fun `test job interval changing`() {

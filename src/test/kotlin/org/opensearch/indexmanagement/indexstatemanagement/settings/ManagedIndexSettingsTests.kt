@@ -69,6 +69,32 @@ class ManagedIndexSettingsTests : OpenSearchTestCase() {
         )
     }
 
+    fun `test policy version reconciliation defaults to enabled`() {
+        assertEquals(true, ManagedIndexSettings.POLICY_VERSION_RECONCILIATION_ENABLED.get(Settings.EMPTY))
+        assertEquals(true, ManagedIndexSettings.DEFAULT_POLICY_VERSION_RECONCILIATION_ENABLED)
+    }
+
+    fun `test policy version reconciliation can be disabled`() {
+        val settings =
+            Settings
+                .builder()
+                .put("plugins.index_state_management.policy_version_reconciliation.enabled", false)
+                .build()
+        assertEquals(false, ManagedIndexSettings.POLICY_VERSION_RECONCILIATION_ENABLED.get(settings))
+    }
+
+    fun `test policy version reconciliation is a dynamic node scope setting`() {
+        val properties = ManagedIndexSettings.POLICY_VERSION_RECONCILIATION_ENABLED.properties
+        assertTrue(
+            "policy_version_reconciliation.enabled should have node scope",
+            properties.contains(Setting.Property.NodeScope),
+        )
+        assertTrue(
+            "policy_version_reconciliation.enabled should be dynamic",
+            properties.contains(Setting.Property.Dynamic),
+        )
+    }
+
     fun `test allow running on red cluster is a dynamic node scope setting`() {
         val properties = ManagedIndexSettings.ALLOW_RUNNING_ON_RED_CLUSTER.properties
         assertTrue(

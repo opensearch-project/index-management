@@ -28,6 +28,8 @@ import org.opensearch.cluster.health.ClusterHealthStatus
 import org.opensearch.cluster.health.ClusterStateHealth
 import org.opensearch.cluster.metadata.IndexMetadata
 import org.opensearch.cluster.service.ClusterService
+import org.opensearch.common.cache.Cache
+import org.opensearch.common.cache.CacheBuilder
 import org.opensearch.common.settings.Settings
 import org.opensearch.common.unit.TimeValue
 import org.opensearch.common.xcontent.LoggingDeprecationHandler
@@ -44,9 +46,11 @@ import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
 import org.opensearch.indexmanagement.indexstatemanagement.action.TransitionsAction
+import org.opensearch.indexmanagement.indexstatemanagement.model.ChangePolicy
 import org.opensearch.indexmanagement.indexstatemanagement.model.ErrorNotification
 import org.opensearch.indexmanagement.indexstatemanagement.model.ManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.model.Policy
+import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexConfig
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.getManagedIndexMetadata
 import org.opensearch.indexmanagement.indexstatemanagement.opensearchapi.managedIndexJobDocumentExists
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.ACTION_VALIDATION_ENABLED
@@ -58,9 +62,11 @@ import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndex
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_ISM_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_JOB_DOCUMENT_CHECK_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_JOB_INTERVAL
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.DEFAULT_POLICY_VERSION_RECONCILIATION_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.INDEX_STATE_MANAGEMENT_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_DOCUMENT_CHECK_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.JOB_INTERVAL
+import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.POLICY_VERSION_RECONCILIATION_ENABLED
 import org.opensearch.indexmanagement.indexstatemanagement.settings.ManagedIndexSettings.Companion.isActionAllowedOnRedCluster
 import org.opensearch.indexmanagement.indexstatemanagement.util.DEFAULT_INDEX_TYPE
 import org.opensearch.indexmanagement.indexstatemanagement.util.deleteManagedIndexMetadataRequest
@@ -146,6 +152,23 @@ object ManagedIndexRunner :
     private var allowList: List<String> = ALLOW_LIST_NONE
     private var allowRunningOnRedCluster: Boolean = DEFAULT_ALLOW_RUNNING_ON_RED_CLUSTER
     private var jobDocumentCheckEnabled: Boolean = DEFAULT_JOB_DOCUMENT_CHECK_ENABLED
+    private var policyVersionReconciliationEnabled: Boolean = DEFAULT_POLICY_VERSION_RECONCILIATION_ENABLED
+
+    /**
+     * Consecutive runs per managed index (keyed by index uuid) in which the policy version on the metadata differed from the
+     * job document and a corrective write was attempted without the two converging. Cleared as soon as a run finds them in
+     * agreement or finds the job document gone; bounds the self-healing in [reconcilePolicyVersion] so a mismatch that
+     * never converges still fails the managed index. An entry is left behind when a job stops running on this node while a
+     * reconciliation is in progress (index deleted, job moved to another node), so the cache is bounded: when it is full
+     * the least recently used entry is dropped, which at most grants that managed index a few more attempts.
+     */
+    internal val policyVersionReconcileAttempts: Cache<String, Int> =
+        CacheBuilder.builder<String, Int>()
+            .setMaximumWeight(MAX_TRACKED_POLICY_VERSION_RECONCILIATIONS)
+            .weigher { _, _ -> 1L }
+            .build()
+    private const val MAX_POLICY_VERSION_RECONCILE_ATTEMPTS = 3
+    internal const val MAX_TRACKED_POLICY_VERSION_RECONCILIATIONS = 10_000L
 
     fun registerClusterService(clusterService: ClusterService): ManagedIndexRunner {
         this.clusterService = clusterService
@@ -202,6 +225,11 @@ object ManagedIndexRunner :
         jobDocumentCheckEnabled = JOB_DOCUMENT_CHECK_ENABLED.get(settings)
         clusterService.clusterSettings.addSettingsUpdateConsumer(JOB_DOCUMENT_CHECK_ENABLED) {
             jobDocumentCheckEnabled = it
+        }
+
+        policyVersionReconciliationEnabled = POLICY_VERSION_RECONCILIATION_ENABLED.get(settings)
+        clusterService.clusterSettings.addSettingsUpdateConsumer(POLICY_VERSION_RECONCILIATION_ENABLED) {
+            policyVersionReconciliationEnabled = it
         }
 
         return this
@@ -275,7 +303,10 @@ object ManagedIndexRunner :
 
     @OptIn(DelicateCoroutinesApi::class)
     @Suppress("ReturnCount", "CyclomaticComplexMethod", "LongMethod", "ComplexCondition", "NestedBlockDepth")
-    private suspend fun runManagedIndexConfig(managedIndexConfig: ManagedIndexConfig, jobContext: JobExecutionContext) {
+    private suspend fun runManagedIndexConfig(scheduledManagedIndexConfig: ManagedIndexConfig, jobContext: JobExecutionContext) {
+        // The job handed over by the scheduler; replaced by the job document if the two disagree on the policy version
+        // and the document agrees with the metadata, see reconcilePolicyVersion
+        var managedIndexConfig = scheduledManagedIndexConfig
         logger.debug("Run job for index ${managedIndexConfig.index}")
         // doing a check of local cluster health as we do not want to overload cluster manager node with potentially a lot of calls
         val isClusterRed = clusterIsRed()
@@ -324,23 +355,13 @@ object ManagedIndexRunner :
             return
         }
 
-        val policy = managedIndexConfig.policy
         if (managedIndexMetaData.hasDifferentPolicyVersion(managedIndexConfig)) {
-            val info = mapOf("message" to "There is a version conflict between your previous execution and your managed index")
-            val result =
-                updateManagedIndexMetaData(
-                    managedIndexMetaData.copy(
-                        policyRetryInfo = PolicyRetryInfoMetaData(true, 0),
-                        info = info,
-                    ),
-                )
-            if (result.metadataSaved) {
-                disableManagedIndexConfig(managedIndexConfig)
-                publishErrorNotification(policy, managedIndexMetaData)
-            }
-            return
+            managedIndexConfig = reconcilePolicyVersion(managedIndexConfig, managedIndexMetaData) ?: return
+        } else {
+            policyVersionReconcileAttempts.invalidate(managedIndexConfig.indexUuid)
         }
 
+        val policy = managedIndexConfig.policy
         val state = policy.getStateToExecute(managedIndexMetaData)
         val action: Action? = state?.getActionToExecute(managedIndexMetaData, indexMetadataProvider)
         val stepContext =
@@ -550,6 +571,139 @@ object ManagedIndexRunner :
             return false
         }
         return true
+    }
+
+    /**
+     * Called when the policy version stamped on the metadata differs from the one on the job the scheduler handed to
+     * this run. The two documents are written separately and the scheduler's copy of the job can lag behind the job
+     * document, so most of these mismatches are transient. Instead of failing the managed index outright, the job
+     * document is re-read and the mismatch is classified:
+     *
+     * 1. The document agrees with the metadata: only the scheduler's in-memory job is stale (it lags the document until
+     *    the next scheduler sweep, e.g. on remote-store backed config indices where replica copies do not observe
+     *    writes). The run continues with the document.
+     * 2. The document still differs, carries a change_policy to the policy the metadata names, and the metadata is the
+     *    first write of that change (see [isInterruptedChangeTo]): the change was interrupted after its metadata write.
+     *    Its second write, the job document, is replayed.
+     *
+     * Any other mismatch (metadata written under another job incarnation, for example by an orphaned job before this
+     * job document was created) keeps the previous behaviour: the managed index is failed, the job disabled and the
+     * error notification published. Repairing such metadata is deliberately left out of this reconciliation.
+     *
+     * The replay is guarded by the seqNo/primaryTerm of the documents it replaces, so a concurrent writer is never
+     * clobbered; a lost race is retried on the next run. After [MAX_POLICY_VERSION_RECONCILE_ATTEMPTS] consecutive
+     * replays without convergence the previous behaviour applies as well.
+     *
+     * @return the job config to continue this run with, or null when the run ends here.
+     */
+    @Suppress("ReturnCount")
+    internal suspend fun reconcilePolicyVersion(
+        scheduledManagedIndexConfig: ManagedIndexConfig,
+        managedIndexMetaData: ManagedIndexMetaData,
+    ): ManagedIndexConfig? {
+        val index = scheduledManagedIndexConfig.index
+        val indexUuid = scheduledManagedIndexConfig.indexUuid
+        val metadataVersion = "${managedIndexMetaData.policyID}@${managedIndexMetaData.policySeqNo}/${managedIndexMetaData.policyPrimaryTerm}"
+        val scheduledVersion =
+            "${scheduledManagedIndexConfig.policyID}@${scheduledManagedIndexConfig.policySeqNo}/${scheduledManagedIndexConfig.policyPrimaryTerm}"
+
+        if (!policyVersionReconciliationEnabled) {
+            failOnPolicyVersionConflict(scheduledManagedIndexConfig, managedIndexMetaData)
+            return null
+        }
+
+        val attempts = policyVersionReconcileAttempts.get(indexUuid) ?: 0
+        if (attempts >= MAX_POLICY_VERSION_RECONCILE_ATTEMPTS) {
+            logger.warn(
+                "Policy version of the metadata of index [$index] ($metadataVersion) still differs from its job ($scheduledVersion) " +
+                    "after $attempts reconciliation attempts, failing the managed index.",
+            )
+            policyVersionReconcileAttempts.invalidate(indexUuid)
+            failOnPolicyVersionConflict(scheduledManagedIndexConfig, managedIndexMetaData)
+            return null
+        }
+
+        val (managedIndexConfig, getSuccessful) = client.getManagedIndexConfig(indexUuid, xContentRegistry)
+        if (!getSuccessful) {
+            logger.info("Failed to retrieve the job document of index [$index] from config index, abort this run.")
+            return null
+        }
+        if (managedIndexConfig == null) {
+            logger.warn(
+                "Job document of index [$index] ($indexUuid) no longer exists in config index, skipping this run of the " +
+                    "orphaned in-memory job. It will be removed by the job scheduler sweep.",
+            )
+            policyVersionReconcileAttempts.invalidate(indexUuid)
+            return null
+        }
+
+        if (!managedIndexMetaData.hasDifferentPolicyVersion(managedIndexConfig)) {
+            // 1. Only the scheduler's copy of the job is stale; the job document and the metadata agree
+            logger.info(
+                "Scheduled job of index [$index] is stale ($scheduledVersion), its job document agrees with the metadata " +
+                    "($metadataVersion). Continuing this run with the job document.",
+            )
+            policyVersionReconcileAttempts.invalidate(indexUuid)
+            return managedIndexConfig
+        }
+
+        val documentVersion = "${managedIndexConfig.policyID}@${managedIndexConfig.policySeqNo}/${managedIndexConfig.policyPrimaryTerm}"
+        val changePolicy = managedIndexConfig.changePolicy
+        val targetPolicy = if (changePolicy?.policyID == managedIndexMetaData.policyID) getPolicy(changePolicy.policyID) else null
+        if (changePolicy != null && targetPolicy != null && managedIndexMetaData.isInterruptedChangeTo(targetPolicy, changePolicy)) {
+            // 2. A policy change wrote the metadata but not the job document yet; complete it.
+            // The change passed shouldChangePolicy in the run that performed the first write: initChangePolicy is the
+            // only writer that stamps a policy other than the job document's onto the metadata, and it is only reached
+            // through that gate. The gate is therefore not re-evaluated here; the index cannot execute under either
+            // policy until the second write lands, and this replay performs exactly that write. No action is passed so
+            // the action metadata recorded by the first write is kept rather than recomputed from the old policy.
+            policyVersionReconcileAttempts.put(indexUuid, attempts + 1)
+            logger.warn(
+                "Metadata of index [$index] already carries the policy ($metadataVersion) its job document ($documentVersion) is " +
+                    "still changing to. Replaying the policy change (attempt ${attempts + 1} of $MAX_POLICY_VERSION_RECONCILE_ATTEMPTS).",
+            )
+            initChangePolicy(managedIndexConfig, managedIndexMetaData, null)
+            return null
+        }
+
+        // The metadata was written under a version that is neither the job document's nor the first write of a change
+        // the document is making. No corrective write is attempted for it; the pre-reconciliation behaviour applies.
+        logger.warn(
+            "Metadata of index [$index] was written under policy version $metadataVersion, which is neither the version pinned on " +
+                "its job document ($documentVersion) nor an interrupted policy change of that document. Failing the managed index.",
+        )
+        policyVersionReconcileAttempts.invalidate(indexUuid)
+        failOnPolicyVersionConflict(managedIndexConfig, managedIndexMetaData)
+        return null
+    }
+
+    /**
+     * Whether this metadata is the first write of a policy change to [targetPolicy] that was interrupted before its second
+     * write, the job document. [initChangePolicy] stamps the metadata with the target policy's id and version, records the
+     * requested state in transitionTo and clears the step metadata; nothing else writes the metadata until the change
+     * completes. Metadata that merely names the same policy without this footprint was written by something else, and a
+     * target policy edited since the first write no longer matches it; both are left to the previous behaviour.
+     */
+    private fun ManagedIndexMetaData.isInterruptedChangeTo(targetPolicy: Policy, changePolicy: ChangePolicy): Boolean {
+        val stampedWithTarget =
+            policyID == targetPolicy.id && policySeqNo == targetPolicy.seqNo && policyPrimaryTerm == targetPolicy.primaryTerm
+        return stampedWithTarget && transitionTo == changePolicy.state && stepMetaData == null
+    }
+
+    /** The pre-reconciliation outcome of a policy version mismatch: fail the managed index, disable the job, notify. */
+    private suspend fun failOnPolicyVersionConflict(managedIndexConfig: ManagedIndexConfig, managedIndexMetaData: ManagedIndexMetaData) {
+        val info = mapOf("message" to "There is a version conflict between your previous execution and your managed index")
+        val result =
+            updateManagedIndexMetaData(
+                managedIndexMetaData.copy(
+                    policyRetryInfo = PolicyRetryInfoMetaData(true, 0),
+                    info = info,
+                ),
+            )
+        if (result.metadataSaved) {
+            disableManagedIndexConfig(managedIndexConfig)
+            publishErrorNotification(managedIndexConfig.policy, managedIndexMetaData)
+        }
     }
 
     private suspend fun initManagedIndex(managedIndexConfig: ManagedIndexConfig) {

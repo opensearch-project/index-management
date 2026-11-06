@@ -18,6 +18,7 @@ import org.opensearch.indexmanagement.snapshotmanagement.model.SMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomLatestExecution
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMMetadata
 import org.opensearch.indexmanagement.snapshotmanagement.randomSMPolicy
+import org.opensearch.snapshots.SnapshotMissingException
 import java.time.Instant
 
 class CreationFinishedStateTests : MocksTestCase() {
@@ -128,7 +129,7 @@ class CreationFinishedStateTests : MocksTestCase() {
             assertNotNull("Latest execution status info should not be null", metadataToSave.creation?.latestExecution!!.info)
         }
 
-    fun `test get snapshots empty in creation`() =
+    fun `test get snapshots empty in creation is reported as failed`() =
         runBlocking {
             val snapshotName = "test_creation_get_snapshots_empty"
             mockGetSnapshotsCall(response = mockGetSnapshotResponse(0))
@@ -146,12 +147,40 @@ class CreationFinishedStateTests : MocksTestCase() {
             val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
 
             val result = SMState.CREATION_FINISHED.instance.execute(context)
-            assertTrue("Execution results should be Next.", result is SMResult.Next)
-            result as SMResult.Next
+            assertTrue("Execution results should be Fail.", result is SMResult.Fail)
+            result as SMResult.Fail
+            assertTrue("Missing snapshot should not be retried.", result.forceReset!!)
             val metadataToSave = result.metadataToSave.build()
-            assertEquals("Latest execution status is success", SMMetadata.LatestExecution.Status.SUCCESS, metadataToSave.creation?.latestExecution!!.status)
+            assertNull("Started creation should be reset to null.", metadataToSave.creation?.started)
+            assertEquals("Latest execution status is failed", SMMetadata.LatestExecution.Status.FAILED, metadataToSave.creation?.latestExecution!!.status)
             assertNotNull("Latest execution status end_time should not be null", metadataToSave.creation?.latestExecution!!.endTime)
             assertNotNull("Latest execution status message should not be null", metadataToSave.creation?.latestExecution!!.info!!.message)
+            assertNotNull("Latest execution status cause should not be null", metadataToSave.creation?.latestExecution!!.info!!.cause)
+        }
+
+    fun `test snapshot missing exception in creation is reported as failed`() =
+        runBlocking {
+            val snapshotName = "test_creation_snapshot_missing"
+            mockGetSnapshotsCall(exception = SnapshotMissingException("repo", snapshotName))
+
+            val metadata =
+                randomSMMetadata(
+                    creationCurrentState = SMState.CREATING,
+                    startedCreation = snapshotName,
+                    creationLatestExecution =
+                    randomLatestExecution(
+                        startTime = Instant.now(),
+                    ),
+                )
+            val job = randomSMPolicy(policyName = "daily-snapshot")
+            val context = SMStateMachine(client, job, metadata, settings, threadPool, indicesManager)
+
+            val result = SMState.CREATION_FINISHED.instance.execute(context)
+            assertTrue("Execution results should be Fail.", result is SMResult.Fail)
+            result as SMResult.Fail
+            assertTrue("Missing snapshot should not be retried.", result.forceReset!!)
+            val metadataToSave = result.metadataToSave.build()
+            assertEquals("Latest execution status is failed", SMMetadata.LatestExecution.Status.FAILED, metadataToSave.creation?.latestExecution!!.status)
         }
 
     fun `test creation time limit exceed`() =
