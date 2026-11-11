@@ -120,7 +120,9 @@ class AttemptRolloverStep(private val action: RolloverAction) : Step(name) {
                     " numDocs=$numDocs, indexSize=${indexSize.bytes}, primaryShardSize=${largestPrimaryShardSize.bytes}]",
             )
             executeRollover(context, rolloverTarget, isDataStream, conditions)
-            copyAlias(clusterService, indexName, context.client, rolloverTarget, context.metadata)
+            if (stepStatus == StepStatus.COMPLETED) {
+                copyAlias(clusterService, indexName, context.client, rolloverTarget, context.metadata)
+            }
         } else {
             stepStatus = StepStatus.CONDITION_NOT_MET
             info = mapOf("message" to getPendingMessage(indexName), "conditions" to conditions)
