@@ -4,11 +4,11 @@ Compatible with OpenSearch and OpenSearch Dashboards version 3.10.0
 
 ### Bug Fixes
 
-* Report SM snapshot creation as FAILED when the snapshot is missing instead of SUCCESS ([#1759](https://github.com/opensearch-project/index-management/pull/1759))
-* Resolve plugin-injected index UUID in AttemptTransitionStep so reattached indices are correctly recognized as in-cluster ([#1757](https://github.com/opensearch-project/index-management/pull/1757))
-* Resume ISM policies after restoring the config index from a snapshot by reconciling stale index UUIDs ([#1754](https://github.com/opensearch-project/index-management/pull/1754))
+* Resume ISM policies after restoring the config index from a snapshot ([#1754](https://github.com/opensearch-project/index-management/pull/1754))
 * Reconcile policy version mismatches instead of failing the managed index job ([#1746](https://github.com/opensearch-project/index-management/pull/1746))
-* Skip initialization of managed index jobs whose document was deleted to prevent orphaned jobs from re-running removed policies ([#1743](https://github.com/opensearch-project/index-management/pull/1743))
+* Skip initialization of orphaned managed index jobs whose document was deleted ([#1743](https://github.com/opensearch-project/index-management/pull/1743))
+* Resolve plugin-injected index UUID in AttemptTransitionStep for re-attached indices ([#1757](https://github.com/opensearch-project/index-management/pull/1757))
+* Report Snapshot Management snapshot creation as failed when the snapshot is missing ([#1759](https://github.com/opensearch-project/index-management/pull/1759))
 
 ### Maintenance
 
