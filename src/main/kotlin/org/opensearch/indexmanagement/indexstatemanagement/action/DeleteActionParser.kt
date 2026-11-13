@@ -14,14 +14,25 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.ActionParser
 class DeleteActionParser : ActionParser() {
     override fun fromStreamInput(sin: StreamInput): Action {
         val index = sin.readInt()
-        return DeleteAction(index)
+        val deleteSnapshot = sin.readBoolean()
+        return DeleteAction(index, deleteSnapshot)
     }
 
     override fun fromXContent(xcp: XContentParser, index: Int): Action {
-        ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
-        ensureExpectedToken(XContentParser.Token.END_OBJECT, xcp.nextToken(), xcp)
+        var deleteSnapshot = false
 
-        return DeleteAction(index)
+        ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
+        while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
+            val fieldName = xcp.currentName()
+            xcp.nextToken()
+
+            when (fieldName) {
+                DeleteAction.DELETE_SNAPSHOT_FIELD -> deleteSnapshot = xcp.booleanValue()
+                else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in DeleteAction.")
+            }
+        }
+
+        return DeleteAction(index, deleteSnapshot)
     }
 
     override fun getActionType(): String = DeleteAction.name
