@@ -48,10 +48,13 @@ class AttemptAliasActionsStep(private val action: AliasAction) : Step(name) {
     // Copies the action the same way the policy stores and parses it (see AliasActionParser), which also handles
     // the fields that are not set. Writing it to a stream does not, it fails when `indices` is not set.
     private fun IndicesAliasesRequest.AliasActions.copyForIndex(indexName: String): IndicesAliasesRequest.AliasActions {
-        val builder = XContentFactory.jsonBuilder()
-        toXContent(builder, ToXContent.EMPTY_PARAMS)
+        val json =
+            XContentFactory.jsonBuilder().use { builder ->
+                toXContent(builder, ToXContent.EMPTY_PARAMS)
+                BytesReference.bytes(builder)
+            }
         XContentType.JSON.xContent()
-            .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, BytesReference.bytes(builder).streamInput())
+            .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, json.streamInput())
             .use { parser ->
                 parser.nextToken()
                 return IndicesAliasesRequest.AliasActions.fromXContent(parser).indices(indexName)
