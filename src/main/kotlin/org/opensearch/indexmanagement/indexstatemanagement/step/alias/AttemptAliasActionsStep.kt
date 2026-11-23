@@ -8,6 +8,12 @@ package org.opensearch.indexmanagement.indexstatemanagement.step.alias
 import org.apache.logging.log4j.LogManager
 import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.opensearch.action.support.clustermanager.AcknowledgedResponse
+import org.opensearch.common.xcontent.LoggingDeprecationHandler
+import org.opensearch.common.xcontent.XContentFactory
+import org.opensearch.common.xcontent.XContentType
+import org.opensearch.core.common.bytes.BytesReference
+import org.opensearch.core.xcontent.NamedXContentRegistry
+import org.opensearch.core.xcontent.ToXContent
 import org.opensearch.indexmanagement.indexstatemanagement.action.AliasAction
 import org.opensearch.indexmanagement.opensearchapi.suspendUntil
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Step
@@ -25,9 +31,11 @@ class AttemptAliasActionsStep(private val action: AliasAction) : Step(name) {
         try {
             val request = IndicesAliasesRequest()
             action.actions.forEach {
-                // Applying the actions on the managed index.
-                it.indices(indexName)
-                request.addAliasAction(it)
+                // Applying the actions on the managed index. The action is owned by the policy of the managed index
+                // config, which is written back to the config index (for example when the job interval changes). The
+                // managed index is therefore set on a copy: setting it on the policy's own action would store
+                // `indices` in the policy, which the alias action rejects when the config is parsed again.
+                request.addAliasAction(it.copyForIndex(indexName))
             }
             val response: AcknowledgedResponse = context.client.admin().indices().suspendUntil { aliases(request, it) }
             handleResponse(response, indexName, action.actions)
@@ -35,6 +43,19 @@ class AttemptAliasActionsStep(private val action: AliasAction) : Step(name) {
             handleException(e, indexName, action.actions)
         }
         return this
+    }
+
+    // Copies the action the same way the policy stores and parses it (see AliasActionParser), which also handles
+    // the fields that are not set. Writing it to a stream does not, it fails when `indices` is not set.
+    private fun IndicesAliasesRequest.AliasActions.copyForIndex(indexName: String): IndicesAliasesRequest.AliasActions {
+        val builder = XContentFactory.jsonBuilder()
+        toXContent(builder, ToXContent.EMPTY_PARAMS)
+        XContentType.JSON.xContent()
+            .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, BytesReference.bytes(builder).streamInput())
+            .use { parser ->
+                parser.nextToken()
+                return IndicesAliasesRequest.AliasActions.fromXContent(parser).indices(indexName)
+            }
     }
 
     private fun handleException(e: Exception, indexName: String, actions: List<IndicesAliasesRequest.AliasActions>) {
