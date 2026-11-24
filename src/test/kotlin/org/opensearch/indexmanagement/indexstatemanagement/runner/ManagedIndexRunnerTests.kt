@@ -24,7 +24,9 @@ import org.opensearch.action.index.IndexRequest
 import org.opensearch.action.index.IndexResponse
 import org.opensearch.action.update.UpdateRequest
 import org.opensearch.action.update.UpdateResponse
+import org.opensearch.cluster.ClusterState
 import org.opensearch.cluster.node.DiscoveryNode
+import org.opensearch.cluster.node.DiscoveryNodes
 import org.opensearch.cluster.routing.Preference
 import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.settings.ClusterSettings
@@ -34,6 +36,7 @@ import org.opensearch.common.xcontent.XContentHelper
 import org.opensearch.common.xcontent.XContentType
 import org.opensearch.core.action.ActionListener
 import org.opensearch.core.common.bytes.BytesArray
+import org.opensearch.core.common.transport.TransportAddress
 import org.opensearch.core.index.shard.ShardId
 import org.opensearch.core.rest.RestStatus
 import org.opensearch.core.xcontent.NamedXContentRegistry
@@ -41,6 +44,7 @@ import org.opensearch.env.Environment
 import org.opensearch.index.engine.VersionConflictEngineException
 import org.opensearch.indexmanagement.IndexManagementIndices
 import org.opensearch.indexmanagement.IndexManagementPlugin.Companion.INDEX_MANAGEMENT_INDEX
+import org.opensearch.indexmanagement.indexstatemanagement.ExecuteNowResult
 import org.opensearch.indexmanagement.indexstatemanagement.IndexMetadataProvider
 import org.opensearch.indexmanagement.indexstatemanagement.IndexStateManagementHistory
 import org.opensearch.indexmanagement.indexstatemanagement.ManagedIndexRunner
@@ -60,6 +64,8 @@ import org.opensearch.indexmanagement.spi.indexstatemanagement.model.ManagedInde
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.PolicyRetryInfoMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StateMetaData
 import org.opensearch.indexmanagement.spi.indexstatemanagement.model.StepMetaData
+import org.opensearch.jobscheduler.spi.LockModel
+import org.opensearch.jobscheduler.spi.utils.LockService
 import org.opensearch.script.ScriptService
 import org.opensearch.test.ClusterServiceUtils
 import org.opensearch.test.OpenSearchTestCase
@@ -620,5 +626,83 @@ class ManagedIndexRunnerTests : OpenSearchTestCase() {
         @Suppress("UNCHECKED_CAST")
         fun configSource(i: Int): Map<String, Any?> =
             XContentHelper.convertToMap(indexRequests[i].source(), false, XContentType.JSON).v2()[ManagedIndexConfig.MANAGED_INDEX_TYPE] as Map<String, Any?>
+    }
+
+    private fun lockServiceHolding(lock: LockModel?): LockService {
+        val lockService: LockService = mock()
+        doAnswer {
+            @Suppress("UNCHECKED_CAST")
+            (it.arguments[2] as ActionListener<LockModel?>).onResponse(lock)
+            null
+        }.whenever(lockService).acquireLock(any(), any(), any())
+        doAnswer {
+            @Suppress("UNCHECKED_CAST")
+            (it.arguments[1] as ActionListener<Boolean>).onResponse(true)
+            null
+        }.whenever(lockService).release(any(), any())
+        return lockService
+    }
+
+    // randomManagedIndexConfig picks enabled at random and executeNow does not run a disabled job
+    private fun enabledJob() = randomManagedIndexConfig().copy(enabled = true, jobEnabledTime = Instant.now())
+
+    fun `test execute now releases the lock when the run throws`() {
+        // LockModel is final, so Mockito cannot mock it
+        val lockService = lockServiceHolding(LockModel(INDEX_MANAGEMENT_INDEX, "job-id", Instant.now(), 3600L, false))
+        // the first thing a run does is look at the cluster state
+        Mockito.doThrow(IllegalStateException("boom")).`when`(clusterService).state()
+
+        expectThrows(IllegalStateException::class.java) { runBlocking { runner.executeNow(enabledJob(), lockService) } }
+
+        verify(lockService, times(1)).release(any(), any())
+    }
+
+    fun `test execute now reports the failure of the run when releasing the lock fails too`() {
+        val lockService = lockServiceHolding(LockModel(INDEX_MANAGEMENT_INDEX, "job-id", Instant.now(), 3600L, false))
+        Mockito.doThrow(IllegalArgumentException("release failed")).`when`(lockService).release(any(), any())
+        Mockito.doThrow(IllegalStateException("boom")).`when`(clusterService).state()
+
+        val e = expectThrows(IllegalStateException::class.java) { runBlocking { runner.executeNow(enabledJob(), lockService) } }
+
+        // the exception of the run, not the one of the release that came after it
+        assertEquals("boom", e.message)
+    }
+
+    fun `test execute now reports a job that another run holds the lock of`() {
+        val lockService = lockServiceHolding(null)
+
+        val result = runBlocking { runner.executeNow(enabledJob(), lockService) }
+
+        assertEquals(ExecuteNowResult.ALREADY_RUNNING, result)
+        verify(lockService, never()).release(any(), any())
+    }
+
+    fun `test execute now does not run a disabled job`() {
+        val lockService = lockServiceHolding(LockModel(INDEX_MANAGEMENT_INDEX, "job-id", Instant.now(), 3600L, false))
+        val disabledJob = randomManagedIndexConfig().copy(enabled = false, jobEnabledTime = null)
+
+        val result = runBlocking { runner.executeNow(disabledJob, lockService) }
+
+        assertEquals(ExecuteNowResult.JOB_DISABLED, result)
+        verify(lockService, never()).acquireLock(any(), any(), any())
+    }
+
+    fun `test execute now is paused while the cluster has mixed ISM versions`() {
+        val lockService = lockServiceHolding(null)
+        // The flag is final and cannot be stubbed, so set it the way the cluster sweep does: nodes of two ISM versions
+        val node1 = DiscoveryNode("node1", TransportAddress(TransportAddress.META_ADDRESS, 9300), Version.CURRENT)
+        val node2 = DiscoveryNode("node2", TransportAddress(TransportAddress.META_ADDRESS, 9301), Version.V_2_0_0)
+        val mixedVersionCluster: ClusterService = mock()
+        whenever(mixedVersionCluster.state()).thenReturn(
+            ClusterState.builder(ClusterState.EMPTY_STATE).nodes(DiscoveryNodes.builder().add(node1).add(node2).build()).build(),
+        )
+        val pausedFlag = SkipExecution().also { it.sweepISMPluginVersion(mixedVersionCluster) }
+        runner.registerSkipFlag(pausedFlag)
+
+        val result = runBlocking { runner.executeNow(enabledJob(), lockService) }
+
+        assertTrue(runner.isExecutionPaused())
+        assertEquals(ExecuteNowResult.UPGRADE_IN_PROGRESS, result)
+        verify(lockService, never()).acquireLock(any(), any(), any())
     }
 }
