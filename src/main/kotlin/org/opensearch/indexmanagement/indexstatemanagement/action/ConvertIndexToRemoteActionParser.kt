@@ -9,6 +9,7 @@ import org.opensearch.core.common.io.stream.StreamInput
 import org.opensearch.core.xcontent.XContentParser
 import org.opensearch.core.xcontent.XContentParser.Token
 import org.opensearch.core.xcontent.XContentParserUtils.ensureExpectedToken
+import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.ADD_ORIGINAL_NAME_AS_ALIAS_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.DEFAULT_RENAME_PATTERN
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.DELETE_ORIGINAL_INDEX_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.IGNORE_INDEX_SETTINGS_FIELD
@@ -17,6 +18,7 @@ import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexTo
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.RENAME_PATTERN_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.REPOSITORY_FIELD
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.SNAPSHOT_FIELD
+import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.VERSION_WITH_ADD_ORIGINAL_ALIAS
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.VERSION_WITH_RENAME_PATTERN
 import org.opensearch.indexmanagement.indexstatemanagement.action.ConvertIndexToRemoteAction.Companion.VERSION_WITH_RESTORE_OPTIONS
 import org.opensearch.indexmanagement.spi.indexstatemanagement.Action
@@ -47,6 +49,11 @@ class ConvertIndexToRemoteActionParser : ActionParser() {
         } else {
             false
         }
+        val addOriginalNameAsAlias = if (sin.version.onOrAfter(VERSION_WITH_ADD_ORIGINAL_ALIAS)) {
+            sin.readBoolean()
+        } else {
+            false
+        }
         val renamePattern = if (sin.version.onOrAfter(VERSION_WITH_RENAME_PATTERN)) {
             sin.readString()
         } else {
@@ -60,6 +67,7 @@ class ConvertIndexToRemoteActionParser : ActionParser() {
             ignoreIndexSettings = ignoreIndexSettings,
             numberOfReplicas = numberOfReplicas,
             deleteOriginalIndex = deleteOriginalIndex,
+            addOriginalNameAsAlias = addOriginalNameAsAlias,
             renamePattern = renamePattern,
             index = index,
         )
@@ -72,6 +80,7 @@ class ConvertIndexToRemoteActionParser : ActionParser() {
         var ignoreIndexSettings: String = ""
         var numberOfReplicas: Int? = null
         var deleteOriginalIndex: Boolean = false
+        var addOriginalNameAsAlias: Boolean = false
         var renamePattern: String = DEFAULT_RENAME_PATTERN
 
         ensureExpectedToken(Token.START_OBJECT, xcp.currentToken(), xcp)
@@ -86,6 +95,7 @@ class ConvertIndexToRemoteActionParser : ActionParser() {
                 IGNORE_INDEX_SETTINGS_FIELD -> ignoreIndexSettings = xcp.text()
                 NUMBER_OF_REPLICAS_FIELD -> numberOfReplicas = xcp.intValue().let { if (it < 0) null else it }
                 DELETE_ORIGINAL_INDEX_FIELD -> deleteOriginalIndex = xcp.booleanValue()
+                ADD_ORIGINAL_NAME_AS_ALIAS_FIELD -> addOriginalNameAsAlias = xcp.booleanValue()
                 RENAME_PATTERN_FIELD -> renamePattern = xcp.text()
                 else -> throw IllegalArgumentException("Invalid field: [$fieldName] found in ConvertIndexToRemoteAction.")
             }
@@ -98,6 +108,7 @@ class ConvertIndexToRemoteActionParser : ActionParser() {
             ignoreIndexSettings = ignoreIndexSettings,
             numberOfReplicas = numberOfReplicas,
             deleteOriginalIndex = deleteOriginalIndex,
+            addOriginalNameAsAlias = addOriginalNameAsAlias,
             renamePattern = renamePattern,
             index = index,
         )
